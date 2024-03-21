@@ -9,7 +9,7 @@ class StepData:
         self.food = food
         self.step = step
 
-    def add_snake_data(self, snake_coords: deque, head_dir: tuple, tail_dir: tuple, snake_id: str):
+    def add_snake_data(self, snake_coords: list, head_dir: tuple, tail_dir: tuple, snake_id: str):
         self.snakes.append({
             'snake_id': snake_id,
             'coords': snake_coords,
@@ -17,8 +17,12 @@ class StepData:
             'tail_dir': tail_dir
         })
 
-    def __dir__(self) -> Iterable[str]:
-        pass
+    def to_dict(self):
+        return {
+            'snakes': self.snakes,
+            'food': self.food,
+            'step': self.step
+        }
 
 
 class RunData:
@@ -31,12 +35,10 @@ class RunData:
     def add_step(self, step: int, state: StepData):
         self.steps[step] = state
 
-    def __repr__(self) -> str:
-        run = {
+    def to_dict(self):
+        return {
             'width': self.width,
             'height': self.height,
             'snake_data': self.snake_data,
-            'steps': self.steps
+            'steps': {k: v.to_dict() for k, v in self.steps.items()}
         }
-        return json.dumps(run)
-

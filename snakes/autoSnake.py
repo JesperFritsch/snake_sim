@@ -6,11 +6,13 @@ from time import time
 from snakes.snake import Snake
 from statistics import mean
 from snake_env import (
-        copy_map,
         coord_op,
         DIR_MAPPING
     )
 
+
+def copy_map(s_map):
+    return [[_ for _ in row] for row in s_map]
 
 class AutoSnake(Snake):
     TIME_LIMIT = True
