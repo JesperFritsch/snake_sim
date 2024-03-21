@@ -18,7 +18,7 @@ class AutoSnake(Snake):
     TIME_LIMIT = True
     MAX_RECURSE_DEPTH = 100
     MAX_RISK_CALC_DEPTH = 3
-    MAX_BRANCH_TIME = 100
+    MAX_BRANCH_TIME = 1000
     MAX_UPDATE_TIME = 15000
     MAX_SEARCH_TIME = 200
 
@@ -52,7 +52,7 @@ class AutoSnake(Snake):
         self.map_to_print = copy_map(self.map)
         self.update_survivors()
         tile = self.pick_direction()
-        self.print_map(self.map_to_print)
+        # self.print_map(self.map_to_print)
         if tile is not None:
             self.coord = tile
             self.x, self.y = tile
@@ -217,18 +217,18 @@ class AutoSnake(Snake):
         # print(f"Time to target:", (time() - time_s) * 1000)
         route_copy = None
         best_option = None
-        if self.route is not None:
-            route_copy = self.route + [target_tile]
-        self.show_route(self.map_to_print, route_copy)
+        # if self.route is not None:
+        #     route_copy = self.route + [target_tile]
+        # self.show_route(self.map_to_print, route_copy)
         for coord in valid_tiles:
             option = self.get_option_data(self.map, self.body_coords, self.coord, coord)
             options[coord] = option
         target_option = options.get(target_tile, None)
         free_options = [o for o in options.values() if o['free_path']]
-        print('self: ', self.coord)
-        print(f"{target_option=}")
-        print(f"{valid_tiles=}")
-        print(f'{options=}')
+        # print('self: ', self.coord)
+        # print(f"{target_option=}")
+        # print(f"{valid_tiles=}")
+        # print(f'{options=}')
         if options:
             if risk_free_options := [o for o in options.values() if o['risk'] == 0]:
                 good_options = risk_free_options

@@ -1,6 +1,6 @@
 
-SCREEN_WIDTH = 600
-SCREEN_HEIGHT = 600
+SCREEN_WIDTH = 1000
+SCREEN_HEIGHT = 1000
 
 import pygame
 import json
@@ -28,19 +28,19 @@ def frames_from_runfile(filename, expand_factor=2):
         for food in step_data['food']:
             food_x, food_y = coord_op(food, (expand_factor, expand_factor), '*')
             color_list[food_y * (new_grid_w) + food_x] = SnakeEnv.COLOR_MAPPING[SnakeEnv.FOOD_TILE]
-        for snake in step_data['snakes']:
-            snake_id = snake['snake_id']
-            head_color = snake_colors[snake_id]['head_color']
-            body_color = snake_colors[snake_id]['body_color']
-            head_dir = snake['head_dir']
-            tail_dir = snake['tail_dir']
-            head_coord = snake['coords'][1] #fill in from prevoius head to current head.
-            tail_coord = snake['coords'][-1]
-            t_dir_mult = coord_op(tail_dir, (expand_factor, expand_factor), '*')
-            head_coord_mult = coord_op(head_coord, (expand_factor, expand_factor), '*')
-            tail_coord_mult = coord_op(tail_coord, (expand_factor, expand_factor), '*')
-            old_tail = coord_op(tail_coord_mult, t_dir_mult, '-')
-            for i in range(1, expand_factor+1):
+        for i in range(1, expand_factor+1):
+            for snake in step_data['snakes']:
+                snake_id = snake['snake_id']
+                head_color = snake_colors[snake_id]['head_color']
+                body_color = snake_colors[snake_id]['body_color']
+                head_dir = snake['head_dir']
+                tail_dir = snake['tail_dir']
+                head_coord = snake['coords'][1] #fill in from prevoius head to current head.
+                tail_coord = snake['coords'][-1]
+                t_dir_mult = coord_op(tail_dir, (expand_factor, expand_factor), '*')
+                head_coord_mult = coord_op(head_coord, (expand_factor, expand_factor), '*')
+                tail_coord_mult = coord_op(tail_coord, (expand_factor, expand_factor), '*')
+                old_tail = coord_op(tail_coord_mult, t_dir_mult, '-')
                 h_dir_mult = coord_op(head_dir, (i, i), '*')
                 h_x, h_y = coord_op(head_coord_mult, h_dir_mult, '+')
                 color_list[h_y * (new_grid_w) + h_x] = body_color
@@ -48,7 +48,7 @@ def frames_from_runfile(filename, expand_factor=2):
                     t_dir_mult = coord_op(tail_dir, (i, i), '*')
                     t_x, t_y = coord_op(old_tail, t_dir_mult, '+')
                     color_list[t_y * (new_grid_w) + t_x] = bg_color
-                frames.append(color_list.copy())
+            frames.append(color_list.copy())
     return frames, new_grid_w, new_grid_h
 
 
@@ -63,18 +63,12 @@ def draw_frame(screen, width, height, frame):
             pygame.draw.rect(screen, color, (x, y, TILE_SIZE_PX, TILE_SIZE_PX))
 
 
-def drawGrid(surface, grid_width, grid_height):
+def drawGray(surface, grid_width, grid_height):
     TILE_SIZE_PX = SCREEN_WIDTH / grid_width
     for y in range(0, int(grid_height)):
         for x in range(0, int(grid_width)):
             rr = pygame.Rect((x*TILE_SIZE_PX, y*TILE_SIZE_PX), (TILE_SIZE_PX,TILE_SIZE_PX))
             pygame.draw.rect(surface, (120,120,120), rr)
-            # if (x+y)%2 == 0:
-            #     r = pygame.Rect((x*TILE_SIZE_PX, y*TILE_SIZE_PX), (TILE_SIZE_PX,TILE_SIZE_PX))
-            #     pygame.draw.rect(surface,(93,216,228), r)
-            # else:
-            #     rr = pygame.Rect((x*TILE_SIZE_PX, y*TILE_SIZE_PX), (TILE_SIZE_PX,TILE_SIZE_PX))
-            #     pygame.draw.rect(surface, (84,194,205), rr)
 
 
 def handle_events():
@@ -92,9 +86,9 @@ def playback_runfile(filename):
     surface = pygame.Surface(screen.get_size())
     surface = surface.convert()
 
-    drawGrid(surface, grid_width, grid_height)
+    drawGray(surface, grid_width, grid_height)
     for frame in frames:
-        clock.tick(5)
+        clock.tick(10)
         handle_events()
         draw_frame(screen, grid_width, grid_height, frame)
         pygame.display.flip()
