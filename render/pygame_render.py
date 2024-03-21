@@ -1,17 +1,14 @@
+
+SCREEN_WIDTH = 600
+SCREEN_HEIGHT = 600
+
 import pygame
 import json
 import sys
 
-from ..snake_env import SnakeEnv
-from ..main import (
-    GRID_HEIGHT,
-    GRID_WIDTH,
-    TILE_SIZE_PX,
-    TILE_SIZE,
-    coord_op
-)
+from snake_env import coord_op, SnakeEnv
 
-def x3_frames_from_runfile(filename):
+def frames_from_runfile(filename, expand_factor=2):
     bg_color = (0,0,0)
     run_dict = {}
     frames = []
@@ -19,53 +16,57 @@ def x3_frames_from_runfile(filename):
         run_dict = json.load(run_json)
     grid_height = run_dict['height']
     grid_width = run_dict['width']
-    new_grid_h = grid_height * TILE_SIZE + 1
-    new_grid_w = grid_width * TILE_SIZE + 1
+    new_grid_h = grid_height * expand_factor
+    new_grid_w = grid_width * expand_factor
     offset_x = 1
     offset_y = 1
+    snake_data = run_dict['snake_data']
+    snake_colors = {x.get('snake_id'): {'head_color': x.get('head_color'), 'body_color': x.get('body_color')} for x in snake_data}
     steps = run_dict['steps']
     color_list = [bg_color] * ((new_grid_w) * (new_grid_h))
-    for step in steps:
-        step_data = steps[step]
-        state = step_data['state']
-        for i, color in enumerate(step_data['colors']):
-            if color in [list(SnakeEnv.COLOR_MAPPING[x]) for x in SnakeEnv.valid_tile_values]:
-                o_coord = (i // grid_width, i % grid_width)
-                x3_x, x3_y = coord_op(o_coord, (3, 3), '*')
-                x3_x += offset_x
-                x3_y += offset_y
-                color_list[x3_y * (new_grid_w) + x3_x] = color
-        for i in range(3):
-            for snake_id in state:
-                snake_data = state[snake_id]
-                cur_coord = snake_data['current_coord']
-                last_coord = snake_data['last_coord']
-                if cur_coord != last_coord:
-                    s_dir = coord_op(cur_coord, last_coord, '-')
-                    l_x, l_y = last_coord
-                    s_x = l_x * TILE_SIZE + offset_x
-                    s_y = l_y * TILE_SIZE + offset_y
-                    add = coord_op(s_dir, (i, i), '*')
-                    fin_x, fin_y = coord_op((s_x, s_y), add, '+')
-                    print(add, (fin_x, fin_y))
-                    color_list[fin_y * (new_grid_w) + fin_x] = snake_data['b_color']
-            frames.append(color_list.copy())
-    return frames
+    for step, step_data in steps.items():
+        for food in step_data['food']:
+            food_x, food_y = coord_op(food, (expand_factor, expand_factor), '*')
+            color_list[food_y * (new_grid_w) + food_x] = SnakeEnv.COLOR_MAPPING[SnakeEnv.FOOD_TILE]
+        for snake in step_data['snakes']:
+            snake_id = snake['snake_id']
+            head_color = snake_colors[snake_id]['head_color']
+            body_color = snake_colors[snake_id]['body_color']
+            head_dir = snake['head_dir']
+            tail_dir = snake['tail_dir']
+            head_coord = snake['coords'][1] #fill in from prevoius head to current head.
+            tail_coord = snake['coords'][-1]
+            t_dir_mult = coord_op(tail_dir, (expand_factor, expand_factor), '*')
+            head_coord_mult = coord_op(head_coord, (expand_factor, expand_factor), '*')
+            tail_coord_mult = coord_op(tail_coord, (expand_factor, expand_factor), '*')
+            old_tail = coord_op(tail_coord_mult, t_dir_mult, '-')
+            for i in range(1, expand_factor+1):
+                h_dir_mult = coord_op(head_dir, (i, i), '*')
+                h_x, h_y = coord_op(head_coord_mult, h_dir_mult, '+')
+                color_list[h_y * (new_grid_w) + h_x] = body_color
+                if any([x != 0 for x in tail_coord]):
+                    t_dir_mult = coord_op(tail_dir, (i, i), '*')
+                    t_x, t_y = coord_op(old_tail, t_dir_mult, '+')
+                    color_list[t_y * (new_grid_w) + t_x] = bg_color
+                frames.append(color_list.copy())
+    return frames, new_grid_w, new_grid_h
+
 
 def draw_frame(screen, width, height, frame):
-    squaresize = TILE_SIZE_PX / TILE_SIZE
+    TILE_SIZE_PX = SCREEN_WIDTH / width
     for row in range(height):
         for col in range(width):
             color_index = row * width + col
             color = frame[color_index % len(frame)]
-            x = col * squaresize
-            y = row * squaresize
-            pygame.draw.rect(screen, color, (x, y, squaresize, squaresize))
+            x = col * TILE_SIZE_PX
+            y = row * TILE_SIZE_PX
+            pygame.draw.rect(screen, color, (x, y, TILE_SIZE_PX, TILE_SIZE_PX))
 
 
-def drawGrid(surface):
-    for y in range(0, int(GRID_HEIGHT)):
-        for x in range(0, int(GRID_WIDTH)):
+def drawGrid(surface, grid_width, grid_height):
+    TILE_SIZE_PX = SCREEN_WIDTH / grid_width
+    for y in range(0, int(grid_height)):
+        for x in range(0, int(grid_width)):
             rr = pygame.Rect((x*TILE_SIZE_PX, y*TILE_SIZE_PX), (TILE_SIZE_PX,TILE_SIZE_PX))
             pygame.draw.rect(surface, (120,120,120), rr)
             # if (x+y)%2 == 0:
@@ -75,13 +76,25 @@ def drawGrid(surface):
             #     rr = pygame.Rect((x*TILE_SIZE_PX, y*TILE_SIZE_PX), (TILE_SIZE_PX,TILE_SIZE_PX))
             #     pygame.draw.rect(surface, (84,194,205), rr)
 
-def draw_color_map(surface, color_map):
-    for (x, y), color in color_map.items():
-        r = pygame.Rect((x*TILE_SIZE_PX, y*TILE_SIZE_PX), (TILE_SIZE_PX,TILE_SIZE_PX))
-        pygame.draw.rect(surface, color, r)
 
 def handle_events():
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
+
+
+def playback_runfile(filename):
+    frames, grid_width, grid_height = frames_from_runfile(filename)
+    pygame.init()
+    clock = pygame.time.Clock()
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
+    surface = pygame.Surface(screen.get_size())
+    surface = surface.convert()
+
+    drawGrid(surface, grid_width, grid_height)
+    for frame in frames:
+        clock.tick(5)
+        handle_events()
+        draw_frame(screen, grid_width, grid_height, frame)
+        pygame.display.flip()

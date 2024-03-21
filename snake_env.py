@@ -1,15 +1,10 @@
 import random
 import array
-import copy
 import json
 
-from helpers import preprocess_data
-from render.jsonEncoder import CompactListEncoder
-from render.run_record import StepData, RunData
 from snakes.snake import Snake
 from time import time
 from dataclasses import dataclass, field
-from collections import deque
 
 UPDATE_TIME_MS = 250
 
@@ -60,6 +55,47 @@ class Food:
     def remove_eaten(self, coord):
         if coord in self.locations:
             self.locations.remove(coord)
+
+
+class StepData:
+    def __init__(self, food: list, step: int) -> None:
+        self.snakes = []
+        self.food = food
+        self.step = step
+
+    def add_snake_data(self, snake_coords: list, head_dir: tuple, tail_dir: tuple, snake_id: str):
+        self.snakes.append({
+            'snake_id': snake_id,
+            'coords': snake_coords,
+            'head_dir': head_dir,
+            'tail_dir': tail_dir
+        })
+
+    def to_dict(self):
+        return {
+            'snakes': self.snakes,
+            'food': self.food,
+            'step': self.step
+        }
+
+
+class RunData:
+    def __init__(self, width: int, height: int, snake_data: list) -> None:
+        self.width = width
+        self.height = height
+        self.snake_data = snake_data
+        self.steps = {}
+
+    def add_step(self, step: int, state: StepData):
+        self.steps[step] = state
+
+    def to_dict(self):
+        return {
+            'width': self.width,
+            'height': self.height,
+            'snake_data': self.snake_data,
+            'steps': {k: v.to_dict() for k, v in self.steps.items()}
+        }
 
 
 class SnakeEnv:
@@ -168,7 +204,7 @@ class SnakeEnv:
 
     def update(self):
         self.time_step += 1
-        # self.map = self.fresh_map()
+        self.map = self.fresh_map() # needed for the snakes, without it the snakes map is never cleared.
         self.alive_snakes = [s for h, s in self.snakes.items() if self.snakes_info[h]['alive']]
         alive_snakes = self.alive_snakes
         random.shuffle(alive_snakes)
@@ -183,7 +219,7 @@ class SnakeEnv:
             if snake.alive:
                 x, y = snake.coord
                 self.snakes_info[snake.id]['current_coord'] = snake.coord
-                self.snakes_info[snake.id]['head_dir'] = coord_op(next_coord, snake.body_coords[1], '-')
+                self.snakes_info[snake.id]['head_dir'] = coord_op(snake.coord, snake.body_coords[1], '-')
                 self.snakes_info[snake.id]['tail_dir'] = coord_op(snake.body_coords[-1], old_tail, '-')
                 if self.map[y * self.width + x] == self.FOOD_TILE:
                     self.snakes_info[snake.id]['last_food'] = self.time_step
@@ -213,7 +249,7 @@ class SnakeEnv:
                 color_map.append(self.COLOR_MAPPING[tile_value])
         return color_map
 
-    def generate_run(self, out_file):
+    def generate_run(self, out_file, max_steps: int|None = None):
         start_time = time()
         self.init_recorder()
         for snake in self.snakes.values():
@@ -224,7 +260,7 @@ class SnakeEnv:
             if self.alive_snakes:
                 if len(self.alive_snakes) == 1:
                     only_one = self.alive_snakes[0]
-                    if (self.time_step - self.snakes_info[only_one.id]['last_food']) > 100:
+                    if (self.time_step - self.snakes_info[only_one.id]['last_food']) > 100 or max_steps is not None and self.time_step > max_steps:
                         ongoing = False
                 self.update()
             else:
