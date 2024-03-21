@@ -1,7 +1,7 @@
 import sys
 import json
 import os
-from classes import SnakeEnv, coord_op
+from snake_env import SnakeEnv, coord_op
 from snakes.autoSnake import AutoSnake
 import pygame
 
@@ -47,46 +47,46 @@ def print_saved_run(filename):
         for i in range(0, len(colors), grid_width):
             print(colors[i:i+grid_width])
 
-def x3_frames_from_runfile(filename):
-    bg_color = (0,0,0)
-    run_dict = {}
-    frames = []
-    with open(filename) as run_json:
-        run_dict = json.load(run_json)
-    grid_height = run_dict['height']
-    grid_width = run_dict['width']
-    new_grid_h = grid_height * TILE_SIZE + 1
-    new_grid_w = grid_width * TILE_SIZE + 1
-    offset_x = 1
-    offset_y = 1
-    steps = run_dict['steps']
-    color_list = [bg_color] * ((new_grid_w) * (new_grid_h))
-    for step in steps:
-        step_data = steps[step]
-        state = step_data['state']
-        for i, color in enumerate(step_data['colors']):
-            if color in [list(SnakeEnv.COLOR_MAPPING[x]) for x in SnakeEnv.valid_tile_values]:
-                o_coord = (i // grid_width, i % grid_width)
-                x3_x, x3_y = coord_op(o_coord, (3, 3), '*')
-                x3_x += offset_x
-                x3_y += offset_y
-                color_list[x3_y * (new_grid_w) + x3_x] = color
-        for i in range(3):
-            for snake_id in state:
-                snake_data = state[snake_id]
-                cur_coord = snake_data['current_coord']
-                last_coord = snake_data['last_coord']
-                if cur_coord != last_coord:
-                    s_dir = coord_op(cur_coord, last_coord, '-')
-                    l_x, l_y = last_coord
-                    s_x = l_x * TILE_SIZE + offset_x
-                    s_y = l_y * TILE_SIZE + offset_y
-                    add = coord_op(s_dir, (i, i), '*')
-                    fin_x, fin_y = coord_op((s_x, s_y), add, '+')
-                    print(add, (fin_x, fin_y))
-                    color_list[fin_y * (new_grid_w) + fin_x] = snake_data['b_color']
-            frames.append(color_list.copy())
-    return frames
+# def x3_frames_from_runfile(filename):
+#     bg_color = (0,0,0)
+#     run_dict = {}
+#     frames = []
+#     with open(filename) as run_json:
+#         run_dict = json.load(run_json)
+#     grid_height = run_dict['height']
+#     grid_width = run_dict['width']
+#     new_grid_h = grid_height * TILE_SIZE + 1
+#     new_grid_w = grid_width * TILE_SIZE + 1
+#     offset_x = 1
+#     offset_y = 1
+#     steps = run_dict['steps']
+#     color_list = [bg_color] * ((new_grid_w) * (new_grid_h))
+#     for step in steps:
+#         step_data = steps[step]
+#         state = step_data['state']
+#         for i, color in enumerate(step_data['colors']):
+#             if color in [list(SnakeEnv.COLOR_MAPPING[x]) for x in SnakeEnv.valid_tile_values]:
+#                 o_coord = (i // grid_width, i % grid_width)
+#                 x3_x, x3_y = coord_op(o_coord, (3, 3), '*')
+#                 x3_x += offset_x
+#                 x3_y += offset_y
+#                 color_list[x3_y * (new_grid_w) + x3_x] = color
+#         for i in range(3):
+#             for snake_id in state:
+#                 snake_data = state[snake_id]
+#                 cur_coord = snake_data['current_coord']
+#                 last_coord = snake_data['last_coord']
+#                 if cur_coord != last_coord:
+#                     s_dir = coord_op(cur_coord, last_coord, '-')
+#                     l_x, l_y = last_coord
+#                     s_x = l_x * TILE_SIZE + offset_x
+#                     s_y = l_y * TILE_SIZE + offset_y
+#                     add = coord_op(s_dir, (i, i), '*')
+#                     fin_x, fin_y = coord_op((s_x, s_y), add, '+')
+#                     print(add, (fin_x, fin_y))
+#                     color_list[fin_y * (new_grid_w) + fin_x] = snake_data['b_color']
+#             frames.append(color_list.copy())
+#     return frames
 
 
 def draw_frame(screen, width, height, frame):
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     # env.add_snake(AutoSnake('B', snake_len), (19, 44, 209), (8, 23, 120))
     # env.add_snake(AutoSnake('C', snake_len), (19, 212, 77), (10, 140, 49))
     # env.add_snake(AutoSnake('D', snake_len), (128, 3, 111), (199, 4, 173))
-    VISUAL = True
+    VISUAL = False
 
     if VISUAL:
         pygame.init()
@@ -134,20 +134,20 @@ if __name__ == '__main__':
             clock.tick(5)
             pygame.display.update()
     else:
-        window_width = GRID_WIDTH * TILE_SIZE_PX
-        window_height = GRID_HEIGHT * TILE_SIZE_PX
-        # env.generate_run(DEFAULT_FILENAME)
-        frames = x3_frames_from_runfile(DEFAULT_FILENAME)
-        pygame.init()
-        clock = pygame.time.Clock()
-        screen = pygame.display.set_mode((window_width, window_height), 0, 32)
-        myfont = pygame.font.SysFont("monospace",16)
-        surface = pygame.Surface(screen.get_size())
-        surface = surface.convert()
-        for frame in frames:
-            handle_events()
-            draw_frame(surface, GRID_WIDTH * TILE_SIZE + 1, GRID_HEIGHT * TILE_SIZE + 1, frame)
-            screen.blit(surface, (0,0))
-            clock.tick(5)
-            pygame.display.update()
+        # window_width = GRID_WIDTH * TILE_SIZE_PX
+        # window_height = GRID_HEIGHT * TILE_SIZE_PX
+        env.generate_run(DEFAULT_FILENAME)
+        # frames = x3_frames_from_runfile(DEFAULT_FILENAME)
+        # pygame.init()
+        # clock = pygame.time.Clock()
+        # screen = pygame.display.set_mode((window_width, window_height), 0, 32)
+        # myfont = pygame.font.SysFont("monospace",16)
+        # surface = pygame.Surface(screen.get_size())
+        # surface = surface.convert()
+        # for frame in frames:
+        #     handle_events()
+        #     draw_frame(surface, GRID_WIDTH * TILE_SIZE + 1, GRID_HEIGHT * TILE_SIZE + 1, frame)
+        #     screen.blit(surface, (0,0))
+        #     clock.tick(5)
+        #     pygame.display.update()
 

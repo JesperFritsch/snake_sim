@@ -2,6 +2,8 @@ import random
 import array
 import copy
 import json
+
+from render.run_record import StepData, RunData
 from snakes.snake import Snake
 from time import time
 from dataclasses import dataclass, field
@@ -27,17 +29,8 @@ def coord_op(coord_left, coord_right, op):
         else:
             raise ValueError("Unsupported operation")
 
-def right_shift_in(list_x, element):
-    list_x.pop()
-    list_x.insert(0, element)
-    return list_x
-
 def copy_map(s_map):
     return [[_ for _ in row] for row in s_map]
-
-def copy_coords(coords):
-    return [tuple([_ for _ in coord]) for coord in coords]
-
 
 @dataclass
 class Food:
@@ -86,6 +79,7 @@ class SnakeEnv:
         self.alive_snakes = []
         self.map = self.fresh_map()
         self.snakes_info = {}
+        self.run_data = None
         self.food = Food(width=width, height=height, max_food=food)
 
     def fresh_map(self):
@@ -95,6 +89,16 @@ class SnakeEnv:
         print(f"{'':@<{self.width*3}}")
         for y in range(self.height):
             print(''.join([f' {chr(c)} ' for c in self.map[y*self.width:y*self.width+self.width]]))
+
+    def init_recorder(self):
+        self.run_data = RunData(
+            width=self.width,
+            height=self.height,
+            snake_data=[{
+                'snake_id': s.id,
+                'head_color': self.COLOR_MAPPING[s.head_value],
+                'body_color': self.COLOR_MAPPING[s.body_value]
+                } for s in self.snakes.values()])
 
     def add_snake(self, snake, h_color, b_color):
         print(h_color, b_color)
@@ -111,15 +115,15 @@ class SnakeEnv:
                 self.alive_snakes.append(snake)
                 self.snakes_info[snake.id] = {
                     'length': snake.length,
-                    'current_coord': snake.coord,
-                    'last_coord': snake.coord,
+                    'head_dir': (0,0),
+                    'tail_dir': (0,0),
                     'alive': True,
                     'id': snake.id.upper(),
                     'head_value': head_value,
                     'body_value': body_value,
                     'h_color': h_color,
                     'b_color': b_color,
-                    'last_food': None
+                    'last_food': 0
                 }
                 self.snakes[snake.id] = snake
             else:
@@ -164,33 +168,38 @@ class SnakeEnv:
         return dirs
 
     def update(self):
-        start_time = time()
         self.time_step += 1
-        self.map = self.fresh_map()
+        # self.map = self.fresh_map()
         self.alive_snakes = [s for h, s in self.snakes.items() if self.snakes_info[h]['alive']]
         alive_snakes = self.alive_snakes
         random.shuffle(alive_snakes)
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
         self.food.generate_new(self.map)
-        self.print_map()
+        new_step = StepData(food=self.food.locations, step=self.time_step)
         for snake in alive_snakes:
-            print(f"updating snake {snake.id}")
-            self.snakes_info[snake.id]['old_tail'] = snake.body_coords[-1]
-            self.snakes_info[snake.id]['last_coord'] = snake.coord
+            # print(f"updating snake {snake.id}")
+            old_tail = snake.body_coords[-1]
             self.snakes_info[snake.id]['length'] = snake.length
             next_coord = snake.update()
             if snake.alive:
                 x, y = snake.coord
                 self.snakes_info[snake.id]['current_coord'] = snake.coord
+                self.snakes_info[snake.id]['head_dir'] = coord_op(next_coord, snake.body_coords[1], '-')
+                self.snakes_info[snake.id]['tail_dir'] = coord_op(snake.body_coords[-1], old_tail, '-')
                 if self.map[y * self.width + x] == self.FOOD_TILE:
                     self.snakes_info[snake.id]['last_food'] = self.time_step
                     self.food.remove_eaten(next_coord)
                     snake.length += 1
             else:
                 self.snakes_info[snake.id]['alive'] = False
+            new_step.add_snake_data(
+                snake.body_coords,
+                self.snakes_info[snake.id]['head_dir'],
+                self.snakes_info[snake.id]['tail_dir'],
+                snake.id)
             self.update_snake_on_map(snake)
-        # print(f"Total update time: {(time() - start_time) * 1000}")
+        self.run_data.add_step(self.time_step, new_step)
 
     def get_color_map(self):
         color_map = {}
@@ -207,9 +216,40 @@ class SnakeEnv:
         return color_map
 
 
+    # def generate_run(self, out_file):
+    #     steps = {}
+    #     start_time = time()
+    #     for snake in self.snakes.values():
+    #         self.put_snake_on_map(snake)
+    #     ongoing = True
+    #     while ongoing:
+    #         print(f"Step: {self.time_step}, passed time sec: {time() - start_time:.2f}")
+    #         if self.alive_snakes:
+    #             if len(self.alive_snakes) == 1:
+    #                 only_one = self.alive_snakes[0]
+    #                 if (self.time_step - self.snakes_info[only_one.id]['last_food']) > 100:
+    #                     ongoing = False
+    #             color_map = self.get_flat_color_map()
+    #             steps[self.time_step] = {
+    #                 'colors': color_map,
+    #                 'state': copy.deepcopy(self.snakes_info)
+    #             }
+    #             self.update()
+    #         else:
+    #             ongoing = False
+    #     print("GAME OVER")
+    #     run_data = {
+    #         'height': self.height,
+    #         'width': self.width,
+    #         'steps': steps,
+    #         'total_time_s': time() - start_time
+    #     }
+    #     with open(out_file, 'w') as out_file:
+    #         json.dump(run_data, out_file)
+
     def generate_run(self, out_file):
-        steps = {}
         start_time = time()
+        self.init_recorder()
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
         ongoing = True
@@ -220,20 +260,8 @@ class SnakeEnv:
                     only_one = self.alive_snakes[0]
                     if (self.time_step - self.snakes_info[only_one.id]['last_food']) > 100:
                         ongoing = False
-                color_map = self.get_flat_color_map()
-                steps[self.time_step] = {
-                    'colors': color_map,
-                    'state': copy.deepcopy(self.snakes_info)
-                }
                 self.update()
             else:
                 ongoing = False
-        print("GAME OVER")
-        run_data = {
-            'height': self.height,
-            'width': self.width,
-            'steps': steps,
-            'total_time_s': time() - start_time
-        }
         with open(out_file, 'w') as out_file:
-            json.dump(run_data, out_file)
+            json.dump(self.run_data, out_file)

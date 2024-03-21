@@ -5,7 +5,7 @@ import itertools
 from time import time
 from snakes.snake import Snake
 from statistics import mean
-from classes import (
+from snake_env import (
         copy_map,
         coord_op,
         DIR_MAPPING
@@ -192,7 +192,7 @@ class AutoSnake(Snake):
         t_dir = coord_op(option_coord, head_coord, '-')
         time_s = time()
         option = self.recurse_check_option(copy_map(s_map), option_coord, body_coords.copy(), self.length, start_time=time_s)
-        print(f'recurse_time for {option_coord}: ', (time() - time_s) * 1000)
+        # print(f'recurse_time for {option_coord}: ', (time() - time_s) * 1000)
         option['coord'] = option_coord
         option['free_path'] = option['depth'] >= self.length
         option['dir'] = t_dir
@@ -223,10 +223,10 @@ class AutoSnake(Snake):
             options[coord] = option
         target_option = options.get(target_tile, None)
         free_options = [o for o in options.values() if o['free_path']]
-        print('self: ', self.coord)
-        print(f"{target_option=}")
+        # print('self: ', self.coord)
+        # print(f"{target_option=}")
         # print(f"{valid_tiles=}")
-        print(f'{options=}')
+        # print(f'{options=}')
         if options:
             if risk_free_options := [o for o in options.values() if o['risk'] == 0]:
                 good_options = risk_free_options
@@ -430,7 +430,7 @@ class AutoSnake(Snake):
         current_results['apple_time'] = current_results.get('apple_time', [])
         if s_map[new_coord[1]][new_coord[0]] == self.env.FOOD_TILE:
             length += 1
-            current_results['apple_time'] = current_results.get('apple_time') + [depth]
+            current_results['apple_time'] = current_results['apple_time'] + [depth]
 
         current_results['depth'] = depth
         current_results['len_gain'] = length - self.length
@@ -440,7 +440,8 @@ class AutoSnake(Snake):
         valid_tiles = self.valid_tiles(s_map, new_coord)
         best_results['depth'] = max(best_results.get('depth', 0), current_results['depth'])
         best_results['len_gain'] = max(best_results.get('len_gain', 0), current_results['len_gain'])
-        best_results['apple_time'] = []
+        best_results['apple_time'] = min(best_results, current_results, key=lambda x: x.get('apple_time', [length]))['apple_time']
+        # best_results['apple_time'] = min(sum(best_results.get('apple_time', [length])), sum(current_results['apple_time']))
         valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
         if ((time() - start_time) * 1000 > self.MAX_BRANCH_TIME) and self.TIME_LIMIT:
             return current_results
@@ -459,25 +460,7 @@ class AutoSnake(Snake):
         # print('areas_info:', areas_info)
         # print('area_info time: ', (time() - s_time) * 1000)
         if valid_tiles:
-            # if not area_checked:
-            #     area_info = self.get_area_info(s_map, body_coords=body_coords, start_coord=new_coord)
-            #     if area_info['tiles'] < length:
-            #         best_results['len_gain'] += area_info['food']
-            #         # if we can see the tail in the area then we know that we can go as far we want in this area.
-            #         if area_info['has_tail']:
-            #             best_results['depth'] = length + 1
-            #         else:
-            #             best_results['depth'] += area_info['tiles']
-            #         return best_results
-            #     else:
-            #         area_checked = True
-            # areas = self.areas(s_map, new_coord, valid_tiles)
             for tile in valid_tiles:
-                #area refers to the are that tile would lead us in to, if there is only one entry to the are from here, we first want to just count the available tiles
-                #to see if there even is a chance that we can go both enter and exit.
-                # area = [a for a in areas if tile in a][0]
-                # if len(area) == 1:
-                #     area_checked = False
                 check_result = self.recurse_check_option(
                     copy_map(s_map),
                     tile,
