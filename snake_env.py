@@ -1,7 +1,9 @@
 import random
 import array
 import json
+import os
 
+import utils
 from snakes.snake import Snake
 from time import time
 from dataclasses import dataclass, field
@@ -41,9 +43,10 @@ class Food:
                 x, y = i % self.width, i // self.width
                 empty_tiles.append((x, y))
         for _ in range(len(self.locations), self.max_food):
-            new_food = random.choice(empty_tiles)
-            empty_tiles.remove(new_food)
-            self.add_new(new_food)
+            if empty_tiles:
+                new_food = random.choice(empty_tiles)
+                empty_tiles.remove(new_food)
+                self.add_new(new_food)
         for location in self.locations:
             x, y = location
             s_map[y * self.width + x] = SnakeEnv.FOOD_TILE
@@ -80,14 +83,28 @@ class StepData:
 
 
 class RunData:
-    def __init__(self, width: int, height: int, snake_data: list) -> None:
+    def __init__(self, width: int, height: int, snake_data: list, output_dir='runs') -> None:
         self.width = width
         self.height = height
         self.snake_data = snake_data
+        self.output_dir = output_dir
         self.steps = {}
 
     def add_step(self, step: int, state: StepData):
         self.steps[step] = state
+
+    def write_to_file(self, aborted=False):
+        runs_dir = os.path.abspath(os.path.join(os.getcwd(), self.output_dir))
+        run_dir = os.path.join(runs_dir, f'grid_{self.width}x{self.height}')
+        os.makedirs(run_dir, exist_ok=True)
+        aborted_str = '_ABORTED' if aborted else ''
+        grid_str = f'{self.width}x{self.height}'
+        nr_snakes = f'{len(self.snake_data)}'
+        filename = f'{nr_snakes}_snakes_{grid_str}_{utils.rand_str(6)}{aborted_str}.json'
+        filepath = os.path.join(run_dir, filename)
+        print(f"saving run data to '{filepath}'")
+        with open(filepath, 'w') as file:
+            json.dump(self.to_dict(), file)
 
     def to_dict(self):
         return {
@@ -105,7 +122,7 @@ class SnakeEnv:
         FREE_TILE: (0, 0, 0)
     }
 
-    def __init__(self, width, height, food) -> None:
+    def __init__(self, width, height, food, output_dir='runs') -> None:
         self.map = None
         self.snakes = {}
         self.width = width
@@ -120,23 +137,23 @@ class SnakeEnv:
     def fresh_map(self):
         return array.array('B', [self.FREE_TILE] * (self.width * self.height))
 
-
     def reset(self):
         self.time_step = 0
         self.map = self.fresh_map()
         for snake in self.snakes.values():
             snake.reset()
-            self.snakes_info[snake.id] = {
+            self.snakes_info[snake.id].update({
                     'length': snake.length,
                     'head_dir': (0,0),
                     'tail_dir': (0,0),
                     'alive': True,
                     'id': snake.id.upper(),
                     'last_food': 0
-                }
+                })
             rand_x = round(random.random() * (self.width - 1)) - 1
             rand_y = round(random.random() * (self.height - 1)) - 1
             snake.set_init_coord((rand_x, rand_y))
+        self.alive_snakes = self.get_alive_snakes()
 
     def print_map(self):
         print(f"{'':@<{self.width*3}}")
@@ -191,6 +208,9 @@ class SnakeEnv:
         x, y = coord
         return (0 <= x < self.width and 0 <= y < self.height)
 
+    def get_alive_snakes(self):
+        return [s for h, s in self.snakes.items() if self.snakes_info[h]['alive']]
+
     def update_snake_on_map(self, snake):
         head = snake.body_coords[0]
         old_tail = self.snakes_info[snake.id].get('old_tail', None)
@@ -223,7 +243,7 @@ class SnakeEnv:
     def update(self):
         self.time_step += 1
         self.map = self.fresh_map() # needed for the snakes, without it the snakes map is never cleared.
-        self.alive_snakes = [s for h, s in self.snakes.items() if self.snakes_info[h]['alive']]
+        self.alive_snakes = self.get_alive_snakes()
         alive_snakes = self.alive_snakes
         random.shuffle(alive_snakes)
         for snake in self.snakes.values():
@@ -267,12 +287,13 @@ class SnakeEnv:
                 color_map.append(self.COLOR_MAPPING[tile_value])
         return color_map
 
-    def generate_run(self, out_file, max_steps: int|None = None):
+    def generate_run(self, max_steps: int|None = None):
         start_time = time()
         self.init_recorder()
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
         ongoing = True
+        aborted = False
         try:
             while ongoing:
                 print(f"Step: {self.time_step}, passed time sec: {time() - start_time:.2f}")
@@ -286,8 +307,7 @@ class SnakeEnv:
                     ongoing = False
         except KeyboardInterrupt:
             print("Keyboard interrupt detected")
+            aborted = True
         finally:
             print('Done')
-            print(f"saving run data to '{out_file}'")
-            with open(out_file, 'w') as file:
-                json.dump(self.run_data.to_dict(), file)
+            self.run_data.write_to_file(aborted=aborted)

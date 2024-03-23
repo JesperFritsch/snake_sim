@@ -94,7 +94,7 @@ class AutoSnake(Snake):
         for i in range(2):
             x, y = body_coords[i]
             s_map[y][x] = self.head_value if (x, y) == head else self.body_value
-        return copy_map(s_map)
+        return s_map
 
     def update_map(self, flat_map):
         if self.map is None:
@@ -222,7 +222,7 @@ class AutoSnake(Snake):
         # print(f'{options=}')
         if options:
             if risk_free_options := [o for o in options.values() if o['risk'] == 0]:
-                good_options = risk_free_options
+                riskless_options = risk_free_options
             else:
                 if free_options:
                     best_option = min(free_options, key=lambda x: x['risk'])
@@ -233,10 +233,13 @@ class AutoSnake(Snake):
                     return best_option['coord']
                 else:
                     return None
-            if free_good_options := [o for o in good_options if o['free_path']]:
-                #find optinos with the best length gain
-                best_len_gain = max(o['len_gain'] for o in free_good_options)
-                best_len_opts = [o for o in free_good_options if o['len_gain'] == best_len_gain]
+            if riskless_options:
+                if free_riskless_options := [o for o in riskless_options if o['free_path']]:
+                    options_considered = free_riskless_options
+                else:
+                    options_considered = riskless_options
+                best_len_gain = max(o['len_gain'] for o in options_considered)
+                best_len_opts = [o for o in options_considered if o['len_gain'] == best_len_gain]
                 best_early_gain = min(sum(o['apple_time']) for o in best_len_opts)
                 #out of those options find the one that has the gain earlier
                 best_early_gain_opts = [o for o in best_len_opts if sum(o['apple_time']) == best_early_gain]
@@ -422,8 +425,7 @@ class AutoSnake(Snake):
         valid_tiles = self.valid_tiles(s_map, new_coord)
         best_results['depth'] = max(best_results.get('depth', 0), current_results['depth'])
         best_results['len_gain'] = max(best_results.get('len_gain', 0), current_results['len_gain'])
-        best_results['apple_time'] = min(best_results, current_results, key=lambda x: x.get('apple_time', [length]))['apple_time']
-        # best_results['apple_time'] = min(sum(best_results.get('apple_time', [length])), sum(current_results['apple_time']))
+        best_results['apple_time'] = min(best_results, current_results, key=lambda x: sum(x.get('apple_time', [length])))['apple_time']
         valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
         if ((time() - start_time) * 1000 > self.MAX_BRANCH_TIME) and self.TIME_LIMIT:
             return best_results
