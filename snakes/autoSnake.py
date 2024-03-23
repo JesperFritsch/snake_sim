@@ -12,28 +12,22 @@ from snake_env import (
 
 
 def copy_map(s_map):
-    return [[_ for _ in row] for row in s_map]
+    return [array.array('B', row) for row in s_map]
+
 
 class AutoSnake(Snake):
     TIME_LIMIT = True
-    MAX_RECURSE_DEPTH = 100
     MAX_RISK_CALC_DEPTH = 3
     MAX_BRANCH_TIME = 1000
-    MAX_UPDATE_TIME = 15000
-    MAX_SEARCH_TIME = 200
+
 
     def __init__(self, id: str, start_length: int):
         super().__init__(id, start_length)
-        self.time_step = 0
-        self.height = None
-        self.width = None
         self.env
         self.x = None
         self.y = None
         self.route = None
         self.start_time = 0
-        self.map_counters = None
-        self.snake_lengths = None
         self.map_to_print = None
         self.length = start_length
         self.alive_opps = []
@@ -45,9 +39,6 @@ class AutoSnake(Snake):
 
     def update(self):
         self.start_time = time()
-        self.time_step += 1
-        if self.map_counters is None:
-            self.map_counters = [2] * (self.height * self.width)
         self.update_map(self.env.map)
         self.map_to_print = copy_map(self.map)
         self.update_survivors()
@@ -68,24 +59,24 @@ class AutoSnake(Snake):
         head_dir = DIR_MAPPING[coord_op(self.coord, last_pos, '-')]
         moves = []
         if head_dir == 'up':
-            if self.x < self.width - 1 and s_map[self.y + 1][self.x + 1] in self.alive_opps:
+            if self.x < self.env.width - 1 and s_map[self.y + 1][self.x + 1] in self.alive_opps:
                 moves.append((1, 0))
             elif self.x > 0 and s_map[self.y + 1][self.x - 1] in self.alive_opps:
                 moves.append((-1, 0))
         elif head_dir == 'right':
             if self.y > 0 and s_map[self.y - 1][self.x - 1] in self.alive_opps:
                 moves.append((0, -1))
-            elif self.y < self.height - 1 and s_map[self.y + 1][self.x - 1] in self.alive_opps:
+            elif self.y < self.env.height - 1 and s_map[self.y + 1][self.x - 1] in self.alive_opps:
                 moves.append((0, 1))
         elif head_dir == 'down':
-            if self.x < self.width - 1 and s_map[self.y - 1][self.x + 1] in self.alive_opps:
+            if self.x < self.env.width - 1 and s_map[self.y - 1][self.x + 1] in self.alive_opps:
                 moves.append((1, 0))
             elif self.x > 0 and s_map[self.y - 1][self.x - 1] in self.alive_opps:
                 moves.append((-1, 0))
         else:
             if self.y > 0 and s_map[self.y - 1][self.x + 1] in self.alive_opps:
                 moves.append((0, -1))
-            elif self.y < self.height - 1 and s_map[self.y + 1][self.x + 1] in self.alive_opps:
+            elif self.y < self.env.height - 1 and s_map[self.y + 1][self.x + 1] in self.alive_opps:
                 moves.append((0, 1))
         return tuple(moves)
 
@@ -135,7 +126,7 @@ class AutoSnake(Snake):
                 'has_tail': False
             }
         if checked is None:
-            checked = [False] * (self.height * self.width)
+            checked = [False] * (self.env.height * self.env.width)
         next_coords = []
         for coord in current_coords:
             x, y = coord
@@ -145,9 +136,9 @@ class AutoSnake(Snake):
             for coord in neighbour_coords:
                 if self.is_valid_tile(s_map, coord):
                     t_x, t_y = coord
-                    if not checked[t_y * self.width + t_x]:
+                    if not checked[t_y * self.env.width + t_x]:
                         next_coords.append(coord)
-                        checked[t_y * self.width + t_x] = True
+                        checked[t_y * self.env.width + t_x] = True
                 elif coord == body_coords[-1]:
                     stats['has_tail'] = True
         if next_coords:
@@ -157,7 +148,7 @@ class AutoSnake(Snake):
 
     def closest_apple_route(self, current_coords, s_map, checked=None, depth=0, head_coord=None):
         if checked is None:
-            checked = [False] * (self.height * self.width)
+            checked = [False] * (self.env.height * self.env.width)
         if len(current_coords) == 1 and head_coord is None:
             head_coord = current_coords[0]
         next_coords = []
@@ -170,10 +161,10 @@ class AutoSnake(Snake):
                     return [coord]
             for valid_coord in valid_tiles:
                 t_x, t_y = valid_coord
-                if not checked[t_y * self.width + t_x]:
+                if not checked[t_y * self.env.width + t_x]:
                     next_coords.append(valid_coord)
                     coord_map[valid_coord] = coord
-                    checked[t_y * self.width + t_x] = True
+                    checked[t_y * self.env.width + t_x] = True
         if next_coords:
             sub_route = self.closest_apple_route(next_coords, s_map, checked=checked, depth=depth+1)
             if sub_route is not None:
@@ -262,7 +253,6 @@ class AutoSnake(Snake):
                     best_option = best_gain_option
                 else:
                     best_option = max(options.values(), key=lambda x: x['depth'])
-        # print('best_option: ', best_option)
         if best_option is not None:
             return best_option['coord']
         return None
@@ -275,25 +265,15 @@ class AutoSnake(Snake):
                 if not self.route: self.route = None
                 return target_tile
         if self.env.FOOD_TILE in [x for row in s_map for x in row]:
-            # print('Getting new route')
             if s_route := self.closest_apple_route([head_coord], s_map):
                 self.route = s_route
                 tile = tuple(self.route.pop())
                 if not self.route: self.route = None
                 return tile
         if not recurse_mode and (attack_moves := self.find_attack_moves(s_map)):
-            # print('Attack!')
             return coord_op(self.coord, attack_moves[0], '+')
-        # print('Same direction')
         s_dir = coord_op(self.coord, self.body_coords[1], '-')
         return coord_op(self.coord, s_dir, '+')
-        # return random.choice(list(DIR_MAPPING.keys()))
-
-    def print_map_counters(self, counters):
-        for y in range(self.height):
-            for x in range(self.width):
-                print(f'{counters[y * self.width + x]: ^3}', end='')
-            print()
 
     def print_map(self, s_map):
         for row in s_map:
@@ -446,7 +426,7 @@ class AutoSnake(Snake):
         # best_results['apple_time'] = min(sum(best_results.get('apple_time', [length])), sum(current_results['apple_time']))
         valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
         if ((time() - start_time) * 1000 > self.MAX_BRANCH_TIME) and self.TIME_LIMIT:
-            return current_results
+            return best_results
         if current_results.get('depth', 0) >= length:
             return current_results
         # print('______________________')

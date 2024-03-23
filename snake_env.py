@@ -120,6 +120,24 @@ class SnakeEnv:
     def fresh_map(self):
         return array.array('B', [self.FREE_TILE] * (self.width * self.height))
 
+
+    def reset(self):
+        self.time_step = 0
+        self.map = self.fresh_map()
+        for snake in self.snakes.values():
+            snake.reset()
+            self.snakes_info[snake.id] = {
+                    'length': snake.length,
+                    'head_dir': (0,0),
+                    'tail_dir': (0,0),
+                    'alive': True,
+                    'id': snake.id.upper(),
+                    'last_food': 0
+                }
+            rand_x = round(random.random() * (self.width - 1)) - 1
+            rand_y = round(random.random() * (self.height - 1)) - 1
+            snake.set_init_coord((rand_x, rand_y))
+
     def print_map(self):
         print(f"{'':@<{self.width*3}}")
         for y in range(self.height):
@@ -255,16 +273,21 @@ class SnakeEnv:
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
         ongoing = True
-        while ongoing:
-            print(f"Step: {self.time_step}, passed time sec: {time() - start_time:.2f}")
-            if self.alive_snakes:
-                if len(self.alive_snakes) == 1:
-                    only_one = self.alive_snakes[0]
-                    if (self.time_step - self.snakes_info[only_one.id]['last_food']) > 100 or max_steps is not None and self.time_step > max_steps:
-                        ongoing = False
-                self.update()
-            else:
-                ongoing = False
-
-        with open(out_file, 'w') as out_file:
-            json.dump(self.run_data.to_dict(), out_file)
+        try:
+            while ongoing:
+                print(f"Step: {self.time_step}, passed time sec: {time() - start_time:.2f}")
+                if self.alive_snakes:
+                    if len(self.alive_snakes) == 1:
+                        only_one = self.alive_snakes[0]
+                        if (self.time_step - self.snakes_info[only_one.id]['last_food']) > 100 or max_steps is not None and self.time_step > max_steps:
+                            ongoing = False
+                    self.update()
+                else:
+                    ongoing = False
+        except KeyboardInterrupt:
+            print("Keyboard interrupt detected")
+        finally:
+            print('Done')
+            print(f"saving run data to '{out_file}'")
+            with open(out_file, 'w') as file:
+                json.dump(self.run_data.to_dict(), file)

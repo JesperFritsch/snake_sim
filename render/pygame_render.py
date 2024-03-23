@@ -18,8 +18,6 @@ def frames_from_runfile(filename, expand_factor=2):
     grid_width = run_dict['width']
     new_grid_h = grid_height * expand_factor
     new_grid_w = grid_width * expand_factor
-    offset_x = 1
-    offset_y = 1
     snake_data = run_dict['snake_data']
     snake_colors = {x.get('snake_id'): {'head_color': x.get('head_color'), 'body_color': x.get('body_color')} for x in snake_data}
     steps = run_dict['steps']
@@ -44,7 +42,7 @@ def frames_from_runfile(filename, expand_factor=2):
                 h_dir_mult = coord_op(head_dir, (i, i), '*')
                 h_x, h_y = coord_op(head_coord_mult, h_dir_mult, '+')
                 color_list[h_y * (new_grid_w) + h_x] = body_color
-                if any([x != 0 for x in tail_coord]):
+                if any([x != 0 for x in tail_dir]):
                     t_dir_mult = coord_op(tail_dir, (i, i), '*')
                     t_x, t_y = coord_op(old_tail, t_dir_mult, '+')
                     color_list[t_y * (new_grid_w) + t_x] = bg_color
@@ -60,7 +58,7 @@ def draw_frame(screen, width, height, frame):
             color = frame[color_index % len(frame)]
             x = col * TILE_SIZE_PX
             y = row * TILE_SIZE_PX
-            pygame.draw.rect(screen, color, (x, y, TILE_SIZE_PX, TILE_SIZE_PX))
+            pygame.draw.rect(screen, color, (x, y, TILE_SIZE_PX + 1, TILE_SIZE_PX + 1))
 
 
 def drawGray(surface, grid_width, grid_height):

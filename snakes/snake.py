@@ -4,6 +4,7 @@ from collections import deque
 class Snake:
     def __init__(self, id: str, start_length: int):
         self.id = id.upper()
+        self.start_length = start_length
         self.alive = True
         self.body_value = ord(self.id.lower())
         self.head_value = ord(self.id)
@@ -11,7 +12,13 @@ class Snake:
         self.coord = None
         self.env = None
         self.map = None
-        self.length = start_length
+        self.length = self.start_length
+
+    def reset(self):
+        self.alive = True
+        self.body_coords = deque()
+        self.coord = None
+        self.length = self.start_length
 
     def bind_env(self, env):
         self.env = env
