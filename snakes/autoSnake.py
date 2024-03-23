@@ -244,7 +244,7 @@ class AutoSnake(Snake):
                 #out of those options find the one that has the gain earlier
                 best_early_gain_opts = [o for o in best_len_opts if sum(o['apple_time']) == best_early_gain]
                 best_option = best_early_gain_opts[0]
-                if target_option and target_option['free_path']:
+                if target_option and (target_option['free_path']:
                     if target_option['len_gain'] == best_len_gain \
                     and sum(target_option['apple_time']) == best_early_gain \
                     and target_option['risk'] == 0:
@@ -255,7 +255,7 @@ class AutoSnake(Snake):
                 if (best_gain_option := max(options.values(), key=lambda x: x['len_gain']))['len_gain'] != 0:
                     best_option = best_gain_option
                 else:
-                    best_option = max(options.values(), key=lambda x: x['depth'])
+                    best_option = target_option
         if best_option is not None:
             return best_option['coord']
         return None
