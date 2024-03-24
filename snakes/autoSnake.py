@@ -1,8 +1,11 @@
 import random
-import array
 import math
 import itertools
+from collections import deque
+from array import array
 from time import time
+from dataclasses import dataclass, field
+
 from snakes.snake import Snake
 from statistics import mean
 from snake_env import (
@@ -10,9 +13,8 @@ from snake_env import (
         DIR_MAPPING
     )
 
-
 def copy_map(s_map):
-    return [array.array('B', row) for row in s_map]
+    return [array('B', row) for row in s_map]
 
 
 class AutoSnake(Snake):
@@ -87,6 +89,7 @@ class AutoSnake(Snake):
             s_map[y][x] = ord('¤')
         return copy_map(s_map)
 
+    #
     def update_snake_position(self, s_map, body_coords, old_tail):
         head = body_coords[0]
         if old_tail is not None:
@@ -98,7 +101,7 @@ class AutoSnake(Snake):
 
     def update_map(self, flat_map):
         if self.map is None:
-            self.map = [array.array('B', [self.env.FREE_TILE] * self.env.width) for _ in range(self.env.height)]
+            self.map = [array('B', [self.env.FREE_TILE] * self.env.width) for _ in range(self.env.height)]
         for y in range(self.env.height):
             for x in range(self.env.width):
                 map_val = flat_map[y * self.env.width + x]
@@ -184,9 +187,10 @@ class AutoSnake(Snake):
     def get_option_data(self, s_map, body_coords, head_coord, option_coord):
         t_dir = coord_op(option_coord, head_coord, '-')
         time_s = time()
-        option = self.recurse_check_option(copy_map(s_map), option_coord, body_coords.copy(), self.length, start_time=time_s)
+        option = self.recurse_check_option(copy_map(s_map), option_coord, body_coords.copy(), self.length, start_time=time_s, route=self.route)
         # print(f'recurse_time for {option_coord}: ', (time() - time_s) * 1000)
         option['coord'] = option_coord
+        option['timeout'] = option.get('timeout', False)
         option['free_path'] = option['depth'] >= self.length
         option['dir'] = t_dir
         # time_s = time()
@@ -203,8 +207,9 @@ class AutoSnake(Snake):
         # print('areas: ', self.areas(self.map, self.coord, valid_tiles))
         random.shuffle(valid_tiles)
         options = {}
-        time_s = time()
-        target_tile = self.target_tile(self.map, self.coord)
+        # time_s = time()
+        self.route = self.closest_apple_route([self.coord], self.map)
+        target_tile = self.target_tile(self.map, self.route)
         # print(f"Time to target:", (time() - time_s) * 1000)
         route_copy = None
         best_option = None
@@ -222,59 +227,53 @@ class AutoSnake(Snake):
         # print(f'{options=}')
         if options:
             if risk_free_options := [o for o in options.values() if o['risk'] == 0]:
-                riskless_options = risk_free_options
-            else:
-                if free_options:
-                    best_option = min(free_options, key=lambda x: x['risk'])
-                else:
-                    best_option = max(options.values(), key=lambda x: x['len_gain'])
-                # print('best_option: ', best_option)
-                if best_option is not None:
-                    return best_option['coord']
-                else:
-                    return None
-            if riskless_options:
-                if free_riskless_options := [o for o in riskless_options if o['free_path']]:
+                if free_riskless_options := [o for o in risk_free_options if o['free_path']]:
                     options_considered = free_riskless_options
+                #If there are no free path options, consider the ones that timed out
+                elif timedout_options := [o for o in risk_free_options if o['timeout']]:
+                    options_considered = timedout_options
                 else:
-                    options_considered = riskless_options
+                    options_considered = risk_free_options
                 best_len_gain = max(o['len_gain'] for o in options_considered)
                 best_len_opts = [o for o in options_considered if o['len_gain'] == best_len_gain]
                 best_early_gain = min(sum(o['apple_time']) for o in best_len_opts)
                 #out of those options find the one that has the gain earlier
                 best_early_gain_opts = [o for o in best_len_opts if sum(o['apple_time']) == best_early_gain]
                 best_option = best_early_gain_opts[0]
-                if target_option and (target_option['free_path']:
+                if target_option and (target_option['free_path'] or target_option['timeout']):
                     if target_option['len_gain'] == best_len_gain \
                     and sum(target_option['apple_time']) == best_early_gain \
                     and target_option['risk'] == 0:
                         best_option = target_option
-            elif free_options:
-                best_option = min(free_options, key=lambda x: x['risk'])
-            elif options:
-                if (best_gain_option := max(options.values(), key=lambda x: x['len_gain']))['len_gain'] != 0:
-                    best_option = best_gain_option
+            else:
+                if free_options:
+                    best_option = min(free_options, key=lambda x: x['risk'])
                 else:
-                    best_option = target_option
+                    best_len_gain = max(o['len_gain'] for o in options.values())
+                    if best_len_gain == 0:
+                        best_option = max(options.values(), key=lambda x: x['depth'])
+                    else:
+                        best_option = max(options.values(), key=lambda x: x['len_gain'])
+                # print('best_option: ', best_option)
+            # elif free_options:
+            #     best_option = min(free_options, key=lambda x: x['risk'])
+            # elif options:
+            #     if (best_gain_option := max(options.values(), key=lambda x: x['len_gain']))['len_gain'] != 0:
+            #         best_option = best_gain_option
+            #     else:
+            #         best_option = target_option
         if best_option is not None:
             return best_option['coord']
         return None
 
-    def target_tile(self, s_map, head_coord, recurse_mode=False):
-        if recurse_mode:
-            if self.route:
-                # print('Follow route')
-                target_tile = self.route.pop()
-                if not self.route: self.route = None
-                return target_tile
-        if self.env.FOOD_TILE in [x for row in s_map for x in row]:
-            if s_route := self.closest_apple_route([head_coord], s_map):
-                self.route = s_route
-                tile = tuple(self.route.pop())
-                if not self.route: self.route = None
-                return tile
+    #
+    def target_tile(self, s_map, route, recurse_mode=False):
         if not recurse_mode and (attack_moves := self.find_attack_moves(s_map)):
             return coord_op(self.coord, attack_moves[0], '+')
+        if route:
+            target_tile = route.pop()
+            if not route: route = None
+            return target_tile
         s_dir = coord_op(self.coord, self.body_coords[1], '-')
         return coord_op(self.coord, s_dir, '+')
 
@@ -303,6 +302,7 @@ class AutoSnake(Snake):
                 areas[a] = areas.get(a, []) + [coord2]
         return [tuple(area) for area in areas.values()]
 
+    #
     def valid_tiles(self, s_map, coord, discount=None):
         dirs = []
         for direction in DIR_MAPPING:
@@ -326,6 +326,7 @@ class AutoSnake(Snake):
 
     def neighbours(self, coord):
         return [coord_op(coord, s_dir, '+') for s_dir in DIR_MAPPING]
+
 
     def calc_immediate_risk(self, s_map, option_coord):
         def coords_unique(tuples):
@@ -407,7 +408,7 @@ class AutoSnake(Snake):
             return 0
 
 
-    def recurse_check_option(self, s_map, new_coord, body_coords, length, start_time, depth=1, best_results=None, current_results=None, area_checked=False):
+    def recurse_check_option(self, s_map, new_coord, body_coords, length, start_time, route, depth=1, best_results=None, current_results=None, area_checked=False):
         if current_results is None:
             current_results = {}
         if best_results is None:
@@ -421,13 +422,16 @@ class AutoSnake(Snake):
         current_results['len_gain'] = length - self.length
         old_tail = self.update_body(new_coord, body_coords, length)
         s_map = self.update_snake_position(s_map, body_coords, old_tail)
-        target_tile = self.target_tile(s_map, new_coord, recurse_mode=True)
+        if not route:
+            route = self.closest_apple_route([new_coord], s_map)
+        target_tile = self.target_tile(s_map, route, recurse_mode=True)
         valid_tiles = self.valid_tiles(s_map, new_coord)
         best_results['depth'] = max(best_results.get('depth', 0), current_results['depth'])
         best_results['len_gain'] = max(best_results.get('len_gain', 0), current_results['len_gain'])
-        best_results['apple_time'] = min(best_results, current_results, key=lambda x: sum(x.get('apple_time', [length])))['apple_time']
+        best_results['apple_time'] = min(best_results, current_results, key=lambda x: sum(x.get('apple_time', [length])[:5]))['apple_time']
         valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
         if ((time() - start_time) * 1000 > self.MAX_BRANCH_TIME) and self.TIME_LIMIT:
+            best_results['timeout'] = True
             return best_results
         if current_results.get('depth', 0) >= length:
             return current_results
@@ -450,12 +454,12 @@ class AutoSnake(Snake):
                     tile,
                     body_coords.copy(),
                     length,
+                    route=route,
                     depth=depth+1,
                     best_results=best_results,
                     current_results=current_results.copy(),
                     area_checked=area_checked,
                     start_time=start_time)
-                self.route = None
-                if check_result.get('depth', 0) >= length:
+                if check_result.get('depth', 0) >= length or check_result.get('timeout', False):
                     return check_result
         return best_results

@@ -311,3 +311,5 @@ class SnakeEnv:
         finally:
             print('Done')
             self.run_data.write_to_file(aborted=aborted)
+            if aborted:
+                raise KeyboardInterrupt

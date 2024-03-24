@@ -1,6 +1,5 @@
 from collections import deque
 
-
 class Snake:
     def __init__(self, id: str, start_length: int):
         self.id = id.upper()

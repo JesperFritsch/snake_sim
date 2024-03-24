@@ -43,7 +43,7 @@ def frames_from_runfile(filename, expand_factor=2):
                 h_x, h_y = coord_op(head_coord_mult, h_dir_mult, '+')
                 color_list[h_y * (new_grid_w) + h_x] = body_color
                 if any([x != 0 for x in tail_dir]):
-                    t_dir_mult = coord_op(tail_dir, (i, i), '*')
+                    t_dir_mult = coord_op(tail_dir, (i-1, i-1), '*')
                     t_x, t_y = coord_op(old_tail, t_dir_mult, '+')
                     color_list[t_y * (new_grid_w) + t_x] = bg_color
             frames.append(color_list.copy())
@@ -73,6 +73,7 @@ def handle_events():
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
+            raise KeyboardInterrupt
 
 
 def playback_runfile(filename):
@@ -88,4 +89,7 @@ def playback_runfile(filename):
         clock.tick(10)
         handle_events()
         draw_frame(screen, grid_width, grid_height, frame)
+        pygame.display.flip()
+    while True:
+        handle_events()
         pygame.display.flip()
