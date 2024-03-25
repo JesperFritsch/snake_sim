@@ -106,7 +106,7 @@ class RunData:
         aborted_str = '_ABORTED' if aborted else ''
         grid_str = f'{self.width}x{self.height}'
         nr_snakes = f'{len(self.snake_data)}'
-        filename = f'{nr_snakes}_snakes_{grid_str}_{utils.rand_str(6)}{aborted_str}.json'
+        filename = f'{nr_snakes}_snakes_{grid_str}_{len(self.steps)}{utils.rand_str(6)}{aborted_str}.json'
         filepath = os.path.join(run_dir, filename)
         print(f"saving run data to '{filepath}'")
         with open(filepath, 'w') as file:
