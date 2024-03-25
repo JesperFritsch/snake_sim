@@ -231,31 +231,38 @@ class AutoSnake(Snake):
         # print(f"{valid_tiles=}")
         # print(f'{options=}')
         if options:
-            if risk_free_options := [o for o in options.values() if o['risk'] == 0]:
-                if free_riskless_options := [o for o in risk_free_options if o['free_path']]:
-                    options_considered = free_riskless_options
-                #If there are no free path options, consider the ones that timed out
-                elif timedout_options := [o for o in risk_free_options if o['timeout']]:
-                    options_considered = timedout_options
-                else:
-                    options_considered = risk_free_options
-                best_len_gain = max(o['len_gain'] for o in options_considered)
-                best_len_gain = min(best_len_gain, 10)
-                best_len_opts = [o for o in options_considered if o['len_gain'] >= best_len_gain]
-                best_early_gain = min(sum(o['apple_time'][:best_len_gain]) for o in best_len_opts)
-                best_early_gain_opts = [o for o in best_len_opts if sum(o['apple_time']) >= best_early_gain]
-                best_option = best_early_gain_opts[0]
-                if target_option in best_early_gain_opts:
+            # if risk_free_options := [o for o in options.values() if o['risk'] == 0]:
+            #     # if free_riskless_options := [o for o in risk_free_options if o['free_path']]:
+            #     #     options_considered = free_riskless_options
+            #     # #If there are no free path options, consider the ones that timed out
+            #     # elif timedout_options := [o for o in risk_free_options if o['timeout']]:
+            #     #     options_considered = timedout_options
+            #     # else:
+            #     #     options_considered = risk_free_options
+            #     # best_len_gain = max(o['len_gain'] for o in options_considered)
+            #     # best_len_gain = min(best_len_gain, 10)
+            #     # best_len_opts = [o for o in options_considered if o['len_gain'] >= best_len_gain]
+            #     # best_early_gain = min(sum(o['apple_time'][:best_len_gain]) for o in best_len_opts)
+            #     # best_early_gain_opts = [o for o in best_len_opts if sum(o['apple_time']) >= best_early_gain]
+            #     # best_option = best_early_gain_opts[0]
+            #     # if target_option in best_early_gain_opts:
+            #     #     best_option = target_option
+            # else:
+                # if free_options:
+                #     best_option = min(free_options, key=lambda x: x['risk'])
+                # else:
+                #     best_len_gain = max(o['len_gain'] for o in options.values())
+                #     if best_len_gain == 0:
+                #         best_option = max(options.values(), key=lambda x: x['depth'])
+                #     else:
+                #         best_option = max(options.values(), key=lambda x: x['len_gain'])
+            if free_options:
+                if target_option in free_options:
                     best_option = target_option
-            else:
-                if free_options:
-                    best_option = min(free_options, key=lambda x: x['risk'])
                 else:
-                    best_len_gain = max(o['len_gain'] for o in options.values())
-                    if best_len_gain == 0:
-                        best_option = max(options.values(), key=lambda x: x['depth'])
-                    else:
-                        best_option = max(options.values(), key=lambda x: x['len_gain'])
+                    best_option = random.choice(free_options)
+            else:
+                best_option = max(options.values(), key=lambda x: x['depth'])
         # print('best_option: ', best_option)
         if best_option is not None:
             return best_option['coord']
@@ -457,6 +464,12 @@ class AutoSnake(Snake):
                     if not area_check['might_escape']:
                         # print(f'{tile}: This area should not be entered')
                         continue
+                    else:
+                        return {
+                            'depth': depth + area_check['tiles'],
+                            'len_gain': current_results['len_gain'] + area_check['food'],
+                            'apple_time': current_results['apple_time']
+                        }
                 check_result = self.recurse_check_option(
                     copy_map(s_map),
                     tile,
