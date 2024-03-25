@@ -19,7 +19,7 @@ def copy_map(s_map):
     return [array('B', row) for row in s_map]
 
 
-class AutoSnake(Snake):
+class AutoSnake2(Snake):
     TIME_LIMIT = True
     MAX_RISK_CALC_DEPTH = 3
     MAX_BRANCH_TIME = 1000
@@ -47,7 +47,7 @@ class AutoSnake(Snake):
         self.map_to_print = copy_map(self.map)
         self.update_survivors()
         tile = self.pick_direction()
-        # self.print_map(self.map_to_print)
+        self.print_map(self.map_to_print)
         if tile is not None:
             self.coord = tile
             self.x, self.y = tile
@@ -121,6 +121,7 @@ class AutoSnake(Snake):
     def get_area_info(self, s_map, body_coords, start_coord):
         current_coords = [start_coord]
         stats = {
+            'area_start': start_coord,
             'food': 0,
             'tiles': 1,
             'might_escape': False
@@ -195,9 +196,10 @@ class AutoSnake(Snake):
         x_res, y_res = coord_op(coord1, coord2, '-')
         return math.sqrt(math.pow(x_res, 2) + math.pow(y_res, 2))
 
-    def get_option_data(self, s_map, body_coords, head_coord, option_coord):
+    def get_option_data(self, s_map, body_coords, head_coord, option_coord, checked_areas=[]):
         t_dir = coord_op(option_coord, head_coord, '-')
         time_s = time()
+        option = {}
         option = self.recurse_check_option(copy_map(s_map), option_coord, body_coords.copy(), self.length, start_time=time_s, route=self.route)
         option['coord'] = option_coord
         option['timeout'] = option.get('timeout', False)
@@ -218,57 +220,44 @@ class AutoSnake(Snake):
         target_tile = self.target_tile(self.map, self.body_coords, self.route)
         route_copy = None
         best_option = None
-        # if self.route is not None:
-        #     route_copy = self.route + [target_tile]
-        # self.show_route(self.map_to_print, route_copy)
-        for coord in valid_tiles:
-            option = self.get_option_data(self.map, self.body_coords, self.coord, coord)
-            options[coord] = option
-        target_option = options.get(target_tile, None)
-        free_options = [o for o in options.values() if o['free_path']]
-        # print('self: ', self.coord)
-        # print(f"{target_option=}")
-        # print(f"{valid_tiles=}")
-        # print(f'{options=}')
-        if options:
-            # if risk_free_options := [o for o in options.values() if o['risk'] == 0]:
-            #     # if free_riskless_options := [o for o in risk_free_options if o['free_path']]:
-            #     #     options_considered = free_riskless_options
-            #     # #If there are no free path options, consider the ones that timed out
-            #     # elif timedout_options := [o for o in risk_free_options if o['timeout']]:
-            #     #     options_considered = timedout_options
-            #     # else:
-            #     #     options_considered = risk_free_options
-            #     # best_len_gain = max(o['len_gain'] for o in options_considered)
-            #     # best_len_gain = min(best_len_gain, 10)
-            #     # best_len_opts = [o for o in options_considered if o['len_gain'] >= best_len_gain]
-            #     # best_early_gain = min(sum(o['apple_time'][:best_len_gain]) for o in best_len_opts)
-            #     # best_early_gain_opts = [o for o in best_len_opts if sum(o['apple_time']) >= best_early_gain]
-            #     # best_option = best_early_gain_opts[0]
-            #     # if target_option in best_early_gain_opts:
-            #     #     best_option = target_option
-            # else:
-                # if free_options:
-                #     best_option = min(free_options, key=lambda x: x['risk'])
-                # else:
-                #     best_len_gain = max(o['len_gain'] for o in options.values())
-                #     if best_len_gain == 0:
-                #         best_option = max(options.values(), key=lambda x: x['depth'])
-                #     else:
-                #         best_option = max(options.values(), key=lambda x: x['len_gain'])
-            if free_options:
-                if target_option in free_options:
-                    best_option = target_option
-                else:
-                    best_option = random.choice(free_options)
-            else:
-                best_option = max(options.values(), key=lambda x: x['depth'])
-        # print('best_option: ', best_option)
+        if self.route is not None:
+            route_copy = self.route + [target_tile]
+        self.show_route(self.map_to_print, route_copy)
+        areas = self.areas(self.map, self.coord, valid_tiles)
+        area_checks = {}
+        for tiles in areas.values():
+            tile = tiles[0]
+            s_time = time()
+            check_result = self.get_area_info(self.map, self.body_coords, tile)
+            for t in tiles:
+                area_checks[t] = check_result
+        print(f"{areas=}")
+        print(f"{area_checks=}")
+        print('target_tile:', target_tile)
+        target_area = area_checks.get(target_tile, {})
+        max_food_area = max(area_checks.values(), key=lambda x: x['food'])
+        escape_area = max(area_checks.values(), key=lambda x: x['might_escape'])
+        max_tiles_area = max(area_checks.values(), key=lambda x: x['tiles'])
+        max_food_tile = max_food_area['area_start']
+        escape_tile = escape_area['area_start']
+        max_tiles_tile = max_tiles_area['area_start']
+        print(f"Max food area: {max_food_area}")
+        print(f"Escape area: {escape_area}")
+        print(f"Max tiles area: {max_tiles_area}")
+        print(f"target_area: {target_area}")
+        if target_area is max_food_area and target_area is escape_area:
+            best_option = target_tile
+        elif any([area_checks[t]['might_escape'] for t in valid_tiles]):
+            best_option = escape_tile
+        else:
+            best_option = max_food_tile
+
+        print(f"best_option: {best_option}")
         if best_option is not None:
-            return best_option['coord']
+            return best_option
         return None
 
-    #
+
     def target_tile(self, s_map, body_coords, route, recurse_mode=False):
         self_coord = body_coords[0]
         if not recurse_mode and (attack_moves := self.find_attack_moves(s_map)):
