@@ -8,7 +8,6 @@ from snakes.snake import Snake
 from time import time
 from dataclasses import dataclass, field
 
-UPDATE_TIME_MS = 250
 
 DIR_MAPPING = {
     (0, -1): 'up',
@@ -18,15 +17,15 @@ DIR_MAPPING = {
 }
 
 def coord_op(coord_left, coord_right, op):
-        # Check the operation and perform it directly
-        if op == '+':
-            return tuple(l + r for l, r in zip(coord_left, coord_right))
-        elif op == '-':
-            return tuple(l - r for l, r in zip(coord_left, coord_right))
-        elif op == '*':
-            return tuple(l * r for l, r in zip(coord_left, coord_right))
-        else:
-            raise ValueError("Unsupported operation")
+    # Check the operation and perform it directly
+    if op == '+':
+        return tuple(l + r for l, r in zip(coord_left, coord_right))
+    elif op == '-':
+        return tuple(l - r for l, r in zip(coord_left, coord_right))
+    elif op == '*':
+        return tuple(l * r for l, r in zip(coord_left, coord_right))
+    else:
+        raise ValueError("Unsupported operation")
 
 @dataclass
 class Food:
@@ -34,7 +33,9 @@ class Food:
     width: int
     height: int
     max_food: int
+    decay_count: int = 100
     locations: set = field(default_factory=set)
+    decay_counters: dict = field(default_factory=dict)
 
     def generate_new(self, s_map) -> list:
         empty_tiles = []
@@ -47,12 +48,17 @@ class Food:
                 new_food = random.choice(empty_tiles)
                 empty_tiles.remove(new_food)
                 self.add_new(new_food)
+        for location in list(self.locations):
+            self.decay_counters[location] -= 1
+            if self.decay_counters[location] <= 0:
+                self.remove_eaten(location)
         for location in self.locations:
             x, y = location
             s_map[y * self.width + x] = SnakeEnv.FOOD_TILE
 
 
     def add_new(self, coord):
+        self.decay_counters[coord] = self.decay_count
         self.locations.add(coord)
 
     def remove_eaten(self, coord):
