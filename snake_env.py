@@ -106,7 +106,7 @@ class RunData:
         aborted_str = '_ABORTED' if aborted else ''
         grid_str = f'{self.width}x{self.height}'
         nr_snakes = f'{len(self.snake_data)}'
-        filename = f'{nr_snakes}_snakes_{grid_str}_{len(self.steps)}{utils.rand_str(6)}{aborted_str}.json'
+        filename = f'{nr_snakes}_snakes_{grid_str}_{utils.rand_str(6)}_{len(self.steps)}_{aborted_str}.json'
         filepath = os.path.join(run_dir, filename)
         print(f"saving run data to '{filepath}'")
         with open(filepath, 'w') as file:
@@ -255,6 +255,7 @@ class SnakeEnv:
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
         self.food.generate_new(self.map)
+        # self.print_map()
         new_step = StepData(food=list(self.food.locations), step=self.time_step)
         for snake in alive_snakes:
             old_tail = snake.body_coords[-1]

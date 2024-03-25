@@ -7,7 +7,7 @@ from render.pygame_render import playback_runfile
 
 GRID_WIDTH = 32
 GRID_HEIGHT = 32
-FOOD = 20
+FOOD = 35
 
 if __name__ == '__main__':
     snake_init_len = 5
@@ -17,7 +17,7 @@ if __name__ == '__main__':
     env.add_snake(AutoSnake('C', snake_init_len), (19, 212, 77), (10, 140, 49))
     env.add_snake(AutoSnake('D', snake_init_len), (128, 3, 111), (199, 4, 173))
 
-    for _ in range(100):
+    for _ in range(1):
         env.generate_run()
         env.reset()
 
