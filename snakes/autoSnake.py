@@ -411,7 +411,7 @@ class AutoSnake(Snake):
             return 0
 
 
-    def recurse_check_option(self, s_map, new_coord, body_coords, length, start_time, route, depth=1, best_results=None, current_results=None, area_checked=False):
+    def recurse_check_option(self, s_map, new_coord, body_coords, length, start_time, route, depth=1, best_results=None, current_results=None):
         if current_results is None:
             current_results = {}
             current_results['apple_time'] = []
@@ -452,7 +452,7 @@ class AutoSnake(Snake):
             # print('areas time: ', (time() - s_time) * 1000)
             # print('areas:', areas)
             area_checks = {}
-            if (len(areas) > 1 or len(areas[0]) == 1) and not area_checked:
+            if (len(areas) > 1 or len(areas[0]) == 1):
                 for tiles in areas.values():
                     tile = tiles[0]
                     s_time = time()
@@ -461,11 +461,8 @@ class AutoSnake(Snake):
                         area_checks[t] = check_result
                     # print('areas_info: ', tile, area_checks[tile])
                     # print('area_info time: ', (time() - s_time) * 1000)
-            else:
-                area_checked = False
             for tile in valid_tiles:
                 if area_check := area_checks.get(tile, {}):
-                    area_checked = True
                     if not area_check['might_escape']:
                         # print(f'{tile}: This area should not be entered')
                         continue
@@ -478,8 +475,7 @@ class AutoSnake(Snake):
                     depth=depth+1,
                     best_results=best_results,
                     current_results=current_results.copy(),
-                    start_time=start_time,
-                    area_checked=area_checked)
+                    start_time=start_time)
                 if check_result.get('depth', 0) >= length or check_result.get('timeout', False):
                     return check_result
         return best_results
