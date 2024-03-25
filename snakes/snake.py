@@ -41,7 +41,7 @@ class Snake:
     def update_body(self, new_head, body_coords: deque, length):
         body_coords.appendleft(new_head)
         old_tail = None
-        while len(body_coords) - length > 0:
+        for _ in range(len(body_coords) - length):
             old_tail = body_coords.pop()
         return old_tail
 
