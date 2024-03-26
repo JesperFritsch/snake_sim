@@ -440,18 +440,18 @@ class AutoSnake(Snake):
             # print('areas:', areas)
             area_checks = {}
             if (len(areas) > 1 or len(areas[0]) == 1):
-                if not area_checked:
-                    area_checked = True
-                    for tiles in areas.values():
-                        tile = tiles[0]
-                        s_time = time()
-                        check_result = self.get_area_info(s_map, body_coords, tile)
-                        for t in tiles:
-                            area_checks[t] = check_result
-                        # print('areas_info: ', tile, area_checks[tile])
-                        # print('area_info time: ', (time() - s_time) * 1000)
-            else:
-                area_checked = False
+                # if not area_checked:
+                #     area_checked = True
+                for tiles in areas.values():
+                    tile = tiles[0]
+                    s_time = time()
+                    check_result = self.get_area_info(s_map, body_coords, tile)
+                    for t in tiles:
+                        area_checks[t] = check_result
+                    # print('areas_info: ', tile, area_checks[tile])
+                    # print('area_info time: ', (time() - s_time) * 1000)
+            # else:
+            #     area_checked = False
             for tile in valid_tiles:
                 if area_check := area_checks.get(tile, {}):
                     if not area_check['might_escape']:
