@@ -118,17 +118,22 @@ class AutoSnake2(Snake):
                 return (row.index(head), y)
         return None
 
-    def get_area_info(self, s_map, body_coords, start_coord):
+    def get_area_info(self, s_map, body_coords, start_coord, checked=None):
         current_coords = [start_coord]
+        safety_buffer = 10
         stats = {
             'area_start': start_coord,
             'food': 0,
             'tiles': 1,
-            'might_escape': False
+            'might_escape': False,
+            'needed_steps': 0,
+            'total_steps': 0,
         }
-        checked = np.array([False] * (self.env.height * self.env.width), dtype=bool)
+        if checked is None:
+            checked = np.array([False] * (self.env.height * self.env.width), dtype=bool)
         self_indexes = [0]
         body_len = len(body_coords)
+        head_coord = body_coords[0]
         while current_coords:
             next_coords = []
             for coord in current_coords:
@@ -142,21 +147,23 @@ class AutoSnake2(Snake):
                         if not checked[t_y * self.env.width + t_x]:
                             checked[t_y * self.env.width + t_x] = True
                             if s_map[t_y][t_x] in self.env.valid_tile_values:
+                                if not self.is_oneway_or_deadend(s_map, coord):
                                     stats['tiles'] += 1
-                                    next_coords.append(coord)
+                                next_coords.append(coord)
                             elif s_map[t_y][t_x] == self.body_value:
                                 self_indexes.append(body_coords.index(coord))
                 current_coords = next_coords
-            total_length = stats['tiles'] - stats['food']
+            total_steps = stats['tiles'] - stats['food']
             max_index = max(self_indexes)
-            needed_length = body_len - max_index
-            if total_length >= needed_length:
+            needed_steps = body_len - max_index + safety_buffer
+            stats['needed_steps'] = needed_steps
+            if total_steps >= needed_steps:
                 stats['might_escape'] = True
                 break
         if len(self_indexes) == 1:
             #If the snake is not in the area, it might escape if the area is larger than the snake
             #Why 10? I don't know, it just works
-            stats['might_escape'] = total_length >= body_len + 10
+            stats['might_escape'] = total_steps >= body_len + 10
         return stats
 
 
@@ -196,18 +203,40 @@ class AutoSnake2(Snake):
         x_res, y_res = coord_op(coord1, coord2, '-')
         return math.sqrt(math.pow(x_res, 2) + math.pow(y_res, 2))
 
-    def get_option_data(self, s_map, body_coords, head_coord, option_coord, checked_areas=[]):
-        t_dir = coord_op(option_coord, head_coord, '-')
+    def get_option_data(self, s_map, option_coord, depth=0):
+        # t_dir = coord_op(option_coord, self.coord, '-')
+        body_coords = self.body_coords.copy()
+        old_tail = self.update_body(option_coord, body_coords, self.length)
+        s_map = self.update_snake_position(copy_map(s_map), body_coords, old_tail)
+        valid_tiles = self.valid_tiles(s_map, option_coord)
         time_s = time()
-        option = {}
-        option = self.recurse_check_option(copy_map(s_map), option_coord, body_coords.copy(), self.length, start_time=time_s, route=self.route)
-        option['coord'] = option_coord
-        option['timeout'] = option.get('timeout', False)
-        option['free_path'] = option['depth'] >= self.length
-        option['dir'] = t_dir
+        option = {'coord': option_coord}
+        area_checks = {}
+        if not valid_tiles:
+            return {
+                'food': 0,
+                'tiles': 0,
+                'might_escape': False
+            }
+        for tile in valid_tiles:
+            s_time = time()
+            check_result = self.get_area_info(self.map, self.body_coords, tile)
+            area_checks[tile] = check_result
+        escape_options = [a_c for a_c in area_checks.values() if a_c['might_escape']]
+        if escape_options:
+            deep_checks = [True]
+            if depth < 1:
+                deep_checks = [self.get_option_data(copy_map(s_map), a_c['area_start'], depth+1)['might_escape'] for a_c in escape_options]
+                print(f"Deep checks: {deep_checks}")
+            option['food'] = max([a_c['food'] for a_c in escape_options])
+            option['might_escape'] = any(deep_checks)
+        else:
+            option['food'] = max([a_c['food'] for a_c in area_checks.values()])
+            option['might_escape'] = False
 
-        time_s = time()
-        option['risk'] = self.calc_immediate_risk(copy_map(s_map), option_coord)
+        option['tiles'] = max([a_c['tiles'] for a_c in area_checks.values()])
+        if depth == 0:
+            option['risk'] = self.calc_immediate_risk(copy_map(s_map), option_coord)
         return option
 
     def pick_direction(self):
@@ -223,38 +252,31 @@ class AutoSnake2(Snake):
         if self.route is not None:
             route_copy = self.route + [target_tile]
         self.show_route(self.map_to_print, route_copy)
-        areas = self.areas(self.map, self.coord, valid_tiles)
-        area_checks = {}
-        for tiles in areas.values():
-            tile = tiles[0]
-            s_time = time()
-            check_result = self.get_area_info(self.map, self.body_coords, tile)
-            for t in tiles:
-                area_checks[t] = check_result
-        print(f"{areas=}")
-        print(f"{area_checks=}")
-        print('target_tile:', target_tile)
-        target_area = area_checks.get(target_tile, {})
-        max_food_area = max(area_checks.values(), key=lambda x: x['food'])
-        escape_area = max(area_checks.values(), key=lambda x: x['might_escape'])
-        max_tiles_area = max(area_checks.values(), key=lambda x: x['tiles'])
-        max_food_tile = max_food_area['area_start']
-        escape_tile = escape_area['area_start']
-        max_tiles_tile = max_tiles_area['area_start']
-        print(f"Max food area: {max_food_area}")
-        print(f"Escape area: {escape_area}")
-        print(f"Max tiles area: {max_tiles_area}")
-        print(f"target_area: {target_area}")
-        if target_area is max_food_area and target_area is escape_area:
-            best_option = target_tile
-        elif any([area_checks[t]['might_escape'] for t in valid_tiles]):
-            best_option = escape_tile
-        else:
-            best_option = max_food_tile
+        for tile in valid_tiles:
+            option_data = self.get_option_data(copy_map(self.map), tile)
+            options[tile] = option_data
+        for option in options:
+            print(option, options[option])
 
+        target_option = options.get(target_tile, None)
+        escape_options = [o for o in options.values() if o['might_escape']]
+        best_food = max([o['food'] for o in options.values()])
+        print("Target option: ", target_option)
+        if target_option is not None and target_option['might_escape']:
+            best_option = target_option
+        elif escape_options:
+            if best_food > 0:
+                best_option = max(escape_options, key=lambda x: x['food'])
+            else:
+                best_option = max(escape_options, key=lambda x: x['tiles'])
+        else:
+            if best_food > 0:
+                best_option = max(options.values(), key=lambda x: x['food'])
+            else:
+                best_option = max(options.values(), key=lambda x: x['tiles'])
         print(f"best_option: {best_option}")
         if best_option is not None:
-            return best_option
+            return best_option['coord']
         return None
 
 
@@ -308,6 +330,15 @@ class AutoSnake2(Snake):
                 continue
             dirs.append(m_coord)
         return dirs
+
+    def is_oneway_or_deadend(self, s_map, coord):
+        valids = self.valid_tiles(s_map, coord)
+        valids_len = len(valids)
+        if valids_len == 1:
+            return True
+        elif valids_len == 2 and any([x == 0 for x in coord_op(valids[0], valids[1], '-')]):
+            return True
+        return False
 
     def neighbours(self, coord):
         x, y = coord
