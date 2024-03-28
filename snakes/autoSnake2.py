@@ -47,6 +47,7 @@ class AutoSnake2(Snake):
         self.map_to_print = copy_map(self.map)
         self.update_survivors()
         tile = self.pick_direction()
+        print(self.body_coords)
         self.print_map(self.map_to_print)
         if tile is not None:
             self.coord = tile
@@ -149,7 +150,7 @@ class AutoSnake2(Snake):
                             if s_map[t_y][t_x] in self.env.valid_tile_values:
                                 if not self.is_oneway_or_deadend(s_map, coord):
                                     stats['tiles'] += 1
-                                next_coords.append(coord)
+                                    next_coords.append(coord)
                             elif s_map[t_y][t_x] == self.body_value:
                                 self_indexes.append(body_coords.index(coord))
                 current_coords = next_coords
@@ -224,19 +225,14 @@ class AutoSnake2(Snake):
             area_checks[tile] = check_result
         escape_options = [a_c for a_c in area_checks.values() if a_c['might_escape']]
         if escape_options:
-            deep_checks = [True]
-            if depth < 1:
-                deep_checks = [self.get_option_data(copy_map(s_map), a_c['area_start'], depth+1)['might_escape'] for a_c in escape_options]
-                print(f"Deep checks: {deep_checks}")
             option['food'] = max([a_c['food'] for a_c in escape_options])
-            option['might_escape'] = any(deep_checks)
+            option['might_escape'] = True
         else:
             option['food'] = max([a_c['food'] for a_c in area_checks.values()])
             option['might_escape'] = False
 
         option['tiles'] = max([a_c['tiles'] for a_c in area_checks.values()])
-        if depth == 0:
-            option['risk'] = self.calc_immediate_risk(copy_map(s_map), option_coord)
+        option['risk'] = self.calc_immediate_risk(copy_map(s_map), option_coord)
         return option
 
     def pick_direction(self):
@@ -295,27 +291,45 @@ class AutoSnake2(Snake):
         for row in s_map:
             print(''.join([f' {chr(c)} ' for c in row]))
 
-    def areas(self, s_map, s_coord, valid_tiles):
-        if (max(valid_tiles, key=lambda x: x[0])[0] - min(valid_tiles, key=lambda x: x[0])[0]) == 2:
-            tiles = sorted(valid_tiles, key=lambda x: x[0])
-        else:
-            tiles = sorted(valid_tiles, key=lambda x: x[1])
-        areas = {0: [tiles[0]]}
-        a = 0
-        for i in range(1, len(tiles)):
-            coord1, coord2 = tiles[i-1:i+1]
-            dir_1 = coord_op(coord1, s_coord, '-')
-            dir_2 = coord_op(coord2, s_coord, '-')
-            cor_dir = coord_op(dir_1, dir_2, '+')
-            cor_coord = coord_op(s_coord, cor_dir, '+')
-            c_x, c_y = cor_coord
-            if s_map[c_y][c_x] in self.env.valid_tile_values:
-                areas[a] = areas[a] + [coord2]
+    def get_areas(self, s_map, s_coord, valid_tiles):
+        dirs = [coord_op(tile, s_coord, '-') for tile in valid_tiles]
+        corners = [coord_op(dirs[i-1], dirs[i%len(dirs)], '+') for i in range(len(dirs))]
+        corners = [c for c in set(corners) if c != (0, 0)]
+        areas = []
+        subareas = set()
+        for corner in corners:
+            x, y = coord_op(s_coord, corner, '+')
+            c_x, c_y = corner
+            tile_a, tile_b = coord_op(s_coord, (c_x, 0), '+'), coord_op(s_coord, (0, c_y), '+')
+            corner_conn = (tile_a, tile_b)
+            if s_map[y][x] in self.env.valid_tile_values:
+                subareas.add(corner_conn)
             else:
-                a += 1
-                areas[a] = areas.get(a, []) + [coord2]
+                subareas.add((tile_a,))
+                subareas.add((tile_b,))
+        change = True
+        while change:
+            change = False
+            last_areas = areas.copy()
+            for subarea in subareas:
+                change = False
+                handled = False
+                for tile in subarea:
+                    for j, area in enumerate(areas):
+                        if tile in area:
+                            handled = True
+                            areas[j] = tuple(set(list(subarea) + list(area)))
+                if not handled:
+                    if subarea not in areas:
+                        areas.append(subarea)
+            areas = list(set(areas))
+            if areas != last_areas:
+                change = True
+        print(corners)
+        print(dirs, valid_tiles)
+        print('subareas: ', subareas)
+        print('areas:', areas)
         return areas
-
     #
     def valid_tiles(self, s_map, coord, discount=None):
         dirs = []
@@ -462,7 +476,7 @@ class AutoSnake2(Snake):
         # print('recurse_time: ', (time() - self.start_time) * 1000)
         if valid_tiles:
             s_time = time()
-            areas = self.areas(s_map, new_coord, valid_tiles)
+            areas = self.get_areas(s_map, new_coord, valid_tiles)
             # print('areas time: ', (time() - s_time) * 1000)
             # print('areas:', areas)
             area_checks = {}
@@ -504,3 +518,5 @@ class AutoSnake2(Snake):
                 if check_result.get('depth', 0) >= length or check_result.get('timeout', False):
                     return check_result
         return best_results
+
+
