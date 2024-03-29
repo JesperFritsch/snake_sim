@@ -43,10 +43,6 @@ class Food:
             if s_map[i] == SnakeEnv.FREE_TILE:
                 x, y = i % self.width, i // self.width
                 empty_tiles.append((x, y))
-        for location in list(self.locations):
-            self.decay_counters[location] -= 1
-            if self.decay_counters[location] <= 0:
-                self.remove(location, s_map)
         for _ in range(self.max_food - len(self.locations)):
             if empty_tiles:
                 new_food = random.choice(empty_tiles)
@@ -56,6 +52,11 @@ class Food:
             x, y = location
             s_map[y * self.width + x] = SnakeEnv.FOOD_TILE
 
+    def remove_old(self, s_map):
+        for location in set(self.locations):
+            self.decay_counters[location] -= 1
+            if self.decay_counters[location] <= 0:
+                self.remove(location, s_map)
 
     def add_new(self, coord):
         self.decay_counters[coord] = self.decay_count
@@ -255,6 +256,7 @@ class SnakeEnv:
         self.alive_snakes = self.get_alive_snakes()
         alive_snakes = self.alive_snakes
         random.shuffle(alive_snakes)
+        self.food.remove_old(self.map)
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
         self.food.generate_new(self.map)
