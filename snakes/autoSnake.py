@@ -13,7 +13,7 @@ from snake_env import (
 class AutoSnake(AutoSnakeBase):
     TIME_LIMIT = True
     MAX_RISK_CALC_DEPTH = 3
-    MAX_BRANCH_TIME = 1000
+    MAX_BRANCH_TIME = 200
 
 
     def __init__(self, id: str, start_length: int):
@@ -310,28 +310,28 @@ class AutoSnake(AutoSnakeBase):
         # print('recurse_time: ', (time() - self.start_time) * 1000)
         if valid_tiles:
             s_time = time()
-            areas = self.areas(s_map, new_coord, valid_tiles)
+            #areas = self.areas(s_map, new_coord, valid_tiles)
             # print('areas time: ', (time() - s_time) * 1000)
             # print('areas:', areas)
             area_checks = {}
-            if (len(areas) > 1 or len(areas[0]) == 1):
-                # if not area_checked:
-                #     area_checked = True
-                for tiles in areas.values():
-                    tile = tiles[0]
-                    s_time = time()
-                    check_result = self.get_area_info(s_map, body_coords, tile)
-                    for t in tiles:
-                        area_checks[t] = check_result
+            #if (len(areas) > 1 or len(areas[0]) == 1) and False:
+            #    # if not area_checked:
+            #    #     area_checked = True
+            #    for tiles in areas.values():
+            #        tile = tiles[0]
+            #        s_time = time()
+            #        check_result = self.get_area_info(s_map, body_coords, tile)
+            #        for t in tiles:
+            #            area_checks[t] = check_result
                     # print('areas_info: ', tile, area_checks[tile])
                     # print('area_info time: ', (time() - s_time) * 1000)
             # else:
             #     area_checked = False
             for tile in valid_tiles:
-                if area_check := area_checks.get(tile, {}):
-                    if not area_check['might_escape']:
-                        # print(f'{tile}: This area should not be entered')
-                        continue
+                #if area_check := area_checks.get(tile, {}):
+                #    if not area_check['might_escape']:
+                #        # print(f'{tile}: This area should not be entered')
+                #        continue
                 check_result = self.recurse_check_option(
                     copy_map(s_map),
                     tile,

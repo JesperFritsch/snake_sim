@@ -36,7 +36,7 @@ class AutoSnake2(AutoSnakeBase):
 
     def get_area_info(self, s_map, body_coords, start_coord, checked=None):
         current_coords = [start_coord]
-        safety_buffer = 5
+        safety_buffer = 1
         stats = {
             'area_start': start_coord,
             'food': 0,

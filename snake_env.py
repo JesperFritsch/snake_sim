@@ -33,7 +33,7 @@ class Food:
     width: int
     height: int
     max_food: int
-    decay_count: int = 100
+    decay_count: int = 50
     locations: set = field(default_factory=set)
     decay_counters: dict = field(default_factory=dict)
 
@@ -93,7 +93,7 @@ class StepData:
 
 
 class RunData:
-    def __init__(self, width: int, height: int, snake_data: list, output_dir='runs/new_version') -> None:
+    def __init__(self, width: int, height: int, snake_data: list, output_dir='runs/batch') -> None:
         self.width = width
         self.height = height
         self.snake_data = snake_data
@@ -126,7 +126,7 @@ class RunData:
 
 
 class SnakeEnv:
-    valid_tile_values = (FOOD_TILE, FREE_TILE) = (70, 46)
+    valid_tile_values = (FOOD_TILE, FREE_TILE) = (0, 1)
     COLOR_MAPPING = {
         FOOD_TILE: (223, 163, 49),
         FREE_TILE: (0, 0, 0)
@@ -256,9 +256,9 @@ class SnakeEnv:
         self.alive_snakes = self.get_alive_snakes()
         alive_snakes = self.alive_snakes
         random.shuffle(alive_snakes)
-        self.food.remove_old(self.map)
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
+        self.food.remove_old(self.map)
         self.food.generate_new(self.map)
         # self.print_map()
         new_step = StepData(food=list(self.food.locations), step=self.time_step)
@@ -299,7 +299,7 @@ class SnakeEnv:
                 color_map.append(self.COLOR_MAPPING[tile_value])
         return color_map
 
-    def generate_run(self, max_steps: int|None = None):
+    def generate_run(self, max_steps = None):
         start_time = time()
         self.init_recorder()
         for snake in self.snakes.values():

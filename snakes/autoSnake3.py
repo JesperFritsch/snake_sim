@@ -13,7 +13,7 @@ from snake_env import (
 class AutoSnake3(AutoSnakeBase):
     TIME_LIMIT = True
     MAX_RISK_CALC_DEPTH = 3
-    MAX_BRANCH_TIME = 500
+    MAX_BRANCH_TIME = 10000
 
 
     def __init__(self, id: str, start_length: int):
