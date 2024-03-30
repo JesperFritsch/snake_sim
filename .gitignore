@@ -1,1 +1,3 @@
 runs/
+snake_venv*
+__pycache__/

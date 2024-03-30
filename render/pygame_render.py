@@ -22,10 +22,17 @@ def frames_from_runfile(filename, expand_factor=2):
     snake_colors = {x.get('snake_id'): {'head_color': x.get('head_color'), 'body_color': x.get('body_color')} for x in snake_data}
     steps = run_dict['steps']
     color_list = [bg_color] * ((new_grid_w) * (new_grid_h))
+    old_food = []
     for step, step_data in steps.items():
         for food in step_data['food']:
             food_x, food_y = coord_op(food, (expand_factor, expand_factor), '*')
             color_list[food_y * (new_grid_w) + food_x] = SnakeEnv.COLOR_MAPPING[SnakeEnv.FOOD_TILE]
+        for food in old_food:
+            if food not in step_data['food']:
+                food_x, food_y = coord_op(food, (expand_factor, expand_factor), '*')
+                if color_list[food_y * (new_grid_w) + food_x] == SnakeEnv.COLOR_MAPPING[SnakeEnv.FOOD_TILE]:
+                    color_list[food_y * (new_grid_w) + food_x] = SnakeEnv.COLOR_MAPPING[SnakeEnv.FREE_TILE]
+        old_food = step_data['food']
         for i in range(1, expand_factor+1):
             for snake in step_data['snakes']:
                 snake_id = snake['snake_id']
