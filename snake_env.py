@@ -93,7 +93,7 @@ class StepData:
 
 
 class RunData:
-    def __init__(self, width: int, height: int, snake_data: list, output_dir='runs') -> None:
+    def __init__(self, width: int, height: int, snake_data: list, output_dir='runs/new_version') -> None:
         self.width = width
         self.height = height
         self.snake_data = snake_data

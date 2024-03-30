@@ -4,6 +4,7 @@ import datetime
 from snake_env import SnakeEnv
 from snakes.autoSnake import AutoSnake
 from snakes.autoSnake2 import AutoSnake2
+from snakes.autoSnake3 import AutoSnake3
 from render.pygame_render import playback_runfile
 
 GRID_WIDTH = 32
@@ -13,12 +14,12 @@ FOOD = 20
 if __name__ == '__main__':
     snake_init_len = 5
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    env.add_snake(AutoSnake2('A', snake_init_len), (176, 27, 16), (125, 19, 11))
-    env.add_snake(AutoSnake2('B', snake_init_len), (19, 44, 209), (8, 23, 120))
-    env.add_snake(AutoSnake2('C', snake_init_len), (19, 212, 77), (10, 140, 49))
-    env.add_snake(AutoSnake2('D', snake_init_len), (128, 3, 111), (199, 4, 173))
+    env.add_snake(AutoSnake3('A', snake_init_len), (176, 27, 16), (125, 19, 11))
+    env.add_snake(AutoSnake3('B', snake_init_len), (19, 44, 209), (8, 23, 120))
+    env.add_snake(AutoSnake3('C', snake_init_len), (19, 212, 77), (10, 140, 49))
+    env.add_snake(AutoSnake3('D', snake_init_len), (128, 3, 111), (199, 4, 173))
 
-    for _ in range(1):
+    for _ in range(10):
         env.generate_run()
         env.reset()
 
