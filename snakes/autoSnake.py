@@ -13,7 +13,7 @@ from snake_env import (
 class AutoSnake(AutoSnakeBase):
     TIME_LIMIT = True
     MAX_RISK_CALC_DEPTH = 3
-    MAX_BRANCH_TIME = 200
+    MAX_BRANCH_TIME = 1000
 
 
     def __init__(self, id: str, start_length: int):
@@ -148,50 +148,6 @@ class AutoSnake(AutoSnakeBase):
         s_dir = coord_op(self_coord, body_coords[1], '-')
         return coord_op(self_coord, s_dir, '+')
 
-    def print_map(self, s_map):
-        for row in s_map:
-            print(''.join([f' {chr(c)} ' for c in row]))
-
-    def areas(self, s_map, s_coord, valid_tiles):
-        if (max(valid_tiles, key=lambda x: x[0])[0] - min(valid_tiles, key=lambda x: x[0])[0]) == 2:
-            tiles = sorted(valid_tiles, key=lambda x: x[0])
-        else:
-            tiles = sorted(valid_tiles, key=lambda x: x[1])
-        areas = {0: [tiles[0]]}
-        a = 0
-        for i in range(1, len(tiles)):
-            coord1, coord2 = tiles[i-1:i+1]
-            dir_1 = coord_op(coord1, s_coord, '-')
-            dir_2 = coord_op(coord2, s_coord, '-')
-            cor_dir = coord_op(dir_1, dir_2, '+')
-            cor_coord = coord_op(s_coord, cor_dir, '+')
-            c_x, c_y = cor_coord
-            if s_map[c_y][c_x] in self.env.valid_tile_values:
-                areas[a] = areas[a] + [coord2]
-            else:
-                a += 1
-                areas[a] = areas.get(a, []) + [coord2]
-        return areas
-
-    #
-    def valid_tiles(self, s_map, coord, discount=None):
-        dirs = []
-        for direction in DIR_MAPPING:
-            m_coord = coord_op(coord, direction, '+')
-            x_move, y_move = m_coord
-            if m_coord == discount:
-                dirs.append(m_coord)
-            elif not self.env.is_inside(m_coord):
-                continue
-            elif s_map[y_move][x_move] not in self.env.valid_tile_values:
-                continue
-            dirs.append(m_coord)
-        return dirs
-
-    def neighbours(self, coord):
-        x, y = coord
-        return [(x, y-1),(x+1, y),(x, y+1),(x-1, y)]
-
 
     def calc_immediate_risk(self, s_map, option_coord):
         def coords_unique(tuples):
@@ -310,7 +266,6 @@ class AutoSnake(AutoSnakeBase):
         # print('recurse_time: ', (time() - self.start_time) * 1000)
         if valid_tiles:
             s_time = time()
-            #areas = self.areas(s_map, new_coord, valid_tiles)
             # print('areas time: ', (time() - s_time) * 1000)
             # print('areas:', areas)
             area_checks = {}

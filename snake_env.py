@@ -48,15 +48,14 @@ class Food:
                 new_food = random.choice(empty_tiles)
                 empty_tiles.remove(new_food)
                 self.add_new(new_food)
-        for location in self.locations:
-            x, y = location
-            s_map[y * self.width + x] = SnakeEnv.FOOD_TILE
-
-    def remove_old(self, s_map):
         for location in set(self.locations):
             self.decay_counters[location] -= 1
             if self.decay_counters[location] <= 0:
                 self.remove(location, s_map)
+        for location in self.locations:
+            x, y = location
+            s_map[y * self.width + x] = SnakeEnv.FOOD_TILE
+
 
     def add_new(self, coord):
         self.decay_counters[coord] = self.decay_count
@@ -258,7 +257,6 @@ class SnakeEnv:
         random.shuffle(alive_snakes)
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
-        self.food.remove_old(self.map)
         self.food.generate_new(self.map)
         # self.print_map()
         new_step = StepData(food=list(self.food.locations), step=self.time_step)
