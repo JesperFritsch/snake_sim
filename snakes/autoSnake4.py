@@ -58,7 +58,7 @@ class AutoSnake4(AutoSnakeBase):
             option = self.get_option_data(self.map, self.body_coords, self.coord, coord)
             options[coord] = option
         free_options = [o for o in options.values() if o['free_path']]
-        print(f'{options=}')
+        # print(f'{options=}')
         if options:
             if risk_free_options := [o for o in options.values() if o['risk'] == 0]:
                 if free_riskless_options := [o for o in risk_free_options if o['free_path']]:
@@ -208,10 +208,11 @@ class AutoSnake4(AutoSnakeBase):
         current_results['depth'] = depth
         old_tail = self.update_body(new_coord, body_coords, length)
         s_map = self.update_snake_position(s_map, body_coords, old_tail)
+        valid_tiles = self.valid_tiles(s_map, new_coord)
 
         if planned_route:
             planned_tile = planned_route.pop()
-        if planned_tile:
+        if planned_tile and planned_tile in valid_tiles:
             check_result = self.recurse_check_option(
                 copy_map(s_map),
                 planned_tile,
@@ -228,7 +229,6 @@ class AutoSnake4(AutoSnakeBase):
             
         apple_route = self.closest_apple_route([new_coord], s_map)
         target_tile = self.target_tile(s_map, body_coords, apple_route, recurse_mode=True)
-        valid_tiles = self.valid_tiles(s_map, new_coord)
         best_results['depth'] = max(best_results.get('depth', 0), current_results['depth'])
         best_results['len_gain'] = max(best_results.get('len_gain', 0), current_results['len_gain'])
         best_results['apple_time'] = []
