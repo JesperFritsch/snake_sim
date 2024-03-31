@@ -37,7 +37,7 @@ class Food:
     locations: set = field(default_factory=set)
     decay_counters: dict = field(default_factory=dict)
 
-    def generate_new(self, s_map) -> list:
+    def generate_new(self, s_map):
         empty_tiles = []
         for i in range(self.width * self.height):
             if s_map[i] == SnakeEnv.FREE_TILE:
@@ -48,14 +48,15 @@ class Food:
                 new_food = random.choice(empty_tiles)
                 empty_tiles.remove(new_food)
                 self.add_new(new_food)
-        for location in set(self.locations):
-            self.decay_counters[location] -= 1
-            if self.decay_counters[location] <= 0:
-                self.remove(location, s_map)
         for location in self.locations:
             x, y = location
             s_map[y * self.width + x] = SnakeEnv.FOOD_TILE
 
+    def remove_old(self, s_map):
+        for location in set(self.locations):
+            self.decay_counters[location] -= 1
+            if self.decay_counters[location] <= 0:
+                self.remove(location, s_map)
 
     def add_new(self, coord):
         self.decay_counters[coord] = self.decay_count
@@ -258,6 +259,7 @@ class SnakeEnv:
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
         self.food.generate_new(self.map)
+        # self.food.remove_old(self.map)
         # self.print_map()
         new_step = StepData(food=list(self.food.locations), step=self.time_step)
         for snake in alive_snakes:
@@ -310,6 +312,7 @@ class SnakeEnv:
                 if self.alive_snakes:
                     if len(self.alive_snakes) == 1:
                         only_one = self.alive_snakes[0]
+                        
                         if (self.time_step - self.snakes_info[only_one.id]['last_food']) > 100 or max_steps is not None and self.time_step > max_steps:
                             ongoing = False
                     self.update()
