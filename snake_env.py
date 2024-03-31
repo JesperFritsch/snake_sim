@@ -259,7 +259,7 @@ class SnakeEnv:
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
         self.food.generate_new(self.map)
-        # self.food.remove_old(self.map)
+        self.food.remove_old(self.map)
         # self.print_map()
         new_step = StepData(food=list(self.food.locations), step=self.time_step)
         for snake in alive_snakes:
@@ -312,7 +312,7 @@ class SnakeEnv:
                 if self.alive_snakes:
                     if len(self.alive_snakes) == 1:
                         only_one = self.alive_snakes[0]
-                        
+
                         if (self.time_step - self.snakes_info[only_one.id]['last_food']) > 100 or max_steps is not None and self.time_step > max_steps:
                             ongoing = False
                     self.update()

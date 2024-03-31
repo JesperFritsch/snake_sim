@@ -1,5 +1,6 @@
 import math
 import itertools
+from collections import deque
 from array import array
 import numpy as np
 from time import time
@@ -23,7 +24,7 @@ class AutoSnakeBase(Snake):
         self.env: SnakeEnv
         self.x = None
         self.y = None
-        self.route = None
+        self.route: deque = deque()
         self.start_time = 0
         self.map_to_print = None
         self.length = start_length
@@ -34,22 +35,26 @@ class AutoSnakeBase(Snake):
         x, y = coord
         return (h_x - sight_len) <= x <= (h_x + sight_len) and (h_y - sight_len) <= y <= (h_y + sight_len)
 
+    def pick_direction(self):
+        raise NotImplementedError
+
     def update(self):
         # print(f'update for {self.id} step: {self.env.time_step}')
         # print(f'self coord: {self.coord}')
         self.start_time = time()
         self.update_map(self.env.map)
-        # self.map_to_print = copy_map(self.map)
-        # print(self.body_coords)
-        # self.print_map(self.map_to_print)
+        self.map_to_print = copy_map(self.map)
         self.update_survivors()
         tile = self.pick_direction()
+        # print(f"{self.body_coords=}")
+        # self.print_map(self.map_to_print)
         if tile is not None:
             self.coord = tile
             self.x, self.y = tile
             self.update_body(self.coord, self.body_coords, self.length)
             next_tile = tile
         else:
+            # print(f'{self.id} is dead!')
             self.alive = False
             next_tile = self.coord
         return next_tile
@@ -98,7 +103,7 @@ class AutoSnakeBase(Snake):
             s_map[y][x] = ord('¤')
         return copy_map(s_map)
 
-    
+
     def update_snake_position(self, s_map, body_coords, old_tail):
         head = body_coords[0]
         if old_tail is not None:
@@ -124,6 +129,38 @@ class AutoSnakeBase(Snake):
             if head in row:
                 return (row.index(head), y)
         return None
+
+    def get_route(self, s_map, start, end):
+        checked = [False] * (self.env.height * self.env.width)
+        current_coords = [start]
+        coord_map = {}
+        coord_maps = []
+        done = False
+        while current_coords:
+            next_coords = []
+            for coord in current_coords:
+                valid_tiles = self.valid_tiles(s_map, coord)
+                if coord == end:
+                    done = True
+                for valid_coord in valid_tiles:
+                    t_x, t_y = valid_coord
+                    if not checked[t_y * self.env.width + t_x]:
+                        next_coords.append(valid_coord)
+                        coord_map[valid_coord] = coord
+                        checked[t_y * self.env.width + t_x] = True
+            if done:
+                route = [end]
+                counter = 0
+                while route[-1] != start:
+                    counter += 1
+                    route.append(coord_maps[-counter][route[-1]])
+                return route
+            elif next_coords:
+                current_coords = next_coords
+                coord_maps.append(coord_map)
+            else:
+                return None
+
 
     def closest_apple_route(self, current_coords, s_map, checked=None, depth=0, head_coord=None):
         if checked is None:
@@ -162,7 +199,15 @@ class AutoSnakeBase(Snake):
 
     def print_map(self, s_map):
         for row in s_map:
-            print(''.join([f' {chr(c)} ' for c in row]))
+            print_row = []
+            for c in row:
+                if c == SnakeEnv.FREE_TILE:
+                    print_row.append(' . ')
+                elif c == SnakeEnv.FOOD_TILE:
+                    print_row.append(' F ')
+                else:
+                    print_row.append(f' {chr(c)} ')
+            print(''.join(print_row))
 
 
     def get_areas(self, s_map, s_coord):
