@@ -192,7 +192,6 @@ class AutoSnake3(AutoSnakeBase):
             current_results['apple_time'] = current_results['apple_time'] + [depth]
             current_results['len_gain'] = length - self.length
         current_results['depth'] = depth
-        current_results['body_coords'] = body_coords
         old_tail = self.update_body(new_coord, body_coords, length)
         s_map = self.update_snake_position(s_map, body_coords, old_tail)
         # if not route:
@@ -202,7 +201,6 @@ class AutoSnake3(AutoSnakeBase):
         best_results['depth'] = max(best_results.get('depth', 0), current_results['depth'])
         best_results['len_gain'] = max(best_results.get('len_gain', 0), current_results['len_gain'])
         best_results['apple_time'] = min(best_results, current_results, key=lambda x: sum(x.get('apple_time', [length*length])[:5]))['apple_time']
-        best_results['body_coords'] = None
         valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
         if ((time() - start_time) * 1000 > self.MAX_BRANCH_TIME) and self.TIME_LIMIT:
             best_results['timeout'] = True

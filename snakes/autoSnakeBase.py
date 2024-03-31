@@ -8,7 +8,8 @@ from snakes.snake import Snake
 from statistics import mean
 from snake_env import (
         coord_op,
-        DIR_MAPPING
+        DIR_MAPPING,
+        SnakeEnv
     )
 
 def copy_map(s_map):
@@ -19,7 +20,7 @@ class AutoSnakeBase(Snake):
 
     def __init__(self, id: str, start_length: int):
         super().__init__(id, start_length)
-        self.env
+        self.env: SnakeEnv
         self.x = None
         self.y = None
         self.route = None
@@ -93,12 +94,11 @@ class AutoSnakeBase(Snake):
 
     def show_route(self, s_map, s_route):
         if s_route is None: return
-        dest = s_route[0]
-        for x, y in s_route[1:]:
+        for x, y in list(s_route)[1:]:
             s_map[y][x] = ord('¤')
         return copy_map(s_map)
 
-    #
+    
     def update_snake_position(self, s_map, body_coords, old_tail):
         head = body_coords[0]
         if old_tail is not None:
