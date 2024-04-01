@@ -8,7 +8,7 @@ from time import time
 from snakes.autoSnakeBase import AutoSnakeBase, copy_map
 from snake_env import (
         coord_op,
-        DIR_MAPPING
+        DIR_MAPPING,
     )
 
 
@@ -28,68 +28,105 @@ class AutoSnake4(AutoSnakeBase):
             self.route = None
             return
         if self.coord in route:
-            route = deque(list(route)[route.index(self.coord)+1:])
+            route = deque(list(route)[:route.index(self.coord)])
+        valid_tiles = self.valid_tiles(self.map, self.coord)
+        if route[-1] not in valid_tiles:
+            sub_route = self.get_route(self.map, self.coord, end=route[-1])
+            route = deque(list(route) + sub_route[1:-1])
         self.food_in_route = []
-        for coord in route:
+        last_coord = None
+        for coord in reversed(route):
+            if coord == last_coord:
+                route.remove(coord)
+            # if any([abs(x) > 1 for x in coord_op(coord, last_coord, '-')]):
+
             if self.map[coord[1]][coord[0]] == self.env.FOOD_TILE:
                 self.food_in_route.append(coord)
         self.route = route
 
-    def refine_route(self, route: deque):
-        s_map = copy_map(self.map)
-        body_coords = self.body_coords.copy()
-        route_list = list(route)
-        new_route = None
+    # def extend_route(self, route: deque):
+    #     """This function is to extend the route to include nearby food, if possible."""
+    #     s_map = copy_map(self.map)
+    #     # s_map = self.show_route(s_map, self.route) #this is to show the route on the map, it also makes the route tiles invalid in the apple search
+    #     apple_route = self.closest_apple_route([self.coord], s_map)
+    #     # print('self.route: ', self.route)
+    #     if apple_route:
+    #         # self.print_map(s_map)
+    #         # print('-------____--__')
+    #         # s_map = self.show_route(s_map, apple_route)
+    #         # print('apple_route: ', apple_route)
+    #         r_start = route[-1]
+    #         s_map[r_start[1]][r_start[0]] = self.env.FREE_TILE # this is to be able to find a route to the start of self.route
+    #         # self.print_map(s_map)
+    #         get_back_route = self.get_route(s_map, apple_route[0], end=route[-1])
+    #         if get_back_route:
+    #             # print('has extended route')
+    #             # print('get_back_route: ', get_back_route)
+    #             new_subroute = get_back_route[:-1] + apple_route # the routes are 'revered', the coord at index -1 is the start of the route
+    #             route_list = list(route)
+    #             new_route = deque(route_list + new_subroute[1:])
+    #             # print('new_subroute: ', new_subroute)
+    #             # print('new_route',new_route)
+    #             # s_map = self.show_route(s_map, new_route)
+    #             # self.print_map(s_map)
+    #             return new_route
 
-        for food in sorted(self.food_in_route, key=lambda x: route_list.index(x)):
-            f_x, f_y = food
-            if s_map[f_y][f_x] != self.env.FOOD_TILE and food in route_list and food in self.food_in_route:
-                food_index = self.food_in_route.index(food)
-                start_search_index = 0
-                if 0 < food_index < len(self.food_in_route)-1:
-                    food_before = self.food_in_route[food_index - 1]
-                    food_after = self.food_in_route[food_index + 1]
-                    food_before_index = route_list.index(food_before)
-                    for coord in route_list[:food_before_index]:
-                        old_tail = self.update_body(coord, body_coords, self.length)
-                        s_map = self.update_snake_position(s_map, body_coords, old_tail)
-                    start_search_index = food_before_index
+    # def refine_route(self, route: deque):
+    #     s_map = copy_map(self.map)
+    #     body_coords = self.body_coords.copy()
+    #     route_list = list(route)
+    #     new_route = None
 
-                elif food_index == 0 and len(self.food_in_route) > 1:
-                    food_after = self.food_in_route[1]
+    #     for food in sorted(self.food_in_route, key=lambda x: route_list.index(x)):
+    #         f_x, f_y = food
+    #         if s_map[f_y][f_x] != self.env.FOOD_TILE and food in route_list and food in self.food_in_route:
+    #             food_index = self.food_in_route.index(food)
+    #             start_search_index = 0
+    #             if 0 < food_index < len(self.food_in_route)-1:
+    #                 food_before = self.food_in_route[food_index - 1]
+    #                 food_after = self.food_in_route[food_index + 1]
+    #                 food_before_index = route_list.index(food_before)
+    #                 for coord in route_list[:food_before_index]:
+    #                     old_tail = self.update_body(coord, body_coords, self.length)
+    #                     s_map = self.update_snake_position(s_map, body_coords, old_tail)
+    #                 start_search_index = food_before_index
 
-                elif food in route_list:
-                    food_before = self.food_in_route[food_index - 1]
-                    food_before_index = route_list.index(food_before)
-                    new_route = route_list[:food_before_index]
-                    start_search_index = len(route_list)
+    #             elif food_index == 0 and len(self.food_in_route) > 1:
+    #                 food_after = self.food_in_route[1]
 
-                for coord in route_list[start_search_index:]:
-                    old_tail = self.update_body(coord, body_coords, self.length)
-                    s_map = self.update_snake_position(s_map, body_coords, old_tail)
-                    if new_subroute := self.get_route(s_map, coord, food_after):
-                        sub_begin = new_subroute[0]
-                        sub_end = new_subroute[-1]
-                        sub_begin_index = route_list.index(sub_begin)
-                        sub_end_index = route_list.index(sub_end)
-                        new_route = route_list[:sub_begin_index] + new_subroute + route_list[sub_end_index+1:]
-                if food in self.food_in_route:
-                    self.food_in_route.remove(food)
-            if new_route:
-                self.set_route(deque(new_route))
+    #             elif food in route_list:
+    #                 food_before = self.food_in_route[food_index - 1]
+    #                 food_before_index = route_list.index(food_before)
+    #                 new_route = route_list[:food_before_index]
+    #                 start_search_index = len(route_list)
+
+    #             for coord in route_list[start_search_index:]:
+    #                 old_tail = self.update_body(coord, body_coords, self.length)
+    #                 s_map = self.update_snake_position(s_map, body_coords, old_tail)
+    #                 if new_subroute := self.get_route(s_map, coord, end=food_after):
+    #                     new_subroute.reverse()
+    #                     sub_begin = new_subroute[-1]
+    #                     sub_end = new_subroute[0]
+    #                     sub_begin_index = route_list.index(sub_begin)
+    #                     sub_end_index = route_list.index(sub_end)
+    #                     new_route = route_list[:sub_end_index] + new_subroute.reverse() + route_list[sub_begin_index+1:]
+    #             if food in self.food_in_route:
+    #                 self.food_in_route.remove(food)
+    #         if new_route:
+    #             self.set_route(deque(new_route))
 
 
     def find_route(self, s_map, body_coords, head_coord, option_coord):
         t_dir = coord_op(option_coord, head_coord, '-')
         time_s = time()
-        route = self.deep_look_ahead(copy_map(s_map), option_coord, body_coords.copy(), self.length, start_time=time_s)
-        route['coord'] = option_coord
-        route['timeout'] = route.get('timeout', False)
-        route['free_path'] = route['depth'] >= self.length
-        route['dir'] = t_dir
+        option = self.deep_look_ahead(copy_map(s_map), option_coord, body_coords.copy(), self.length, start_time=time_s)
+        option['coord'] = option_coord
+        option['timeout'] = option.get('timeout', False)
+        option['free_path'] = option['depth'] >= self.length
+        option['dir'] = t_dir
         time_s = time()
-        route['risk'] = self.calc_immediate_risk(copy_map(s_map), option_coord)
-        return route
+        option['risk'] = self.calc_immediate_risk(copy_map(s_map), option_coord)
+        return option
 
     def get_best_route(self):
         options = {}
@@ -129,33 +166,41 @@ class AutoSnake4(AutoSnakeBase):
 
     def pick_direction(self):
         next_tile = None
+        time_s = time()
+        # print('current route: ', self.route)
         if self.verify_route(self.route):
             # print('route verified')
-            next_tile = self.route[-1]
-            option = self.deep_look_ahead(copy_map(self.map), next_tile, self.body_coords.copy(), self.length, planned_route=self.route)
+            closest_food_route = self.get_route(self.map, self.coord, target_tiles=self.env.food.locations)
+            if closest_food_route and closest_food_route[0] not in self.food_in_route:
+                planned_route = closest_food_route
+                old_route = self.route
+            else:
+                old_route = None
+                planned_route = self.route
+            look_ahead_tile = planned_route.pop()
+            # print('look_ahead_tile: ', look_ahead_tile)
+            option = self.deep_look_ahead(copy_map(self.map), look_ahead_tile, self.body_coords.copy(), self.length, planned_route=planned_route, old_route=old_route, start_time=time_s)
             # print(option)
+            # print('route time: ', (time() - time_s) * 1000)
             self.set_route(option['body_coords'])
-            # print('extended route: ', self.route)
+            # print('new route: ', self.route)
             if self.route: next_tile = self.route.pop()
         else:
             # print('route not verified')
             route = self.get_best_route()
             self.set_route(route)
             # print('new route: ', self.route)
+            # print('route time: ', (time() - time_s) * 1000)
             if self.route:
                 next_tile = self.route.pop()
             else:
                 next_tile = None
         return next_tile
 
-    def target_tile(self, s_map, body_coords, route, recurse_mode=False):
+    def target_tile(self, s_map, body_coords, recurse_mode=False):
         self_coord = body_coords[0]
         if not recurse_mode and (attack_moves := self.find_attack_moves(s_map)):
             return coord_op(self_coord, attack_moves[0], '+')
-        if route:
-            target_tile = route.pop()
-            if not route: route = None
-            return target_tile
         s_dir = coord_op(self_coord, body_coords[1], '-')
         return coord_op(self_coord, s_dir, '+')
 
@@ -234,19 +279,21 @@ class AutoSnake4(AutoSnakeBase):
         return is_clear
 
     def verify_route(self, route):
-        has_route = route is not None and len(route) > 0
-        if has_route:
-            for coord in route:
-                x, y = coord
-                if self.map[y][x] not in [self.env.FREE_TILE, self.env.FOOD_TILE, self.body_value, self.head_value]:
-                    return False
-        return has_route
+        if not route:
+            return False
+        if route[-1] not in self.valid_tiles(self.map, self.coord):
+            return False
+        for coord in route:
+            x, y = coord
+            if self.map[y][x] not in [self.env.FREE_TILE, self.env.FOOD_TILE, self.body_value, self.head_value]:
+                return False
+        return True
 
 
     def deep_look_ahead(self, s_map, new_coord, body_coords, length,
                         start_time=None,
-                        apple_route=None,
                         planned_route=None,
+                        old_route=None,
                         depth=1,
                         best_results=None,
                         current_results=None,
@@ -288,19 +335,32 @@ class AutoSnake4(AutoSnakeBase):
             if check_result.get('depth', 0) >= length or check_result['timeout']:
                 return check_result
 
-        apple_route = self.closest_apple_route([new_coord], s_map)
-        target_tile = self.target_tile(s_map, body_coords, apple_route, recurse_mode=True)
         best_results['depth'] = max(best_results.get('depth', 0), current_results['depth'])
         best_results['len_gain'] = max(best_results.get('len_gain', 0), current_results['len_gain'])
         best_results['apple_time'] = []
         best_results['timeout'] = False
         best_results['body_coords'] = max(best_results.get('body_coords', deque()), current_results['body_coords'], key=lambda o: len(o))
-        valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
+
         if ((time() - start_time) * 1000 > self.MAX_BRANCH_TIME) and self.TIME_LIMIT:
             best_results['timeout'] = True
             return best_results
         if current_results['depth'] >= length:
             return current_results
+
+        if old_route and new_coord in old_route:
+            index = old_route.index(new_coord)
+            old_route_list = list(old_route)
+            planned_route = old_route_list[:index+1]
+            old_route = None
+        else:
+            route_targets = list(self.env.food.locations) + list(old_route or set())
+            planned_route = self.get_route(s_map, new_coord, target_tiles=route_targets)
+
+        if planned_route:
+            target_tile = planned_route.pop()
+        else:
+            target_tile = self.target_tile(s_map, body_coords, recurse_mode=True)
+        valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
         # print('______________________')
         # print('new_coord: ', new_coord)
         # print('target_tile:', target_tile)
@@ -320,7 +380,8 @@ class AutoSnake4(AutoSnakeBase):
                     tile,
                     body_coords.copy(),
                     length,
-                    apple_route=apple_route if tile == target_tile else None,
+                    planned_route=planned_route,
+                    old_route=old_route,
                     depth=depth+1,
                     best_results=best_results,
                     current_results=current_results.copy(),

@@ -48,6 +48,9 @@ class AutoSnakeBase(Snake):
         tile = self.pick_direction()
         # print(f"{self.body_coords=}")
         # self.print_map(self.map_to_print)
+        # if tile not in self.valid_tiles(self.map, self.coord):
+        #     print('it happened')
+        #     pass
         if tile is not None:
             self.coord = tile
             self.x, self.y = tile
@@ -100,7 +103,7 @@ class AutoSnakeBase(Snake):
     def show_route(self, s_map, s_route):
         if s_route is None: return
         for x, y in list(s_route)[1:]:
-            s_map[y][x] = ord('¤')
+            s_map[y][x] = ord('R')
         return copy_map(s_map)
 
 
@@ -130,18 +133,28 @@ class AutoSnakeBase(Snake):
                 return (row.index(head), y)
         return None
 
-    def get_route(self, s_map, start, end):
+    def get_route(self, s_map, start, end=None, target_tiles=None):
+        """Returns a route from start to end or to a target tile if target_tiles is not None"""
+        if target_tiles is None and end is None:
+            raise ValueError("end and target_tiles can't both be None")
         checked = [False] * (self.env.height * self.env.width)
         current_coords = [start]
         coord_map = {}
         coord_maps = []
+        route = []
         done = False
         while current_coords:
             next_coords = []
             for coord in current_coords:
                 valid_tiles = self.valid_tiles(s_map, coord)
-                if coord == end:
-                    done = True
+                if end is None:
+                    if coord in target_tiles:
+                        route.append(coord)
+                        done = True
+                else:
+                    if coord == end:
+                        route.append(coord)
+                        done = True
                 for valid_coord in valid_tiles:
                     t_x, t_y = valid_coord
                     if not checked[t_y * self.env.width + t_x]:
@@ -149,7 +162,6 @@ class AutoSnakeBase(Snake):
                         coord_map[valid_coord] = coord
                         checked[t_y * self.env.width + t_x] = True
             if done:
-                route = [end]
                 counter = 0
                 while route[-1] != start:
                     counter += 1
@@ -201,9 +213,9 @@ class AutoSnakeBase(Snake):
         for row in s_map:
             print_row = []
             for c in row:
-                if c == SnakeEnv.FREE_TILE:
+                if c == self.env.FREE_TILE:
                     print_row.append(' . ')
-                elif c == SnakeEnv.FOOD_TILE:
+                elif c == self.env.FOOD_TILE:
                     print_row.append(' F ')
                 else:
                     print_row.append(f' {chr(c)} ')
