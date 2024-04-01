@@ -29,6 +29,9 @@ class AutoSnake4(AutoSnakeBase):
             return
         if self.coord in route:
             route = deque(list(route)[:route.index(self.coord)])
+        if not route:
+            self.route = None
+            return
         valid_tiles = self.valid_tiles(self.map, self.coord)
         if route[-1] not in valid_tiles:
             try:
