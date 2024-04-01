@@ -26,7 +26,7 @@ if __name__ == '__main__':
     env.add_snake(AutoSnake4('I', snake_init_len), (157, 0, 255), (157, 0, 255))
     env.add_snake(AutoSnake4('J', snake_init_len), (255, 251, 0), (255, 251, 0))
 
-    for _ in range(1):
+    for _ in range(10):
         env.generate_run()
         env.reset()
 

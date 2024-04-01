@@ -33,7 +33,7 @@ class Food:
     width: int
     height: int
     max_food: int
-    decay_count: int = 50
+    decay_count: int = 200
     locations: set = field(default_factory=set)
     decay_counters: dict = field(default_factory=dict)
 
@@ -299,7 +299,7 @@ class SnakeEnv:
                 color_map.append(self.COLOR_MAPPING[tile_value])
         return color_map
 
-    def generate_run(self, max_steps = None):
+    def generate_run(self, max_steps=None, max_no_food_steps=300):
         start_time = time()
         self.init_recorder()
         for snake in self.snakes.values():
@@ -311,9 +311,8 @@ class SnakeEnv:
                 print(f"Step: {self.time_step}, passed time sec: {time() - start_time:.2f}")
                 if self.alive_snakes:
                     if len(self.alive_snakes) == 1:
-                        only_one = self.alive_snakes[0]
-
-                        if (self.time_step - self.snakes_info[only_one.id]['last_food']) > 100 or max_steps is not None and self.time_step > max_steps:
+                        lowest_no_food = min([self.snakes_info[only_one.id]['last_food'] for only_one in self.alive_snakes])
+                        if (self.time_step - lowest_no_food) > max_no_food_steps or max_steps is not None and self.time_step > max_steps:
                             ongoing = False
                     self.update()
                 else:
