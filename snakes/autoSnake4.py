@@ -16,7 +16,7 @@ from snake_env import (
 class AutoSnake4(AutoSnakeBase):
     TIME_LIMIT = True
     MAX_RISK_CALC_DEPTH = 3
-    MAX_BRANCH_TIME = 3000
+    MAX_BRANCH_TIME = 10000
 
 
     def __init__(self, id: str, start_length: int):
@@ -31,8 +31,17 @@ class AutoSnake4(AutoSnakeBase):
             route = deque(list(route)[:route.index(self.coord)])
         valid_tiles = self.valid_tiles(self.map, self.coord)
         if route[-1] not in valid_tiles:
-            sub_route = self.get_route(self.map, self.coord, end=route[-1])
-            route = deque(list(route) + sub_route[1:-1])
+            try:
+                sub_route = self.get_route(self.map, self.coord, end=route[-1])
+                route = deque(list(route) + sub_route[1:-1])
+            except:
+                s_map = copy_map(self.map)
+                self.show_route(s_map, route)
+                print('route: ', route)
+                print('valid_tiles: ', valid_tiles)
+                print('coord: ', self.coord)
+                self.print_map(s_map)
+                raise ValueError('Invalid route')
         self.food_in_route = []
         last_coord = None
         for coord in reversed(route):
@@ -183,6 +192,8 @@ class AutoSnake4(AutoSnakeBase):
             # print(option)
             # print('route time: ', (time() - time_s) * 1000)
             self.set_route(option['body_coords'])
+            # print(option['body_coords'])
+            # print(option['route'])
             # print('new route: ', self.route)
             if self.route: next_tile = self.route.pop()
         else:
@@ -306,6 +317,7 @@ class AutoSnake4(AutoSnakeBase):
             current_results['timeout'] = False
             current_results['apple_time'] = []
             current_results['len_gain'] = 0
+            current_results['route'] = deque()
         if best_results is None:
             best_results = {}
         if s_map[new_coord[1]][new_coord[0]] == self.env.FOOD_TILE:
@@ -314,9 +326,26 @@ class AutoSnake4(AutoSnakeBase):
             current_results['len_gain'] = length - self.length
         current_results['body_coords'] = body_coords
         current_results['depth'] = depth
+        current_results['route'] = current_results['route'].copy()
+        current_results['route'].appendleft(new_coord)
+
+        best_results['depth'] = max(best_results.get('depth', 0), current_results['depth'])
+        best_results['len_gain'] = max(best_results.get('len_gain', 0), current_results['len_gain'])
+        best_results['apple_time'] = []
+        best_results['timeout'] = False
+        best_results['body_coords'] = max(best_results.get('body_coords', deque()), current_results['body_coords'], key=lambda o: len(o))
+        best_results['route'] = max(best_results.get('route', deque()), current_results['route'], key=lambda o: len(o))
+
+        if ((time() - start_time) * 1000 > self.MAX_BRANCH_TIME) and self.TIME_LIMIT:
+            best_results['timeout'] = True
+            return best_results
+        if current_results['depth'] >= length:
+            return current_results
+
         old_tail = self.update_body(new_coord, body_coords, length)
         s_map = self.update_snake_position(s_map, body_coords, old_tail)
         valid_tiles = self.valid_tiles(s_map, new_coord)
+
 
         if planned_route:
             planned_tile = planned_route.pop()
@@ -335,18 +364,6 @@ class AutoSnake4(AutoSnakeBase):
             if check_result.get('depth', 0) >= length or check_result['timeout']:
                 return check_result
 
-        best_results['depth'] = max(best_results.get('depth', 0), current_results['depth'])
-        best_results['len_gain'] = max(best_results.get('len_gain', 0), current_results['len_gain'])
-        best_results['apple_time'] = []
-        best_results['timeout'] = False
-        best_results['body_coords'] = max(best_results.get('body_coords', deque()), current_results['body_coords'], key=lambda o: len(o))
-
-        if ((time() - start_time) * 1000 > self.MAX_BRANCH_TIME) and self.TIME_LIMIT:
-            best_results['timeout'] = True
-            return best_results
-        if current_results['depth'] >= length:
-            return current_results
-
         if old_route and new_coord in old_route:
             index = old_route.index(new_coord)
             old_route_list = list(old_route)
@@ -361,6 +378,7 @@ class AutoSnake4(AutoSnakeBase):
         else:
             target_tile = self.target_tile(s_map, body_coords, recurse_mode=True)
         valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
+
         # print('______________________')
         # print('new_coord: ', new_coord)
         # print('target_tile:', target_tile)
