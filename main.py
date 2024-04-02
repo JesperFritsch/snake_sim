@@ -10,7 +10,7 @@ from render.pygame_render import playback_runfile
 
 GRID_WIDTH = 32
 GRID_HEIGHT = 32
-FOOD = 25
+FOOD = 35
 
 if __name__ == '__main__':
     snake_init_len = 5
