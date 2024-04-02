@@ -2,6 +2,19 @@ import json
 
 from snake_env import coord_op, SnakeEnv
 
+def pixel_changes_from_runfile(filepath, expand_factor=2):
+    grid_changes = grid_changes_from_runfile(filepath, expand_factor)
+    pixel_changes = {}
+    pixel_changes.update(grid_changes)
+    pixel_changes['changes'] = []
+    color_changes = grid_changes['changes']
+    for step_data in color_changes:
+        food_changes = step_data['food_changes']
+        for snake_change in step_data['snake_changes']:
+            pixel_changes['changes'].append(food_changes + snake_change)
+            food_changes = []
+    return pixel_changes
+
 def grid_changes_from_runfile(filename, expand_factor=2):
     grid_changes = {}
     run_dict = {}

@@ -7,19 +7,16 @@ import pygame
 import core
 
 def frames_from_runfile(filepath, expand_factor=2):
-    grid_changes = core.grid_changes_from_runfile(filepath, expand_factor)
-    grid_height = grid_changes['height']
-    grid_width = grid_changes['width']
-    color_changes = grid_changes['changes']
+    pixel_changes = core.pixel_changes_from_runfile(filepath, expand_factor)
     frames = []
-    color_list = [grid_changes['free_color']] * ((grid_width) * (grid_height))
-    for step_data in color_changes:
-        for (x, y), color in step_data['food_changes']:
+    grid_height = pixel_changes['height']
+    grid_width = pixel_changes['width']
+    color_list = [pixel_changes['free_color']] * ((grid_width) * (grid_height))
+    changes = pixel_changes['changes']
+    for step_data in changes:
+        for (x, y), color in step_data:
             color_list[y * (grid_width) + x] = color
-        for snake_change in step_data['snake_changes']:
-            for (x, y), color in snake_change:
-                color_list[y * (grid_width) + x] = color
-            frames.append(color_list.copy())
+        frames.append(color_list.copy())
     return frames, grid_width, grid_height
 
 
