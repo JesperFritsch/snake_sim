@@ -194,21 +194,24 @@ class AutoSnake4(AutoSnakeBase):
             option = self.deep_look_ahead(copy_map(self.map), look_ahead_tile, self.body_coords.copy(), self.length, planned_route=planned_route, old_route=old_route, start_time=time_s)
             # print(option)
             # print('route time: ', (time() - time_s) * 1000)
-            self.set_route(option['body_coords'])
-            # print(option['body_coords'])
-            # print(option['route'])
-            # print('new route: ', self.route)
-            if self.route: next_tile = self.route.pop()
+            if option['depth'] >= self.length:
+                self.set_route(option['body_coords'])
+                # print(option['body_coords'])
+                # print(option['route'])
+                # print('new route: ', self.route)
+                if self.route:
+                    next_tile = self.route.pop()
+                    return next_tile
+
+        # print('route not verified')
+        route = self.get_best_route()
+        self.set_route(route)
+        # print('new route: ', self.route)
+        # print('route time: ', (time() - time_s) * 1000)
+        if self.route:
+            next_tile = self.route.pop()
         else:
-            # print('route not verified')
-            route = self.get_best_route()
-            self.set_route(route)
-            # print('new route: ', self.route)
-            # print('route time: ', (time() - time_s) * 1000)
-            if self.route:
-                next_tile = self.route.pop()
-            else:
-                next_tile = None
+            next_tile = None
         return next_tile
 
     def target_tile(self, s_map, body_coords, recurse_mode=False):
@@ -336,7 +339,7 @@ class AutoSnake4(AutoSnakeBase):
         best_results['len_gain'] = max(best_results.get('len_gain', 0), current_results['len_gain'])
         best_results['apple_time'] = []
         best_results['timeout'] = False
-        best_results['body_coords'] = max(best_results.get('body_coords', deque()), current_results['body_coords'], key=lambda o: len(o))
+        best_results['body_coords'] = max(best_results.get('body_coords', deque()), current_results['body_coords'].copy(), key=lambda o: len(o))
         best_results['route'] = max(best_results.get('route', deque()), current_results['route'], key=lambda o: len(o))
 
         if ((time() - start_time) * 1000 > self.MAX_BRANCH_TIME) and self.TIME_LIMIT:
