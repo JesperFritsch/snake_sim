@@ -79,7 +79,9 @@ class StepData:
     def add_snake_data(self, snake_coords: list, head_dir: tuple, tail_dir: tuple, snake_id: str):
         self.snakes.append({
             'snake_id': snake_id,
-            'coords': snake_coords,
+            'curr_head': snake_coords[0],
+            'prev_head': snake_coords[1],
+            'curr_tail': snake_coords[-1],
             'head_dir': head_dir,
             'tail_dir': tail_dir
         })
@@ -120,6 +122,8 @@ class RunData:
         return {
             'width': self.width,
             'height': self.height,
+            'food_color': SnakeEnv.COLOR_MAPPING[SnakeEnv.FOOD_TILE],
+            'free_color': SnakeEnv.COLOR_MAPPING[SnakeEnv.FREE_TILE],
             'snake_data': self.snake_data,
             'steps': {k: v.to_dict() for k, v in self.steps.items()}
         }

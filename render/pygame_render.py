@@ -3,57 +3,24 @@ SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 1000
 
 import pygame
-import json
-import sys
 
-from snake_env import coord_op, SnakeEnv
+import core
 
-def frames_from_runfile(filename, expand_factor=2):
-    bg_color = (0,0,0)
-    run_dict = {}
+def frames_from_runfile(filepath, expand_factor=2):
+    grid_changes = core.grid_changes_from_runfile(filepath, expand_factor)
+    grid_height = grid_changes['height']
+    grid_width = grid_changes['width']
+    color_changes = grid_changes['changes']
     frames = []
-    with open(filename) as run_json:
-        run_dict = json.load(run_json)
-    grid_height = run_dict['height']
-    grid_width = run_dict['width']
-    new_grid_h = grid_height * expand_factor
-    new_grid_w = grid_width * expand_factor
-    snake_data = run_dict['snake_data']
-    snake_colors = {x.get('snake_id'): {'head_color': x.get('head_color'), 'body_color': x.get('body_color')} for x in snake_data}
-    steps = run_dict['steps']
-    color_list = [bg_color] * ((new_grid_w) * (new_grid_h))
-    old_food = []
-    for step, step_data in steps.items():
-        for food in old_food:
-            food_x, food_y = coord_op(food, (expand_factor, expand_factor), '*')
-            if color_list[food_y * (new_grid_w) + food_x] == SnakeEnv.COLOR_MAPPING[SnakeEnv.FOOD_TILE]:
-                color_list[food_y * (new_grid_w) + food_x] = SnakeEnv.COLOR_MAPPING[SnakeEnv.FREE_TILE]
-        for food in step_data['food']:
-            food_x, food_y = coord_op(food, (expand_factor, expand_factor), '*')
-            color_list[food_y * (new_grid_w) + food_x] = SnakeEnv.COLOR_MAPPING[SnakeEnv.FOOD_TILE]
-        old_food = step_data['food']
-        for i in range(1, expand_factor+1):
-            for snake in step_data['snakes']:
-                snake_id = snake['snake_id']
-                head_color = snake_colors[snake_id]['head_color']
-                body_color = snake_colors[snake_id]['body_color']
-                head_dir = snake['head_dir']
-                tail_dir = snake['tail_dir']
-                head_coord = snake['coords'][1] #fill in from prevoius head to current head.
-                tail_coord = snake['coords'][-1]
-                t_dir_mult = coord_op(tail_dir, (expand_factor, expand_factor), '*')
-                head_coord_mult = coord_op(head_coord, (expand_factor, expand_factor), '*')
-                tail_coord_mult = coord_op(tail_coord, (expand_factor, expand_factor), '*')
-                old_tail = coord_op(tail_coord_mult, t_dir_mult, '-')
-                h_dir_mult = coord_op(head_dir, (i, i), '*')
-                h_x, h_y = coord_op(head_coord_mult, h_dir_mult, '+')
-                color_list[h_y * (new_grid_w) + h_x] = body_color
-                if any([x != 0 for x in tail_dir]):
-                    t_dir_mult = coord_op(tail_dir, (i-1, i-1), '*')
-                    t_x, t_y = coord_op(old_tail, t_dir_mult, '+')
-                    color_list[t_y * (new_grid_w) + t_x] = bg_color
+    color_list = [grid_changes['free_color']] * ((grid_width) * (grid_height))
+    for step_data in color_changes:
+        for (x, y), color in step_data['food_changes']:
+            color_list[y * (grid_width) + x] = color
+        for snake_change in step_data['snake_changes']:
+            for (x, y), color in snake_change:
+                color_list[y * (grid_width) + x] = color
             frames.append(color_list.copy())
-    return frames, new_grid_w, new_grid_h
+    return frames, grid_width, grid_height
 
 
 def draw_frame(screen, width, height, frame):
@@ -99,3 +66,6 @@ def playback_runfile(filename):
     while True:
         handle_events()
         pygame.display.flip()
+
+# if __name__ == '__main__':
+#     playback_runfile(r'B:\pythonStuff\snake_sim\runs\batch\grid_32x32\10_snakes_32x32_69D8WQ_184__ABORTED.json')

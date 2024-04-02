@@ -352,7 +352,6 @@ class AutoSnake4(AutoSnakeBase):
         s_map = self.update_snake_position(s_map, body_coords, old_tail)
         valid_tiles = self.valid_tiles(s_map, new_coord)
 
-
         if planned_route:
             planned_tile = planned_route.pop()
         if planned_tile and planned_tile in valid_tiles:
