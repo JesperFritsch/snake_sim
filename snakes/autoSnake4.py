@@ -16,7 +16,7 @@ from snake_env import (
 class AutoSnake4(AutoSnakeBase):
     TIME_LIMIT = True
     MAX_RISK_CALC_DEPTH = 3
-    MAX_BRANCH_TIME = 10000
+    MAX_BRANCH_TIME = 1000
 
 
     def __init__(self, id: str, start_length: int):
@@ -173,7 +173,7 @@ class AutoSnake4(AutoSnakeBase):
                     else:
                         best_option = max(options.values(), key=lambda x: x['len_gain'])
         if best_option is not None:
-            return best_option['body_coords']
+            return best_option['route']
         return None
 
     def pick_direction(self):
@@ -195,7 +195,7 @@ class AutoSnake4(AutoSnakeBase):
             # print(option)
             # print('route time: ', (time() - time_s) * 1000)
             if option['depth'] >= self.length:
-                self.set_route(option['body_coords'])
+                self.set_route(option['route'])
                 # print(option['body_coords'])
                 # print(option['route'])
                 # print('new route: ', self.route)
