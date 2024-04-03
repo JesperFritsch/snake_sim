@@ -1,6 +1,7 @@
 import json
 
-from snake_env import coord_op, SnakeEnv
+from utils import coord_op
+
 
 def pixel_changes_from_runfile(filepath, expand_factor=2):
     grid_changes = grid_changes_from_runfile(filepath, expand_factor)
@@ -41,12 +42,14 @@ def grid_changes_from_runfile(filename, expand_factor=2):
     color_list = [free_color] * ((new_grid_w) * (new_grid_h)) #The color list just makes it easier to keep track of the grid changes.
     for step, step_data in steps.items():
         food_changes = []
-        for food in old_food:
+        removed_food = [food for food in old_food if food not in step_data['food']]
+        new_food = [food for food in step_data['food'] if food not in old_food]
+        for food in removed_food:
             food_x, food_y = coord_op(food, (expand_factor, expand_factor), '*')
             if color_list[food_y * (new_grid_w) + food_x] == food_color:
                 food_changes.append(((food_x, food_y), free_color))
                 color_list[food_y * (new_grid_w) + food_x] = free_color
-        for food in step_data['food']:
+        for food in new_food:
             food_x, food_y = coord_op(food, (expand_factor, expand_factor), '*')
             food_changes.append(((food_x, food_y), food_color))
             color_list[food_y * (new_grid_w) + food_x] = food_color

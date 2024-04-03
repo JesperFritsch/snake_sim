@@ -25,8 +25,13 @@ if __name__ == '__main__':
     env.add_snake(AutoSnake4('H', snake_init_len), (250, 2, 147), (250, 2, 147))
     env.add_snake(AutoSnake4('I', snake_init_len), (157, 0, 255), (157, 0, 255))
     env.add_snake(AutoSnake4('J', snake_init_len), (255, 251, 0), (255, 251, 0))
+    env.add_snake(AutoSnake4('K', snake_init_len), (52, 235, 161), (52, 235, 161))
+    env.add_snake(AutoSnake4('L', snake_init_len), (255, 255, 255), (255, 255, 255))
+    env.add_snake(AutoSnake4('M', snake_init_len), (97, 215, 255), (97, 215, 255))
+    env.add_snake(AutoSnake4('N', snake_init_len), (201, 8, 105), (201, 8, 105))
+    env.add_snake(AutoSnake4('O', snake_init_len), (107, 240, 5), (107, 240, 5))
 
-    for _ in range(1):
+    for _ in range(10):
         env.generate_run()
         env.reset()
 

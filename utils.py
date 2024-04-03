@@ -5,31 +5,31 @@ import shutil
 import json
 
 
+
+def coord_op(coord_left, coord_right, op):
+    # Check the operation and perform it directly
+    if op == '+':
+        return tuple(l + r for l, r in zip(coord_left, coord_right))
+    elif op == '-':
+        return tuple(l - r for l, r in zip(coord_left, coord_right))
+    elif op == '*':
+        return tuple(l * r for l, r in zip(coord_left, coord_right))
+    else:
+        raise ValueError("Unsupported operation")
+
+
 def rand_str(n):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
 
 if __name__ == '__main__':
-    run_dir = os.path.join(os.getcwd(), 'runs', 'grid_32x32')
+    from render import core
+    run_dir = os.path.join(os.getcwd(), 'runs', 'batch', 'grid_32x32')
+    rpi_runs = os.path.join(run_dir, 'rpi')
     for file in os.listdir(run_dir):
-        name, end = os.path.splitext(file)
-        comps = name.split('_')
-        if len(comps) != 4:
-            continue
-        s_nr, text, grid, rand = comps
-        with open(os.path.join(run_dir, file)) as f:
-            run_data = json.load(f)
-            steps = len(run_data['steps'])
-            new_name = '_'.join([str(x) for x in [s_nr, text, grid, rand, steps]]) + end
-        shutil.move(os.path.join(run_dir, file), os.path.join(run_dir, new_name))
-        print(f"renamed {os.path.join(run_dir, file)} to {os.path.join(run_dir, new_name)}")
-
-def generate_scenario():
-    body_coords = []
-    map_rows = []
-    map_row = []
-
-    for y in range(32):
-        for x in range(32):
-            if x != x_line and y != y_line:
-                map_row.append(0)
-        print()
+        nr_snakes, text, grid, randstr, steps, empty = file.split('_')
+        new_filename = f'{nr_snakes}_snakes_rpi_{randstr}_{steps}.run'
+        pixel_changes = core.pixel_changes_from_runfile(os.path.join(run_dir, file))
+        pixel_change_list = pixel_changes['changes']
+        with open(os.path.join(rpi_runs, new_filename), 'w') as f:
+            for change in pixel_change_list:
+                f.write(json.dumps(change) + '\n')

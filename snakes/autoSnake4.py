@@ -5,9 +5,10 @@ from collections import deque
 from statistics import mean
 from time import time
 
+from utils import coord_op
+
 from snakes.autoSnakeBase import AutoSnakeBase, copy_map
 from snake_env import (
-        coord_op,
         DIR_MAPPING,
     )
 
@@ -55,77 +56,6 @@ class AutoSnake4(AutoSnakeBase):
             if self.map[coord[1]][coord[0]] == self.env.FOOD_TILE:
                 self.food_in_route.append(coord)
         self.route = route
-
-    # def extend_route(self, route: deque):
-    #     """This function is to extend the route to include nearby food, if possible."""
-    #     s_map = copy_map(self.map)
-    #     # s_map = self.show_route(s_map, self.route) #this is to show the route on the map, it also makes the route tiles invalid in the apple search
-    #     apple_route = self.closest_apple_route([self.coord], s_map)
-    #     # print('self.route: ', self.route)
-    #     if apple_route:
-    #         # self.print_map(s_map)
-    #         # print('-------____--__')
-    #         # s_map = self.show_route(s_map, apple_route)
-    #         # print('apple_route: ', apple_route)
-    #         r_start = route[-1]
-    #         s_map[r_start[1]][r_start[0]] = self.env.FREE_TILE # this is to be able to find a route to the start of self.route
-    #         # self.print_map(s_map)
-    #         get_back_route = self.get_route(s_map, apple_route[0], end=route[-1])
-    #         if get_back_route:
-    #             # print('has extended route')
-    #             # print('get_back_route: ', get_back_route)
-    #             new_subroute = get_back_route[:-1] + apple_route # the routes are 'revered', the coord at index -1 is the start of the route
-    #             route_list = list(route)
-    #             new_route = deque(route_list + new_subroute[1:])
-    #             # print('new_subroute: ', new_subroute)
-    #             # print('new_route',new_route)
-    #             # s_map = self.show_route(s_map, new_route)
-    #             # self.print_map(s_map)
-    #             return new_route
-
-    # def refine_route(self, route: deque):
-    #     s_map = copy_map(self.map)
-    #     body_coords = self.body_coords.copy()
-    #     route_list = list(route)
-    #     new_route = None
-
-    #     for food in sorted(self.food_in_route, key=lambda x: route_list.index(x)):
-    #         f_x, f_y = food
-    #         if s_map[f_y][f_x] != self.env.FOOD_TILE and food in route_list and food in self.food_in_route:
-    #             food_index = self.food_in_route.index(food)
-    #             start_search_index = 0
-    #             if 0 < food_index < len(self.food_in_route)-1:
-    #                 food_before = self.food_in_route[food_index - 1]
-    #                 food_after = self.food_in_route[food_index + 1]
-    #                 food_before_index = route_list.index(food_before)
-    #                 for coord in route_list[:food_before_index]:
-    #                     old_tail = self.update_body(coord, body_coords, self.length)
-    #                     s_map = self.update_snake_position(s_map, body_coords, old_tail)
-    #                 start_search_index = food_before_index
-
-    #             elif food_index == 0 and len(self.food_in_route) > 1:
-    #                 food_after = self.food_in_route[1]
-
-    #             elif food in route_list:
-    #                 food_before = self.food_in_route[food_index - 1]
-    #                 food_before_index = route_list.index(food_before)
-    #                 new_route = route_list[:food_before_index]
-    #                 start_search_index = len(route_list)
-
-    #             for coord in route_list[start_search_index:]:
-    #                 old_tail = self.update_body(coord, body_coords, self.length)
-    #                 s_map = self.update_snake_position(s_map, body_coords, old_tail)
-    #                 if new_subroute := self.get_route(s_map, coord, end=food_after):
-    #                     new_subroute.reverse()
-    #                     sub_begin = new_subroute[-1]
-    #                     sub_end = new_subroute[0]
-    #                     sub_begin_index = route_list.index(sub_begin)
-    #                     sub_end_index = route_list.index(sub_end)
-    #                     new_route = route_list[:sub_end_index] + new_subroute.reverse() + route_list[sub_begin_index+1:]
-    #             if food in self.food_in_route:
-    #                 self.food_in_route.remove(food)
-    #         if new_route:
-    #             self.set_route(deque(new_route))
 
 
     def find_route(self, s_map, body_coords, head_coord, option_coord):

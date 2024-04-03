@@ -3,10 +3,10 @@ import numpy as np
 import itertools
 from statistics import mean
 from time import time
+from utils import coord_op
 
 from snakes.autoSnakeBase import AutoSnakeBase, copy_map
 from snake_env import (
-        coord_op,
         DIR_MAPPING
     )
 

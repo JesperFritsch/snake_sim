@@ -64,5 +64,5 @@ def playback_runfile(filename):
         handle_events()
         pygame.display.flip()
 
-# if __name__ == '__main__':
-#     playback_runfile(r'B:\pythonStuff\snake_sim\runs\batch\grid_32x32\10_snakes_32x32_69D8WQ_184__ABORTED.json')
+if __name__ == '__main__':
+    playback_runfile(r'B:\pythonStuff\snake_sim\runs\batch\grid_32x32\10_snakes_32x32_R3NX4P_595_.json')
