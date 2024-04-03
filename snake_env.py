@@ -4,10 +4,11 @@ import json
 import os
 
 import utils
+from utils import coord_op
+from render import core as render
 from snakes.snake import Snake
 from time import time
 from dataclasses import dataclass, field
-
 
 DIR_MAPPING = {
     (0, -1): 'up',
@@ -15,17 +16,6 @@ DIR_MAPPING = {
     (0,  1): 'down',
     (-1, 0): 'left'
 }
-
-def coord_op(coord_left, coord_right, op):
-    # Check the operation and perform it directly
-    if op == '+':
-        return tuple(l + r for l, r in zip(coord_left, coord_right))
-    elif op == '-':
-        return tuple(l - r for l, r in zip(coord_left, coord_right))
-    elif op == '*':
-        return tuple(l * r for l, r in zip(coord_left, coord_right))
-    else:
-        raise ValueError("Unsupported operation")
 
 @dataclass
 class Food:
@@ -112,11 +102,21 @@ class RunData:
         aborted_str = '_ABORTED' if aborted else ''
         grid_str = f'{self.width}x{self.height}'
         nr_snakes = f'{len(self.snake_data)}'
-        filename = f'{nr_snakes}_snakes_{grid_str}_{utils.rand_str(6)}_{len(self.steps)}_{aborted_str}.json'
+        rand_str = utils.rand_str(6)
+        filename = f'{nr_snakes}_snakes_{grid_str}_{rand_str}_{len(self.steps)}{aborted_str}.json'
         filepath = os.path.join(run_dir, filename)
         print(f"saving run data to '{filepath}'")
         with open(filepath, 'w') as file:
             json.dump(self.to_dict(), file)
+        pixel_changes = render.pixel_changes_from_runfile(filepath, 2)
+        if self.width == 32 and self.height == 32:
+            rpi_runs_dir = os.path.join(run_dir, 'rpi')
+            os.makedirs(rpi_runs_dir, exist_ok=True)
+            rpi_filepath = os.path.join(rpi_runs_dir, f'{nr_snakes}_snakes_rpi_{rand_str}_{len(self.steps)}{aborted_str}.run')
+            pixel_change_list = pixel_changes['changes']
+            with open(rpi_filepath, 'w') as file:
+                for change in pixel_change_list:
+                file.write(json.dumps(change) + '\n')
 
     def to_dict(self):
         return {
