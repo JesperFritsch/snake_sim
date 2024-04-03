@@ -12,16 +12,15 @@ from snake_env import (
         DIR_MAPPING,
     )
 
-
-
 class AutoSnake4(AutoSnakeBase):
     TIME_LIMIT = True
     MAX_RISK_CALC_DEPTH = 3
     MAX_BRANCH_TIME = 1000
 
 
-    def __init__(self, id: str, start_length: int):
+    def __init__(self, id: str, start_length: int, greedy=False):
         super().__init__(id, start_length)
+        self.greedy = greedy
         self.food_in_route = []
 
     def set_route(self, route: deque):
@@ -39,12 +38,12 @@ class AutoSnake4(AutoSnakeBase):
                 sub_route = self.get_route(self.map, self.coord, end=route[-1])
                 route = deque(list(route) + sub_route[1:-1])
             except:
-                s_map = copy_map(self.map)
-                self.show_route(s_map, route)
-                print('route: ', route)
-                print('valid_tiles: ', valid_tiles)
-                print('coord: ', self.coord)
-                self.print_map(s_map)
+                # s_map = copy_map(self.map)
+                # self.show_route(s_map, route)
+                # print('route: ', route)
+                # print('valid_tiles: ', valid_tiles)
+                # print('coord: ', self.coord)
+                # self.print_map(s_map)
                 raise ValueError('Invalid route')
         self.food_in_route = []
         last_coord = None
@@ -67,7 +66,8 @@ class AutoSnake4(AutoSnakeBase):
         option['free_path'] = option['depth'] >= self.length
         option['dir'] = t_dir
         time_s = time()
-        option['risk'] = self.calc_immediate_risk(copy_map(s_map), option_coord)
+        # option['risk'] = self.calc_immediate_risk(copy_map(s_map), option_coord)
+        option['risk'] = 0
         return option
 
     def get_best_route(self):
@@ -106,6 +106,13 @@ class AutoSnake4(AutoSnakeBase):
             return best_option['route']
         return None
 
+    def check_safe_food_route(self, s_map, food_route):
+        end_coord = food_route[0]
+        self.show_route(s_map, food_route)
+        if self.is_area_clear(s_map, self.body_coords, end_coord):
+            return True
+        return False
+
     def pick_direction(self):
         next_tile = None
         time_s = time()
@@ -113,7 +120,9 @@ class AutoSnake4(AutoSnakeBase):
         if self.verify_route(self.route):
             # print('route verified')
             closest_food_route = self.get_route(self.map, self.coord, target_tiles=self.env.food.locations)
-            if closest_food_route and closest_food_route[0] not in self.food_in_route:
+            # if closest_food_route and closest_food_route[0] not in self.food_in_route:
+            if closest_food_route and ((self.check_safe_food_route(copy_map(self.map), closest_food_route) and self.greedy) or \
+                                        (closest_food_route[0] not in self.food_in_route)):
                 planned_route = closest_food_route
                 old_route = self.route
             else:

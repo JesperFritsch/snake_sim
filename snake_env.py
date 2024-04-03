@@ -116,7 +116,7 @@ class RunData:
             pixel_change_list = pixel_changes['changes']
             with open(rpi_filepath, 'w') as file:
                 for change in pixel_change_list:
-                file.write(json.dumps(change) + '\n')
+                    file.write(json.dumps(change) + '\n')
 
     def to_dict(self):
         return {

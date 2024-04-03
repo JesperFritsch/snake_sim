@@ -102,10 +102,11 @@ class AutoSnakeBase(Snake):
         return s_map
 
     def show_route(self, s_map, s_route):
+        s_map = copy_map(s_map)
         if s_route is None: return
         for x, y in list(s_route)[1:]:
             s_map[y][x] = ord('R')
-        return copy_map(s_map)
+        return s_map
 
 
     def update_snake_position(self, s_map, body_coords, old_tail):
