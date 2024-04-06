@@ -26,7 +26,7 @@ if __name__ == '__main__':
     test_data_dir = os.path.join(os.getcwd(), 'test', 'test_data')
     test_map_filename = 'test_map2.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'F'
+    snake_char = 'E'
     expand_factor = 2
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
@@ -37,6 +37,7 @@ if __name__ == '__main__':
         step_state = eval(test_map_file.read())
         env.map = env.fresh_map()
         for snake_data in [step_state[s] for s in step_state if s not in (snake_char, 'food')]:
+            print(snake_data)
             core.put_snake_in_frame(base_frame, frame_width, snake_data, (255, 255, 255), expand_factor=expand_factor)
         for coord in step_state['food']:
             x, y = coord_op(coord, (expand_factor, expand_factor), '*')
@@ -59,24 +60,22 @@ if __name__ == '__main__':
     env.food.locations = set([tuple(x) for x in step_state['food'] if tuple(x) != snake.coord])
     snake.x, snake.y = snake.coord
     snake.update_map(env.map)
-    snake.print_map(snake.map)
+    # snake.print_map(snake.map)
     # print(snake.body_coords)
     print(snake.length, snake.coord, snake.body_value)
-    # s_time = time()
+    print(snake.coord)
+    # snake.update()
     rundata = []
     for tile in snake.valid_tiles(snake.map, snake.coord):
         planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
         print(f"Planned path: {planned_path}")
-        tile = planned_path.pop()
+        if planned_path:
+            tile = planned_path.pop()
+        s_time = time()
         snake.deep_look_ahead(copy_map(snake.map), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
+        print(f"Time: {(time() - s_time) * 1000}")
     frames = []
     for body_coords in rundata:
         frame = core.put_snake_in_frame(base_frame.copy(), frame_width, body_coords, (255, 0, 0), expand_factor=expand_factor)
         frames.append(frame)
-
     playback_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width)
-    # snake.print_map(snake.map)
-    # snake.pick_direction()
-    # print(snake.is_area_clear(snake.map, snake.body_coords, (16, 25)))
-    # snake.get_area_info(snake.map, snake.body_coords, (24,1))
-    # check_areas(snake, (0,0))

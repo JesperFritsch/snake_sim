@@ -77,7 +77,7 @@ def playback_runfile(filename=None, frames=None, grid_width=None, grid_height=No
         while running:
             step_nr = math.ceil(frame_counter / expand)
             fps = default_fps
-            speed_up = 4
+            speed_up = 20
             play_direction = 1
             keys = pygame.key.get_pressed()
             new_frame = not pause
@@ -96,7 +96,7 @@ def playback_runfile(filename=None, frames=None, grid_width=None, grid_height=No
                         print(utils.get_run_step(filename, step_nr))
             if keys[pygame.K_LCTRL]:
                 if keys[pygame.K_LSHIFT]:
-                    speed_up *= 10
+                    speed_up *= 20
                 if keys[pygame.K_LEFT]:
                     play_direction = -1
                     fps = default_fps * speed_up
@@ -123,5 +123,5 @@ if __name__ == '__main__':
     ap.add_argument('-f', '--file', type=str, required=False)
     args = ap.parse_args(sys.argv[1:])
     if not args.file:
-        args.file = r'B:\pythonStuff\snake_sim\runs\grid_32x32\7_snakes_32x32_3RLBOI_4595.json'
+        args.file = r"B:\pythonStuff\snake_sim\runs\grid_32x32\7_snakes_32x32_VHYGPX_1254.json"
     playback_runfile(filename=args.file, expand=2)
