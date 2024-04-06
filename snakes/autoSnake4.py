@@ -229,7 +229,10 @@ class AutoSnake4(AutoSnakeBase):
                         depth=1,
                         best_results=None,
                         current_results=None,
-                        area_checked=False):
+                        area_checked=False,
+                        frames=None):
+        if frames is None:
+            frames = []
         if start_time is None:
             start_time = time()
         planned_tile = None
@@ -244,12 +247,15 @@ class AutoSnake4(AutoSnakeBase):
             best_results = {}
         if s_map[new_coord[1]][new_coord[0]] == self.env.FOOD_TILE:
             length += 1
+            print(f"Apple found at {new_coord} at depth {depth}")
             current_results['apple_time'] = current_results['apple_time'] + [depth]
             current_results['len_gain'] = length - self.length
 
         old_tail = self.update_body(new_coord, body_coords, length)
         s_map = self.update_snake_position(s_map, body_coords, old_tail)
         valid_tiles = self.valid_tiles(s_map, new_coord)
+
+        frames.append(self.env.get_flat_color_map(self.get_flat_map(s_map)))
 
         current_results['body_coords'] = body_coords
         current_results['depth'] = depth
@@ -287,7 +293,8 @@ class AutoSnake4(AutoSnakeBase):
                 old_route=old_route,
                 current_results=current_results.copy(),
                 start_time=start_time,
-                area_checked=area_checked)
+                area_checked=area_checked,
+                frames=frames)
             if check_result['free_path'] or check_result['timeout']:
                 return check_result
 
@@ -322,7 +329,8 @@ class AutoSnake4(AutoSnakeBase):
                     best_results=best_results,
                     current_results=current_results.copy(),
                     start_time=start_time,
-                    area_checked=area_checked)
+                    area_checked=area_checked,
+                    frames=frames)
                 if check_result['free_path'] or check_result['timeout']:
                     return check_result
         return best_results

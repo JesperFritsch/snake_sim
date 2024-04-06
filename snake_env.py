@@ -288,18 +288,18 @@ class SnakeEnv:
             self.update_snake_on_map(snake)
         self.run_data.add_step(self.time_step, new_step)
 
-    def get_color_map(self):
+    def get_color_map(self, s_map):
         color_map = {}
-        for i, tile_value in enumerate(self.map):
+        for i, tile_value in enumerate(s_map):
             (y, x) = (i // self.width, i % self.width)
             if tile_value != self.FREE_TILE:
-                color_map[(x, y)] = self.COLOR_MAPPING[tile_value]
+                color_map[(x, y)] = self.COLOR_MAPPING.get(tile_value, (255, 255, 255))
         return color_map
 
-    def get_flat_color_map(self):
+    def get_flat_color_map(self, s_map):
         color_map = []
-        for tile_value in self.map:
-                color_map.append(self.COLOR_MAPPING[tile_value])
+        for tile_value in s_map:
+                color_map.append(self.COLOR_MAPPING.get(tile_value, (255, 255, 255)))
         return color_map
 
     def generate_run(self, max_steps=None, max_no_food_steps=300):

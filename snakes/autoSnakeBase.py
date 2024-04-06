@@ -66,6 +66,27 @@ class AutoSnakeBase(Snake):
             next_tile = self.coord
         return next_tile
 
+    def find_body_coords(self, s_map, head_coord):
+        body_coords = deque()
+        next_coord = head_coord
+        last_next = None
+        checked = [False] * (self.env.height * self.env.width)
+        while True:
+            last_next = next_coord
+            for coord in self.neighbours(next_coord):
+                x, y = coord
+                if not self.env.is_inside(coord):
+                    continue
+                if checked[y * self.env.width + x]:
+                    continue
+                if s_map[y][x] == self.body_value:
+                    body_coords.append(coord)
+                    checked[y * self.env.width + x] = True
+                    next_coord = coord
+                    break
+            if next_coord == last_next:
+                break
+        return body_coords
     def find_attack_moves(self, s_map):
         last_pos = self.body_coords[1]
         if last_pos == self.coord: return tuple()
@@ -120,6 +141,9 @@ class AutoSnakeBase(Snake):
             x, y = body_coords[i]
             s_map[y][x] = self.head_value if body_coords[i] == head else self.body_value
         return s_map
+
+    def get_flat_map(self, s_map):
+        return [c for row in s_map for c in row]
 
     def update_map(self, flat_map):
         if self.map is None:
