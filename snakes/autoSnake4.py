@@ -38,35 +38,30 @@ class AutoSnake4(AutoSnakeBase):
                 sub_route = self.get_route(self.map, self.coord, end=route[-1])
                 route = deque(list(route) + sub_route[1:-1])
             except:
-                # s_map = copy_map(self.map)
-                # self.show_route(s_map, route)
-                # print('route: ', route)
-                # print('valid_tiles: ', valid_tiles)
-                # print('coord: ', self.coord)
-                # self.print_map(s_map)
                 raise ValueError('Invalid route')
         self.food_in_route = []
         last_coord = None
         for coord in reversed(route):
             if coord == last_coord:
                 route.remove(coord)
-            # if any([abs(x) > 1 for x in coord_op(coord, last_coord, '-')]):
-
             if self.map[coord[1]][coord[0]] == self.env.FOOD_TILE:
                 self.food_in_route.append(coord)
         self.route = route
 
 
-    def find_route(self, s_map, body_coords, head_coord, option_coord):
-        t_dir = coord_op(option_coord, head_coord, '-')
+    def find_route(self, start_coord, planned_route=None, old_route=None):
         time_s = time()
-        option = self.deep_look_ahead(copy_map(s_map), option_coord, body_coords.copy(), self.length, start_time=time_s)
-        option['coord'] = option_coord
-        option['timeout'] = option.get('timeout', False)
-        option['free_path'] = option['depth'] >= self.length
-        option['dir'] = t_dir
-        time_s = time()
-        # option['risk'] = self.calc_immediate_risk(copy_map(s_map), option_coord)
+        option = self.deep_look_ahead(
+                copy_map(self.map),
+                start_coord,
+                self.body_coords.copy(),
+                self.length,
+                start_time=time_s,
+                planned_route=planned_route,
+                old_route=old_route
+            )
+        option['coord'] = start_coord
+        # option['risk'] = self.calc_immediate_risk(copy_map(s_map), start_coord)
         option['risk'] = 0
         return option
 
@@ -75,10 +70,11 @@ class AutoSnake4(AutoSnakeBase):
         best_option = None
         valid_tiles = self.valid_tiles(self.map, self.coord)
         for coord in valid_tiles:
-            option = self.find_route(self.map, self.body_coords, self.coord, coord)
+            option = self.find_route(coord)
             options[coord] = option
+            if option['free_path']:
+                break
         free_options = [o for o in options.values() if o['free_path']]
-        # print(f'{options=}')
         if options:
             if risk_free_options := [o for o in options.values() if o['risk'] == 0]:
                 if free_riskless_options := [o for o in risk_free_options if o['free_path']]:
@@ -115,10 +111,7 @@ class AutoSnake4(AutoSnakeBase):
 
     def pick_direction(self):
         next_tile = None
-        time_s = time()
-        # print('current route: ', self.route)
         if self.verify_route(self.route):
-            # print('route verified')
             closest_food_route = self.get_route(self.map, self.coord, target_tiles=self.env.food.locations)
             # if closest_food_route and closest_food_route[0] not in self.food_in_route:
             if closest_food_route and ((self.check_safe_food_route(copy_map(self.map), closest_food_route) and self.greedy) or \
@@ -129,24 +122,15 @@ class AutoSnake4(AutoSnakeBase):
                 old_route = None
                 planned_route = self.route
             look_ahead_tile = planned_route.pop()
-            # print('look_ahead_tile: ', look_ahead_tile)
-            option = self.deep_look_ahead(copy_map(self.map), look_ahead_tile, self.body_coords.copy(), self.length, planned_route=planned_route, old_route=old_route, start_time=time_s)
-            # print(option)
-            # print('route time: ', (time() - time_s) * 1000)
-            if option['depth'] >= self.length:
+            option = self.find_route(look_ahead_tile, planned_route=planned_route, old_route=old_route)
+            if option['free_path']:
                 self.set_route(option['route'])
-                # print(option['body_coords'])
-                # print(option['route'])
-                # print('new route: ', self.route)
                 if self.route:
                     next_tile = self.route.pop()
                     return next_tile
 
-        # print('route not verified')
         route = self.get_best_route()
         self.set_route(route)
-        # print('new route: ', self.route)
-        # print('route time: ', (time() - time_s) * 1000)
         if self.route:
             next_tile = self.route.pop()
         else:
@@ -200,29 +184,21 @@ class AutoSnake4(AutoSnakeBase):
         is_clear = False
         while current_coords:
             next_coords = []
-            # print('current_coords: ', current_coords)
             for curr_coord in current_coords:
-                # print('___________________________')
                 c_x, c_y = curr_coord
                 checked[c_y * self.env.width + c_x] = True
-                # print('coord: ', curr_coord)
-                # checked_map = self.show_search(copy_map(s_map), checked, curr_coord, current_coords)
-                # self.print_map(checked_map)
+                # neighbours = self.neighbours(curr_coord)
                 for n_coord in self.neighbours(curr_coord):
-                    # print('neighbour:', n_coord)
                     t_x, t_y = n_coord
                     if self.env.is_inside(n_coord):
-                        # print('is_inside')
                         if not checked[t_y * self.env.width + t_x]:
                             if s_map[t_y][t_x] in self.env.valid_tile_values:
                                 if s_map[c_y][c_x] == self.env.FOOD_TILE:
                                     food_count += 1
                                 checked[t_y * self.env.width + t_x] = True
                                 tile_count += 1
-                                # print('is_valid')
                                 next_coords.append(n_coord)
                             elif s_map[t_y][t_x] == self.body_value:
-                                # print('is_body')
                                 self_indexes.append(body_coords.index(n_coord))
             current_coords = next_coords
             total_steps = tile_count - food_count
@@ -260,6 +236,7 @@ class AutoSnake4(AutoSnakeBase):
         if current_results is None:
             current_results = {}
             current_results['timeout'] = False
+            current_results['free_path'] = False
             current_results['apple_time'] = []
             current_results['len_gain'] = 0
             current_results['route'] = deque()
@@ -269,6 +246,11 @@ class AutoSnake4(AutoSnakeBase):
             length += 1
             current_results['apple_time'] = current_results['apple_time'] + [depth]
             current_results['len_gain'] = length - self.length
+
+        old_tail = self.update_body(new_coord, body_coords, length)
+        s_map = self.update_snake_position(s_map, body_coords, old_tail)
+        valid_tiles = self.valid_tiles(s_map, new_coord)
+
         current_results['body_coords'] = body_coords
         current_results['depth'] = depth
         current_results['route'] = current_results['route'].copy()
@@ -278,18 +260,18 @@ class AutoSnake4(AutoSnakeBase):
         best_results['len_gain'] = max(best_results.get('len_gain', 0), current_results['len_gain'])
         best_results['apple_time'] = []
         best_results['timeout'] = False
+        best_results['free_path'] = False
         best_results['body_coords'] = max(best_results.get('body_coords', deque()), current_results['body_coords'].copy(), key=lambda o: len(o))
         best_results['route'] = max(best_results.get('route', deque()), current_results['route'], key=lambda o: len(o))
+
 
         if ((time() - start_time) * 1000 > self.MAX_BRANCH_TIME) and self.TIME_LIMIT:
             best_results['timeout'] = True
             return best_results
         if current_results['depth'] >= length:
+            current_results['free_path'] = True
             return current_results
 
-        old_tail = self.update_body(new_coord, body_coords, length)
-        s_map = self.update_snake_position(s_map, body_coords, old_tail)
-        valid_tiles = self.valid_tiles(s_map, new_coord)
 
         if planned_route:
             planned_tile = planned_route.pop()
@@ -302,10 +284,11 @@ class AutoSnake4(AutoSnakeBase):
                 depth=depth+1,
                 planned_route=planned_route,
                 best_results=best_results,
+                old_route=old_route,
                 current_results=current_results.copy(),
                 start_time=start_time,
                 area_checked=area_checked)
-            if check_result.get('depth', 0) >= length or check_result['timeout']:
+            if check_result['free_path'] or check_result['timeout']:
                 return check_result
 
         if old_route and new_coord in old_route:
@@ -323,16 +306,7 @@ class AutoSnake4(AutoSnakeBase):
             target_tile = self.target_tile(s_map, body_coords, recurse_mode=True)
         valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
 
-        # print('______________________')
-        # print('new_coord: ', new_coord)
-        # print('target_tile:', target_tile)
-        # print('valid_tiles: ', valid_tiles)
-        # print('recurse_map')
-        # print(route)
-        # self.print_map(s_map)
-        # print('recurse_time: ', (time() - self.start_time) * 1000)
         if valid_tiles:
-            s_time = time()
             for tile in valid_tiles:
                 area_check = self.is_area_clear(s_map, body_coords, tile)
                 if not area_check:
@@ -349,6 +323,6 @@ class AutoSnake4(AutoSnakeBase):
                     current_results=current_results.copy(),
                     start_time=start_time,
                     area_checked=area_checked)
-                if check_result['depth'] >= length or check_result.get('timeout', False):
+                if check_result['free_path'] or check_result['timeout']:
                     return check_result
         return best_results

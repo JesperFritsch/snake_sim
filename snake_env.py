@@ -85,7 +85,7 @@ class StepData:
 
 
 class RunData:
-    def __init__(self, width: int, height: int, snake_data: list, output_dir='runs/batch') -> None:
+    def __init__(self, width: int, height: int, snake_data: list, output_dir='runs') -> None:
         self.width = width
         self.height = height
         self.snake_data = snake_data
@@ -278,7 +278,6 @@ class SnakeEnv:
                 if self.map[y * self.width + x] == self.FOOD_TILE:
                     self.snakes_info[snake.id]['last_food'] = self.time_step
                     self.food.remove(next_coord, self.map)
-                    snake.length += 1
             else:
                 self.snakes_info[snake.id]['alive'] = False
             new_step.add_snake_data(
