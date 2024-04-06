@@ -4,7 +4,7 @@ import os
 import shutil
 import json
 
-from render import core
+from collections import deque
 
 
 def coord_op(coord_left, coord_right, op):
@@ -23,9 +23,30 @@ def rand_str(n):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
 
 
-def get_body_coords_from_run_step(filename, snake_id, step):
-    grid_changes = core.grid_changes_from_runfile(filename)
-    step_changes = grid_changes['changes']
+def get_run_step(filename, step_nr):
+    with open(filename) as run_json:
+        run_dict = json.load(run_json)
+        steps = run_dict['steps']
+        final_step = max([int(k) for k in steps.keys()])
+        current = 1
+        coords_map = {}
+        last_step = steps['1']
+        while current <= step_nr < final_step:
+            step_data = steps[str(current)]
+            coords_map['food'] = step_data['food']
+            snake_data = step_data['snakes']
+            last_snakes = last_step['snakes']
+            for snake in snake_data:
+                body = coords_map.get(snake['snake_id'], deque())
+                curr_head = snake['curr_head']
+                body.appendleft(curr_head)
+                last_snake = max(last_snakes, key=lambda x: x['snake_id'] == snake['snake_id'])
+                if last_snake['tail_dir'] != [0, 0]:
+                    body.pop()
+                coords_map[snake['snake_id']] = body
+            current += 1
+            last_step = step_data
+    return coords_map
 
 
 if __name__ == '__main__':
