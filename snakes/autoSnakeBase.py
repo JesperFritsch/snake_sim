@@ -44,6 +44,7 @@ class AutoSnakeBase(Snake):
         # print(f'self coord: {self.coord}')
         self.start_time = time()
         self.update_map(self.env.map)
+        # print(self.x, self.y)
         self.map_to_print = copy_map(self.map)
         self.update_survivors()
         tile = self.pick_direction()
@@ -56,6 +57,8 @@ class AutoSnakeBase(Snake):
             self.coord = tile
             self.x, self.y = tile
             self.update_body(self.coord, self.body_coords, self.length)
+            if self.map[self.y][self.x] == self.env.FOOD_TILE:
+                self.length += 1
             next_tile = tile
         else:
             # print(f'{self.id} is dead!')
@@ -222,6 +225,7 @@ class AutoSnakeBase(Snake):
                 else:
                     print_row.append(f' {chr(c)} ')
             print(''.join(print_row))
+
 
 
     def get_areas(self, s_map, s_coord):
