@@ -319,7 +319,7 @@ class SnakeEnv:
         aborted = False
         try:
             while ongoing:
-                print(f"Step: {self.time_step}, passed time sec: {time() - start_time:.2f}")
+                print(f"Step: {self.time_step}, passed time sec: {time() - start_time:.2f} {len(self.alive_snakes)} alive")
                 if self.alive_snakes:
                     if len(self.alive_snakes) == 1:
                         lowest_no_food = min([self.snakes_info[only_one.id]['last_food'] for only_one in self.alive_snakes])

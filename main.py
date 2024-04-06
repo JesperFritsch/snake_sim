@@ -31,7 +31,7 @@ if __name__ == '__main__':
     # env.add_snake(AutoSnake4('N', snake_init_len), (201, 8, 105), (201, 8, 105))
     # env.add_snake(AutoSnake4('O', snake_init_len), (107, 240, 5), (107, 240, 5))
 
-    for _ in range(15):
+    for _ in range(1):
         env.generate_run()
         env.reset()
 
