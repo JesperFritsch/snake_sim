@@ -49,8 +49,15 @@ def handle_events():
             raise KeyboardInterrupt
 
 
-def playback_runfile(filename, expand=2):
-    frames, grid_width, grid_height = frames_from_runfile(filename ,expand)
+def playback_runfile(filename=None, frames=None, grid_width=None, grid_height=None, expand=2):
+    if not ((frames is not None) != (filename is not None)):
+        raise ValueError("Either filename or frames must be provided, not both.")
+    else:
+        if frames is None:
+            frames, grid_width, grid_height = frames_from_runfile(filename, expand)
+        elif grid_height is None or grid_width is None:
+            grid_width = int(len(frames[0]) ** 0.5)
+            grid_height = int(len(frames[0]) ** 0.5)
     pygame.init()
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
@@ -58,8 +65,6 @@ def playback_runfile(filename, expand=2):
     surface = surface.convert()
 
     drawGray(surface, grid_width, grid_height)
-    for frame in frames:
-        handle_events()
     running = True
     default_fps = 10
     frame_counter = 0
@@ -83,6 +88,8 @@ def playback_runfile(filename, expand=2):
                         new_frame = True
                     elif event.key == pygame.K_RIGHT:
                         new_frame = True
+                    elif event.key == pygame.K_KP_ENTER:
+                        running = False
             if keys[pygame.K_LCTRL]:
                 if keys[pygame.K_LSHIFT]:
                     speed_up *= 10
@@ -96,10 +103,11 @@ def playback_runfile(filename, expand=2):
 
             if new_frame:
                 frame_counter = max(min(frame_counter + play_direction, len(frames) - 1), 0)
-                if 0 <= frame_counter < len(frames) - 1:
+                if 0 <= frame_counter < len(frames):
                     frame = frames[frame_counter]
                     play_direction = 1
-            draw_frame(screen, grid_width, grid_height, frame)
+                    print(f"step: {frame_counter // expand}")
+                    draw_frame(screen, grid_width, grid_height, frame)
             pygame.display.flip()
             clock.tick(fps)
             if not pause:
@@ -111,5 +119,5 @@ if __name__ == '__main__':
     ap.add_argument('-f', '--file', type=str, required=False)
     args = ap.parse_args(sys.argv[1:])
     if not args.file:
-        args.file = r'B:\pythonStuff\snake_sim\runs\grid_32x32\7_snakes_32x32_2Q1TQH_2134.json'
-    playback_runfile(args.file, 2)
+        args.file = r'B:\pythonStuff\snake_sim\runs\grid_32x32\7_snakes_32x32_IHD3T8_1664.json'
+    playback_runfile(filename=args.file, expand=2)

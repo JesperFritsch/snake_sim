@@ -4,6 +4,7 @@ import os
 import shutil
 import json
 
+from render import core
 
 
 def coord_op(coord_left, coord_right, op):
@@ -20,6 +21,12 @@ def coord_op(coord_left, coord_right, op):
 
 def rand_str(n):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
+
+
+def get_body_coords_from_run_step(filename, snake_id, step):
+    grid_changes = core.grid_changes_from_runfile(filename)
+    step_changes = grid_changes['changes']
+
 
 if __name__ == '__main__':
     from render import core
