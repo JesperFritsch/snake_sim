@@ -185,11 +185,14 @@ class SnakeEnv:
                 } for s in self.snakes.values()])
 
     def add_snake(self, snake, h_color, b_color):
-        print(h_color, b_color)
         if isinstance(snake, Snake):
             snake.bind_env(self)
-            rand_x = round(random.random() * (self.width - 1)) - 1
-            rand_y = round(random.random() * (self.height - 1)) - 1
+            while True:
+                rand_x = 1 + round(random.random() * (self.width - 1)) - 2
+                rand_y = 1 + round(random.random() * (self.height - 1)) - 2
+                if (rand_x, rand_y) in [s.coord for s in self.snakes.values()]:
+                    continue
+                break
             snake.set_init_coord((rand_x, rand_y))
             head_value = snake.head_value
             body_value = snake.body_value
@@ -241,6 +244,11 @@ class SnakeEnv:
             self.map[y * self.width + x] = snake.body_value
         x, y = snake.coord
         self.map[y * self.width + x] = snake.head_value
+
+    def put_coords_on_map(self, coords, value):
+        for coord in coords:
+            x, y = coord
+            self.map[y * self.width + x] = value
 
     def valid_tiles(self, coord):
         dirs = []

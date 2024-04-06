@@ -1,4 +1,5 @@
 import json
+import math
 
 from utils import coord_op
 
@@ -15,6 +16,22 @@ def pixel_changes_from_runfile(filepath, expand_factor=2):
             pixel_changes['changes'].append(food_changes + snake_change)
             food_changes = []
     return pixel_changes
+
+
+def put_snake_in_frame(frame, width, snake_coords, color, expand_factor=2):
+    for i, coord in enumerate(snake_coords):
+        s_dirs = []
+        if i > 0:
+            s_dirs.append(coord_op(snake_coords[i-1], coord, '-'))
+        elif i < len(snake_coords) - 1:
+            s_dirs.append(coord_op(snake_coords[i+1], coord, '-'))
+        x, y = coord_op(coord, (expand_factor, expand_factor), '*')
+        frame[y * width + x] = color
+        for s_dir in s_dirs:
+            for _ in range(math.ceil(expand_factor / 2) + 1):
+                con_x, con_y = coord_op((x, y), s_dir, '+')
+                frame[con_y * width + con_x] = color
+    return frame
 
 def grid_changes_from_runfile(filename, expand_factor=2):
     grid_changes = {}

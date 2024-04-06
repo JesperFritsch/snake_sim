@@ -10,6 +10,7 @@ from utils import coord_op
 from snakes.autoSnakeBase import AutoSnakeBase, copy_map
 from snake_env import (
         DIR_MAPPING,
+        StepData
     )
 
 class AutoSnake4(AutoSnakeBase):
@@ -230,11 +231,14 @@ class AutoSnake4(AutoSnakeBase):
                         best_results=None,
                         current_results=None,
                         area_checked=False,
-                        frames=None):
-        if frames is None:
-            frames = []
+                        rundata=None,
+                        failed_paths=None):
+        if rundata is None:
+            rundata = []
         if start_time is None:
             start_time = time()
+        if failed_paths is None:
+            failed_paths = set()
         planned_tile = None
         if current_results is None:
             current_results = {}
@@ -247,15 +251,14 @@ class AutoSnake4(AutoSnakeBase):
             best_results = {}
         if s_map[new_coord[1]][new_coord[0]] == self.env.FOOD_TILE:
             length += 1
-            print(f"Apple found at {new_coord} at depth {depth}")
             current_results['apple_time'] = current_results['apple_time'] + [depth]
             current_results['len_gain'] = length - self.length
 
         old_tail = self.update_body(new_coord, body_coords, length)
         s_map = self.update_snake_position(s_map, body_coords, old_tail)
         valid_tiles = self.valid_tiles(s_map, new_coord)
-
-        frames.append(self.env.get_flat_color_map(self.get_flat_map(s_map)))
+        if rundata is not None:
+            rundata.append(body_coords.copy())
 
         current_results['body_coords'] = body_coords
         current_results['depth'] = depth
@@ -282,6 +285,7 @@ class AutoSnake4(AutoSnakeBase):
         if planned_route:
             planned_tile = planned_route.pop()
         if planned_tile and planned_tile in valid_tiles:
+            print(f"Trying tile: {planned_tile}")
             check_result = self.deep_look_ahead(
                 copy_map(s_map),
                 planned_tile,
@@ -294,10 +298,10 @@ class AutoSnake4(AutoSnakeBase):
                 current_results=current_results.copy(),
                 start_time=start_time,
                 area_checked=area_checked,
-                frames=frames)
+                rundata=rundata)
             if check_result['free_path'] or check_result['timeout']:
                 return check_result
-
+            print(f"Planned tile {planned_tile} in {planned_route} failed")
         if old_route and new_coord in old_route:
             index = old_route.index(new_coord)
             old_route_list = list(old_route)
@@ -316,6 +320,9 @@ class AutoSnake4(AutoSnakeBase):
         if valid_tiles:
             for tile in valid_tiles:
                 area_check = self.is_area_clear(s_map, body_coords, tile)
+                body_hash = tuple(body_coords)
+                if body_hash in failed_paths:
+                    continue
                 if not area_check:
                     continue
                 check_result = self.deep_look_ahead(
@@ -330,7 +337,8 @@ class AutoSnake4(AutoSnakeBase):
                     current_results=current_results.copy(),
                     start_time=start_time,
                     area_checked=area_checked,
-                    frames=frames)
+                    rundata=rundata)
                 if check_result['free_path'] or check_result['timeout']:
                     return check_result
+            failed_paths.add(body_hash)
         return best_results
