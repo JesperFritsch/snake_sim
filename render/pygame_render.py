@@ -92,7 +92,7 @@ def playback_runfile(filename=None, frames=None, grid_width=None, grid_height=No
                         new_frame = True
                     elif event.key == pygame.K_RIGHT:
                         new_frame = True
-                    elif event.key == pygame.K_KP_ENTER:
+                    elif event.key == pygame.K_RETURN:
                         print(utils.get_run_step(filename, step_nr))
             if keys[pygame.K_LCTRL]:
                 if keys[pygame.K_LSHIFT]:
