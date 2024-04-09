@@ -49,6 +49,7 @@ class AutoSnakeBase(Snake):
         self.update_survivors()
         tile = self.pick_direction()
         # print(f"{self.body_coords=}")
+        # print(f"{'=':=^50}")
         # self.print_map(self.map_to_print)
         # if tile not in self.valid_tiles(self.map, self.coord):
         #     print('it happened')
@@ -145,6 +146,8 @@ class AutoSnakeBase(Snake):
     def get_flat_map(self, s_map):
         return [c for row in s_map for c in row]
 
+    def get_flat_map_state(self, s_map):
+        return tuple([v in self.env.valid_tile_values for v in self.get_flat_map(s_map)])
     def update_map(self, flat_map):
         if self.map is None:
             self.map = [array('B', [self.env.FREE_TILE] * self.env.width) for _ in range(self.env.height)]

@@ -169,10 +169,30 @@ class SnakeEnv:
             snake.set_init_coord((rand_x, rand_y))
         self.alive_snakes = self.get_alive_snakes()
 
+    def print_map(self, s_map):
+        for row in s_map:
+            print_row = []
+            for c in row:
+                if c == self.env.FREE_TILE:
+                    print_row.append(' . ')
+                elif c == self.env.FOOD_TILE:
+                    print_row.append(' F ')
+                else:
+                    print_row.append(f' {chr(c)} ')
+            print(''.join(print_row))
+
     def print_map(self):
         print(f"{'':@<{self.width*3}}")
         for y in range(self.height):
-            print(''.join([f' {chr(c)} ' for c in self.map[y*self.width:y*self.width+self.width]]))
+            print_row = []
+            for c in self.map[y*self.width:y*self.width+self.width]:
+                if c == self.FREE_TILE:
+                    print_row.append(' . ')
+                elif c == self.FOOD_TILE:
+                    print_row.append(' F ')
+                else:
+                    print_row.append(f' {chr(c)} ')
+            print(''.join(print_row))
 
     def init_recorder(self):
         self.run_data = RunData(

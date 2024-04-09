@@ -12,7 +12,7 @@ from snake_env import SnakeEnv, RunData
 from pygame_render import playback_runfile
 from render import core
 
-def check_areas(snake: AutoSnake2, coord):
+def check_areas(snake, coord):
     valid_tiles = snake.valid_tiles(snake.map, coord)
     s_time = time()
     print(f"areas for {coord}: {snake.get_areas(snake.map, coord)}")
@@ -23,10 +23,10 @@ if __name__ == '__main__':
     GRID_HEIGHT = 32
     FOOD = 35
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    test_data_dir = os.path.join(os.getcwd(), 'test', 'test_data')
-    test_map_filename = 'test_map2.txt'
+    test_data_dir = '/home/jesper/py_fun/snake_sim/test/test_data'
+    test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'E'
+    snake_char = 'F'
     expand_factor = 2
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
@@ -71,8 +71,10 @@ if __name__ == '__main__':
         print(f"Planned path: {planned_path}")
         if planned_path:
             tile = planned_path.pop()
+        # planned_path = None
         s_time = time()
-        snake.deep_look_ahead(copy_map(snake.map), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
+        option = snake.deep_look_ahead(copy_map(snake.map), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
+        print(option)
         print(f"Time: {(time() - s_time) * 1000}")
     frames = []
     for body_coords in rundata:

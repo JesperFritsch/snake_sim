@@ -15,7 +15,7 @@ from snake_env import (
 class AutoSnake4(AutoSnakeBase):
     TIME_LIMIT = True
     MAX_RISK_CALC_DEPTH = 3
-    MAX_BRANCH_TIME = 1500
+    MAX_BRANCH_TIME = 5000
 
 
     def __init__(self, id: str, start_length: int, greedy=False):
@@ -37,7 +37,8 @@ class AutoSnake4(AutoSnakeBase):
             try:
                 sub_route = self.get_route(self.map, self.coord, end=route[-1])
                 route = deque(list(route) + sub_route[1:-1])
-            except:
+            except Exception as e:
+                print(e)
                 raise ValueError('Invalid route')
         self.food_in_route = []
         last_coord = None
@@ -65,14 +66,16 @@ class AutoSnake4(AutoSnakeBase):
         option['risk'] = 0
         return option
 
-    def get_best_route(self):
+    def get_best_route(self, already_checked=[]):
         options = {}
         best_option = None
         valid_tiles = self.valid_tiles(self.map, self.coord)
         for coord in valid_tiles:
+            if coord in already_checked:
+                continue
             option = self.find_route(coord)
             options[coord] = option
-            # print(option)
+            # print('found option: ', option)
             if option['free_path']:
                 break
         free_options = [o for o in options.values() if o['free_path']]
@@ -112,12 +115,12 @@ class AutoSnake4(AutoSnakeBase):
 
     def pick_direction(self):
         next_tile = None
-
+        look_ahead_tile = None
         if self.verify_route(self.route):
             start_tile = self.route[-1]
-            # print('self.route before: ', self.route)
+            # print('verified route before: ', self.route)
             closest_food_route = self.get_route(self.map, start_tile, target_tiles=[l for l in self.env.food.locations if l != self.coord])
-            # if closest_food_route and closest_food_route[0] not in self.food_in_route:
+            # print('closest food route: ', closest_food_route)
             if closest_food_route and ((self.check_safe_food_route(copy_map(self.map), closest_food_route) and self.greedy) or \
                                         (closest_food_route[0] not in self.food_in_route)):
                 planned_route = closest_food_route
@@ -127,13 +130,16 @@ class AutoSnake4(AutoSnakeBase):
                 planned_route = self.route
             look_ahead_tile = planned_route.pop()
             option = self.find_route(look_ahead_tile, planned_route=planned_route, old_route=old_route)
+            # print('planned_path: ', option)
             if option['free_path']:
                 self.set_route(option['route'])
                 # print('self.route after: ', self.route)
                 if self.route:
                     next_tile = self.route.pop()
                     return next_tile
-        route = self.get_best_route()
+
+        route = self.get_best_route(already_checked=[look_ahead_tile])
+        # print('best route found: ', route)
         self.set_route(route)
         if self.route:
             next_tile = self.route.pop()
@@ -176,34 +182,50 @@ class AutoSnake4(AutoSnakeBase):
                 return True
         return False
 
-    def is_area_clear(self, s_map, body_coords, start_coord, checked=None):
+    def is_area_clear(self, s_map, body_coords, start_coord, tile_count=1, food_count=0, checked=None):
         current_coords = [start_coord]
         safety_buffer = 0
         if checked is None:
             checked = np.array([False] * (self.env.height * self.env.width), dtype=bool)
         body_len = len(body_coords)
         self_indexes = [0]
-        tile_count = 1
-        food_count = 0
+        # tile_count = 1
+        # food_count = 0
         is_clear = False
         while current_coords:
             next_coords = []
             for curr_coord in current_coords:
                 c_x, c_y = curr_coord
                 checked[c_y * self.env.width + c_x] = True
-                # neighbours = self.neighbours(curr_coord)
-                for n_coord in self.neighbours(curr_coord):
+                neighbours = self.neighbours(curr_coord)
+                neighbours = [coord for coord in neighbours if self.env.is_inside(coord)]
+                unexplored_tiles = [(x, y) for (x, y) in neighbours if not checked[y * self.env.width + x]]
+                # unexplored_valids = [(x, y) for (x, y) in unexplored_tiles if s_map[y][x] in self.env.valid_tile_values]
+                # if unexplored_valids:
+                #     areas = self.get_areas_fast(s_map, curr_coord, unexplored_valids)
+                # else:
+                #     areas = []
+                # print('curr_coord, ',curr_coord)
+                # print('areas: ', areas)
+                # print('unexplored_tiles: ', unexplored_tiles)
+                for n_coord in unexplored_tiles:
                     t_x, t_y = n_coord
-                    if self.env.is_inside(n_coord):
-                        if not checked[t_y * self.env.width + t_x]:
-                            if s_map[t_y][t_x] in self.env.valid_tile_values:
-                                if s_map[c_y][c_x] == self.env.FOOD_TILE:
-                                    food_count += 1
-                                checked[t_y * self.env.width + t_x] = True
-                                tile_count += 1
-                                next_coords.append(n_coord)
-                            elif s_map[t_y][t_x] == self.body_value:
-                                self_indexes.append(body_coords.index(n_coord))
+                    if s_map[t_y][t_x] in self.env.valid_tile_values:
+                        checked[t_y * self.env.width + t_x] = True
+                        tile_count += 1
+                        # if self.is_single_area(n_coord, areas):
+                        #     # print('Checking subarea')
+                        #     # print(n_coord)
+                        #     if self.is_area_clear(s_map, body_coords, n_coord, tile_count=tile_count, food_count=food_count, checked=checked):
+                        #         return True
+                        #     else:
+                        #         # print('area not clear')
+                        #         continue
+                        if s_map[t_y][t_x] == self.env.FOOD_TILE:
+                            food_count += 1
+                        next_coords.append(n_coord)
+                    elif s_map[t_y][t_x] == self.body_value:
+                        self_indexes.append(body_coords.index(n_coord))
             current_coords = next_coords
             total_steps = tile_count - food_count
             max_index = max(self_indexes)
@@ -282,48 +304,58 @@ class AutoSnake4(AutoSnakeBase):
         if current_results['depth'] >= length:
             current_results['free_path'] = True
             return current_results
-
-        body_hash = hash(tuple(body_coords))
-        if body_hash in failed_paths:
+        state_tuple = tuple([self.get_flat_map_state(s_map), depth, new_coord])
+        state_hash = hash(state_tuple)
+        if state_hash in failed_paths:
             return best_results
         if planned_route:
             planned_tile = planned_route.pop()
-        if planned_tile and planned_tile in valid_tiles:
-            # print(f"Trying tile: {planned_tile}")
-            check_result = self.deep_look_ahead(
-                copy_map(s_map),
-                planned_tile,
-                body_coords.copy(),
-                length,
-                depth=depth+1,
-                planned_route=planned_route,
-                best_results=best_results,
-                old_route=old_route,
-                current_results=current_results.copy(),
-                start_time=start_time,
-                rundata=rundata,
-                failed_paths=failed_paths)
-            if check_result['free_path'] or check_result['timeout']:
-                return check_result
+            if planned_tile and planned_tile in valid_tiles:
+                # print(f"Trying tile: {planned_tile}")
+                check_result = self.deep_look_ahead(
+                    copy_map(s_map),
+                    planned_tile,
+                    body_coords.copy(),
+                    length,
+                    depth=depth+1,
+                    planned_route=planned_route,
+                    best_results=best_results,
+                    old_route=old_route,
+                    current_results=current_results.copy(),
+                    start_time=start_time,
+                    rundata=rundata,
+                    failed_paths=failed_paths)
+                if check_result['free_path'] or check_result['timeout']:
+                    return check_result
+                else:
+                    planned_route = None
             # print(f"Planned tile {planned_tile} in {planned_route} failed")
-        if old_route and new_coord in old_route:
-            index = old_route.index(new_coord)
+        if old_route:
             old_route_list = list(old_route)
-            planned_route = old_route_list[:index+1]
-            old_route = None
-        else:
-            # route_targets = list(self.env.food.locations) + list(old_route or set())
-            # planned_route = self.get_route(s_map, new_coord, target_tiles=route_targets)
-            planned_route = None
+            if new_coord in old_route:
+                index = old_route.index(new_coord)
+                planned_route = old_route_list[:index+1]
+                old_route = None
+            else:
+                connecting_route = self.get_route(s_map, new_coord, target_tiles=old_route_list)
+                if connecting_route:
+                    index = old_route.index(connecting_route[0])
+                    planned_route = old_route_list[:index] + connecting_route
 
         if planned_route:
             target_tile = planned_route.pop()
             valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
+        else:
+            target_tile = None
         # else:
         #     target_tile = self.target_tile(s_map, body_coords, recurse_mode=True)
         if valid_tiles:
             for tile in valid_tiles:
                 area_check = self.is_area_clear(s_map, body_coords, tile)
+                if tile == target_tile:
+                    next_route = planned_route.copy()
+                else:
+                    next_route = None
                 if not area_check:
                     continue
                 check_result = self.deep_look_ahead(
@@ -331,7 +363,7 @@ class AutoSnake4(AutoSnakeBase):
                     tile,
                     body_coords.copy(),
                     length,
-                    planned_route=planned_route,
+                    planned_route=next_route,
                     old_route=old_route,
                     depth=depth+1,
                     best_results=best_results,
@@ -341,5 +373,5 @@ class AutoSnake4(AutoSnakeBase):
                     failed_paths=failed_paths)
                 if check_result['free_path'] or check_result['timeout']:
                     return check_result
-        failed_paths.add(body_hash)
+        failed_paths.add(state_hash)
         return best_results
