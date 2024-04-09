@@ -66,13 +66,11 @@ class AutoSnake4(AutoSnakeBase):
         option['risk'] = 0
         return option
 
-    def get_best_route(self, already_checked=[]):
+    def get_best_route(self):
         options = {}
         best_option = None
         valid_tiles = self.valid_tiles(self.map, self.coord)
         for coord in valid_tiles:
-            if coord in already_checked:
-                continue
             option = self.find_route(coord)
             options[coord] = option
             # print('found option: ', option)
@@ -138,7 +136,7 @@ class AutoSnake4(AutoSnakeBase):
                     next_tile = self.route.pop()
                     return next_tile
 
-        route = self.get_best_route(already_checked=[look_ahead_tile])
+        route = self.get_best_route()
         # print('best route found: ', route)
         self.set_route(route)
         if self.route:
@@ -234,7 +232,12 @@ class AutoSnake4(AutoSnakeBase):
                 is_clear = True
                 break
 
-        return is_clear
+        return {
+                    'is_clear': is_clear, 
+                    'tile_count': tile_count, 
+                    'total_steps': total_steps,
+                    'food_count': food_count
+                }
 
     def verify_route(self, route):
         if not route:
@@ -356,7 +359,8 @@ class AutoSnake4(AutoSnakeBase):
                     next_route = planned_route.copy()
                 else:
                     next_route = None
-                if not area_check:
+                if not area_check['is_clear']:
+                    best_results['depth'] = max(best_results['depth'], area_check['tile_count'])
                     continue
                 check_result = self.deep_look_ahead(
                     copy_map(s_map),

@@ -26,7 +26,7 @@ if __name__ == '__main__':
     test_data_dir = '/home/jesper/py_fun/snake_sim/test/test_data'
     test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'F'
+    snake_char = 'G'
     expand_factor = 2
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
