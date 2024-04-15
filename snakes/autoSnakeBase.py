@@ -38,10 +38,10 @@ class AutoSnakeBase(Snake):
 
     def pick_direction(self):
         raise NotImplementedError
-
+        
     def update(self):
-        # print(f'update for {self.id} step: {self.env.time_step}')
-        # print(f'self coord: {self.coord}')
+        print(f'update for {self.id} step: {self.env.time_step}')
+        print(f'self coord: {self.coord}')
         self.start_time = time()
         self.update_map(self.env.map)
         # print(self.x, self.y)

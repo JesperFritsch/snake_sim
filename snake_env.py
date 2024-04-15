@@ -292,7 +292,7 @@ class SnakeEnv:
             self.put_snake_on_map(snake)
         self.food.generate_new(self.map)
         self.food.remove_old(self.map)
-        # self.print_map()
+        self.print_map()
         new_step = StepData(food=list(self.food.locations), step=self.time_step)
         for snake in alive_snakes:
             old_tail = snake.body_coords[-1]
