@@ -15,7 +15,7 @@ from snake_env import (
 class AutoSnake4(AutoSnakeBase):
     TIME_LIMIT = True
     MAX_RISK_CALC_DEPTH = 3
-    MAX_BRANCH_TIME = 5000
+    MAX_BRANCH_TIME = 1000
 
 
     def __init__(self, id: str, start_length: int, greedy=False):
@@ -62,9 +62,12 @@ class AutoSnake4(AutoSnakeBase):
                 old_route=old_route
             )
         option['coord'] = start_coord
-        # option['risk'] = self.calc_immediate_risk(copy_map(s_map), start_coord)
-        option['risk'] = 0
+        option['risk'] = self.calc_immediate_risk(copy_map(self.map), start_coord)
         return option
+
+
+
+
 
     def get_best_route(self):
         options = {}
@@ -73,8 +76,8 @@ class AutoSnake4(AutoSnakeBase):
         for coord in valid_tiles:
             option = self.find_route(coord)
             options[coord] = option
-            # print('found option: ', option)
-            if option['free_path']:
+            print('found option: ', option)
+            if option['free_path'] and option['risk'] == 0:
                 break
         free_options = [o for o in options.values() if o['free_path']]
         if options:
@@ -114,11 +117,15 @@ class AutoSnake4(AutoSnakeBase):
     def pick_direction(self):
         next_tile = None
         look_ahead_tile = None
-        if self.verify_route(self.route):
+        start_tile = None
+        if route_verified := self.verify_route(self.route):
             start_tile = self.route[-1]
-            # print('verified route before: ', self.route)
+        print('route_verified: ', route_verified)
+        print('route: ', self.route)
+        if route_verified and self.calc_immediate_risk(copy_map(self.map), start_tile) == 0:
+            print('verified route before: ', self.route)
             closest_food_route = self.get_route(self.map, start_tile, target_tiles=[l for l in self.env.food.locations if l != self.coord])
-            # print('closest food route: ', closest_food_route)
+            print('closest food route: ', closest_food_route)
             if closest_food_route and ((self.check_safe_food_route(copy_map(self.map), closest_food_route) and self.greedy) or \
                                         (closest_food_route[0] not in self.food_in_route)):
                 planned_route = closest_food_route
@@ -128,16 +135,16 @@ class AutoSnake4(AutoSnakeBase):
                 planned_route = self.route
             look_ahead_tile = planned_route.pop()
             option = self.find_route(look_ahead_tile, planned_route=planned_route, old_route=old_route)
-            # print('planned_path: ', option)
+            print('planned_path: ', option)
             if option['free_path']:
                 self.set_route(option['route'])
-                # print('self.route after: ', self.route)
+                print('self.route after: ', self.route)
                 if self.route:
                     next_tile = self.route.pop()
                     return next_tile
 
         route = self.get_best_route()
-        # print('best route found: ', route)
+        print('best route found: ', route)
         self.set_route(route)
         if self.route:
             next_tile = self.route.pop()
@@ -238,6 +245,89 @@ class AutoSnake4(AutoSnakeBase):
                     'total_steps': total_steps,
                     'food_count': food_count
                 }
+
+
+    def calc_immediate_risk(self, s_map, option_coord):
+        def coords_unique(tuples):
+            coords = [coord for _, coord in tuples]
+            return len(set(coords)) == len(coords)
+
+        def get_next_states(s_map, self_coord):
+            op_valid_tiles = {}
+            for snake in [s for s in self.env.snakes.values() if s.alive and s is not self]:
+                h_coord = snake.coord
+                if self.in_sight(self_coord, h_coord, 2):
+                    op_valids = [c for c in self.valid_tiles(s_map, h_coord) if self.in_sight(self_coord, c, 2)]
+                    op_valid_tiles[h_coord] = {}
+                    op_valid_tiles[h_coord]['tiles'] = op_valids
+                    op_valid_tiles[h_coord]['head_value'] = snake.head_value
+                    op_valid_tiles[h_coord]['body_value'] = snake.body_value
+            options_tuples = [[(obj['head_value'], c) for c in obj['tiles']] for op_c, obj in op_valid_tiles.items()]
+            options_tuples = [t for t in options_tuples if len(t) != 0]
+            next_states = []
+            if options_tuples:
+                for op_head, data_obj in op_valid_tiles.items():
+                    curr_x, curr_y = op_head
+                    s_map[curr_y][curr_x] = data_obj['body_value']
+                if len(op_valid_tiles) > 1:
+                    combinations = [c for c in itertools.product(*options_tuples)]
+                    combinations = [c for c in combinations if coords_unique(c)]
+                else:
+                    combinations = [(c,) for c in options_tuples[0]]
+                for comb in combinations:
+                    s_map_copy = copy_map(s_map)
+                    for op_option in comb:
+                        head_val, coord = op_option
+                        op_x, op_y = coord
+                        s_map_copy[op_y][op_x] = head_val
+                    next_states.append(s_map_copy)
+            return next_states
+
+        def recurse(s_map, self_coord, body_coords, self_length, depth=0):
+            if depth >= self.MAX_RISK_CALC_DEPTH:
+                return 0
+            results = []
+            if s_map[self_coord[1]][self_coord[0]] == self.env.FOOD_TILE:
+                self_length += 1
+            old_tail = self.update_body(self_coord, body_coords, self_length)
+            if not self.is_area_clear(s_map, body_coords, self_coord)['is_clear']:
+                return 1
+            for next_state_map in get_next_states(copy_map(s_map), self_coord):
+                if valids_in_next := self.valid_tiles(next_state_map, self_coord):
+                    sub_results = []
+                    for self_valid in valids_in_next:
+                        next_state_map = self.update_snake_position(copy_map(next_state_map), body_coords, old_tail)
+                        result = recurse(next_state_map, self_valid, body_coords.copy(), self_length, depth+1)
+                        sub_results.append(result)
+                    results.append(mean(sub_results))
+                else:
+                    results.append(1)
+            if results:
+                return mean(results)
+            else:
+                return 0
+
+        self_length = self.length
+        if s_map[option_coord[1]][option_coord[0]] == self.env.FOOD_TILE:
+                self_length += 1
+        body_coords = self.body_coords.copy()
+        old_tail = self.update_body(option_coord, body_coords, self_length)
+        s_map = self.update_snake_position(s_map, body_coords, old_tail)
+        results = []
+        for next_state_map in get_next_states(copy_map(s_map), option_coord):
+            if valids_in_next := self.valid_tiles(next_state_map, option_coord):
+                sub_results = []
+                for self_valid in valids_in_next:
+                    result = recurse(next_state_map, self_valid, body_coords, self.length)
+                    sub_results.append(result)
+                results.append(mean(sub_results))
+            else:
+                results.append(1)
+        if results:
+            return mean(results)
+        else:
+            return 0
+
 
     def verify_route(self, route):
         if not route:

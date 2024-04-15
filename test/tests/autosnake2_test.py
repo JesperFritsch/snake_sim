@@ -26,7 +26,7 @@ if __name__ == '__main__':
     test_data_dir = '/home/jesper/py_fun/snake_sim/test/test_data'
     test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'G'
+    snake_char = 'D'
     expand_factor = 2
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
@@ -64,20 +64,21 @@ if __name__ == '__main__':
     # print(snake.body_coords)
     print(snake.length, snake.coord, snake.body_value)
     print(snake.coord)
-    # snake.update()
-    rundata = []
-    for tile in snake.valid_tiles(snake.map, snake.coord):
-        planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
-        print(f"Planned path: {planned_path}")
-        if planned_path:
-            tile = planned_path.pop()
-        # planned_path = None
-        s_time = time()
-        option = snake.deep_look_ahead(copy_map(snake.map), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
-        print(option)
-        print(f"Time: {(time() - s_time) * 1000}")
-    frames = []
-    for body_coords in rundata:
-        frame = core.put_snake_in_frame(base_frame.copy(), frame_width, body_coords, (255, 0, 0), expand_factor=expand_factor)
-        frames.append(frame)
-    playback_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width)
+    snake.update()
+    frames = None
+    # rundata = []
+    # for tile in snake.valid_tiles(snake.map, snake.coord):
+    #     planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
+    #     print(f"Planned path: {planned_path}")
+    #     if planned_path:
+    #         tile = planned_path.pop()
+    #     # planned_path = None
+    #     s_time = time()
+    #     option = snake.deep_look_ahead(copy_map(snake.map), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
+    #     print(option)
+    #     print(f"Time: {(time() - s_time) * 1000}")
+    # frames = []
+    # for body_coords in rundata:
+    #     frame = core.put_snake_in_frame(base_frame.copy(), frame_width, body_coords, (255, 0, 0), expand_factor=expand_factor)
+    #     frames.append(frame)
+    # playback_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width)
