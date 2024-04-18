@@ -1,8 +1,65 @@
 import json
 import math
+import numpy as np
+from collections import deque
 
 from utils import coord_op
 
+class SnakeRepresentation:
+    def __init__(self, snake_id, head_color, body_color, expand_factor):
+        self.snake_id = snake_id
+        self.head_color = head_color
+        self.body_color = body_color
+        self.expand_factor = expand_factor
+        self.body = deque()
+
+    def update(self, step_snake_data, expand_step):
+        head_dir = step_snake_data['head_dir']
+        # print(step_snake_data)
+        prev_head = coord_op(step_snake_data['prev_head'], (self.expand_factor, self.expand_factor), '*')
+        if len(self.body) == 0:
+            self.body.appendleft(prev_head)
+        #     next_head = coord_op(prev_head, head_dir, '+')
+        # else:
+        dir_mult = coord_op(head_dir, (expand_step, expand_step), '*')
+        next_head = coord_op(prev_head, dir_mult, '+')
+        self.body.appendleft(next_head)
+        if step_snake_data['tail_dir'] != (0, 0):
+            self.body.pop()
+
+
+class FrameBuilder:
+    def __init__(self, run_meta_data, expand_factor=2):
+        self.width = run_meta_data['width']
+        self.height = run_meta_data['height']
+        self.free_color = run_meta_data['free_color']
+        self.food_color = run_meta_data['food_color']
+        self.expand_factor = expand_factor
+        self.snake_reps = {}
+        for snake_data in run_meta_data['snake_data']:
+            snake_id = snake_data['snake_id']
+            head_color = snake_data['head_color']
+            body_color = snake_data['body_color']
+            self.snake_reps[snake_id] = SnakeRepresentation(snake_id, head_color, body_color, expand_factor)
+
+    def step_to_frames(self, step_data):
+        frames = []
+        frameshape = (self.height * self.expand_factor, self.width * self.expand_factor, 3)
+        base_frame = np.full(frameshape, self.free_color)
+        for food in step_data['food']:
+            (x, y) = coord_op(food, (self.expand_factor, self.expand_factor), '*')
+            base_frame[y, x] = self.food_color
+        for s in range(1, self.expand_factor + 1):
+            frame = base_frame.copy()
+            for snake_data in step_data['snakes']:
+                snake_id = snake_data['snake_id']
+                self.snake_reps[snake_id].update(snake_data, s)
+            for snake_id in self.snake_reps:
+                for i, (x, y) in enumerate(self.snake_reps[snake_id].body):
+                    color = self.snake_reps[snake_id].head_color if i == 0 else self.snake_reps[snake_id].body_color
+                    frame[y, x] = color
+            frames.append(frame)
+        return frames
 
 def pixel_changes_from_runfile(filepath, expand_factor=2):
     grid_changes = grid_changes_from_runfile(filepath, expand_factor)

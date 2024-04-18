@@ -9,7 +9,7 @@ from snakes.autoSnake4 import AutoSnake4
 from snakes.autoSnakeBase import AutoSnakeBase, copy_map
 from snake_env import SnakeEnv, RunData
 
-from pygame_render import playback_runfile
+from pygame_render import play_runfile
 from render import core
 
 def check_areas(snake, coord):
@@ -23,10 +23,10 @@ if __name__ == '__main__':
     GRID_HEIGHT = 32
     FOOD = 35
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    test_data_dir = '/home/jesper/py_fun/snake_sim/test/test_data'
-    test_map_filename = 'test_map1.txt'
+    test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
+    test_map_filename = 'test_map2.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'D'
+    snake_char = 'G'
     expand_factor = 2
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
@@ -64,21 +64,21 @@ if __name__ == '__main__':
     # print(snake.body_coords)
     print(snake.length, snake.coord, snake.body_value)
     print(snake.coord)
-    snake.update()
-    frames = None
-    # rundata = []
-    # for tile in snake.valid_tiles(snake.map, snake.coord):
-    #     planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
-    #     print(f"Planned path: {planned_path}")
-    #     if planned_path:
-    #         tile = planned_path.pop()
-    #     # planned_path = None
-    #     s_time = time()
-    #     option = snake.deep_look_ahead(copy_map(snake.map), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
-    #     print(option)
-    #     print(f"Time: {(time() - s_time) * 1000}")
-    # frames = []
-    # for body_coords in rundata:
-    #     frame = core.put_snake_in_frame(base_frame.copy(), frame_width, body_coords, (255, 0, 0), expand_factor=expand_factor)
-    #     frames.append(frame)
-    # playback_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width)
+    # snake.update()
+    # frames = None
+    rundata = []
+    for tile in snake.valid_tiles(snake.map, snake.coord):
+        planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
+        print(f"Planned path: {planned_path}")
+        if planned_path:
+            tile = planned_path.pop()
+        # planned_path = None
+        s_time = time()
+        option = snake.deep_look_ahead(copy_map(snake.map), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
+        print(option)
+        print(f"Time: {(time() - s_time) * 1000}")
+    frames = []
+    for body_coords in rundata:
+        frame = core.put_snake_in_frame(base_frame.copy(), frame_width, body_coords, (255, 0, 0), expand_factor=expand_factor)
+        frames.append(frame)
+    play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width)

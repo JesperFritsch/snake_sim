@@ -2,6 +2,7 @@ import random
 import array
 import json
 import os
+import sys
 
 import utils
 from utils import coord_op
@@ -164,8 +165,8 @@ class SnakeEnv:
                     'id': snake.id.upper(),
                     'last_food': 0
                 })
-            rand_x = round(random.random() * (self.width - 1)) - 1
-            rand_y = round(random.random() * (self.height - 1)) - 1
+            rand_x = 2 + round(random.random() * (self.width - 3))
+            rand_y = 2 + round(random.random() * (self.height - 3))
             snake.set_init_coord((rand_x, rand_y))
         self.alive_snakes = self.get_alive_snakes()
 
@@ -208,8 +209,8 @@ class SnakeEnv:
         if isinstance(snake, Snake):
             snake.bind_env(self)
             while True:
-                rand_x = 1 + round(random.random() * (self.width - 1)) - 2
-                rand_y = 1 + round(random.random() * (self.height - 1)) - 2
+                rand_x = 2 + round(random.random() * (self.width - 3))
+                rand_y = 2 + round(random.random() * (self.height - 3))
                 if (rand_x, rand_y) in [s.coord for s in self.snakes.values()]:
                     continue
                 break
@@ -292,7 +293,7 @@ class SnakeEnv:
             self.put_snake_on_map(snake)
         self.food.generate_new(self.map)
         self.food.remove_old(self.map)
-        self.print_map()
+        # self.print_map()
         new_step = StepData(food=list(self.food.locations), step=self.time_step)
         for snake in alive_snakes:
             old_tail = snake.body_coords[-1]
@@ -330,6 +331,35 @@ class SnakeEnv:
                 color_map.append(self.COLOR_MAPPING.get(tile_value, (255, 255, 255)))
         return color_map
 
+    def stream_run(self, conn):
+        self.init_recorder()
+        for snake in self.snakes.values():
+            self.put_snake_on_map(snake)
+        ongoing = True
+        aborted = False
+        #send init data
+        init_data = self.run_data.to_dict()
+        del init_data['steps']
+        conn.send(init_data)
+        #wait for init ack
+        while ongoing:
+            try:
+                if conn.poll():
+                    data = conn.recv()
+                    if data == 'stop':
+                        conn.send('stopped')
+                        ongoing = False
+                        break
+                if self.alive_snakes:
+                    self.update()
+
+                    conn.send(self.run_data.steps[self.time_step].to_dict())
+                else:
+                    ongoing = False
+
+            except KeyboardInterrupt:
+                sys.exit(0)
+
     def generate_run(self, max_steps=None, max_no_food_steps=300):
         start_time = time()
         self.init_recorder()
@@ -341,10 +371,9 @@ class SnakeEnv:
             while ongoing:
                 print(f"Step: {self.time_step}, passed time sec: {time() - start_time:.2f} {len(self.alive_snakes)} alive")
                 if self.alive_snakes:
-                    if len(self.alive_snakes) == 1:
-                        lowest_no_food = min([self.snakes_info[only_one.id]['last_food'] for only_one in self.alive_snakes])
-                        if (self.time_step - lowest_no_food) > max_no_food_steps or max_steps is not None and self.time_step > max_steps:
-                            ongoing = False
+                    highest_no_food = max([self.snakes_info[only_one.id]['last_food'] for only_one in self.alive_snakes])
+                    if (self.time_step - highest_no_food) > max_no_food_steps or max_steps is not None and self.time_step > max_steps:
+                        ongoing = False
                     self.update()
                 else:
                     ongoing = False
