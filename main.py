@@ -61,4 +61,3 @@ if __name__ == '__main__':
     #     env.reset()
 
     # play_runfile(r"B:\pythonStuff\snake_sim\runs\grid_32x32\4_snakes_32x32_SGAOFN_ABORTED.json")
-

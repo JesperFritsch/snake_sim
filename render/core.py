@@ -11,21 +11,23 @@ class SnakeRepresentation:
         self.head_color = head_color
         self.body_color = body_color
         self.expand_factor = expand_factor
+        self.last_head = None
         self.body = deque()
 
     def update(self, step_snake_data, expand_step):
         head_dir = step_snake_data['head_dir']
-        # print(step_snake_data)
+        if step_snake_data['curr_head'] == self.last_head:
+            return
         prev_head = coord_op(step_snake_data['prev_head'], (self.expand_factor, self.expand_factor), '*')
         if len(self.body) == 0:
             self.body.appendleft(prev_head)
-        #     next_head = coord_op(prev_head, head_dir, '+')
-        # else:
         dir_mult = coord_op(head_dir, (expand_step, expand_step), '*')
         next_head = coord_op(prev_head, dir_mult, '+')
         self.body.appendleft(next_head)
         if step_snake_data['tail_dir'] != (0, 0):
             self.body.pop()
+        if expand_step == self.expand_factor:
+            self.last_head = step_snake_data['curr_head']
 
 
 class FrameBuilder:

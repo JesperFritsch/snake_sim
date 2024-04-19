@@ -62,7 +62,8 @@ class AutoSnake4(AutoSnakeBase):
                 old_route=old_route
             )
         option['coord'] = start_coord
-        option['risk'] = self.calc_immediate_risk(copy_map(self.map), start_coord)
+        # option['risk'] = self.calc_immediate_risk(copy_map(self.map), start_coord)
+        option['risk'] = 0
         return option
 
 
@@ -117,21 +118,19 @@ class AutoSnake4(AutoSnakeBase):
     def pick_direction(self):
         next_tile = None
         look_ahead_tile = None
-        start_tile = None
         # print('route_verified: ', route_verified)
         # print('route: ', self.route)
+        # print('verified route before: ', self.route)
+        closest_food_route = self.get_route(self.map, self.coord, target_tiles=[l for l in self.env.food.locations if l != self.coord])
+        # print('closest food route: ', closest_food_route)
+        if closest_food_route and ((self.check_safe_food_route(copy_map(self.map), closest_food_route) and self.greedy) or \
+                                    (closest_food_route[0] not in self.food_in_route)):
+            planned_route = closest_food_route
+            old_route = self.route
+        else:
+            old_route = None
+            planned_route = self.route
         if self.verify_route(self.route):
-            start_tile = self.route[-1]
-            # print('verified route before: ', self.route)
-            closest_food_route = self.get_route(self.map, start_tile, target_tiles=[l for l in self.env.food.locations if l != self.coord])
-            # print('closest food route: ', closest_food_route)
-            if closest_food_route and ((self.check_safe_food_route(copy_map(self.map), closest_food_route) and self.greedy) or \
-                                        (closest_food_route[0] not in self.food_in_route)):
-                planned_route = closest_food_route
-                old_route = self.route
-            else:
-                old_route = None
-                planned_route = self.route
             look_ahead_tile = planned_route.pop()
             option = self.find_route(look_ahead_tile, planned_route=planned_route, old_route=old_route)
             # print('planned_path: ', option)
@@ -440,13 +439,12 @@ class AutoSnake4(AutoSnakeBase):
             target_tile = planned_route.pop()
             valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
         else:
-            target_tile = None
-        # else:
-        #     target_tile = self.target_tile(s_map, body_coords, recurse_mode=True)
+            # target_tile = None
+            target_tile = self.target_tile(s_map, body_coords, recurse_mode=True)
         if valid_tiles:
             for tile in valid_tiles:
                 area_check = self.is_area_clear(s_map, body_coords, tile)
-                if tile == target_tile:
+                if tile == target_tile and planned_route:
                     next_route = planned_route.copy()
                 else:
                     next_route = None
