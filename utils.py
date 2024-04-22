@@ -3,8 +3,18 @@ import string
 import os
 import shutil
 import json
+from time import time
 
 from collections import deque
+
+
+def exec_time(func):
+    def wrapper(*args, **kwargs):
+        start = time()
+        result = func(*args, **kwargs)
+        print(f"Execution time for {func.__name__}: {round((time() - start) * 1000, 3)} ms")
+        return result
+    return wrapper
 
 
 def coord_op(coord_left, coord_right, op):

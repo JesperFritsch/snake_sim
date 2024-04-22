@@ -123,7 +123,7 @@ def play_stream(stream_conn, expand=2):
             if 0 <= frame_counter < len(frames):
                 frame = frames[frame_counter]
                 play_direction = 1
-                print(f"step: {frame_counter // expand}")
+                # print(f"step: {frame_counter // expand}")
                 draw_frame2(screen, frame)
                 pygame.display.flip()
         clock.tick(fps)
