@@ -5,7 +5,7 @@ from array import array
 import numpy as np
 from time import time
 
-from utils import coord_op
+from utils import coord_op, exec_time
 
 from snakes.snake import Snake
 from statistics import mean
@@ -39,6 +39,7 @@ class AutoSnakeBase(Snake):
     def pick_direction(self):
         raise NotImplementedError
 
+    # @exec_time
     def update(self):
         # print(f'update for {self.id} step: {self.env.time_step}')
         # print(f'self coord: {self.coord}')
@@ -148,6 +149,7 @@ class AutoSnakeBase(Snake):
 
     def get_flat_map_state(self, s_map):
         return tuple([v in self.env.valid_tile_values for v in self.get_flat_map(s_map)])
+
     def update_map(self, flat_map):
         if self.map is None:
             self.map = [array('B', [self.env.FREE_TILE] * self.env.width) for _ in range(self.env.height)]

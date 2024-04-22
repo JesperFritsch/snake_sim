@@ -1,6 +1,7 @@
 import os
 import sys
 import datetime
+import argparse
 
 sys.path.append(os.getcwd())
 
@@ -14,30 +15,109 @@ from multiprocessing import Pipe, Process
 
 GRID_WIDTH = 32
 GRID_HEIGHT = 32
-FOOD = 30
+FOOD = 15
+
+snake_configs = [
+    {
+        'snake':{
+            'id': 'A',
+            'start_length': 5,
+            'greedy': True
+        },
+        'env':{
+            'h_color': (176, 27, 16),
+            'b_color': (125, 19, 11)
+        }
+    },
+    {
+        'snake':{
+            'id': 'B',
+            'start_length': 5,
+            'greedy': True
+        },
+        'env':{
+            'h_color': (19, 44, 209),
+            'b_color': (12, 26, 117)
+        }
+    },
+    {
+        'snake':{
+            'id': 'C',
+            'start_length': 5,
+            'greedy': True
+        },
+        'env':{
+            'h_color': (19, 212, 77),
+            'b_color': (12, 117, 43)
+        }
+    },
+    {
+        'snake':{
+            'id': 'D',
+            'start_length': 5,
+            'greedy': True
+        },
+        'env':{
+            'h_color': (199, 4, 173),
+            'b_color': (139, 2, 121)
+        }
+    },
+    {
+        'snake':{
+            'id': 'E',
+            'start_length': 5,
+            'greedy': True
+        },
+        'env':{
+            'h_color': (0, 170, 255),
+            'b_color': (0, 119, 179)
+        }
+    },
+    {
+        'snake':{
+            'id': 'F',
+            'start_length': 5,
+            'greedy': True
+        },
+        'env':{
+            'h_color': (255, 0, 0),
+            'b_color': (179, 0, 0)
+        }
+    },
+    {
+        'snake':{
+            'id': 'G',
+            'start_length': 5,
+            'greedy': True
+        },
+        'env':{
+            'h_color': (255, 162, 0),
+            'b_color': (179, 114, 0)
+        }
+    }
+]
 
 def start_stream_run(conn):
-    snake_init_len = 5
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    env.add_snake(AutoSnake4('A', snake_init_len, greedy=True), (176, 27, 16), (176, 27, 16))
-    env.add_snake(AutoSnake4('B', snake_init_len, greedy=True), (19, 44, 209), (19, 44, 209))
-    env.add_snake(AutoSnake4('C', snake_init_len, greedy=True), (19, 212, 77), (19, 212, 77))
-    env.add_snake(AutoSnake4('D', snake_init_len, greedy=True), (199, 4, 173), (199, 4, 173))
-    env.add_snake(AutoSnake4('E', snake_init_len, greedy=True), (0, 170, 255), (0, 170, 255))
-    env.add_snake(AutoSnake4('F', snake_init_len, greedy=True), (255, 0, 0), (255, 0, 0))
-    env.add_snake(AutoSnake4('G', snake_init_len, greedy=True), (255, 162, 0), (255, 162, 0))
+    snake_count = 4
+    count = 0
+    for config in snake_configs:
+        count += 1
+        env.add_snake(AutoSnake4(**config['snake']), **config['env'])
+        if count == snake_count:
+            break
     env.stream_run(conn,)
 
 if __name__ == '__main__':
     snake_init_len = 5
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    env.add_snake(AutoSnake4('A', snake_init_len, greedy=True), (176, 27, 16), (176, 27, 16))
-    env.add_snake(AutoSnake4('B', snake_init_len, greedy=True), (19, 44, 209), (19, 44, 209))
-    env.add_snake(AutoSnake4('C', snake_init_len, greedy=True), (19, 212, 77), (19, 212, 77))
-    env.add_snake(AutoSnake4('D', snake_init_len, greedy=True), (199, 4, 173), (199, 4, 173))
-    env.add_snake(AutoSnake4('E', snake_init_len, greedy=True), (0, 170, 255), (0, 170, 255))
-    env.add_snake(AutoSnake4('F', snake_init_len, greedy=True), (255, 0, 0), (255, 0, 0))
-    env.add_snake(AutoSnake4('G', snake_init_len, greedy=True), (255, 162, 0), (255, 162, 0))
+    snake_count = 7
+    count = 0
+    for config in snake_configs:
+        count += 1
+        env.add_snake(AutoSnake4(**config['snake']), **config['env'])
+        if count == snake_count:
+            break
     # env.add_snake(AutoSnake4('H', snake_init_len), (250, 2, 147), (250, 2, 147))
     # env.add_snake(AutoSnake4('I', snake_init_len), (157, 0, 255), (157, 0, 255))
     # env.add_snake(AutoSnake4('J', snake_init_len), (255, 251, 0), (255, 251, 0))

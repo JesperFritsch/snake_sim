@@ -5,7 +5,7 @@ import os
 import sys
 
 import utils
-from utils import coord_op
+from utils import coord_op, exec_time
 from render import core as render
 from snakes.snake import Snake
 from time import time
@@ -316,6 +316,7 @@ class SnakeEnv:
                 snake.id)
             self.update_snake_on_map(snake)
         self.run_data.add_step(self.time_step, new_step)
+        print(f"Step: {self.time_step}, {len(self.alive_snakes)} alive")
 
     def get_color_map(self, s_map):
         color_map = {}
