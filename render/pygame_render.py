@@ -74,7 +74,6 @@ def play_stream(stream_conn, expand=2):
         pass
     run_meta_data = stream_conn.recv()
     frame_builder = core.FrameBuilder(run_meta_data=run_meta_data, expand_factor=expand)
-
     grid_width = run_meta_data['width']
     grid_height = run_meta_data['height']
 

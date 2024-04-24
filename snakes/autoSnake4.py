@@ -108,7 +108,7 @@ class AutoSnake4(AutoSnakeBase):
 
     def check_safe_food_route(self, s_map, food_route):
         end_coord = food_route[0]
-        self.show_route(s_map, food_route)
+        self.occupy_route(s_map, food_route)
         if self.is_area_clear(s_map, self.body_coords, end_coord)['is_clear']:
             return True
         return False
@@ -123,7 +123,7 @@ class AutoSnake4(AutoSnakeBase):
         # print('closest food route: ', closest_food_route)
         if closest_food_route and ((self.check_safe_food_route(copy_map(self.map), closest_food_route) and self.greedy) or \
                                     (closest_food_route[0] not in self.food_in_route)):
-            print('safe closest_food_route: ', closest_food_route)
+            # print('safe closest_food_route: ', closest_food_route)
             planned_route = closest_food_route[:-1]
             old_route = self.route
             found_food_route = True
@@ -134,14 +134,14 @@ class AutoSnake4(AutoSnakeBase):
         #             planned_route = food_route
         #             old_route = self.route
         #             found_food_route = True
-        #             print('found food route')
+        #             # print('found food route')
         #             break
         # if not found_food_route:
         else:
             old_route = None
             planned_route = self.route
         if self.verify_route(planned_route):
-            print('verified')
+            # print('verified')
             look_ahead_tile = planned_route.pop()
             option = self.find_route(look_ahead_tile, planned_route=planned_route, old_route=old_route)
             # print('planned_path: ', option)
@@ -255,7 +255,7 @@ class AutoSnake4(AutoSnakeBase):
             needed_steps = body_len - max_index + safety_buffer
             if total_steps >= needed_steps:
                 is_clear = True
-                break
+                # break
         result = {
                     'is_clear': is_clear,
                     'tile_count': tile_count,
@@ -444,7 +444,9 @@ class AutoSnake4(AutoSnakeBase):
                 else:
                     planned_route = None
             # print(f"Planned tile {planned_tile} in {planned_route} failed")
-        if old_route:
+        if food_route := self.get_route(s_map, new_coord, target_tiles=self.env.food.locations):
+            planned_route = food_route[:-1]
+        elif old_route:
             old_route_list = list(old_route)
             if new_coord in old_route:
                 index = old_route.index(new_coord)
@@ -454,7 +456,7 @@ class AutoSnake4(AutoSnakeBase):
                 connecting_route = self.get_route(s_map, new_coord, target_tiles=old_route_list)
                 if connecting_route:
                     index = old_route.index(connecting_route[0])
-                    planned_route = old_route_list[:index] + connecting_route
+                    planned_route = old_route_list[:index] + connecting_route[:-1]
 
         if planned_route:
             target_tile = planned_route.pop()
