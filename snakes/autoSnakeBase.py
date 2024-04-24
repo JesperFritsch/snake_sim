@@ -131,9 +131,14 @@ class AutoSnakeBase(Snake):
         s_map = copy_map(s_map)
         if s_route is None: return
         for x, y in list(s_route)[1:]:
-            s_map[y][x] = ord('R')
+            s_map[y][x] = ord('x')
         return s_map
 
+    def occupy_route(self, s_map, s_route):
+        s_map = copy_map(s_map)
+        for x, y in list(s_route):
+            s_map[y][x] = ord('x')
+        return s_map
 
     def update_snake_position(self, s_map, body_coords, old_tail):
         head = body_coords[0]

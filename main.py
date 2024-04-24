@@ -5,6 +5,8 @@ import argparse
 
 sys.path.append(os.getcwd())
 
+from default_config import snake_configs
+
 from snake_env import SnakeEnv
 from snakes.autoSnake import AutoSnake
 from snakes.autoSnake2 import AutoSnake2
@@ -17,85 +19,6 @@ GRID_WIDTH = 32
 GRID_HEIGHT = 32
 FOOD = 15
 
-snake_configs = [
-    {
-        'snake':{
-            'id': 'A',
-            'start_length': 5,
-            'greedy': True
-        },
-        'env':{
-            'h_color': (176, 27, 16),
-            'b_color': (125, 19, 11)
-        }
-    },
-    {
-        'snake':{
-            'id': 'B',
-            'start_length': 5,
-            'greedy': True
-        },
-        'env':{
-            'h_color': (19, 44, 209),
-            'b_color': (12, 26, 117)
-        }
-    },
-    {
-        'snake':{
-            'id': 'C',
-            'start_length': 5,
-            'greedy': True
-        },
-        'env':{
-            'h_color': (19, 212, 77),
-            'b_color': (12, 117, 43)
-        }
-    },
-    {
-        'snake':{
-            'id': 'D',
-            'start_length': 5,
-            'greedy': True
-        },
-        'env':{
-            'h_color': (199, 4, 173),
-            'b_color': (139, 2, 121)
-        }
-    },
-    {
-        'snake':{
-            'id': 'E',
-            'start_length': 5,
-            'greedy': True
-        },
-        'env':{
-            'h_color': (0, 170, 255),
-            'b_color': (0, 119, 179)
-        }
-    },
-    {
-        'snake':{
-            'id': 'F',
-            'start_length': 5,
-            'greedy': True
-        },
-        'env':{
-            'h_color': (255, 0, 0),
-            'b_color': (179, 0, 0)
-        }
-    },
-    {
-        'snake':{
-            'id': 'G',
-            'start_length': 5,
-            'greedy': True
-        },
-        'env':{
-            'h_color': (255, 162, 0),
-            'b_color': (179, 114, 0)
-        }
-    }
-]
 
 def start_stream_run(conn):
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
@@ -109,7 +32,6 @@ def start_stream_run(conn):
     env.stream_run(conn,)
 
 if __name__ == '__main__':
-    snake_init_len = 5
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
     snake_count = 7
     count = 0

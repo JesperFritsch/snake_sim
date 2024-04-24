@@ -353,7 +353,6 @@ class SnakeEnv:
                         break
                 if self.alive_snakes:
                     self.update()
-
                     conn.send(self.run_data.steps[self.time_step].to_dict())
                 else:
                     ongoing = False

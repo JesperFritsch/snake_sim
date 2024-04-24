@@ -24,7 +24,7 @@ class SnakeRepresentation:
         dir_mult = coord_op(head_dir, (expand_step, expand_step), '*')
         next_head = coord_op(prev_head, dir_mult, '+')
         self.body.appendleft(next_head)
-        if step_snake_data['tail_dir'] != (0, 0):
+        if tuple(step_snake_data['tail_dir']) != (0, 0):
             self.body.pop()
         if expand_step == self.expand_factor:
             self.last_head = step_snake_data['curr_head']
