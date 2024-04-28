@@ -333,7 +333,7 @@ class SnakeEnv:
                 color_map.append(self.COLOR_MAPPING.get(tile_value, (255, 255, 255)))
         return color_map
 
-    def stream_run(self, conn):
+    def  stream_run(self, conn):
         self.init_recorder()
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
