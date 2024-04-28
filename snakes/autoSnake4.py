@@ -371,8 +371,6 @@ class AutoSnake4(AutoSnakeBase):
                         current_results=None,
                         rundata=None,
                         failed_paths=None):
-        if rundata is None:
-            rundata = []
         if start_time is None:
             start_time = time()
         if failed_paths is None:

@@ -147,6 +147,7 @@ class SnakeEnv:
         self.map = self.fresh_map()
         self.snakes_info = {}
         self.run_data = None
+        self.store_runs = True
         self.food = Food(width=width, height=height, max_food=food)
 
     def fresh_map(self):
@@ -343,22 +344,29 @@ class SnakeEnv:
         del init_data['steps']
         conn.send(init_data)
         #wait for init ack
-        while ongoing:
-            try:
-                if conn.poll():
-                    data = conn.recv()
-                    if data == 'stop':
-                        conn.send('stopped')
+        try:
+            while ongoing:
+                try:
+                    if conn.poll():
+                        data = conn.recv()
+                        if data == 'stop':
+                            conn.send('stopped')
+                            ongoing = False
+                            aborted = True
+                            break
+                    if self.alive_snakes:
+                        self.update()
+                        conn.send(self.run_data.steps[self.time_step].to_dict())
+                    else:
                         ongoing = False
-                        break
-                if self.alive_snakes:
-                    self.update()
-                    conn.send(self.run_data.steps[self.time_step].to_dict())
-                else:
-                    ongoing = False
 
-            except KeyboardInterrupt:
-                sys.exit(0)
+                except KeyboardInterrupt:
+                    aborted = True
+                    sys.exit(0)
+        finally:
+            print('Done')
+            if self.store_runs:
+                self.run_data.write_to_file(aborted=aborted)
 
     def generate_run(self, max_steps=None, max_no_food_steps=300):
         start_time = time()

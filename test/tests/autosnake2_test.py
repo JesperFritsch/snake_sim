@@ -24,9 +24,9 @@ if __name__ == '__main__':
     FOOD = 35
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
-    test_map_filename = 'test_map2.txt'
+    test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'G'
+    snake_char = 'D'
     expand_factor = 2
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
