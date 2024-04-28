@@ -1,4 +1,5 @@
 runs/
+render/videos/
 snake_venv*
 **/__pycache__/
 *.pyc
