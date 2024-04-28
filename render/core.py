@@ -61,7 +61,7 @@ class FrameBuilder:
             x, y = coord_op(food, (self.expand_factor, self.expand_factor), '*')
             sub_changes.append(((x, y), self.food_color))
         for food in gone_food:
-            if not any([food != snake_rep.last_head for snake_rep in self.snake_reps.values()]):
+            if not any([food == snake_rep.last_head for snake_rep in self.snake_reps.values()]):
                 x, y = coord_op(food, (self.expand_factor, self.expand_factor), '*')
                 sub_changes.append(((x, y), self.free_color))
         self.last_food = current_food
