@@ -359,6 +359,7 @@ class SnakeEnv:
                         conn.send(self.run_data.steps[self.time_step].to_dict())
                     else:
                         ongoing = False
+                        # break
 
                 except KeyboardInterrupt:
                     aborted = True

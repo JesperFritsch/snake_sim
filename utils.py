@@ -39,6 +39,8 @@ def exec_time(func):
         return result
     return wrapper
 
+def coord_cmp(coord1, coord2):
+    return coord1[0] == coord2[0] and coord1[1] == coord2[1]
 
 def coord_op(coord_left, coord_right, op):
     # Check the operation and perform it directly

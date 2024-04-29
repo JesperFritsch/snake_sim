@@ -3,7 +3,7 @@ import math
 import numpy as np
 from collections import deque
 
-from utils import coord_op
+from utils import coord_op, coord_cmp
 
 class SnakeRepresentation:
     def __init__(self, snake_id, head_color, body_color, expand_factor):
@@ -61,7 +61,7 @@ class FrameBuilder:
             x, y = coord_op(food, (self.expand_factor, self.expand_factor), '*')
             sub_changes.append(((x, y), self.food_color))
         for food in gone_food:
-            if not any([food == snake_rep.last_head for snake_rep in self.snake_reps.values()]):
+            if not any([coord_cmp(food, snake_rep.last_head) for snake_rep in self.snake_reps.values()]):
                 x, y = coord_op(food, (self.expand_factor, self.expand_factor), '*')
                 sub_changes.append(((x, y), self.free_color))
         self.last_food = current_food
@@ -90,19 +90,6 @@ class FrameBuilder:
                 frame[y, x] = color
             self.last_frame = frame
             frames.append(frame)
-        # for food in step_data['food']:
-        #     (x, y) = coord_op(food, (self.expand_factor, self.expand_factor), '*')
-        #     base_frame[y, x] = self.food_color
-        # for s in range(1, self.expand_factor + 1):
-        #     frame = base_frame.copy()
-        #     for snake_data in step_data['snakes']:
-        #         snake_id = snake_data['snake_id']
-        #         self.snake_reps[snake_id].update(snake_data, s)
-        #     for snake_id in self.snake_reps:
-        #         for i, (x, y) in enumerate(self.snake_reps[snake_id].body):
-        #             color = self.snake_reps[snake_id].head_color if i == 0 else self.snake_reps[snake_id].body_color
-        #             frame[y, x] = color
-        #     frames.append(frame)
         return frames
 
 def pixel_changes_from_runfile(filepath, expand_factor=2):
