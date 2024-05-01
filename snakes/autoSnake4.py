@@ -442,9 +442,10 @@ class AutoSnake4(AutoSnakeBase):
                 else:
                     planned_route = None
             # print(f"Planned tile {planned_tile} in {planned_route} failed")
-        if food_route := self.get_route(s_map, new_coord, target_tiles=self.env.food.locations):
-            planned_route = food_route[:-1]
-        elif old_route:
+        # if food_route := self.get_route(s_map, new_coord, target_tiles=self.env.food.locations):
+        #     old_route = planned_route
+        #     planned_route = food_route[:-1]
+        if old_route:
             old_route_list = list(old_route)
             if new_coord in old_route:
                 index = old_route.index(new_coord)
@@ -464,24 +465,21 @@ class AutoSnake4(AutoSnakeBase):
             target_tile = self.target_tile(s_map, body_coords, recurse_mode=True)
         if valid_tiles:
             for tile in valid_tiles:
-                area_check = self.is_area_clear(s_map, body_coords, tile)
+                areas = self.get_areas_fast(s_map, new_coord, valid_tiles)
+                if len(areas) > 1:
+                    area_check = self.is_area_clear(s_map, body_coords, tile)
+                    if area_check['has_tail']:
+                        current_results['free_path'] = True
+                        current_results['len_gain'] = area_check['food_count']
+                        current_results['depth'] = length
+                        return current_results
+                    if not area_check['is_clear']:
+                        best_results['depth'] = max(best_results['depth'], area_check['tile_count'])
+                        continue
                 if tile == target_tile and planned_route:
                     next_route = planned_route.copy()
                 else:
                     next_route = None
-                if area_check['has_tail']:
-                    # print('depth: ', depth)
-                    # print('has_tail')
-                    current_results['free_path'] = True
-                    current_results['len_gain'] = area_check['food_count']
-                    current_results['depth'] = length
-                    return current_results
-                else:
-                    # print('no tail')
-                    pass
-                if not area_check['is_clear']:
-                    best_results['depth'] = max(best_results['depth'], area_check['tile_count'])
-                    continue
                 check_result = self.deep_look_ahead(
                     copy_map(s_map),
                     tile,
