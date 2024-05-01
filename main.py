@@ -15,7 +15,6 @@ from snakes.autoSnake import AutoSnake
 from snakes.autoSnake2 import AutoSnake2
 from snakes.autoSnake3 import AutoSnake3
 from snakes.autoSnake4 import AutoSnake4
-from render.pygame_render import play_runfile, play_stream
 
 def setup_env(config):
     env = SnakeEnv(config.GRID_WIDTH, config.GRID_HEIGHT, config.FOOD)
@@ -68,6 +67,7 @@ def main(argv):
     handle_args(args)
 
     if args.play_file:
+        from render.pygame_render import play_runfile
         play_runfile(Path(args.play_file))
 
     elif args.compute:
@@ -78,6 +78,7 @@ def main(argv):
             env.reset()
 
     elif args.stream:
+        from render.pygame_render import play_stream
         parent_conn, child_conn = Pipe()
         env_p = Process(target=start_stream_run, args=(child_conn, config))
         render_p = Process(target=play_stream, args=(parent_conn,))
