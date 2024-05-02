@@ -1,6 +1,7 @@
 import json
 import math
 import numpy as np
+from pathlib import Path
 from collections import deque
 
 from utils import coord_op, coord_cmp
@@ -35,15 +36,16 @@ class SnakeRepresentation:
 
 
 class FrameBuilder:
-    def __init__(self, run_meta_data, expand_factor=2):
+    def __init__(self, run_meta_data, expand_factor=2, offset=(0, 0)):
         self.width = run_meta_data['width']
         self.height = run_meta_data['height']
+        self.offset_x, self.offset_y = offset
         self.free_color = tuple(run_meta_data['free_color'])
         self.food_color = tuple(run_meta_data['food_color'])
         self.expand_factor = expand_factor
         self.last_food = set()
-        self.frameshape = (self.height * self.expand_factor, self.width * self.expand_factor, 3)
-        self.last_frame = np.full(self.frameshape, self.free_color)
+        self.frameshape = ((self.height * self.expand_factor) + self.offset_y, (self.width * self.expand_factor) + self.offset_x, 3)
+        self.last_frame = np.full(self.frameshape, self.free_color, dtype=np.uint8)
         self.snake_reps = {}
         for snake_data in run_meta_data['snake_data']:
             snake_id = snake_data['snake_id']
@@ -87,22 +89,20 @@ class FrameBuilder:
         for changes in self.step_to_pixel_changes(step_data):
             frame = self.last_frame.copy()
             for (x, y), color in changes:
-                frame[y, x] = color
+                frame[y + self.offset_y, x + self.offset_x] = color
             self.last_frame = frame
             frames.append(frame)
         return frames
 
-def pixel_changes_from_runfile(filepath, expand_factor=2):
-    grid_changes = grid_changes_from_runfile(filepath, expand_factor)
-    pixel_changes = {}
-    pixel_changes.update(grid_changes)
-    pixel_changes['changes'] = []
-    color_changes = grid_changes['changes']
-    for step_data in color_changes:
-        food_changes = step_data['food_changes']
-        for snake_change in step_data['snake_changes']:
-            pixel_changes['changes'].append(food_changes + snake_change)
-            food_changes = []
+def pixel_changes_from_runfile(filepath, expand_factor=2, offset=(1, 1)):
+    pixel_changes = []
+    with open(Path(filepath)) as run_file:
+        run_data = json.load(run_file)
+        metadata = run_data.copy()
+        del metadata['steps']
+        frame_builder = FrameBuilder(metadata, expand_factor, offset)
+        for step_nr, step_data in run_data['steps'].items():
+            pixel_changes.extend(frame_builder.step_to_pixel_changes(step_data))
     return pixel_changes
 
 
@@ -187,5 +187,3 @@ def grid_changes_from_runfile(filename, expand_factor=2):
         grid_changes['changes'].append(step_grid_change)
     return grid_changes
 
-# if __name__ == '__main__':
-#     print(json.dumps(grid_changes_from_runfile(r'B:\pythonStuff\snake_sim\runs\batch\grid_32x32\1_snakes_32x32_U8VAUE_9__ABORTED.json'), indent=2))

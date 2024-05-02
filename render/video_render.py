@@ -1,44 +1,54 @@
 import os
+import json
 import core
 import sys
 import argparse
 import numpy as np
-import cv2
+import subprocess
+from render.core import FrameBuilder
 from pathlib import Path
+import cv2
+import numpy as np
 
 
-def main(argv):
+def make_video(run_file, out_dir, fps, frames_multiply=1):
+    run_file_path = Path(run_file)
+    size = (640, 640)
+    filebasename = run_file_path.stem + '.mp4'
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    output_path = Path(out_dir).joinpath(filebasename)
+    out = cv2.VideoWriter(str(output_path), fourcc, fps, size)
+
+    with open(Path(run_file)) as run_file:
+        run_data = json.load(run_file)
+        metadata = run_data.copy()
+        del metadata['steps']
+        frame_builder = FrameBuilder(metadata, expand_factor=2, offset=(1, 1))
+        for step_nr, step_data in run_data['steps'].items():
+            subframes = frame_builder.step_to_frames(step_data)
+            for frame in subframes:
+                bgr_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                resized_frame_image = cv2.resize(bgr_frame, size, interpolation=cv2.INTER_AREA)
+                for _ in range(frames_multiply):
+                    out.write(resized_frame_image)
+
+    # Release everything when job is finished
+    out.release()
+
+def cli(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument('-f', '--file', type=str, required=True)
     args = ap.parse_args(argv)
     if not args.file:
         raise ValueError("No file specified")
+    return args
 
-    filebasename = Path(args.file).stem
-    video_file = os.path.join(os.getcwd(), 'videos', filebasename) + '.mp4'
-    pixel_changes = core.pixel_changes_from_runfile(Path(args.file))
-    height = pixel_changes['height']
-    width = pixel_changes['width']
-    target_size = (width*10, height*10)
-    frame_arr = np.full((height, width, 3), pixel_changes['free_color'])
-    frames = []
-    # print(pixel_changes['height'])
-    # print([x for x in pixel_changes])
-    # print(pixel_changes['changes'][0])
-    for change in pixel_changes['changes']:
-        for pixel in change:
-            (x, y), color = pixel
-            frame_arr[y, x] = color
-        frames.append(frame_arr.copy())
-
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # You can change 'XVID' to other codecs like 'MP4V', 'MJPG', etc.
-    video = cv2.VideoWriter(video_file, fourcc, 20.0, target_size)
-
-    for frame in frames:
-        resized_frame = cv2.resize(frame, target_size, interpolation=cv2.INTER_NEAREST)
-        video.write(resized_frame)
-    video.release()
-
+def main(argv):
+    runs = Path('b:/pythonStuff/snake_sim/runs/grid_32x32').resolve()
+    output_dir = Path('render/videos')
+    for run_file in runs.glob('*.json'):
+        print('making video for', run_file.stem)
+        make_video(run_file, output_dir, fps=30, frames_multiply=2)
 
 
 if __name__ == '__main__':
