@@ -6,46 +6,29 @@ import pygame
 import argparse
 import sys
 import math
+import json
 import utils
 import time
 import numpy as np
+from pathlib import Path
 
 import core
 
 def frames_from_runfile(filepath, expand_factor=2):
-    pixel_changes = core.pixel_changes_from_runfile(filepath, expand_factor)
     frames = []
-    grid_height = pixel_changes['height']
-    grid_width = pixel_changes['width']
-    color_list = [pixel_changes['free_color']] * ((grid_width) * (grid_height))
-    changes = pixel_changes['changes']
-    for step_data in changes:
-        for (x, y), color in step_data:
-            color_list[y * (grid_width) + x] = color
-        frames.append(color_list.copy())
-    return frames, grid_width, grid_height
+    with open(Path(filepath)) as run_file:
+        run_data = json.load(run_file)
+        metadata = run_data.copy()
+        del metadata['steps']
+        frame_builder = core.FrameBuilder(metadata, expand_factor, offset=(1, 1))
+        for step_nr, step_data in run_data['steps'].items():
+            frames.extend(frame_builder.step_to_frames(step_data))
+    return frames, metadata['width'], metadata['height']
 
-
-def draw_frame2(screen, frame):
-    height, width = frame.shape[:2]
-    TILE_SIZE_PX = SCREEN_WIDTH / width
-    for row in range(height):
-        for col in range(width):
-            color = frame[row, col]
-            x = col * TILE_SIZE_PX
-            y = row * TILE_SIZE_PX
-            pygame.draw.rect(screen, color, (x, y, TILE_SIZE_PX + 1, TILE_SIZE_PX + 1))
-
-def draw_frame(screen, width, height, frame):
-    TILE_SIZE_PX = SCREEN_WIDTH / width
-    for row in range(height):
-        for col in range(width):
-            color_index = row * width + col
-            color = frame[color_index % len(frame)]
-            x = col * TILE_SIZE_PX
-            y = row * TILE_SIZE_PX
-            pygame.draw.rect(screen, color, (x, y, TILE_SIZE_PX + 1, TILE_SIZE_PX + 1))
-
+def draw_frame(screen, frame_buffer):
+    buffer_surface = pygame.surfarray.make_surface(frame_buffer)
+    scaled_surface = pygame.transform.scale(buffer_surface, (SCREEN_WIDTH, SCREEN_HEIGHT))
+    screen.blit(scaled_surface, (0, 0))
 
 def drawGray(surface, grid_width, grid_height):
     TILE_SIZE_PX = SCREEN_WIDTH / grid_width
@@ -53,7 +36,6 @@ def drawGray(surface, grid_width, grid_height):
         for x in range(0, int(grid_width)):
             rr = pygame.Rect((x*TILE_SIZE_PX, y*TILE_SIZE_PX), (TILE_SIZE_PX,TILE_SIZE_PX))
             pygame.draw.rect(surface, (120,120,120), rr)
-
 
 def handle_events():
     for event in pygame.event.get():
@@ -72,8 +54,9 @@ def play_stream(stream_conn, expand=2):
     # wait for init data
     while not stream_conn.poll():
         pass
+
     run_meta_data = stream_conn.recv()
-    frame_builder = core.FrameBuilder(run_meta_data=run_meta_data, expand_factor=expand)
+    frame_builder = core.FrameBuilder(run_meta_data=run_meta_data, expand_factor=expand, offset=(1, 1))
     grid_width = run_meta_data['width']
     grid_height = run_meta_data['height']
 
@@ -123,7 +106,7 @@ def play_stream(stream_conn, expand=2):
                 frame = frames[frame_counter]
                 play_direction = 1
                 # print(f"step: {frame_counter // expand}")
-                draw_frame2(screen, frame)
+                draw_frame(screen, frame)
                 pygame.display.flip()
         clock.tick(fps)
     pygame.quit()
@@ -138,8 +121,8 @@ def play_runfile(filename=None, frames=None, grid_width=None, grid_height=None, 
         if frames is None:
             frames, grid_width, grid_height = frames_from_runfile(filename, expand)
         elif grid_height is None or grid_width is None:
-            grid_width = int(len(frames[0]) ** 0.5)
-            grid_height = int(len(frames[0]) ** 0.5)
+            grid_width = grid_height = len(frames[0])
+
     pygame.init()
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
@@ -191,7 +174,7 @@ def play_runfile(filename=None, frames=None, grid_width=None, grid_height=None, 
                     frame = frames[frame_counter]
                     play_direction = 1
                     print(f"step: {frame_counter // expand}")
-                    draw_frame(screen, grid_width, grid_height, frame)
+                    draw_frame(screen, frame)
             pygame.display.flip()
             clock.tick(fps)
             if not pause:

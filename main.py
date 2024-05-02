@@ -15,6 +15,7 @@ from snakes.autoSnake import AutoSnake
 from snakes.autoSnake2 import AutoSnake2
 from snakes.autoSnake3 import AutoSnake3
 from snakes.autoSnake4 import AutoSnake4
+config = None
 
 def setup_env(config):
     env = SnakeEnv(config.GRID_WIDTH, config.GRID_HEIGHT, config.FOOD)
@@ -49,21 +50,20 @@ def start_stream_run(conn, config):
 
 
 def main(argv):
+    global config
     ap = argparse.ArgumentParser()
     mutex = ap.add_mutually_exclusive_group(required=True)
     mutex.add_argument('--play-file', help='Play a saved run file')
     mutex.add_argument('--compute', action='store_true', help='Compute a run file')
     mutex.add_argument('--stream', action='store_true', help='compute and live-stream the run')
-    ap.add_argument('--snake_count', type=int, help='Number of snakes to simulate')
-    ap.add_argument('--grid_width', type=int, help='Width of the grid')
-    ap.add_argument('--grid_height', type=int, help='Height of the grid')
+    ap.add_argument('--snake-count', type=int, help='Number of snakes to simulate')
+    ap.add_argument('--grid-width', type=int, help='Width of the grid')
+    ap.add_argument('--grid-height', type=int, help='Height of the grid')
     ap.add_argument('--food', type=int, help='Number of food to spawn')
     ap.add_argument('--nr-runs', type=int, help='Number of runs to generate')
     args = ap.parse_args(argv)
-
     with open('default_config.json') as config_file:
         config = DotDict(json.load(config_file))
-    print(config.snake_count)
     handle_args(args)
 
     if args.play_file:
