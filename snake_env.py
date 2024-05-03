@@ -114,9 +114,8 @@ class RunData:
             rpi_runs_dir = os.path.join(run_dir, 'rpi')
             os.makedirs(rpi_runs_dir, exist_ok=True)
             rpi_filepath = os.path.join(rpi_runs_dir, f'{nr_snakes}_snakes_rpi_{rand_str}_{len(self.steps)}{aborted_str}.run')
-            pixel_change_list = pixel_changes['changes']
             with open(rpi_filepath, 'w') as file:
-                for change in pixel_change_list:
+                for change in pixel_changes:
                     file.write(json.dumps(change) + '\n')
 
     def to_dict(self):

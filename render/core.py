@@ -39,7 +39,8 @@ class FrameBuilder:
     def __init__(self, run_meta_data, expand_factor=2, offset=(0, 0)):
         self.width = run_meta_data['width']
         self.height = run_meta_data['height']
-        self.offset_x, self.offset_y = offset
+        self.offset = offset
+        self.offset_x, self.offset_y = self.offset
         self.free_color = tuple(run_meta_data['free_color'])
         self.food_color = tuple(run_meta_data['food_color'])
         self.expand_factor = expand_factor
@@ -79,6 +80,7 @@ class FrameBuilder:
                     sub_changes.append((tuple(last_tail), self.free_color))
                 sub_changes.append((tuple(snake_rep.body[1]), snake_rep.body_color))
                 sub_changes.append((head, snake_rep.head_color))
+            sub_changes = [(coord_op(coord, self.offset, '+'), color) for coord, color in sub_changes]
             changes.append(list(set(sub_changes)))
             sub_changes = []
         return changes

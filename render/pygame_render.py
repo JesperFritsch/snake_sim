@@ -26,6 +26,7 @@ def frames_from_runfile(filepath, expand_factor=2):
     return frames, metadata['width'], metadata['height']
 
 def draw_frame(screen, frame_buffer):
+    frame_buffer = np.rot90(np.fliplr(frame_buffer))
     buffer_surface = pygame.surfarray.make_surface(frame_buffer)
     scaled_surface = pygame.transform.scale(buffer_surface, (SCREEN_WIDTH, SCREEN_HEIGHT))
     screen.blit(scaled_surface, (0, 0))
