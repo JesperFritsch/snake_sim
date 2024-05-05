@@ -1,6 +1,8 @@
 import os
 import itertools
+import numpy as np
 from collections import deque
+from pathlib import Path
 from time import time
 from utils import coord_op
 from snakes.autoSnake2 import AutoSnake2
@@ -10,6 +12,7 @@ from snakes.autoSnakeBase import AutoSnakeBase, copy_map
 from snake_env import SnakeEnv, RunData
 
 from pygame_render import play_runfile
+from video_render import frames_to_video
 from render import core
 
 def check_areas(snake, coord):
@@ -26,22 +29,23 @@ if __name__ == '__main__':
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
     test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'A'
+    snake_char = 'G'
     expand_factor = 2
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
     snake = AutoSnake4(snake_char, 1)
-    base_frame = [SnakeEnv.COLOR_MAPPING[SnakeEnv.FREE_TILE]] * (frame_width * frame_height)
+    frameshape = (frame_width, frame_height, 3)
+    base_frame = np.full(frameshape, SnakeEnv.COLOR_MAPPING[SnakeEnv.FREE_TILE], dtype=np.uint8)
 
     with open(test_map_filepath) as test_map_file:
         step_state = eval(test_map_file.read())
         env.map = env.fresh_map()
         for snake_data in [step_state[s] for s in step_state if s not in (snake_char, 'food')]:
-            print(snake_data)
-            core.put_snake_in_frame(base_frame, frame_width, snake_data, (255, 255, 255), expand_factor=expand_factor)
+            # print(snake_data)
+            core.put_snake_in_frame(base_frame, snake_data, (255, 255, 255), expand_factor=expand_factor)
         for coord in step_state['food']:
             x, y = coord_op(coord, (expand_factor, expand_factor), '*')
-            base_frame[y * frame_width + x] = env.COLOR_MAPPING[SnakeEnv.FOOD_TILE]
+            base_frame[y, x] = env.COLOR_MAPPING[SnakeEnv.FOOD_TILE]
         for key, coords in step_state.items():
             if key == snake_char:
                 value = snake.body_value
@@ -74,11 +78,15 @@ if __name__ == '__main__':
             tile = planned_path.pop()
         # planned_path = None
         s_time = time()
-        option = snake.deep_look_ahead(copy_map(snake.map), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
-        print(option)
+        option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=None)
+        print('free_path: ', option['free_path'])
         print(f"Time: {(time() - s_time) * 1000}")
     frames = []
     for body_coords in rundata:
-        frame = core.put_snake_in_frame(base_frame.copy(), frame_width, body_coords, (255, 0, 0), expand_factor=expand_factor)
+        frame = core.put_snake_in_frame(base_frame.copy(), body_coords, (255, 0, 0), expand_factor=expand_factor)
         frames.append(frame)
+        # frames.append(frame)
+
     play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width)
+    # video_output = Path(__file__).parent.joinpath('..', '..', 'render', 'videos', 'test_look_ahead.mp4').resolve()
+    # frames_to_video(frames, str(video_output), 30, size=(640, 640))

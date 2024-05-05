@@ -6,9 +6,6 @@ import argparse
 from multiprocessing import Pipe, Process
 from pathlib import Path
 
-sys.path.append(os.getcwd())
-
-
 from utils import DotDict
 from snake_env import SnakeEnv
 from snakes.autoSnake import AutoSnake
