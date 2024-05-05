@@ -466,7 +466,7 @@ class AutoSnake4(AutoSnakeBase):
         if valid_tiles:
             for tile in valid_tiles:
                 areas = self.get_areas_fast(s_map, new_coord, valid_tiles)
-                if len(areas) > 1:
+                if len(areas) > 1 or True:
                     area_check = self.is_area_clear(s_map, body_coords, tile)
                     if area_check['has_tail']:
                         current_results['free_path'] = True

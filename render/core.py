@@ -91,7 +91,7 @@ class FrameBuilder:
         for changes in self.step_to_pixel_changes(step_data):
             frame = self.last_frame.copy()
             for (x, y), color in changes:
-                frame[y + self.offset_y, x + self.offset_x] = color
+                frame[y, x] = color
             self.last_frame = frame
             frames.append(frame)
         return frames
