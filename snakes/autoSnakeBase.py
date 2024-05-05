@@ -46,7 +46,7 @@ class AutoSnakeBase(Snake):
         self.start_time = time()
         self.update_map(self.env.map)
         # print(self.x, self.y)
-        self.map_to_print = copy_map(self.map)
+        self.map_to_print = self.map.copy()
         self.update_survivors()
         tile = self.pick_direction()
         # print(f"{self.body_coords=}")
@@ -59,7 +59,7 @@ class AutoSnakeBase(Snake):
             self.coord = tile
             self.x, self.y = tile
             self.update_body(self.coord, self.body_coords, self.length)
-            if self.map[self.y][self.x] == self.env.FOOD_TILE:
+            if self.map[self.y, self.x] == self.env.FOOD_TILE:
                 self.length += 1
             next_tile = tile
         else:
@@ -119,34 +119,34 @@ class AutoSnakeBase(Snake):
     def show_search(self, s_map, checked, coord, current):
         for y in range(self.env.height):
             for x in range(self.env.width):
-                if checked[y * self.env.width + x]:
-                    s_map[y][x] = ord('#')
+                if checked[y, x] == True:
+                    s_map[y, x] = ord('#')
                 if (x, y) in current:
-                    s_map[y][x] = ord('x')
+                    s_map[y, x] = ord('c')
                 if (x, y) == coord:
-                    s_map[y][x] = ord('X')
+                    s_map[y, x] = ord('A')
         return s_map
 
     def show_route(self, s_map, s_route):
-        s_map = copy_map(s_map)
+        s_map = s_map.copy()
         if s_route is None: return
         for x, y in list(s_route)[1:]:
-            s_map[y][x] = ord('x')
+            s_map[y, x] = ord('x')
         return s_map
 
     def occupy_route(self, s_map, s_route):
-        s_map = copy_map(s_map)
+        s_map = s_map.copy()
         for x, y in list(s_route):
-            s_map[y][x] = ord('x')
+            s_map[y, x] = ord('x')
         return s_map
 
     def update_snake_position(self, s_map, body_coords, old_tail):
         head = body_coords[0]
         if old_tail is not None:
-            s_map[old_tail[1]][old_tail[0]] = self.env.FREE_TILE
+            s_map[old_tail[1], old_tail[0]] = self.env.FREE_TILE
         for i in range(2):
             x, y = body_coords[i]
-            s_map[y][x] = self.head_value if body_coords[i] == head else self.body_value
+            s_map[y, x] = self.head_value if body_coords[i] == head else self.body_value
         return s_map
 
     def get_flat_map(self, s_map):
@@ -157,11 +157,12 @@ class AutoSnakeBase(Snake):
 
     def update_map(self, flat_map):
         if self.map is None:
-            self.map = [array('B', [self.env.FREE_TILE] * self.env.width) for _ in range(self.env.height)]
+            self.map = np.full((self.env.height, self.env.width), self.env.FREE_TILE, dtype=np.int32)
+            # self.map = [array('B', [self.env.FREE_TILE] * self.env.width) for _ in range(self.env.height)]
         for y in range(self.env.height):
             for x in range(self.env.width):
                 map_val = flat_map[y * self.env.width + x]
-                self.map[y][x] = map_val
+                self.map[y, x] = map_val
 
     def update_survivors(self):
         self.alive_opps = [s.head_value for s in self.env.alive_snakes]
@@ -223,7 +224,7 @@ class AutoSnakeBase(Snake):
         for coord in current_coords:
             x, y = coord
             valid_tiles = self.valid_tiles(s_map, coord)
-            if s_map[y][x] == self.env.FOOD_TILE:
+            if s_map[y, x] == self.env.FOOD_TILE:
                 if len(self.valid_tiles(s_map, coord, head_coord)) >= 2:
                     return [coord]
             for valid_coord in valid_tiles:
@@ -274,12 +275,12 @@ class AutoSnakeBase(Snake):
             tile_a, tile_b = coord_op(s_coord, (c_x, 0), '+'), coord_op(s_coord, (0, c_y), '+')
             corner_conn = (tile_a, tile_b)
             if all([self.env.is_inside(t) for t in corner_conn]) \
-                and all([s_map[t[1]][t[0]] in self.env.valid_tile_values for t in corner_conn]) \
-                and s_map[y][x] in self.env.valid_tile_values:
+                and all([s_map[t[1], t[0]] in self.env.valid_tile_values for t in corner_conn]) \
+                and s_map[y, x] in self.env.valid_tile_values:
                 subareas.add(corner_conn)
             else:
                 for x, y in corner_conn:
-                    if self.env.is_inside((x, y)) and s_map[y][x] in self.env.valid_tile_values:
+                    if self.env.is_inside((x, y)) and s_map[y, x] in self.env.valid_tile_values:
                         subareas.add(((x, y),))
         change = True
         areas_set = set()
@@ -318,7 +319,7 @@ class AutoSnakeBase(Snake):
             cor_dir = coord_op(dir_1, dir_2, '+')
             cor_coord = coord_op(s_coord, cor_dir, '+')
             c_x, c_y = cor_coord
-            if s_map[c_y][c_x] in self.env.valid_tile_values:
+            if s_map[c_y, c_x] in self.env.valid_tile_values:
                 areas[a] = areas[a] + [coord2]
             else:
                 a += 1
@@ -335,7 +336,7 @@ class AutoSnakeBase(Snake):
                 dirs.append(m_coord)
             elif not self.env.is_inside(m_coord):
                 continue
-            elif s_map[y_move][x_move] not in self.env.valid_tile_values:
+            elif s_map[y_move, x_move] not in self.env.valid_tile_values:
                 continue
             dirs.append(m_coord)
         return dirs
@@ -372,7 +373,7 @@ class AutoSnakeBase(Snake):
             if options_tuples:
                 for op_head, data_obj in op_valid_tiles.items():
                     curr_x, curr_y = op_head
-                    s_map[curr_y][curr_x] = data_obj['body_value']
+                    s_map[curr_y, curr_x] = data_obj['body_value']
                 if len(op_valid_tiles) > 1:
                     combinations = [c for c in itertools.product(*options_tuples)]
                     combinations = [c for c in combinations if coords_unique(c)]
@@ -383,7 +384,7 @@ class AutoSnakeBase(Snake):
                     for op_option in comb:
                         head_val, coord = op_option
                         op_x, op_y = coord
-                        s_map_copy[op_y][op_x] = head_val
+                        s_map_copy[op_y, op_x] = head_val
                     next_states.append(s_map_copy)
             return next_states
 
@@ -391,14 +392,14 @@ class AutoSnakeBase(Snake):
             if depth >= self.MAX_RISK_CALC_DEPTH:
                 return 0
             results = []
-            if s_map[self_coord[1]][self_coord[0]] == self.env.FOOD_TILE:
+            if s_map[self_coord[1], self_coord[0]] == self.env.FOOD_TILE:
                 self_length += 1
             old_tail = self.update_body(self_coord, body_coords, self_length)
-            for next_state_map in get_next_states(copy_map(s_map), self_coord):
+            for next_state_map in get_next_states(s_map.copy(), self_coord):
                 if valids_in_next := self.valid_tiles(next_state_map, self_coord):
                     sub_results = []
                     for self_valid in valids_in_next:
-                        next_state_map = self.update_snake_position(copy_map(next_state_map), body_coords, old_tail)
+                        next_state_map = self.update_snake_position(next_state_map.copy(), body_coords, old_tail)
                         result = recurse(next_state_map, self_valid, body_coords.copy(), self_length, depth+1)
                         sub_results.append(result)
                     results.append(mean(sub_results))
@@ -410,13 +411,13 @@ class AutoSnakeBase(Snake):
                 return 0
 
         self_length = self.length
-        if s_map[option_coord[1]][option_coord[0]] == self.env.FOOD_TILE:
+        if s_map[option_coord[1], option_coord[0]] == self.env.FOOD_TILE:
                 self_length += 1
         body_coords = self.body_coords.copy()
         old_tail = self.update_body(option_coord, body_coords, self_length)
         s_map = self.update_snake_position(s_map, body_coords, old_tail)
         results = []
-        for next_state_map in get_next_states(copy_map(s_map), option_coord):
+        for next_state_map in get_next_states(s_map.copy(), option_coord):
             if valids_in_next := self.valid_tiles(next_state_map, option_coord):
                 sub_results = []
                 for self_valid in valids_in_next:
