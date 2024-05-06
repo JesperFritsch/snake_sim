@@ -29,7 +29,7 @@ if __name__ == '__main__':
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
     test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'G'
+    snake_char = 'E'
     expand_factor = 2
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
@@ -78,7 +78,7 @@ if __name__ == '__main__':
             tile = planned_path.pop()
         # planned_path = None
         s_time = time()
-        option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=None)
+        option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
         print('free_path: ', option['free_path'])
         print(f"Time: {(time() - s_time) * 1000}")
     frames = []
