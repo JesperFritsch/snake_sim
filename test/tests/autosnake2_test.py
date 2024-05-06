@@ -29,7 +29,7 @@ if __name__ == '__main__':
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
     test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'E'
+    snake_char = 'A'
     expand_factor = 2
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
@@ -64,13 +64,23 @@ if __name__ == '__main__':
     env.food.locations = set([tuple(x) for x in step_state['food'] if tuple(x) != snake.coord])
     snake.x, snake.y = snake.coord
     snake.update_map(env.map)
-    # snake.print_map(snake.map)
+    snake.print_map(snake.map)
     # print(snake.body_coords)
     print(snake.length, snake.coord, snake.body_value)
     print(snake.coord)
     # snake.update()
     # frames = None
     rundata = []
+    # area_coord = (0, 0)
+    # valid_tiles = snake.valid_tiles(snake.map, area_coord)
+    # time_z = time()
+    # areas_check = snake.is_area_clear(snake.map, snake.body_coords, area_coord)
+    # print(areas_check)
+    # print(f"Time is_area_clear: {(time() - time_z) * 1000}")
+    # time_z = time()
+    # areas_check = snake.area_check(snake.map, snake.body_coords, area_coord)
+    # print(areas_check)
+    # print(f"Time area_check: {(time() - time_z) * 1000}")
     for tile in snake.valid_tiles(snake.map, snake.coord):
         planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
         print(f"Planned path: {planned_path}")
