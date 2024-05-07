@@ -15,7 +15,7 @@ from snake_env import (
 class AutoSnake4(AutoSnakeBase):
     TIME_LIMIT = True
     MAX_RISK_CALC_DEPTH = 3
-    MAX_BRANCH_TIME = 1000
+    MAX_BRANCH_TIME = 5000
 
 
     def __init__(self, id: str, start_length: int, greedy=False):
@@ -140,6 +140,8 @@ class AutoSnake4(AutoSnakeBase):
         self.set_route(route)
         if self.route:
             next_tile = self.route.pop()
+            if not len(self.route) >= self.length:
+                self.route = None
         else:
             next_tile = None
         return next_tile
@@ -151,7 +153,7 @@ class AutoSnake4(AutoSnakeBase):
         s_dir = coord_op(self_coord, body_coords[1], '-')
         return coord_op(self_coord, s_dir, '+')
 
-    def get_areas_fast2(self, s_map, s_coord):
+    def get_areas_fast(self, s_map, s_coord):
         curr_area = deque()
         areas = []
         s_x, s_y = s_coord
@@ -190,28 +192,6 @@ class AutoSnake4(AutoSnakeBase):
         return areas
 
 
-    def get_areas_fast(self, s_map, s_coord, valid_tiles):
-        if (max(valid_tiles, key=lambda x: x[0])[0] - min(valid_tiles, key=lambda x: x[0])[0]) == 2:
-            tiles = sorted(valid_tiles, key=lambda x: x[0])
-        else:
-            tiles = sorted(valid_tiles, key=lambda x: x[1])
-        areas = {0: [tiles[0]]}
-        a = 0
-        for i in range(1, len(tiles)):
-            coord1, coord2 = tiles[i-1:i+1]
-            dir_1 = coord_op(coord1, s_coord, '-')
-            dir_2 = coord_op(coord2, s_coord, '-')
-            cor_dir = coord_op(dir_1, dir_2, '+')
-            cor_coord = coord_op(s_coord, cor_dir, '+')
-            c_x, c_y = cor_coord
-            if s_map[c_y, c_x] in self.env.valid_tile_values and not coord_op(dir_1, dir_2, '+') == (0, 0):
-                areas[a] = areas[a] + [coord2]
-            else:
-                a += 1
-                areas[a] = areas.get(a, []) + [coord2]
-        return list(areas.values())
-
-
     def is_single_area(self, coord, areas):
         for area in areas:
             if coord in area and len(area) == 1:
@@ -220,6 +200,7 @@ class AutoSnake4(AutoSnakeBase):
 
     def area_check(self, s_map, body_coords, start_coord, tile_count=1, food_count=0, checked=None, depth=0):
         current_coords = deque([start_coord])
+        to_be_checked = deque()
         if checked is None:
             checked = np.full((self.env.height, self.env.width), fill_value=False, dtype=bool)
         body_len = len(body_coords)
@@ -230,40 +211,10 @@ class AutoSnake4(AutoSnakeBase):
         has_tail = False
         done = False
         total_steps = 0
-
+        checked[start_coord[1], start_coord[0]] = True
         while current_coords:
             curr_coord = current_coords.popleft()
             c_x, c_y = curr_coord
-            neighbours = [coord for coord in self.neighbours(curr_coord) if self.env.is_inside(coord)]
-            areas = self.get_areas_fast2(s_map, curr_coord)
-            for n_coord in neighbours:
-                n_x, n_y = n_coord
-                if not checked[n_y, n_x]:
-                    checked[n_y, n_x] = True
-                    if s_map[n_y, n_x] == self.env.FOOD_TILE:
-                        # print('Found food')
-                        food_count += 1
-                    if self.is_single_area(n_coord, areas):
-                        area_check = self.area_check(s_map, body_coords, n_coord, food_count=food_count, checked=checked)
-                        if area_check['is_clear']:
-                            return area_check
-                        else:
-                            # self_indexes.append(area_check['max_index'])
-                            max_index = max(max_index, area_check['max_index'])
-                            food_count += area_check['food_count']
-                            tile_count += area_check['tile_count']
-                    if coord_cmp(n_coord, tail_coord):
-                        has_tail = True
-                        is_clear = True
-                        done = True
-                        break
-                    coord_val = s_map[n_y, n_x]
-                    if coord_val == self.env.FREE_TILE or coord_val == self.env.FOOD_TILE:
-                        tile_count += 1
-                        current_coords.append(n_coord)
-                    elif coord_val == self.body_value:
-                        max_index = max(max_index, body_coords.index(n_coord))
-
             total_steps = tile_count - food_count
             needed_steps = body_len - max_index
             if total_steps >= needed_steps:
@@ -271,14 +222,49 @@ class AutoSnake4(AutoSnakeBase):
                 break
             if done:
                 break
-            # self.print_map(self.show_search(s_map.copy(), checked, curr_coord, []))
-            # print('max_index: ', max_index)
-            # print('self_indexes: ', self_indexes)
-            # print('curr_coord: ', curr_coord)
-            # print('tile_count: ', tile_count)
-            # print('total_steps: ', total_steps)
-            # print('food_count: ', food_count)
-            # print('needed_steps: ', needed_steps)
+            areas = self.get_areas_fast(s_map, curr_coord)
+            neighbours = [coord for coord in self.neighbours(curr_coord) if self.env.is_inside(coord)]
+            for n_coord in neighbours:
+                n_x, n_y = n_coord
+                if not checked[n_y, n_x]:
+                    checked[n_y, n_x] = True
+                    if coord_cmp(n_coord, tail_coord):
+                        has_tail = True
+                        is_clear = True
+                        done = True
+                        break
+                    if self.is_single_area(n_coord, areas):
+                        to_be_checked.append(n_coord)
+                        continue
+                    coord_val = s_map[n_y, n_x]
+                    if coord_val == self.env.FREE_TILE or coord_val == self.env.FOOD_TILE:
+                        if s_map[n_y, n_x] == self.env.FOOD_TILE:
+                            # print('Found food')
+                            food_count += 1
+                        tile_count += 1
+                        current_coords.append(n_coord)
+                    elif coord_val == self.body_value:
+                        body_index = body_coords.index(n_coord)
+                        if body_index > max_index:
+                            max_index = body_index
+        if not is_clear:
+            while to_be_checked:
+                coord = to_be_checked.popleft()
+                area_check = self.area_check(s_map, body_coords, coord, food_count=food_count, checked=checked)
+                if area_check['is_clear']:
+                    return area_check
+                else:
+                    if area_check['max_index'] > max_index:
+                        max_index = area_check['max_index']
+                        food_count += area_check['food_count']
+                        tile_count += area_check['tile_count']
+                        total_steps = tile_count - food_count
+                        needed_steps = body_len - max_index
+                        if total_steps >= needed_steps:
+                            is_clear = True
+                            break
+                    else:
+                        continue
         result = {
                     'is_clear': is_clear,
                     'tile_count': tile_count,
@@ -287,77 +273,6 @@ class AutoSnake4(AutoSnakeBase):
                     'has_tail': has_tail,
                     'max_index': max_index,
                 }
-        # print(result)
-        return result
-
-    def is_area_clear(self, s_map, body_coords, start_coord, tile_count=1, food_count=0, checked=None):
-        current_coords = [start_coord]
-        safety_buffer = 0
-        if checked is None:
-            checked = np.full((self.env.height, self.env.width), fill_value=False, dtype=bool)
-        body_len = len(body_coords)
-        tail_coord = body_coords[-1]
-        self_indexes = [0]
-        # tile_count = 1
-        # food_count = 0
-        is_clear = False
-        has_tail = False
-        done = False
-        while current_coords and not done:
-            next_coords = []
-            for curr_coord in current_coords:
-                c_x, c_y = curr_coord
-                checked[c_y, c_x] = True
-                neighbours = [coord for coord in self.neighbours(curr_coord) if self.env.is_inside(coord)]
-                unexplored_tiles = [(x, y) for (x, y) in neighbours if not checked[y, x]]
-                # valid_tiles = self.valid_tiles(s_map, curr_coord)
-                # if valid_tiles:
-                #     areas = self.get_areas_fast(s_map, curr_coord, valid_tiles)
-                # else:
-                #     areas = []
-                # print('curr_coord, ',curr_coord)
-                # print('areas: ', areas)
-                # print('unexplored_tiles: ', unexplored_tiles)
-                areas = self.get_areas_fast2(s_map, curr_coord)
-                for n_coord in unexplored_tiles:
-                    t_x, t_y = n_coord
-                    # If the tile is the tail, the area is clear
-                    if s_map[t_y, t_x] == self.env.FOOD_TILE:
-                        food_count += 1
-                    if n_coord == tail_coord:
-                        has_tail = True
-                        is_clear = True
-                        # done = True
-                        # break
-                    if s_map[t_y, t_x] in self.env.valid_tile_values:
-                        checked[t_y, t_x] = True
-                        tile_count += 1
-                        if self.is_single_area(n_coord, areas):
-                            # print('Checking subarea')
-                            # print(n_coord)
-                            area_check = self.is_area_clear(s_map, body_coords, n_coord, tile_count=tile_count, food_count=food_count, checked=checked)
-                            if area_check['is_clear']:
-                                return area_check
-                        next_coords.append(n_coord)
-                    elif s_map[t_y, t_x] == self.body_value:
-                        self_indexes.append(body_coords.index(n_coord))
-                # if done:
-                #     break
-            current_coords = next_coords
-            total_steps = tile_count - food_count
-            max_index = max(self_indexes)
-            needed_steps = body_len - max_index + safety_buffer
-            if total_steps >= needed_steps:
-                is_clear = True
-                # break
-        result = {
-                    'is_clear': is_clear,
-                    'tile_count': tile_count,
-                    'total_steps': total_steps,
-                    'food_count': food_count,
-                    'has_tail': has_tail
-                }
-        # print(result)
         return result
 
 
@@ -552,19 +467,33 @@ class AutoSnake4(AutoSnakeBase):
 
         if planned_route:
             target_tile = planned_route.pop()
-            valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
         else:
             # target_tile = None
             target_tile = self.target_tile(s_map, body_coords, recurse_mode=True)
+        valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
         if valid_tiles:
+            # area_checks = {}
+            # for tile in valid_tiles:
+            #     s_map_copy = s_map.copy()
+            #     body_coords_copy = body_coords.copy()
+            #     old_tail = self.update_body(tile, body_coords_copy, length)
+            #     s_map_copy = self.update_snake_position(s_map_copy, body_coords_copy, old_tail)
+            #     valid_from_tile = self.valid_tiles(s_map_copy, tile)
+            #     if not valid_from_tile:
+            #         continue
+            #     check_tile = valid_from_tile[0]
+            #     area_checks[tile] = self.area_check(s_map_copy, body_coords_copy, check_tile)
+            # valid_tiles = sorted(area_checks.keys(), key=lambda x: area_checks[x]['max_index'], reverse=True)
+            # valid_tiles.sort(key=lambda x: area_checks[x]['max_index'], reverse=True)
             for tile in valid_tiles:
                 state_tuple = tuple([self.get_flat_map_state(s_map), depth, tile])
                 state_hash = hash(state_tuple)
                 if state_hash in failed_paths:
                     continue
                 c_time = time()
-                # area_check = self.area_check(s_map, body_coords, tile)
+                # area_check = area_checks[tile]
                 area_check = self.area_check(s_map, body_coords, tile)
+                # area_check = self.is_area_clear(s_map, body_coords, tile)
                 # print(f"Time for area check: {(time() - c_time) * 1000} ms")
                 # print(f"Area check: {area_check}")
                 if area_check['has_tail']:
