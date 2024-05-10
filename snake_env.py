@@ -300,7 +300,7 @@ class SnakeEnv:
             self.snakes_info[snake.id]['length'] = snake.length
             u_time = time()
             next_coord = snake.update()
-            # print(f'update_time for snake: {snake.id}', time() - u_time)
+            print(f'update_time for snake: {snake.id}', time() - u_time)
             if snake.alive:
                 x, y = snake.coord
                 self.snakes_info[snake.id]['current_coord'] = snake.coord

@@ -116,15 +116,18 @@ class AutoSnakeBase(Snake):
                 moves.append((0, 1))
         return tuple(moves)
 
-    def show_search(self, s_map, checked, coord, current):
+    def show_search(self, s_map, coord=None, current=None, checked=None):
         for y in range(self.env.height):
             for x in range(self.env.width):
-                if checked[y, x] == True:
-                    s_map[y, x] = ord('#')
-                if (x, y) in current:
-                    s_map[y, x] = ord('c')
-                if (x, y) == coord:
-                    s_map[y, x] = ord('A')
+                if checked is not None:
+                    if checked[y, x] == True:
+                        s_map[y, x] = ord('#')
+                if current is not None:
+                    if (x, y) in current:
+                        s_map[y, x] = ord('c')
+                if coord is not None:
+                    if (x, y) == coord:
+                        s_map[y, x] = ord('A')
         return s_map
 
     def show_route(self, s_map, s_route):
@@ -149,11 +152,9 @@ class AutoSnakeBase(Snake):
             s_map[y, x] = self.head_value if body_coords[i] == head else self.body_value
         return s_map
 
-    def get_flat_map(self, s_map):
-        return [c for row in s_map for c in row]
 
     def get_flat_map_state(self, s_map):
-        return tuple([v in self.env.valid_tile_values for v in self.get_flat_map(s_map)])
+        return tuple([v in self.env.valid_tile_values for v in s_map.flat])
 
     def update_map(self, flat_map):
         if self.map is None:
