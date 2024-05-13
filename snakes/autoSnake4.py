@@ -26,13 +26,20 @@ class AutoSnake4(AutoSnakeBase):
         s_coord = s_coord or self.coord
         if s_coord in route:
             route = deque(list(route)[:route.index(s_coord)])
-        if route[-1] not in valid_tiles:
-            try:
-                sub_route = self.get_route(self.map, s_coord, end=route[-1])
-                route = deque(list(route) + sub_route[1:-1])
-            except Exception as e:
-                print(e)
-                raise ValueError('Invalid route')
+        try:
+            if route[-1] not in valid_tiles:
+                try:
+                    sub_route = self.get_route(self.map, s_coord, end=route[-1])
+                    route = deque(list(route) + sub_route[1:-1])
+                except Exception as e:
+                    print(e)
+                    raise ValueError('Invalid route')
+        except IndexError as e:
+            print(e)
+            print('Route: ', route)
+        except Exception as e:
+            print(e)
+            print(route)
         return route
 
     def set_route(self, route: deque):
@@ -180,23 +187,21 @@ class AutoSnake4(AutoSnakeBase):
                 if s_map[n_coord[1], n_coord[0]] == self.env.FREE_TILE or s_map[n_coord[1], n_coord[0]] == self.env.FOOD_TILE:
                     curr_area.append(n_coord)
                     curr_area_len += 1
-                else:
-                    if curr_area_len != 0:
-                        areas.append(curr_area)
-                        curr_area = deque()
-                        curr_area_len = 0
-                corner_coord = corner_coords[i]
-                if self.env.is_inside(corner_coord):
-                    if s_map[corner_coord[1], corner_coord[0]] != self.env.FREE_TILE and s_map[corner_coord[1], corner_coord[0]] != self.env.FOOD_TILE:
-                        if curr_area_len != 0:
-                            areas.append(curr_area)
-                            curr_area = deque()
-                            curr_area_len = 0
-            else:
-                if curr_area_len != 0:
+                elif curr_area_len != 0:
                     areas.append(curr_area)
                     curr_area = deque()
                     curr_area_len = 0
+                corner_coord = corner_coords[i]
+                if (self.env.is_inside(corner_coord) and
+                    s_map[corner_coord[1], corner_coord[0]] != self.env.FREE_TILE and s_map[corner_coord[1], corner_coord[0]] != self.env.FOOD_TILE and
+                    curr_area_len != 0):
+                        areas.append(curr_area)
+                        curr_area = deque()
+                        curr_area_len = 0
+            elif curr_area_len != 0:
+                areas.append(curr_area)
+                curr_area = deque()
+                curr_area_len = 0
         if curr_area_len != 0:
             areas.append(curr_area)
         #if the last area is connected to the first area, merge them
@@ -231,7 +236,7 @@ class AutoSnake4(AutoSnakeBase):
         checked[start_coord[1], start_coord[0]] = True
         while current_coords:
             curr_coord = current_coords.popleft()
-            # c_x, c_y = curr_coord
+            c_x, c_y = curr_coord
             if tile_count > 1:
                 #if it is the first tile then an area search could be incorrect if the head is one step away from a
                 areas = self.get_areas_fast(s_map, curr_coord)
@@ -240,7 +245,8 @@ class AutoSnake4(AutoSnakeBase):
             # map_copy = self.show_search(s_map.copy(), coord=curr_coord, checked=checked)
             # self.print_map(map_copy)
             # print('areas: ', areas)
-            neighbours = [coord for coord in self.neighbours(curr_coord) if self.env.is_inside(coord)]
+            neighbours = ((c_x, c_y-1),(c_x+1, c_y),(c_x, c_y+1),(c_x-1, c_y))
+            neighbours = [coord for coord in neighbours if self.env.is_inside(coord)]
             for n_coord in neighbours:
                 n_x, n_y = n_coord
                 if not checked[n_y, n_x]:
@@ -476,20 +482,19 @@ class AutoSnake4(AutoSnakeBase):
             return current_results
 
         area_checks = {}
-        for tile in valid_tiles:
-            area_check = self.area_check(s_map, body_coords, tile)
-            area_checks[tile] = area_check
-            # print(tile, area_check)
-            if area_check['has_tail']:
-                current_results['free_path'] = True
-                current_results['len_gain'] = area_check['food_count']
-                current_results['depth'] = length
-                return current_results
 
         if planned_route:
             planned_tile = planned_route.pop()
             if planned_tile and planned_tile in valid_tiles:
                 valid_tiles.remove(planned_tile)
+                area_check = self.area_check(s_map, body_coords, planned_tile)
+                area_checks[planned_tile] = area_check
+                # print(tile, area_check)
+                if area_check['has_tail']:
+                    current_results['free_path'] = True
+                    current_results['len_gain'] = area_check['food_count']
+                    current_results['depth'] = length
+                    return current_results
                 check_result = self.deep_look_ahead(
                     s_map.copy(),
                     planned_tile,
@@ -534,7 +539,15 @@ class AutoSnake4(AutoSnakeBase):
                     continue
                 # c_time = time()
                 # map_copy = self.show_search(s_map.copy(), coord=tile)
-                area_check = area_checks[tile]
+                if (area_check := area_checks.get(tile, None)) is None:
+                    area_check = self.area_check(s_map, body_coords, tile)
+                    area_checks[tile] = area_check
+                # print(tile, area_check)
+                if area_check['has_tail']:
+                    current_results['free_path'] = True
+                    current_results['len_gain'] = area_check['food_count']
+                    current_results['depth'] = length
+                    return current_results
 
                 # area_check = self.area_check(s_map, body_coords, tile)
                 if not area_check['is_clear']:
