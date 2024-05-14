@@ -137,7 +137,6 @@ def play_runfile(filename=None, frames=None, grid_width=None, grid_height=None, 
     play_direction = 1
     while running:
         pause = False
-        print('running')
         while running:
             step_nr = math.ceil(frame_counter / expand)
             fps = default_fps

@@ -36,6 +36,8 @@ def handle_args(args):
         config.FOOD = args.food
     if args.snake_count:
         config.snake_count = args.snake_count
+    if args.calc_timeout:
+        config.calc_timeout = args.calc_timeout
 
     if args.stream:
         if args.nr_runs:
@@ -57,6 +59,7 @@ def main(argv):
     ap.add_argument('--grid-width', type=int, help='Width of the grid')
     ap.add_argument('--grid-height', type=int, help='Height of the grid')
     ap.add_argument('--food', type=int, help='Number of food to spawn')
+    ap.add_argument('--calc_timeout', type=int, help='Timeout for calculation')
     ap.add_argument('--nr-runs', type=int, help='Number of runs to generate')
     args = ap.parse_args(argv)
     with open('default_config.json') as config_file:

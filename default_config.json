@@ -3,6 +3,7 @@
     "GRID_HEIGHT": 32,
     "FOOD": 15,
     "snake_count": 7,
+    "calc_timeout": 7000,
     "snake_configs": [
         {
             "snake":{
