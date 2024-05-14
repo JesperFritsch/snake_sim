@@ -12,12 +12,11 @@ from snakes.autoSnakeBase import AutoSnakeBase
 class AutoSnake4(AutoSnakeBase):
     TIME_LIMIT = True
     MAX_RISK_CALC_DEPTH = 3
-    MAX_BRANCH_TIME = 7000
 
-
-    def __init__(self, id: str, start_length: int, greedy=False):
+    def __init__(self, id: str, start_length: int, calc_timeout=1000, greedy=False):
         super().__init__(id, start_length)
         self.greedy = greedy
+        self.calc_timeout = calc_timeout
         self.food_in_route = []
         self.failed_paths = set()
 
@@ -437,7 +436,7 @@ class AutoSnake4(AutoSnakeBase):
         # if failed_paths is None:
         #     failed_paths = set()
         if timeout_ms is None:
-            timeout_ms = self.MAX_BRANCH_TIME
+            timeout_ms = self.calc_timeout
         if start_time is None:
             start_time = time()
         planned_tile = None
