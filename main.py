@@ -39,9 +39,8 @@ def handle_args(args):
     if args.calc_timeout:
         config.calc_timeout = args.calc_timeout
 
-    if args.stream:
-        if args.nr_runs:
-            raise ValueError('Cannot specify --nr-runs with --stream')
+    if args.stream and args.nr_runs:
+        raise ValueError('Cannot specify --nr-runs with --stream')
 
 def start_stream_run(conn, config):
     env = setup_env(config)
