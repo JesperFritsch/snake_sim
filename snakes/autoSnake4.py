@@ -82,7 +82,10 @@ class AutoSnake4(AutoSnakeBase):
         if self.route:
             planned_route = self.route.copy()
             planned_tile = planned_route.pop()
-            valid_tiles.sort(key=lambda x: 0 if x == planned_tile else 1)
+        # else:
+        #     planned_tile = self.target_tile(self.map, self.body_coords)
+        #     planned_route = None
+        valid_tiles.sort(key=lambda x: 0 if x == planned_tile else 1)
         for coord in valid_tiles:
             if coord == planned_tile:
                 route = planned_route

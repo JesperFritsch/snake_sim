@@ -154,7 +154,11 @@ class AutoSnakeBase(Snake):
 
 
     def get_flat_map_state(self, s_map):
-        return tuple([v in self.env.valid_tile_values for v in s_map.flat])
+        bools = [False] * (self.env.height * self.env.width)
+        i = 0
+        for value in s_map.flat:
+            bools[i] = value == self.env.FREE_TILE or value == self.env.FOOD_TILE
+        return tuple(bools)
 
     def update_map(self, flat_map):
         if self.map is None:
