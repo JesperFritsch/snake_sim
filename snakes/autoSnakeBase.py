@@ -152,13 +152,12 @@ class AutoSnakeBase(Snake):
             s_map[y, x] = self.head_value if body_coords[i] == head else self.body_value
         return s_map
 
-
     def get_flat_map_state(self, s_map):
-        bools = [False] * (self.env.height * self.env.width)
-        i = 0
-        for value in s_map.flat:
-            bools[i] = value == self.env.FREE_TILE or value == self.env.FOOD_TILE
-        return tuple(bools)
+        FREE_TILE = self.env.FREE_TILE
+        FOOD_TILE = self.env.FOOD_TILE
+
+        mask = (s_map == FREE_TILE) | (s_map == FOOD_TILE)
+        return tuple(mask.flat)
 
     def update_map(self, flat_map):
         if self.map is None:

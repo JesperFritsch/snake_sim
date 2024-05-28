@@ -82,9 +82,9 @@ class AutoSnake4(AutoSnakeBase):
         if self.route:
             planned_route = self.route.copy()
             planned_tile = planned_route.pop()
-        # else:
-        #     planned_tile = self.target_tile(self.map, self.body_coords)
-        #     planned_route = None
+        else:
+            planned_tile = self.target_tile(self.map, self.body_coords)
+            planned_route = None
         valid_tiles.sort(key=lambda x: 0 if x == planned_tile else 1)
         for coord in valid_tiles:
             if coord == planned_tile:
@@ -528,10 +528,9 @@ class AutoSnake4(AutoSnakeBase):
 
         # if planned_route:
         #     target_tile = planned_route.pop()
-        #     valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
         # else:
-        #     target_tile = self.target_tile(s_map, body_coords, recurse_mode=True)
-        # self.print_map(s_map)
+        target_tile = self.target_tile(s_map, body_coords, recurse_mode=True)
+        valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
 
         if valid_tiles:
             for tile in valid_tiles:
