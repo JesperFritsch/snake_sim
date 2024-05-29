@@ -175,7 +175,10 @@ class AutoSnake4(AutoSnakeBase):
         s_dir = coord_op(self_coord, body_coords[1], '-')
         return coord_op(self_coord, s_dir, '+')
 
+
     def get_areas_fast(self, s_map, s_coord):
+        food_tile = self.env.FOOD_TILE
+        free_tile = self.env.FREE_TILE
         curr_area = deque()
         areas = []
         s_x, s_y = s_coord
@@ -186,7 +189,7 @@ class AutoSnake4(AutoSnakeBase):
         for n_coord in n_coords:
             i += 1
             if self.env.is_inside(n_coord):
-                if s_map[n_coord[1], n_coord[0]] == self.env.FREE_TILE or s_map[n_coord[1], n_coord[0]] == self.env.FOOD_TILE:
+                if s_map[n_coord[1], n_coord[0]] == free_tile or s_map[n_coord[1], n_coord[0]] == food_tile:
                     curr_area.append(n_coord)
                     curr_area_len += 1
                 elif curr_area_len != 0:
@@ -194,8 +197,8 @@ class AutoSnake4(AutoSnakeBase):
                     curr_area = deque()
                     curr_area_len = 0
                 corner_coord = corner_coords[i]
-                if (self.env.is_inside(corner_coord) and
-                    s_map[corner_coord[1], corner_coord[0]] != self.env.FREE_TILE and s_map[corner_coord[1], corner_coord[0]] != self.env.FOOD_TILE and
+                if (self.env.is_inside(corner_coord) and not
+                    (s_map[corner_coord[1], corner_coord[0]] == free_tile or s_map[corner_coord[1], corner_coord[0]] == food_tile) and
                     curr_area_len != 0):
                         areas.append(curr_area)
                         curr_area = deque()
@@ -207,18 +210,45 @@ class AutoSnake4(AutoSnakeBase):
         if curr_area_len != 0:
             areas.append(curr_area)
         #if the last area is connected to the first area, merge them
-        if areas[0][0] == n_coords[0] and areas[-1][-1] == n_coords[-1]:
+        if areas[0][0] == n_coords[0] and areas[-1][-1] == n_coords[-1] and curr_area_len != 4:
             lu_corn = corner_coords[-1]
-            if s_map[lu_corn[1], lu_corn[0]] == self.env.FREE_TILE or s_map[lu_corn[1], lu_corn[0]] == self.env.FOOD_TILE:
+            if s_map[lu_corn[1], lu_corn[0]] == free_tile or s_map[lu_corn[1], lu_corn[0]] == food_tile:
                 areas[0].extend(areas.pop())
         return areas
 
 
     def is_single_area(self, coord, areas):
         for area in areas:
-            if len(area) == 1 and coord_cmp(area[0], coord):
+            if len(area) == 1 and (area[0][0] == coord[0] and area[0][1] == coord[1]):
                 return True
         return False
+
+    def is_single_area2(self, s_map, coord, check_coord):
+        c_dir = (check_coord[0] - coord[0], check_coord[1] - coord[1])
+        c_perp = (c_dir[1], c_dir[0])
+        conn_a = (
+            (check_coord[0] + c_perp[0], check_coord[1] + c_perp[1]),
+            (coord[0] + c_perp[0], coord[1] + c_perp[1])
+        )
+        conn_b = (
+            (check_coord[0] - c_perp[0], check_coord[1] - c_perp[1]),
+            (coord[0] - c_perp[0], coord[1] - c_perp[1])
+        )
+        connected = True
+        for conn in conn_a:
+            x, y = conn
+            if (0 <= x < self.width and 0 <= y < self.height) and not (s_map[y, x] == self.env.FREE_TILE or s_map[y, x] == self.env.FOOD_TILE):
+                connected = False
+                break
+        if not connected:
+            connected = True
+            for conn in conn_b:
+                x, y = conn
+                if (0 <= x < self.width and 0 <= y < self.height) and not (s_map[y, x] == self.env.FREE_TILE or s_map[y, x] == self.env.FOOD_TILE):
+                    connected = False
+                    break
+        return not connected
+
 
     def area_check(self, s_map, body_coords, start_coord, tile_count=0, food_count=0, max_index=0, checked=None, depth=0):
         current_coords = deque([start_coord])
@@ -239,30 +269,33 @@ class AutoSnake4(AutoSnakeBase):
         while current_coords:
             curr_coord = current_coords.popleft()
             c_x, c_y = curr_coord
-            if tile_count > 1:
-                #if it is the first tile then an area search could be incorrect if the head is one step away from a
-                areas = self.get_areas_fast(s_map, curr_coord)
-            else:
-                areas = []
+            # if tile_count > 1:
+            #     #if it is the first tile then an area search could be incorrect if the head is one step away from a
+            #     areas = self.get_areas_fast(s_map, curr_coord)
+            # else:
+            #     areas = []
             # map_copy = self.show_search(s_map.copy(), coord=curr_coord, checked=checked)
             # self.print_map(map_copy)
+            # print('curr_coord: ', curr_coord)
             # print('areas: ', areas)
             neighbours = ((c_x, c_y-1),(c_x+1, c_y),(c_x, c_y+1),(c_x-1, c_y))
-            neighbours = [coord for coord in neighbours if self.env.is_inside(coord)]
+            neighbours = [(x, y) for x, y in neighbours if (0 <= x < self.width and 0 <= y < self.height)]
             for n_coord in neighbours:
                 n_x, n_y = n_coord
                 if not checked[n_y, n_x]:
                     checked[n_y, n_x] = True
-                    if coord_cmp(n_coord, tail_coord):
+                    if n_coord[0] == tail_coord[0] and n_coord[1] == tail_coord[1]:
                         has_tail = True
                         is_clear = True
                         done = True
                         break
                     coord_val = s_map[n_y, n_x]
-                    if self.is_single_area(n_coord, areas):
-                        to_be_checked.append(n_coord)
-                        continue
+                    # if self.is_single_area(n_coord, areas):
                     if coord_val == self.env.FREE_TILE or coord_val == self.env.FOOD_TILE:
+                        if self.is_single_area2(s_map, curr_coord, n_coord):
+                            # print('Single area: ', n_coord)
+                            to_be_checked.append(n_coord)
+                            continue
                         if s_map[n_y, n_x] == self.env.FOOD_TILE:
                             # print('Found food')
                             food_count += 1
