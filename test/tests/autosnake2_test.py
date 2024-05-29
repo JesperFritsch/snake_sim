@@ -1,10 +1,13 @@
 import os
 import itertools
+import cProfile
+import pstats
+from io import StringIO
 import numpy as np
 from collections import deque
 from pathlib import Path
 from time import time
-from utils import coord_op
+from utils import coord_op, coord_cmp
 from snakes.autoSnake2 import AutoSnake2
 from snakes.autoSnake3 import AutoSnake3
 from snakes.autoSnake4 import AutoSnake4
@@ -27,9 +30,9 @@ if __name__ == '__main__':
     FOOD = 35
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
-    test_map_filename = 'test_map2.txt'
+    test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'C'
+    snake_char = 'A'
     expand_factor = 2
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
@@ -64,6 +67,7 @@ if __name__ == '__main__':
     env.food.locations = set([tuple(x) for x in step_state['food'] if tuple(x) != snake.coord])
     snake.x, snake.y = snake.coord
     snake.update_map(env.map)
+    # snake.map[22, 9] = ord('X')
     snake.print_map(snake.map)
     # print(snake.body_coords)
     print(snake.length, snake.coord, snake.body_value)
@@ -71,7 +75,48 @@ if __name__ == '__main__':
     # snake.update()
     # frames = None
     rundata = []
-    # area_coord = (0, 0)
+    area_coord = (7, 16)
+    map_copy = snake.map.copy()
+    map_copy[area_coord[1], area_coord[0]] = ord('Q')
+    snake.print_map(map_copy)
+    # pr = cProfile.Profile()
+    # pr.enable()
+
+    # # Call the function you want to profile
+    # for _ in range(200):
+    #     snake.area_check(snake.map, snake.body_coords.copy(), area_coord)
+
+    # pr.disable()
+
+    # # Print the profiling results
+    # s = StringIO()
+    # sortby = 'cumulative'
+    # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    # ps.print_stats()
+    # print(s.getvalue())
+    # time_e = time()
+    # for _ in range(200):
+    #     area = snake.area_check(snake.map, snake.body_coords.copy(), area_coord)
+    # print(area)
+    # print('area_check: ', (time() - time_e) * 1000)
+    # time_e = time()
+    # for _ in range(2000):
+    #     areas = snake.get_areas_fast(snake.map, area_coord)
+    # print('get_areas_fast: ', (time() - time_e) * 1000)
+    # time_e = time()
+    # for _ in range(200000):
+    #     a = area_coord[0] == area_coord[0] and area_coord[1] == area_coord[1]
+    # print('manual: ', (time() - time_e) * 1000)
+    # time_e = time()
+    # for _ in range(200000):
+    #     a = coord_cmp(area_coord, area_coord)
+    # print('coord_cmp: ', (time() - time_e) * 1000)
+    # print(areas)
+    # time_e = time()
+    # for _ in range(2000):
+    #     is_single = snake.is_single_area2(snake.map, area_coord, coord_op(area_coord, (1, 0), '+'))
+    # print(is_single, coord_op(area_coord, (1, 0), '+'))
+    # print('is_single_area2: ', (time() - time_e) * 1000)
     # valid_tiles = snake.valid_tiles(snake.map, area_coord)
     # time_z = time()
     # areas_check = snake.is_area_clear(snake.map, snake.body_coords, area_coord)
