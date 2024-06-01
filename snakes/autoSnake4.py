@@ -263,53 +263,43 @@ class AutoSnake4(AutoSnakeBase):
         done = False
         total_steps = 0
         tile_count += 1
-        if s_map[start_coord[1], start_coord[0]] == self.env.FOOD_TILE:
-            food_count += 1
+        food_value = self.env.FOOD_TILE
+        free_value = self.env.FREE_TILE
+        # if s_map[start_coord[1], start_coord[0]] == self.env.FOOD_TILE:
+        #     food_count += 1
         checked[start_coord[1], start_coord[0]] = True
         while current_coords:
             curr_coord = current_coords.popleft()
             c_x, c_y = curr_coord
-            # if tile_count > 1:
-            #     #if it is the first tile then an area search could be incorrect if the head is one step away from a
-            #     areas = self.get_areas_fast(s_map, curr_coord)
-            # else:
-            #     areas = []
-            # map_copy = self.show_search(s_map.copy(), coord=curr_coord, checked=checked)
-            # self.print_map(map_copy)
-            # print('curr_coord: ', curr_coord)
-            # print('areas: ', areas)
+            if s_map[c_y, c_x] == food_value:
+                food_count += 1
             neighbours = ((c_x, c_y-1),(c_x+1, c_y),(c_x, c_y+1),(c_x-1, c_y))
             neighbours = [(x, y) for x, y in neighbours if (0 <= x < self.width and 0 <= y < self.height)]
             for n_coord in neighbours:
                 n_x, n_y = n_coord
                 if not checked[n_y, n_x]:
                     checked[n_y, n_x] = True
-                    if n_coord[0] == tail_coord[0] and n_coord[1] == tail_coord[1]:
-                        has_tail = True
-                        is_clear = True
-                        done = True
-                        break
                     coord_val = s_map[n_y, n_x]
-                    # if self.is_single_area(n_coord, areas):
-                    if coord_val == self.env.FREE_TILE or coord_val == self.env.FOOD_TILE:
+                    if coord_val == free_value or coord_val == food_value:
                         if self.is_single_area2(s_map, curr_coord, n_coord):
-                            # print('Single area: ', n_coord)
                             to_be_checked.append(n_coord)
                             continue
-                        if s_map[n_y, n_x] == self.env.FOOD_TILE:
-                            # print('Found food')
-                            food_count += 1
                         tile_count += 1
                         current_coords.append(n_coord)
                     elif coord_val == self.body_value:
                         body_index = body_coords.index(n_coord)
                         if body_index > max_index:
                             max_index = body_index
+                    if n_coord[0] == tail_coord[0] and n_coord[1] == tail_coord[1] and not (tile_count == food_count == 1):
+                        has_tail = True
+                        is_clear = True
+                        done = True
+                        break
             total_steps = tile_count - food_count
             needed_steps = body_len - max_index
             if total_steps >= needed_steps:
                 is_clear = True
-                # break
+                break
             if done:
                 break
         # print('AT THE END!!!!!!')
@@ -577,6 +567,7 @@ class AutoSnake4(AutoSnakeBase):
                     area_check = self.area_check(s_map, body_coords, tile)
                     area_checks[tile] = area_check
                 # print(tile, area_check)
+
                 if area_check['has_tail']:
                     current_results['free_path'] = True
                     current_results['len_gain'] = area_check['food_count']
