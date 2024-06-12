@@ -229,17 +229,17 @@ class AutoSnake4(AutoSnakeBase):
         c_perp = (check_coord[1] - coord[1], check_coord[0] - coord[0])
         x = check_coord[0] + c_perp[0]
         y = check_coord[1] + c_perp[1]
-        if (0 <= x < self.width and 0 <= y < self.height) and s_map[y, x] == free_value or s_map[y, x] == food_value:
+        if (0 <= x < self.width and 0 <= y < self.height) and (s_map[y, x] == free_value or s_map[y, x] == food_value):
             x = coord[0] + c_perp[0]
             y = coord[1] + c_perp[1]
-            if (0 <= x < self.width and 0 <= y < self.height) and s_map[y, x] == free_value or s_map[y, x] == food_value:
+            if (0 <= x < self.width and 0 <= y < self.height) and (s_map[y, x] == free_value or s_map[y, x] == food_value):
                 return False
         x = check_coord[0] - c_perp[0]
         y = check_coord[1] - c_perp[1]
-        if (0 <= x < self.width and 0 <= y < self.height) and s_map[y, x] == free_value or s_map[y, x] == food_value:
+        if (0 <= x < self.width and 0 <= y < self.height) and (s_map[y, x] == free_value or s_map[y, x] == food_value):
             x = coord[0] - c_perp[0]
             y = coord[1] - c_perp[1]
-            if (0 <= x < self.width and 0 <= y < self.height) and s_map[y, x] == free_value or s_map[y, x] == food_value:
+            if (0 <= x < self.width and 0 <= y < self.height) and (s_map[y, x] == free_value or s_map[y, x] == food_value):
                 return False
         return True
 
