@@ -19,6 +19,7 @@ def frames_from_runfile(filepath, expand_factor=2):
     with open(Path(filepath)) as run_file:
         run_data = json.load(run_file)
         metadata = run_data.copy()
+        metadata['color_mapping'] = {int(k): tuple(v) for k, v in metadata['color_mapping'].items()}
         del metadata['steps']
         frame_builder = core.FrameBuilder(metadata, expand_factor, offset=(1, 1))
         for step_nr, step_data in run_data['steps'].items():

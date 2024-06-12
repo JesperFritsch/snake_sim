@@ -3,9 +3,13 @@ import array
 import json
 import os
 import sys
+from PIL import Image
+import numpy as np
+from typing import Optional
 
 import utils
 from utils import coord_op, exec_time
+from pathlib import Path
 from render import core as render
 from snakes.snake import Snake
 from time import time
@@ -24,7 +28,7 @@ class Food:
     width: int
     height: int
     max_food: int
-    decay_count: int = 200
+    decay_count: Optional[int] = None
     locations: set = field(default_factory=set)
     decay_counters: dict = field(default_factory=dict)
 
@@ -44,6 +48,8 @@ class Food:
             s_map[y * self.width + x] = SnakeEnv.FOOD_TILE
 
     def remove_old(self, s_map):
+        if self.decay_count is None:
+            return
         for location in set(self.locations):
             self.decay_counters[location] -= 1
             if self.decay_counters[location] <= 0:
@@ -86,10 +92,11 @@ class StepData:
 
 
 class RunData:
-    def __init__(self, width: int, height: int, snake_data: list, output_dir='runs') -> None:
+    def __init__(self, width: int, height: int, snake_data: list, base_map: np.array,  output_dir='runs') -> None:
         self.width = width
         self.height = height
         self.snake_data = snake_data
+        self.base_map = base_map
         self.output_dir = output_dir
         self.steps = {}
 
@@ -122,35 +129,62 @@ class RunData:
         return {
             'width': self.width,
             'height': self.height,
-            'food_color': SnakeEnv.COLOR_MAPPING[SnakeEnv.FOOD_TILE],
-            'free_color': SnakeEnv.COLOR_MAPPING[SnakeEnv.FREE_TILE],
+            'food_value': SnakeEnv.FOOD_TILE,
+            'free_value': SnakeEnv.FREE_TILE,
+            'blocked_value': SnakeEnv.BLOCKED_TILE,
+            'color_mapping': SnakeEnv.COLOR_MAPPING,
             'snake_data': self.snake_data,
+            'base_map': self.base_map.tolist(),
             'steps': {k: v.to_dict() for k, v in self.steps.items()}
         }
 
 
 class SnakeEnv:
-    valid_tile_values = (FOOD_TILE, FREE_TILE) = (0, 1)
+    FOOD_TILE = 0
+    FREE_TILE = 1
+    BLOCKED_TILE = 2
+    valid_tile_values = (FOOD_TILE, FREE_TILE)
     COLOR_MAPPING = {
         FOOD_TILE: (223, 163, 49),
-        FREE_TILE: (0, 0, 0)
+        FREE_TILE: (0, 0, 0),
+        BLOCKED_TILE: (127, 127, 127)
     }
 
-    def __init__(self, width, height, food, output_dir='runs') -> None:
-        self.map = None
+    def __init__(self, width, height, food, food_decay=500) -> None:
         self.snakes = {}
         self.width = width
         self.height = height
         self.time_step = 0
         self.alive_snakes = []
+        self.base_map = np.full(width * height, self.FREE_TILE, dtype=np.uint8)
         self.map = self.fresh_map()
         self.snakes_info = {}
         self.run_data = None
         self.store_runs = True
-        self.food = Food(width=width, height=height, max_food=food)
+        self.food = Food(width=width, height=height, max_food=food, decay_count=food_decay)
 
     def fresh_map(self):
-        return array.array('B', [self.FREE_TILE] * (self.width * self.height))
+        return self.base_map.copy()
+
+    def load_png_map(self, map_path):
+        img_path = Path(map_path)
+        if not img_path.is_absolute():
+            img_path = Path(__file__).parent.joinpath('maps/map_images') / img_path
+        image = Image.open(img_path)
+        image_matrix = np.array(image)
+        map_color_mapping = {
+            (0,0,0,0): self.FREE_TILE,
+            (255,0,0,255): self.FOOD_TILE,
+            (0,0,0,255): self.BLOCKED_TILE
+        }
+        for y in range(self.height):
+            for x in range(self.width):
+                color = tuple(image_matrix[y][x])
+                try:
+                    self.base_map[y * self.width + x] = map_color_mapping[color]
+                except KeyError:
+                    print(f"Color at (x={x}, y={y}) not found in color mapping: {color}")
+        self.map = self.fresh_map()
 
     def reset(self):
         self.time_step = 0
@@ -170,18 +204,6 @@ class SnakeEnv:
             snake.set_init_coord((rand_x, rand_y))
         self.alive_snakes = self.get_alive_snakes()
 
-    def print_map(self, s_map):
-        for row in s_map:
-            print_row = []
-            for c in row:
-                if c == self.env.FREE_TILE:
-                    print_row.append(' . ')
-                elif c == self.env.FOOD_TILE:
-                    print_row.append(' F ')
-                else:
-                    print_row.append(f' {chr(c)} ')
-            print(''.join(print_row))
-
     def print_map(self):
         print(f"{'':@<{self.width*3}}")
         for y in range(self.height):
@@ -191,6 +213,8 @@ class SnakeEnv:
                     print_row.append(' . ')
                 elif c == self.FOOD_TILE:
                     print_row.append(' F ')
+                elif c == self.BLOCKED_TILE:
+                    print_row.append(' # ')
                 else:
                     print_row.append(f' {chr(c)} ')
             print(''.join(print_row))
@@ -203,7 +227,8 @@ class SnakeEnv:
                 'snake_id': s.id,
                 'head_color': self.COLOR_MAPPING[s.head_value],
                 'body_color': self.COLOR_MAPPING[s.body_value]
-                } for s in self.snakes.values()])
+                } for s in self.snakes.values()],
+            base_map=np.array(self.base_map))
 
     def add_snake(self, snake, h_color, b_color):
         if isinstance(snake, Snake):
@@ -211,7 +236,7 @@ class SnakeEnv:
             while True:
                 rand_x = 2 + round(random.random() * (self.width - 3))
                 rand_y = 2 + round(random.random() * (self.height - 3))
-                if (rand_x, rand_y) in [s.coord for s in self.snakes.values()]:
+                if not self.map[rand_y * self.width + rand_x] == self.FREE_TILE:
                     continue
                 break
             snake.set_init_coord((rand_x, rand_y))
@@ -334,7 +359,7 @@ class SnakeEnv:
                 color_map.append(self.COLOR_MAPPING.get(tile_value, (255, 255, 255)))
         return color_map
 
-    def stream_run(self, conn):
+    def stream_run(self, conn, max_steps=None, max_no_food_steps=500):
         self.init_recorder()
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
@@ -356,6 +381,9 @@ class SnakeEnv:
                             aborted = True
                             break
                     if self.alive_snakes:
+                        highest_no_food = max([self.snakes_info[only_one.id]['last_food'] for only_one in self.alive_snakes])
+                        if (self.time_step - highest_no_food) > max_no_food_steps or max_steps is not None and self.time_step > max_steps:
+                            ongoing = False
                         self.update()
                         conn.send(self.run_data.steps[self.time_step].to_dict())
                     else:
@@ -370,7 +398,7 @@ class SnakeEnv:
             if self.store_runs:
                 self.run_data.write_to_file(aborted=aborted)
 
-    def generate_run(self, max_steps=None, max_no_food_steps=300):
+    def generate_run(self, max_steps=None, max_no_food_steps=500):
         start_time = time()
         self.init_recorder()
         for snake in self.snakes.values():

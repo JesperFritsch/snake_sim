@@ -30,13 +30,13 @@ if __name__ == '__main__':
     FOOD = 35
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
-    test_map_filename = 'test_map1.txt'
+    test_map_filename = 'test_map2.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'C'
+    snake_char = 'W'
     expand_factor = 2
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
-    snake = AutoSnake4(snake_char, 1)
+    snake = AutoSnake4(snake_char, 1, calc_timeout=10000)
     frameshape = (frame_width, frame_height, 3)
     base_frame = np.full(frameshape, SnakeEnv.COLOR_MAPPING[SnakeEnv.FREE_TILE], dtype=np.uint8)
 
@@ -75,14 +75,16 @@ if __name__ == '__main__':
     # snake.update()
     # frames = None
     rundata = []
-    area_coord = (7, 16)
+    area_coord = (15, 16)
     map_copy = snake.map.copy()
     map_copy[area_coord[1], area_coord[0]] = ord('Q')
     snake.print_map(map_copy)
+
+
     # pr = cProfile.Profile()
     # pr.enable()
 
-    # # Call the function you want to profile
+    # # # Call the function you want to profile
     # for _ in range(200):
     #     snake.area_check(snake.map, snake.body_coords.copy(), area_coord)
 
@@ -94,6 +96,8 @@ if __name__ == '__main__':
     # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
     # ps.print_stats()
     # print(s.getvalue())
+
+
     # time_e = time()
     # for _ in range(200):
     #     area = snake.area_check(snake.map, snake.body_coords.copy(), area_coord)
@@ -126,9 +130,16 @@ if __name__ == '__main__':
     # areas_check = snake.area_check(snake.map, snake.body_coords, area_coord)
     # print(areas_check)
     # print(f"Time area_check: {(time() - time_z) * 1000}")
+
+    pr = cProfile.Profile()
+    pr.enable()
+
     for tile in snake.valid_tiles(snake.map, snake.coord):
-        planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
-        print(f"Planned path: {planned_path}")
+        planned_path = None
+        # planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
+        # print(f"Planned path: {planned_path}")
+        # print(snake.check_safe_food_route(snake.map, planned_path))
+        # snake.print_map(snake.map)
         if planned_path:
             tile = planned_path.pop()
         # planned_path = None
@@ -137,11 +148,20 @@ if __name__ == '__main__':
         print('free_path: ', option['free_path'])
         print(f"Time: {(time() - s_time) * 1000}")
     frames = []
+
+    pr.disable()
+
+    # Print the profiling results
+    s = StringIO()
+    sortby = 'cumulative'
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    print(s.getvalue())
+
     for body_coords in rundata:
         frame = core.put_snake_in_frame(base_frame.copy(), body_coords, (255, 0, 0), expand_factor=expand_factor)
         frames.append(frame)
         # frames.append(frame)
-
     play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width)
     # video_output = Path(__file__).parent.joinpath('..', '..', 'render', 'videos', 'test_look_ahead.mp4').resolve()
     # frames_to_video(frames, str(video_output), 30, size=(640, 640))

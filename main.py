@@ -8,18 +8,18 @@ from pathlib import Path
 
 from utils import DotDict
 from snake_env import SnakeEnv
-from snakes.autoSnake import AutoSnake
-from snakes.autoSnake2 import AutoSnake2
-from snakes.autoSnake3 import AutoSnake3
 from snakes.autoSnake4 import AutoSnake4
+from render.pygame_render import play_runfile, play_stream
 config = None
 
 def setup_env(config):
-    env = SnakeEnv(config.GRID_WIDTH, config.GRID_HEIGHT, config.FOOD)
+    env = SnakeEnv(config.grid_width, config.grid_height, config.food, config.food_decay)
+    if config.get('map'):
+        env.load_png_map(config.map)
     count = 0
     for snake_config in config.snake_configs:
         count += 1
-        env.add_snake(AutoSnake4(**snake_config['snake']), **snake_config['env'])
+        env.add_snake(AutoSnake4(**snake_config['snake'], calc_timeout=config.calc_timeout), **snake_config['env'])
         if count == config.snake_count:
             break
     return env
@@ -29,15 +29,19 @@ def handle_args(args):
     global config
 
     if args.grid_width:
-        config.GRID_WIDTH = args.grid_width
+        config.grid_width = args.grid_width
     if args.grid_height:
-        config.GRID_HEIGHT = args.grid_height
+        config.grid_height = args.grid_height
     if args.food:
-        config.FOOD = args.food
+        config.food = args.food
     if args.snake_count:
         config.snake_count = args.snake_count
     if args.calc_timeout:
         config.calc_timeout = args.calc_timeout
+    if args.map:
+        config.map = args.map
+    if not args.food_decay is None:
+        config.food_decay = args.food_decay or None
 
     if args.stream and args.nr_runs:
         raise ValueError('Cannot specify --nr-runs with --stream')
@@ -58,15 +62,16 @@ def main(argv):
     ap.add_argument('--grid-width', type=int, help='Width of the grid')
     ap.add_argument('--grid-height', type=int, help='Height of the grid')
     ap.add_argument('--food', type=int, help='Number of food to spawn')
-    ap.add_argument('--calc_timeout', type=int, help='Timeout for calculation')
+    ap.add_argument('--food-decay', type=int, help='Number of steps before food decays, 0 for no decay')
+    ap.add_argument('--calc-timeout', type=int, help='Timeout for calculation')
     ap.add_argument('--nr-runs', type=int, help='Number of runs to generate')
+    ap.add_argument('--map', type=str, help='Path to map file')
     args = ap.parse_args(argv)
     with open('default_config.json') as config_file:
         config = DotDict(json.load(config_file))
     handle_args(args)
 
     if args.play_file:
-        from render.pygame_render import play_runfile
         play_runfile(Path(args.play_file))
 
     elif args.compute:
@@ -77,7 +82,6 @@ def main(argv):
             env.reset()
 
     elif args.stream:
-        from render.pygame_render import play_stream
         parent_conn, child_conn = Pipe()
         env_p = Process(target=start_stream_run, args=(child_conn, config))
         render_p = Process(target=play_stream, args=(parent_conn,))
