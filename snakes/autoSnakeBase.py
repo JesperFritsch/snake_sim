@@ -138,9 +138,8 @@ class AutoSnakeBase(Snake):
         return s_map
 
     def occupy_route(self, s_map, s_route):
-        s_map = s_map.copy()
         for x, y in list(s_route):
-            s_map[y, x] = ord('x')
+            s_map[y, x] = self.env.BLOCKED_TILE
         return s_map
 
     def update_snake_position(self, s_map, body_coords, old_tail):

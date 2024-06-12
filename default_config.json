@@ -1,9 +1,10 @@
 {
-    "GRID_WIDTH": 32,
-    "GRID_HEIGHT": 32,
-    "FOOD": 15,
+    "grid_width": 32,
+    "grid_height": 32,
+    "food": 15,
     "snake_count": 7,
     "calc_timeout": 7000,
+    "food_decay": 500,
     "snake_configs": [
         {
             "snake":{
