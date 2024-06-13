@@ -75,7 +75,7 @@ if __name__ == '__main__':
     # snake.update()
     # frames = None
     rundata = []
-    area_coord = (15, 16)
+    area_coord = (7, 14)
     map_copy = snake.map.copy()
     map_copy[area_coord[1], area_coord[0]] = ord('Q')
     snake.print_map(map_copy)
@@ -127,9 +127,15 @@ if __name__ == '__main__':
     # print(areas_check)
     # print(f"Time is_area_clear: {(time() - time_z) * 1000}")
     # time_z = time()
-    # areas_check = snake.area_check(snake.map, snake.body_coords, area_coord)
+    # for _ in range(200):
+    #     areas_check = snake.area_check(snake.map, snake.body_coords, area_coord)
     # print(areas_check)
     # print(f"Time area_check: {(time() - time_z) * 1000}")
+    # time_z = time()
+    # for _ in range(200):
+    #     areas_check = snake.area_check2(snake.map, snake.body_coords, area_coord)
+    # print(areas_check)
+    # print(f"Time area_check2: {(time() - time_z) * 1000}")
 
     pr = cProfile.Profile()
     pr.enable()
