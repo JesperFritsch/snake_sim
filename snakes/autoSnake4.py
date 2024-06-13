@@ -87,7 +87,7 @@ class AutoSnake4(AutoSnakeBase):
         valid_tiles.sort(key=lambda x: 0 if x == planned_tile else 1)
         for coord in valid_tiles:
             if coord == planned_tile:
-                route = planned_route
+                route = None
             else:
                 route = None
             option = self.find_route(coord, planned_route=route)
@@ -273,11 +273,104 @@ class AutoSnake4(AutoSnakeBase):
         return not connected
 
 
+    def area_check2(self, s_map, body_coords, start_coord):
+        """ This function started as a recursive function to check the size of an area and if is it possible for the snake to reach the tail """
+        checked = np.full((self.env.height, self.env.width), fill_value=False, dtype=bool)
+        checked[start_coord[1], start_coord[0]] = True
+        #level is each level of subareas
+        level = 0
+        level_stats = {}
+        to_check_on_level = {
+            0: deque([start_coord])
+        }
+        body_len = len(body_coords)
+        tail_coord = body_coords[-1]
+        is_clear = False
+        has_tail = False
+        done = False
+        total_steps = 0
+        food_value = self.env.FOOD_TILE
+        free_value = self.env.FREE_TILE
+        body_value = self.body_value
+        while True:
+            if to_check_on_level[level]:
+                current_coords = deque([to_check_on_level[level].pop()])
+            else:
+                current_coords = deque()
+            to_be_checked = deque()
+            tile_count = level_stats.get(level, {}).get('tile_count', 0)
+            food_count = level_stats.get(level, {}).get('food_count', 0)
+            max_index = level_stats.get(level, {}).get('max_index', 0)
+            tile_count += 1
+            while current_coords:
+                curr_coord = current_coords.popleft()
+                c_x, c_y = curr_coord
+                if s_map[c_y, c_x] == food_value:
+                    food_count += 1
+                neighbours = ((c_x, c_y-1),(c_x+1, c_y),(c_x, c_y+1),(c_x-1, c_y))
+                for n_coord in neighbours:
+                    n_x, n_y = n_coord
+                    if (0 <= n_x < self.width and 0 <= n_y < self.height):
+                        if not checked[n_y, n_x]:
+                            checked[n_y, n_x] = True
+                            coord_val = s_map[n_y, n_x]
+                            if coord_val == free_value or coord_val == food_value:
+                                if self.is_single_area3(s_map, curr_coord, n_coord):
+                                    to_be_checked.append(n_coord)
+                                    continue
+                                tile_count += 1
+                                current_coords.append(n_coord)
+                            elif coord_val == body_value:
+                                body_index = body_coords.index(n_coord)
+                                if body_index > max_index:
+                                    max_index = body_index
+                            if n_coord[0] == tail_coord[0] and n_coord[1] == tail_coord[1] and not (tile_count == food_count == 1):
+                                has_tail = True
+                                is_clear = True
+                                done = True
+                                break
+                total_steps = tile_count - food_count
+                needed_steps = body_len - max_index
+                if total_steps >= needed_steps:
+                    is_clear = True
+                    break
+                if done:
+                    break
+            if not is_clear:
+                if to_be_checked:
+                    level += 1
+                    to_check_on_level[level] = to_be_checked
+                    level_stats[level] = {
+                        'tile_count': tile_count,
+                        'food_count': food_count,
+                        'max_index': max_index
+                    }
+                else:
+                    level -= 1
+            if level < 0:
+                break
+            if is_clear:
+                break
+        result = {
+                    'is_clear': is_clear,
+                    'tile_count': tile_count,
+                    'total_steps': total_steps,
+                    'food_count': food_count,
+                    'has_tail': has_tail,
+                    'max_index': max_index,
+                    'start_coord': start_coord,
+                }
+        # print(result)
+        # print('depth: ', depth)
+        return result
+
+
     def area_check(self, s_map, body_coords, start_coord, tile_count=0, food_count=0, max_index=0, checked=None, depth=0):
         current_coords = deque([start_coord])
         to_be_checked = deque()
         if checked is None:
             checked = np.full((self.env.height, self.env.width), fill_value=False, dtype=bool)
+        checked[start_coord[1], start_coord[0]] = True
         body_len = len(body_coords)
         tail_coord = body_coords[-1]
         is_clear = False
@@ -288,7 +381,6 @@ class AutoSnake4(AutoSnakeBase):
         food_value = self.env.FOOD_TILE
         free_value = self.env.FREE_TILE
         body_value = self.body_value
-        checked[start_coord[1], start_coord[0]] = True
         while current_coords:
             curr_coord = current_coords.popleft()
             c_x, c_y = curr_coord
@@ -441,12 +533,9 @@ class AutoSnake4(AutoSnakeBase):
                         best_results=None,
                         planned_route=None,
                         current_results=None,
-                        failed_paths=None,
                         rundata=None,
                         timeout_ms=None):
         safety_buffer = 3
-        # if failed_paths is None:
-        #     failed_paths = set()
         if timeout_ms is None:
             timeout_ms = self.calc_timeout
         if start_time is None:
@@ -498,9 +587,8 @@ class AutoSnake4(AutoSnakeBase):
             planned_tile = planned_route.pop()
             if planned_tile and planned_tile in valid_tiles:
                 valid_tiles.remove(planned_tile)
-                area_check = self.area_check(s_map, body_coords, planned_tile)
+                area_check = self.area_check2(s_map, body_coords, planned_tile)
                 area_checks[planned_tile] = area_check
-                # print(tile, area_check)
                 if area_check['has_tail']:
                     current_results['free_path'] = True
                     current_results['len_gain'] = area_check['food_count']
@@ -517,27 +605,12 @@ class AutoSnake4(AutoSnakeBase):
                     old_route=old_route,
                     current_results=current_results.copy(),
                     start_time=start_time,
-                    rundata=rundata,
-                    failed_paths=failed_paths)
+                    rundata=rundata)
                 if check_result['free_path'] or check_result['timeout']:
                     return check_result
                 else:
                     planned_route = None
-        # if old_route:
-        #     old_route_list = list(old_route)
-        #     if new_coord in old_route:
-        #         index = old_route.index(new_coord)
-        #         planned_route = old_route_list[:index+1]
-        #         old_route = None
-        #     else:
-        #         connecting_route = self.get_route(s_map, new_coord, target_tiles=old_route_list)
-        #         if connecting_route:
-        #             index = old_route.index(connecting_route[0])
-        #             planned_route = old_route_list[:index] + connecting_route[:-1]
 
-        # if planned_route:
-        #     target_tile = planned_route.pop()
-        # else:
         target_tile = self.target_tile(s_map, body_coords, recurse_mode=True)
         valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
 
@@ -547,12 +620,9 @@ class AutoSnake4(AutoSnakeBase):
                 state_hash = hash(state_tuple)
                 if state_hash in self.failed_paths:
                     continue
-                # c_time = time()
-                # map_copy = self.show_search(s_map.copy(), coord=tile)
                 if (area_check := area_checks.get(tile, None)) is None:
-                    area_check = self.area_check(s_map, body_coords, tile)
+                    area_check = self.area_check2(s_map, body_coords, tile)
                     area_checks[tile] = area_check
-                # print(tile, area_check)
 
                 if area_check['has_tail']:
                     current_results['free_path'] = True
@@ -560,28 +630,20 @@ class AutoSnake4(AutoSnakeBase):
                     current_results['depth'] = length
                     return current_results
 
-                # area_check = self.area_check(s_map, body_coords, tile)
                 if not area_check['is_clear']:
                     best_results['depth'] = max(best_results['depth'], area_check['tile_count'])
-                    # best_results['free_path'] = False
                     continue
-                # if tile == target_tile and planned_route:
-                #     next_route = planned_route.copy()
-                # else:
-                #     next_route = None
                 check_result = self.deep_look_ahead(
                     s_map.copy(),
                     tile,
                     body_coords.copy(),
                     length,
-                    # planned_route=next_route,
                     old_route=old_route,
                     depth=depth+1,
                     best_results=best_results,
                     current_results=current_results.copy(),
                     start_time=start_time,
-                    rundata=rundata,
-                    failed_paths=failed_paths)
+                    rundata=rundata)
                 if check_result['free_path'] or check_result['timeout']:
                     return check_result
                 self.failed_paths.add(state_hash)
