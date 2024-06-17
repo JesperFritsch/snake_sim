@@ -117,6 +117,12 @@ class FrameBuilder:
             frames.append(frame)
         return frames
 
+    def frames_from_rundata(self, rundata):
+        frames = []
+        for body_coords in rundata:
+            frames.append(put_snake_in_frame(self.last_frame.copy(), body_coords, (255, 0, 0), self.expand_factor, self.offset))
+        return frames
+
 def pixel_changes_from_runfile(filepath, expand_factor=2, offset=(1, 1)):
     pixel_changes = []
     with open(Path(filepath)) as run_file:
@@ -130,14 +136,15 @@ def pixel_changes_from_runfile(filepath, expand_factor=2, offset=(1, 1)):
     return pixel_changes
 
 
-def put_snake_in_frame(frame, snake_coords, color, expand_factor=2):
+def put_snake_in_frame(frame, snake_coords, color, expand_factor=2, offset=(0, 0)):
     for i, coord in enumerate(snake_coords):
         s_dirs = []
         if i > 0:
             s_dirs.append(coord_op(snake_coords[i-1], coord, '-'))
         elif i < len(snake_coords) - 1:
             s_dirs.append(coord_op(snake_coords[i+1], coord, '-'))
-        x, y = coord_op(coord, (expand_factor, expand_factor), '*')
+        expanded = coord_op(coord, (expand_factor, expand_factor), '*')
+        x, y = coord_op(expanded, offset, '+')
         frame[y, x] = color
         for s_dir in s_dirs:
             for _ in range(math.ceil(expand_factor / 2) + 1):

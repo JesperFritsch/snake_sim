@@ -274,6 +274,7 @@ class AutoSnake4(AutoSnakeBase):
 
 
     def area_check2(self, s_map, body_coords, start_coord):
+        # This was an attempt to make the area check function iterative instead of recursive, doesnt really work as well.
         """ This function started as a recursive function to check the size of an area and if is it possible for the snake to reach the tail """
         checked = np.full((self.env.height, self.env.width), fill_value=False, dtype=bool)
         checked[start_coord[1], start_coord[0]] = True
@@ -333,10 +334,10 @@ class AutoSnake4(AutoSnakeBase):
                 needed_steps = body_len - max_index
                 if total_steps >= needed_steps:
                     is_clear = True
-                    break
+                    # break
                 if done:
                     break
-            if not is_clear:
+            if not done:
                 if to_be_checked:
                     level += 1
                     to_check_on_level[level] = to_be_checked
@@ -349,7 +350,7 @@ class AutoSnake4(AutoSnakeBase):
                     level -= 1
             if level < 0:
                 break
-            if is_clear:
+            if is_clear and done:
                 break
         result = {
                     'is_clear': is_clear,
@@ -587,7 +588,7 @@ class AutoSnake4(AutoSnakeBase):
             planned_tile = planned_route.pop()
             if planned_tile and planned_tile in valid_tiles:
                 valid_tiles.remove(planned_tile)
-                area_check = self.area_check2(s_map, body_coords, planned_tile)
+                area_check = self.area_check(s_map, body_coords, planned_tile)
                 area_checks[planned_tile] = area_check
                 if area_check['has_tail']:
                     current_results['free_path'] = True
@@ -621,7 +622,7 @@ class AutoSnake4(AutoSnakeBase):
                 if state_hash in self.failed_paths:
                     continue
                 if (area_check := area_checks.get(tile, None)) is None:
-                    area_check = self.area_check2(s_map, body_coords, tile)
+                    area_check = self.area_check(s_map, body_coords, tile)
                     area_checks[tile] = area_check
 
                 if area_check['has_tail']:
