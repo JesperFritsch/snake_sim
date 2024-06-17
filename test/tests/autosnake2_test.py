@@ -28,26 +28,35 @@ if __name__ == '__main__':
     GRID_WIDTH = 32
     GRID_HEIGHT = 32
     FOOD = 35
-    env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
-    test_map_filename = 'test_map2.txt'
-    test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'W'
     expand_factor = 2
+    offset = (1, 1)
+    env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
+
+    MAP = 'comps.png'
+
+    env.load_png_map(MAP)
+    env.init_recorder()
+    frame_builder = core.FrameBuilder(env.run_data.to_dict(), expand_factor, offset)
+
+    test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
+    test_map_filename = 'test_map1.txt'
+    test_map_filepath = os.path.join(test_data_dir, test_map_filename)
+    snake_char = 'A'
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
     snake = AutoSnake4(snake_char, 1, calc_timeout=10000)
     frameshape = (frame_width, frame_height, 3)
-    base_frame = np.full(frameshape, SnakeEnv.COLOR_MAPPING[SnakeEnv.FREE_TILE], dtype=np.uint8)
+    base_frame = frame_builder.last_frame
 
     with open(test_map_filepath) as test_map_file:
         step_state = eval(test_map_file.read())
         env.map = env.fresh_map()
         for snake_data in [step_state[s] for s in step_state if s not in (snake_char, 'food')]:
             # print(snake_data)
-            core.put_snake_in_frame(base_frame, snake_data, (255, 255, 255), expand_factor=expand_factor)
+            core.put_snake_in_frame(base_frame, snake_data, (255, 255, 255), expand_factor=expand_factor, offset=offset)
         for coord in step_state['food']:
-            x, y = coord_op(coord, (expand_factor, expand_factor), '*')
+            expanded = coord_op(coord, (expand_factor, expand_factor), '*')
+            x, y = coord_op(expanded, offset, '+')
             base_frame[y, x] = env.COLOR_MAPPING[SnakeEnv.FOOD_TILE]
         for key, coords in step_state.items():
             if key == snake_char:
@@ -75,7 +84,7 @@ if __name__ == '__main__':
     # snake.update()
     # frames = None
     rundata = []
-    area_coord = (7, 14)
+    area_coord = (5, 0)
     map_copy = snake.map.copy()
     map_copy[area_coord[1], area_coord[0]] = ord('Q')
     snake.print_map(map_copy)
@@ -127,12 +136,12 @@ if __name__ == '__main__':
     # print(areas_check)
     # print(f"Time is_area_clear: {(time() - time_z) * 1000}")
     # time_z = time()
-    # for _ in range(200):
+    # for _ in range(2000):
     #     areas_check = snake.area_check(snake.map, snake.body_coords, area_coord)
     # print(areas_check)
     # print(f"Time area_check: {(time() - time_z) * 1000}")
     # time_z = time()
-    # for _ in range(200):
+    # for _ in range(2000):
     #     areas_check = snake.area_check2(snake.map, snake.body_coords, area_coord)
     # print(areas_check)
     # print(f"Time area_check2: {(time() - time_z) * 1000}")
@@ -142,10 +151,10 @@ if __name__ == '__main__':
 
     for tile in snake.valid_tiles(snake.map, snake.coord):
         planned_path = None
-        # planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
-        # print(f"Planned path: {planned_path}")
-        # print(snake.check_safe_food_route(snake.map, planned_path))
-        # snake.print_map(snake.map)
+        planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
+        print(f"Planned path: {planned_path}")
+        print(snake.check_safe_food_route(snake.map, planned_path))
+        snake.print_map(snake.map)
         if planned_path:
             tile = planned_path.pop()
         # planned_path = None
@@ -164,10 +173,8 @@ if __name__ == '__main__':
     ps.print_stats()
     print(s.getvalue())
 
-    for body_coords in rundata:
-        frame = core.put_snake_in_frame(base_frame.copy(), body_coords, (255, 0, 0), expand_factor=expand_factor)
-        frames.append(frame)
-        # frames.append(frame)
+    frames = frame_builder.frames_from_rundata(rundata)
+
     play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width)
     # video_output = Path(__file__).parent.joinpath('..', '..', 'render', 'videos', 'test_look_ahead.mp4').resolve()
     # frames_to_video(frames, str(video_output), 30, size=(640, 640))

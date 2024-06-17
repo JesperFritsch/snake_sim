@@ -180,7 +180,7 @@ class AutoSnakeBase(Snake):
         """Returns a route from start to end or to a target tile if target_tiles is not None"""
         if target_tiles is None and end is None:
             raise ValueError("end and target_tiles can't both be None")
-        checked = [False] * (self.env.height * self.env.width)
+        checked = np.full((self.env.height, self.env.width), fill_value=False, dtype=bool)
         current_coords = [start]
         coord_map = {}
         coord_maps = []
@@ -200,10 +200,10 @@ class AutoSnakeBase(Snake):
                         done = True
                 for valid_coord in valid_tiles:
                     t_x, t_y = valid_coord
-                    if not checked[t_y * self.env.width + t_x]:
+                    if not checked[t_y, t_x]:
                         next_coords.append(valid_coord)
                         coord_map[valid_coord] = coord
-                        checked[t_y * self.env.width + t_x] = True
+                        checked[t_y, t_x] = True
             if done:
                 counter = 0
                 while route[-1] != start:
