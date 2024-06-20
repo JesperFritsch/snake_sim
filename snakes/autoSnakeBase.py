@@ -260,6 +260,8 @@ class AutoSnakeBase(Snake):
                     print_row.append(' . ')
                 elif c == self.env.FOOD_TILE:
                     print_row.append(' F ')
+                elif c == self.env.BLOCKED_TILE:
+                    print_row.append(' # ')
                 else:
                     print_row.append(f' {chr(c)} ')
             print(''.join(print_row))
