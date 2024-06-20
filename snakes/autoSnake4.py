@@ -224,6 +224,17 @@ class AutoSnake4(AutoSnakeBase):
 
 
     def is_single_area3(self, s_map, coord, check_coord):
+        """
+        check if a coordinate leads in to a different area
+
+        F = coord
+        T = check_coord
+        number = check order
+
+        1 T 1
+        2 F 2
+
+        """
         food_value = self.env.FOOD_TILE
         free_value = self.env.FREE_TILE
         c_perp = (check_coord[1] - coord[1], check_coord[0] - coord[0])
@@ -244,33 +255,47 @@ class AutoSnake4(AutoSnakeBase):
         return True
 
 
-    def is_single_area2(self, s_map, coord, check_coord):
-        food_value = self.env.FOOD_TILE
+    def area_check_needed(self, s_map, head_coord, neck_coord):
+        """
+        This should cover all scenarios where an area check is needed.
+        checking if the head will close of any area.
+        and checking if the head creates paths that are one tile wide.
+        """
         free_value = self.env.FREE_TILE
-        c_dir = (check_coord[0] - coord[0], check_coord[1] - coord[1])
-        c_perp = (c_dir[1], c_dir[0])
-        conn_a = (
-            (check_coord[0] + c_perp[0], check_coord[1] + c_perp[1]),
-            (coord[0] + c_perp[0], coord[1] + c_perp[1])
-        )
-        conn_b = (
-            (check_coord[0] - c_perp[0], check_coord[1] - c_perp[1]),
-            (coord[0] - c_perp[0], coord[1] - c_perp[1])
-        )
-        connected = True
-        for conn in conn_a:
-            x, y = conn
-            if (0 <= x < self.width and 0 <= y < self.height) and not (s_map[y, x] == free_value or s_map[y, x] == food_value):
-                connected = False
-                break
-        if not connected:
-            connected = True
-            for conn in conn_b:
-                x, y = conn
-                if (0 <= x < self.width and 0 <= y < self.height) and not (s_map[y, x] == free_value or s_map[y, x] == food_value):
-                    connected = False
-                    break
-        return not connected
+        food_value = self.env.FOOD_TILE
+        head_dir = (head_coord[0] - neck_coord[0], head_coord[1] - neck_coord[1])
+        perp_axis = (head_dir[1], head_dir[0])
+        coord_ahead = (head_coord[0] + head_dir[0], head_coord[1] + head_dir[1])
+
+        if not self.env.is_inside(coord_ahead):
+            return True
+
+        if s_map[coord_ahead[1], coord_ahead[0]] != free_value and s_map[coord_ahead[1], coord_ahead[0]] != food_value:
+            return True
+        besides_a = (head_coord[0] + perp_axis[0], head_coord[1] + perp_axis[1])
+        besides_b = (head_coord[0] - perp_axis[0], head_coord[1] - perp_axis[1])
+        diag_a_ahead = (coord_ahead[0] + perp_axis[0], coord_ahead[1] + perp_axis[1])
+        diag_b_ahead = (coord_ahead[0] - perp_axis[0], coord_ahead[1] - perp_axis[1])
+
+        if self.env.is_inside(diag_a_ahead) and self.env.is_inside(besides_a):
+            if s_map[diag_a_ahead[1], diag_a_ahead[0]] != free_value and s_map[diag_a_ahead[1], diag_a_ahead[0]] != food_value:
+                if s_map[besides_a[1], besides_a[0]] == free_value or s_map[besides_a[1], besides_a[0]] == food_value:
+                    return True
+            besides2 = (head_coord[0] + perp_axis[0] * 2, head_coord[1] + perp_axis[1] * 2)
+            if s_map[besides_a[1], besides_a[0]] == free_value or s_map[besides_a[1], besides_a[0]] == food_value:
+                if self.env.is_inside(besides2) and (s_map[besides2[1], besides2[0]] != free_value and s_map[besides2[1], besides2[0]] != food_value):
+                    return True
+
+        if self.env.is_inside(diag_b_ahead) and self.env.is_inside(besides_b):
+            if s_map[diag_b_ahead[1], diag_b_ahead[0]] != free_value and s_map[diag_b_ahead[1], diag_b_ahead[0]] != food_value:
+                if s_map[besides_b[1], besides_b[0]] == free_value or s_map[besides_b[1], besides_b[0]] == food_value:
+                    return True
+            besides2 = (head_coord[0] - perp_axis[0] * 2, head_coord[1] - perp_axis[1] * 2)
+            if s_map[besides_b[1], besides_b[0]] == free_value or s_map[besides_b[1], besides_b[0]] == food_value:
+                if self.env.is_inside(besides2) and (s_map[besides2[1], besides2[0]] != free_value and s_map[besides2[1], besides2[0]] != food_value):
+                    return True
+        return False
+
 
 
     def area_check2(self, s_map, body_coords, start_coord):
@@ -413,7 +438,7 @@ class AutoSnake4(AutoSnakeBase):
             needed_steps = body_len - max_index
             if total_steps >= needed_steps:
                 is_clear = True
-                break
+                # break
             if done:
                 break
         if not is_clear:
@@ -437,6 +462,7 @@ class AutoSnake4(AutoSnakeBase):
                     'has_tail': has_tail,
                     'max_index': max_index,
                     'start_coord': start_coord,
+                    'needed_steps': body_len - max_index
                 }
         # print(result)
         # print('depth: ', depth)
@@ -535,12 +561,16 @@ class AutoSnake4(AutoSnakeBase):
                         planned_route=None,
                         current_results=None,
                         rundata=None,
-                        timeout_ms=None):
+                        timeout_ms=None,
+                        check_areas=True,
+                        area_check_data=None):
         safety_buffer = 3
         if timeout_ms is None:
             timeout_ms = self.calc_timeout
         if start_time is None:
             start_time = time()
+        if area_check_data is None:
+            area_check_data = {}
         planned_tile = None
         if current_results is None:
             current_results = {}
@@ -578,9 +608,14 @@ class AutoSnake4(AutoSnakeBase):
         if ((time() - start_time) * 1000 > timeout_ms) and self.TIME_LIMIT:
             best_results['timeout'] = True
             return best_results
+
         if current_results['depth'] >= length + safety_buffer:
             current_results['free_path'] = True
             return current_results
+
+        # needed_steps = area_check_data.get('needed_steps', 1) - 1
+        # if needed_steps < 0:
+        #     return current_results
 
         area_checks = {}
 
@@ -588,13 +623,13 @@ class AutoSnake4(AutoSnakeBase):
             planned_tile = planned_route.pop()
             if planned_tile and planned_tile in valid_tiles:
                 valid_tiles.remove(planned_tile)
-                area_check = self.area_check(s_map, body_coords, planned_tile)
-                area_checks[planned_tile] = area_check
-                if area_check['has_tail']:
-                    current_results['free_path'] = True
-                    current_results['len_gain'] = area_check['food_count']
-                    current_results['depth'] = length
-                    return current_results
+                # area_check = self.area_check(s_map, body_coords, planned_tile)
+                # area_checks[planned_tile] = area_check
+                # if area_check['has_tail']:
+                #     current_results['free_path'] = True
+                #     current_results['len_gain'] = area_check['food_count']
+                #     current_results['depth'] = length
+                #     return current_results
                 check_result = self.deep_look_ahead(
                     s_map.copy(),
                     planned_tile,
@@ -615,25 +650,30 @@ class AutoSnake4(AutoSnakeBase):
         target_tile = self.target_tile(s_map, body_coords, recurse_mode=True)
         valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
 
+
         if valid_tiles:
             for tile in valid_tiles:
                 state_tuple = tuple([self.get_flat_map_state(s_map), tile])
                 state_hash = hash(state_tuple)
                 if state_hash in self.failed_paths:
                     continue
+                # self.print_map(s_map)
+                # if check_areas or depth == 1 :
+                # print('area check needed')
                 if (area_check := area_checks.get(tile, None)) is None:
                     area_check = self.area_check(s_map, body_coords, tile)
                     area_checks[tile] = area_check
-
+                area_check_data = area_check.copy()
+                # print(area_check)
                 if area_check['has_tail']:
                     current_results['free_path'] = True
                     current_results['len_gain'] = area_check['food_count']
                     current_results['depth'] = length
                     return current_results
-
                 if not area_check['is_clear']:
                     best_results['depth'] = max(best_results['depth'], area_check['tile_count'])
                     continue
+                # check_next_areas = self.area_check_needed(s_map, body_coords[0], body_coords[1])
                 check_result = self.deep_look_ahead(
                     s_map.copy(),
                     tile,
@@ -644,7 +684,9 @@ class AutoSnake4(AutoSnakeBase):
                     best_results=best_results,
                     current_results=current_results.copy(),
                     start_time=start_time,
-                    rundata=rundata)
+                    rundata=rundata,
+                    # check_areas=check_next_areas,
+                    area_check_data=area_check_data)
                 if check_result['free_path'] or check_result['timeout']:
                     return check_result
                 self.failed_paths.add(state_hash)

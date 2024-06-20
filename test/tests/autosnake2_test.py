@@ -150,11 +150,10 @@ if __name__ == '__main__':
     pr.enable()
 
     for tile in snake.valid_tiles(snake.map, snake.coord):
-        planned_path = None
+        # planned_path = None
         planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
         print(f"Planned path: {planned_path}")
-        print(snake.check_safe_food_route(snake.map, planned_path))
-        snake.print_map(snake.map)
+        # snake.print_map(snake.map)
         if planned_path:
             tile = planned_path.pop()
         # planned_path = None
@@ -175,6 +174,6 @@ if __name__ == '__main__':
 
     frames = frame_builder.frames_from_rundata(rundata)
 
-    play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width)
+    play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width, print_steps=False)
     # video_output = Path(__file__).parent.joinpath('..', '..', 'render', 'videos', 'test_look_ahead.mp4').resolve()
     # frames_to_video(frames, str(video_output), 30, size=(640, 640))

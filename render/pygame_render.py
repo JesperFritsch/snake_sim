@@ -116,7 +116,7 @@ def play_stream(stream_conn, expand=2):
 
 
 
-def play_runfile(filename=None, frames=None, grid_width=None, grid_height=None, expand=2):
+def play_runfile(filename=None, frames=None, grid_width=None, grid_height=None, expand=2, print_steps=True):
     if not ((frames is not None) != (filename is not None)):
         raise ValueError("Either filename or frames must be provided, not both.")
     else:
@@ -174,7 +174,8 @@ def play_runfile(filename=None, frames=None, grid_width=None, grid_height=None, 
                 if 0 <= frame_counter < len(frames):
                     frame = frames[frame_counter]
                     play_direction = 1
-                    print(f"step: {frame_counter // expand}")
+                    if print_steps:
+                        print(f"step: {frame_counter // expand}")
                     draw_frame(screen, frame)
             pygame.display.flip()
             clock.tick(fps)
