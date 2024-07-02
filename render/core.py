@@ -45,7 +45,7 @@ class FrameBuilder:
         self.free_value = run_meta_data['free_value']
         self.food_value = run_meta_data['food_value']
         self.blocked_value = run_meta_data['blocked_value']
-        self.color_mapping = run_meta_data['color_mapping']
+        self.color_mapping = {int(k): tuple(v) for k, v in run_meta_data['color_mapping'].items()}
         self.expand_factor = expand_factor
         self.last_food = set()
         self.frameshape = ((self.height * self.expand_factor) + self.offset_y, (self.width * self.expand_factor) + self.offset_x, 3)
