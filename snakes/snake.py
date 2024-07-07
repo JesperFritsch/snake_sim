@@ -35,6 +35,13 @@ class Snake:
         self.coord = coord
         self.body_coords = deque([coord] * self.length)
 
+    def set_new_head(self, coord):
+        self.x, self.y = coord
+        self.coord = coord
+        self.update_body(self.coord, self.body_coords, self.length)
+        if self.map[self.y, self.x] == self.env.FOOD_TILE:
+            self.length += 1
+
     def update(self):
         print("This method is not implemented")
         raise NotImplementedError
@@ -45,6 +52,9 @@ class Snake:
         for _ in range(len(body_coords) - length):
             old_tail = body_coords.pop()
         return old_tail
+
+    def kill(self):
+        self.alive = False
 
     def __repr__(self) -> str:
         return f"(Class: {type(self)}, ID: {self.id}, Alive: {self.alive}, Coord: {self.coord}, Len: {self.length})"
