@@ -139,9 +139,6 @@ class AutoSnakeBase(Snake):
         mask = (s_map == FREE_TILE) | (s_map == FOOD_TILE)
         return tuple(mask.flat)
 
-    def update_map(self, map):
-        self.map = map.copy()
-
     def update_survivors(self):
         self.alive_opps = [s.head_value for s in self.env.alive_snakes]
 

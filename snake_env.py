@@ -12,6 +12,8 @@ from utils import coord_op, exec_time
 from pathlib import Path
 from render import core as render
 from snakes.snake import Snake
+from snakes.dqnSnake import DqnSnake
+from core import put_snake_in_frame
 from time import time
 from dataclasses import dataclass, field
 
@@ -265,6 +267,9 @@ class SnakeEnv:
                 self.snakes[snake.id] = snake
             else:
                 raise ValueError(f"Obj: {repr(snake)} has the same id as Obj: {repr(self.snakes[snake.id])}")
+            if isinstance(snake, DqnSnake):
+                if snake.training:
+                    snake.init_training()
         else:
             raise ValueError(f"Obj: {repr(snake)} is not of type {Snake}")
 
@@ -354,6 +359,18 @@ class SnakeEnv:
             self.update_snake_on_map(snake)
         self.run_data.add_step(self.time_step, new_step)
         print(f"Step: {self.time_step}, {len(self.alive_snakes)} alive")
+
+    def get_expanded_normal_map(self, snake_id, expand_factor=2):
+        new_height, new_width = coord_op(self.map.shape, (expand_factor, expand_factor), '*')
+        expanded_map = np.full((new_height, new_width), self.FREE_TILE, dtype=np.uint8)
+        for snake in self.snakes.values():
+            if snake.id != snake_id:
+                put_snake_in_frame(expanded_map, snake.body_coords, self.NORM_BODY, expand_factor)
+                expanded_map[snake.y * expand_factor, snake.x * expand_factor] = self.NORM_HEAD
+            else:
+                put_snake_in_frame(expanded_map, snake.body_coords, self.NORM_MAIN_BODY, expand_factor)
+                expanded_map[snake.y * expand_factor, snake.x * expand_factor] = self.NORM_MAIN_HEAD
+        return expanded_map
 
     def get_normalized_map(self, snake_id):
         """ Used by ML models to get the map in a normalized format """
