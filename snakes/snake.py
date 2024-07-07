@@ -53,6 +53,9 @@ class Snake:
             old_tail = body_coords.pop()
         return old_tail
 
+    def update_map(self, map):
+        self.map = map.copy()
+
     def kill(self):
         self.alive = False
 
