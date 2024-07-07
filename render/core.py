@@ -39,7 +39,7 @@ class FrameBuilder:
     def __init__(self, run_meta_data, expand_factor=2, offset=(0, 0)):
         self.width = run_meta_data['width']
         self.height = run_meta_data['height']
-        self.base_map = run_meta_data['base_map']
+        self.base_map = np.array(run_meta_data['base_map'])
         self.offset = offset
         self.offset_x, self.offset_y = self.offset
         self.free_value = run_meta_data['free_value']
@@ -62,7 +62,7 @@ class FrameBuilder:
         self.last_frame = np.full(self.frameshape, self.color_mapping[self.free_value], dtype=np.uint8)
         for y in range(self.height):
             for x in range(self.width):
-                if self.base_map[y * self.width + x] == self.blocked_value:
+                if self.base_map[y, x] == self.blocked_value:
                     ex_x, ex_y = coord_op((x, y), (self.expand_factor, self.expand_factor), '*')
                     ex_x, ex_y = coord_op((ex_x, ex_y), self.offset, '+')
                     self.last_frame[ex_y, ex_x] = self.color_mapping[self.blocked_value]
@@ -70,7 +70,7 @@ class FrameBuilder:
                         # if the expand factor is greater than 1, we need to color the neighbors of the blocked cell in the frame
                         for n in neighbors:
                             nx, ny = coord_op((x, y), n, '+')
-                            if 0 <= nx < self.width and 0 <= ny < self.height and self.base_map[ny * self.width + nx] == self.blocked_value:
+                            if 0 <= nx < self.width and 0 <= ny < self.height and self.base_map[ny, nx] == self.blocked_value:
                                 ex_nx, ex_ny = coord_op((ex_x, ex_y), n, '+')
                                 self.last_frame[ex_ny, ex_nx] = self.color_mapping[self.blocked_value]
 

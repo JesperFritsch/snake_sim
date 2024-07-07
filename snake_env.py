@@ -34,10 +34,10 @@ class Food:
 
     def generate_new(self, s_map):
         empty_tiles = []
-        for i in range(self.width * self.height):
-            if s_map[i] == SnakeEnv.FREE_TILE:
-                x, y = i % self.width, i // self.width
-                empty_tiles.append((x, y))
+        for y in range(self.height):
+            for x in range(self.width):
+                if s_map[y, x] == SnakeEnv.FREE_TILE:
+                    empty_tiles.append((x, y))
         for _ in range(self.max_food - len(self.locations)):
             if empty_tiles:
                 new_food = random.choice(empty_tiles)
@@ -45,7 +45,7 @@ class Food:
                 self.add_new(new_food)
         for location in self.locations:
             x, y = location
-            s_map[y * self.width + x] = SnakeEnv.FOOD_TILE
+            s_map[y, x] = SnakeEnv.FOOD_TILE
 
     def remove_old(self, s_map):
         if self.decay_count is None:
@@ -62,7 +62,7 @@ class Food:
     def remove(self, coord, s_map):
         if coord in self.locations:
             x, y = coord
-            s_map[y * self.width + x] = SnakeEnv.FREE_TILE
+            s_map[y, x] = SnakeEnv.FREE_TILE
             del self.decay_counters[coord]
             self.locations.remove(coord)
 
@@ -143,6 +143,10 @@ class SnakeEnv:
     FOOD_TILE = 0
     FREE_TILE = 1
     BLOCKED_TILE = 2
+    NORM_HEAD = 3
+    NORM_BODY = 4
+    NORM_MAIN_HEAD = 5
+    NORM_MAIN_BODY = 6
     valid_tile_values = (FOOD_TILE, FREE_TILE)
     COLOR_MAPPING = {
         FOOD_TILE: (223, 163, 49),
@@ -156,7 +160,7 @@ class SnakeEnv:
         self.height = height
         self.time_step = 0
         self.alive_snakes = []
-        self.base_map = np.full(width * height, self.FREE_TILE, dtype=np.uint8)
+        self.base_map = np.full((height, width), self.FREE_TILE, dtype=np.uint8)
         self.map = self.fresh_map()
         self.snakes_info = {}
         self.run_data = None
@@ -208,7 +212,7 @@ class SnakeEnv:
         print(f"{'':@<{self.width*3}}")
         for y in range(self.height):
             print_row = []
-            for c in self.map[y*self.width:y*self.width+self.width]:
+            for c in self.map[y]:
                 if c == self.FREE_TILE:
                     print_row.append(' . ')
                 elif c == self.FOOD_TILE:
@@ -236,7 +240,7 @@ class SnakeEnv:
             while True:
                 rand_x = 2 + round(random.random() * (self.width - 3))
                 rand_y = 2 + round(random.random() * (self.height - 3))
-                if not self.map[rand_y * self.width + rand_x] == self.FREE_TILE:
+                if not self.map[rand_y, rand_x] == self.FREE_TILE:
                     continue
                 break
             snake.set_init_coord((rand_x, rand_y))
@@ -279,34 +283,36 @@ class SnakeEnv:
         old_tail = self.snakes_info[snake.id].get('old_tail', None)
         if old_tail is not None and old_tail != head:
             o_x, o_y = old_tail
-            self.map[o_y * self.width + o_x] = self.FREE_TILE
+            self.map[o_y, o_x] = self.FREE_TILE
         for i in range(2):
             x, y = snake.body_coords[i]
-            self.map[y * self.width + x] = snake.head_value if (x, y) == head else snake.body_value
+            self.map[y, x] = snake.head_value if (x, y) == head else snake.body_value
 
     def put_snake_on_map(self, snake):
         for coord in snake.body_coords:
             x, y = coord
-            self.map[y * self.width + x] = snake.body_value
+            self.map[y, x] = snake.body_value
         x, y = snake.coord
-        self.map[y * self.width + x] = snake.head_value
+        self.map[y, x] = snake.head_value
 
     def put_coords_on_map(self, coords, value):
         for coord in coords:
             x, y = coord
-            self.map[y * self.width + x] = value
+            self.map[y, x] = value
 
-    def valid_tiles(self, coord):
-        dirs = []
+    def valid_tiles(self, coord, discount=None):
+        tiles = []
         for direction in DIR_MAPPING:
             m_coord = coord_op(coord, direction, '+')
             x_move, y_move = m_coord
-            if not self.is_inside(m_coord):
+            if m_coord == discount:
+                tiles.append(m_coord)
+            elif not self.is_inside(m_coord):
                 continue
-            if self.map[y_move * self.width + x_move] not in self.valid_tile_chars:
+            elif self.map[y_move, x_move] not in self.valid_tile_values:
                 continue
-            dirs.append(m_coord)
-        return dirs
+            tiles.append(m_coord)
+        return tiles
 
     def update(self):
         self.time_step += 1
@@ -325,13 +331,17 @@ class SnakeEnv:
             self.snakes_info[snake.id]['length'] = snake.length
             u_time = time()
             next_coord = snake.update()
+            if next_coord not in self.valid_tiles(snake.coord):
+                snake.kill()
+            else:
+                snake.set_new_head(next_coord)
             print(f'update_time for snake: {snake.id}', time() - u_time)
             if snake.alive:
                 x, y = snake.coord
                 self.snakes_info[snake.id]['current_coord'] = snake.coord
                 self.snakes_info[snake.id]['head_dir'] = coord_op(snake.coord, snake.body_coords[1], '-')
                 self.snakes_info[snake.id]['tail_dir'] = coord_op(snake.body_coords[-1], old_tail, '-')
-                if self.map[y * self.width + x] == self.FOOD_TILE:
+                if self.map[y, x] == self.FOOD_TILE:
                     self.snakes_info[snake.id]['last_food'] = self.time_step
                     self.food.remove(next_coord, self.map)
             else:
@@ -345,19 +355,21 @@ class SnakeEnv:
         self.run_data.add_step(self.time_step, new_step)
         print(f"Step: {self.time_step}, {len(self.alive_snakes)} alive")
 
-    def get_color_map(self, s_map):
-        color_map = {}
-        for i, tile_value in enumerate(s_map):
-            (y, x) = (i // self.width, i % self.width)
-            if tile_value != self.FREE_TILE:
-                color_map[(x, y)] = self.COLOR_MAPPING.get(tile_value, (255, 255, 255))
-        return color_map
+    def get_normalized_map(self, snake_id):
+        """ Used by ML models to get the map in a normalized format """
+        norm_map = self.map.copy()
+        for snake_info in self.snakes_info.values():
+            if snake_info['id'] != snake_id:
+                head_value = snake_info['head_value']
+                body_value = snake_info['body_value']
+                norm_map[norm_map == head_value] = self.NORM_HEAD
+                norm_map[norm_map == body_value] = self.NORM_BODY
+            else:
+                head_value = snake_info['head_value']
+                body_value = snake_info['body_value']
+                norm_map[norm_map == head_value] = self.NORM_MAIN_HEAD
+                norm_map[norm_map == body_value] = self.NORM_MAIN_BODY
 
-    def get_flat_color_map(self, s_map):
-        color_map = []
-        for tile_value in s_map:
-                color_map.append(self.COLOR_MAPPING.get(tile_value, (255, 255, 255)))
-        return color_map
 
     def stream_run(self, conn, max_steps=None, max_no_food_steps=500):
         self.init_recorder()

@@ -45,28 +45,9 @@ class AutoSnakeBase(Snake):
         # print(f'self coord: {self.coord}')
         self.start_time = time()
         self.update_map(self.env.map)
-        # print(self.x, self.y)
         self.map_to_print = self.map.copy()
         self.update_survivors()
-        tile = self.pick_direction()
-        # print(f"{self.body_coords=}")
-        # print(f"{'=':=^50}")
-        # self.print_map(self.map_to_print)
-        # if tile not in self.valid_tiles(self.map, self.coord):
-        #     print('it happened')
-        #     pass
-        if tile is not None:
-            self.coord = tile
-            self.x, self.y = tile
-            self.update_body(self.coord, self.body_coords, self.length)
-            if self.map[self.y, self.x] == self.env.FOOD_TILE:
-                self.length += 1
-            next_tile = tile
-        else:
-            # print(f'{self.id} is dead!')
-            self.alive = False
-            next_tile = self.coord
-        return next_tile
+        return self.pick_direction()
 
     def find_body_coords(self, s_map, head_coord):
         body_coords = deque()
@@ -158,14 +139,8 @@ class AutoSnakeBase(Snake):
         mask = (s_map == FREE_TILE) | (s_map == FOOD_TILE)
         return tuple(mask.flat)
 
-    def update_map(self, flat_map):
-        if self.map is None:
-            self.map = np.full((self.env.height, self.env.width), self.env.FREE_TILE, dtype=np.int32)
-            # self.map = [array('B', [self.env.FREE_TILE] * self.env.width) for _ in range(self.env.height)]
-        for y in range(self.env.height):
-            for x in range(self.env.width):
-                map_val = flat_map[y * self.env.width + x]
-                self.map[y, x] = map_val
+    def update_map(self, map):
+        self.map = map.copy()
 
     def update_survivors(self):
         self.alive_opps = [s.head_value for s in self.env.alive_snakes]
