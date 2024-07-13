@@ -47,7 +47,10 @@ class AutoSnakeBase(Snake):
         self.update_map(self.env.map)
         self.map_to_print = self.map.copy()
         self.update_survivors()
-        return self.pick_direction()
+        next_tile = self.pick_direction()
+        if next_tile is None:
+            next_tile = self.coord
+        return coord_op(next_tile, self.coord, '-')
 
     def find_body_coords(self, s_map, head_coord):
         body_coords = deque()

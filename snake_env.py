@@ -12,7 +12,6 @@ from utils import coord_op, exec_time
 from pathlib import Path
 from render import core as render
 from snakes.snake import Snake
-from snakes.dqnSnake import DqnSnake
 from core import put_snake_in_frame
 from time import time
 from dataclasses import dataclass, field
@@ -105,7 +104,7 @@ class RunData:
     def add_step(self, step: int, state: StepData):
         self.steps[step] = state
 
-    def write_to_file(self, aborted=False):
+    def write_to_file(self, aborted=False, ml=False):
         runs_dir = os.path.abspath(os.path.join(os.getcwd(), self.output_dir))
         run_dir = os.path.join(runs_dir, f'grid_{self.width}x{self.height}')
         os.makedirs(run_dir, exist_ok=True)
@@ -113,7 +112,7 @@ class RunData:
         grid_str = f'{self.width}x{self.height}'
         nr_snakes = f'{len(self.snake_data)}'
         rand_str = utils.rand_str(6)
-        filename = f'{nr_snakes}_snakes_{grid_str}_{rand_str}_{len(self.steps)}{aborted_str}.json'
+        filename = f'{nr_snakes}_snakes_{grid_str}_{rand_str}_{len(self.steps)}{"_ml_" if ml else ""}{aborted_str}.json'
         filepath = os.path.join(run_dir, filename)
         print(f"saving run data to '{filepath}'")
         with open(filepath, 'w') as file:
@@ -187,7 +186,7 @@ class SnakeEnv:
             for x in range(self.width):
                 color = tuple(image_matrix[y][x])
                 try:
-                    self.base_map[y * self.width + x] = map_color_mapping[color]
+                    self.base_map[y, x] = map_color_mapping[color]
                 except KeyError:
                     print(f"Color at (x={x}, y={y}) not found in color mapping: {color}")
         self.map = self.fresh_map()
@@ -267,9 +266,6 @@ class SnakeEnv:
                 self.snakes[snake.id] = snake
             else:
                 raise ValueError(f"Obj: {repr(snake)} has the same id as Obj: {repr(self.snakes[snake.id])}")
-            if isinstance(snake, DqnSnake):
-                if snake.training:
-                    snake.init_training()
         else:
             raise ValueError(f"Obj: {repr(snake)} is not of type {Snake}")
 
@@ -335,7 +331,8 @@ class SnakeEnv:
             old_tail = snake.body_coords[-1]
             self.snakes_info[snake.id]['length'] = snake.length
             u_time = time()
-            next_coord = snake.update()
+            direction = snake.update()
+            next_coord = coord_op(snake.coord, direction, '+')
             if next_coord not in self.valid_tiles(snake.coord):
                 snake.kill()
             else:
@@ -370,6 +367,7 @@ class SnakeEnv:
             else:
                 put_snake_in_frame(expanded_map, snake.body_coords, self.NORM_MAIN_BODY, expand_factor)
                 expanded_map[snake.y * expand_factor, snake.x * expand_factor] = self.NORM_MAIN_HEAD
+        expanded_map = expanded_map.reshape(new_height, new_width, 1)
         return expanded_map
 
     def get_normalized_map(self, snake_id):
@@ -452,3 +450,36 @@ class SnakeEnv:
             self.run_data.write_to_file(aborted=aborted)
             if aborted:
                 raise KeyboardInterrupt
+
+    def ml_training_run(self, episodes, max_steps=None, max_no_food_steps=500):
+        self.init_recorder()
+        for episode in range(episodes):
+            print("Episode: ", episode)
+            self.reset()
+            for snake in self.snakes.values():
+                self.put_snake_on_map(snake)
+            ongoing = True
+            aborted = False
+            try:
+                while ongoing:
+                    if self.alive_snakes:
+                        highest_no_food = max([self.snakes_info[only_one.id]['last_food'] for only_one in self.alive_snakes])
+                        if (self.time_step - highest_no_food) > max_no_food_steps or max_steps is not None and self.time_step > max_steps:
+                            ongoing = False
+                        self.update()
+                    else:
+                        ongoing = False
+
+            except KeyboardInterrupt:
+                print("Keyboard interrupt detected")
+                aborted = True
+            finally:
+                print('Done')
+                # self.run_data.write_to_file(aborted=aborted, ml=True)
+                if aborted:
+                    raise KeyboardInterrupt
+            for snake in self.snakes.values():
+                try:
+                    print(f'Episode: {episode} total reward: {snake.total_reward}')
+                except AttributeError:
+                    pass

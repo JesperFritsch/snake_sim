@@ -3,4 +3,4 @@ render/videos/
 snake_venv*
 **/__pycache__/
 *.pyc
-
+*.weights.h5
