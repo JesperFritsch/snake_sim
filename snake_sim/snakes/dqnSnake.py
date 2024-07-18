@@ -38,7 +38,7 @@ class DqnSnake(AutoSnakeBase):
         self.model = agent2(self.in_width, self.in_height)
         self.target_model = agent2(self.in_width, self.in_height)
         self.replay_memory = deque(maxlen=50_000)
-        self.weights_file = Path(__file__).parent.parent / 'ml' / 'weight_files' / f'dqn{self.in_height}x{self.in_width}.weights.h5'
+        self.weights_file = Path(__file__).parent.parent.parent / 'ml' / 'weight_files' / f'dqn{self.in_height}x{self.in_width}.weights.h5'
         self.prev_map_state = None
         self.last_action = 0
         self.steps = 0
