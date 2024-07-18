@@ -4,10 +4,10 @@ import itertools
 from statistics import mean
 from time import time
 
-from utils import coord_op
+from snake_sim.snakes.utils import coord_op
 
 from snakes.autoSnakeBase import AutoSnakeBase, copy_map
-from snake_env import (
+from snake_sim.snakes.snake_env import (
         DIR_MAPPING
     )
 

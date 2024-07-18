@@ -5,11 +5,11 @@ from array import array
 import numpy as np
 from time import time
 
-from utils import coord_op, exec_time
+from ..utils import coord_op, exec_time
 
-from snakes.snake import Snake
+from .snake import Snake
 from statistics import mean
-from snake_env import (
+from ..snake_env import (
         DIR_MAPPING,
         SnakeEnv
     )

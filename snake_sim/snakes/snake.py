@@ -1,5 +1,5 @@
 from collections import deque
-from utils import exec_time
+from ..utils import exec_time
 
 class Snake:
     def __init__(self, id: str, start_length: int):

@@ -7,12 +7,12 @@ import argparse
 import sys
 import math
 import json
-import utils
 import time
 import numpy as np
 from pathlib import Path
 
-import core
+from .. import utils
+from . import core
 
 def frames_from_runfile(filepath, expand_factor=2):
     frames = []

@@ -7,12 +7,12 @@ from PIL import Image
 import numpy as np
 from typing import Optional
 
-import utils
-from utils import coord_op, exec_time
+from . import utils
+from .utils import coord_op, exec_time
 from pathlib import Path
-from render import core as render
-from snakes.snake import Snake
-from core import put_snake_in_frame
+from .render import core as render
+from .snakes.snake import Snake
+from .render.core import put_snake_in_frame
 from time import time
 from dataclasses import dataclass, field
 

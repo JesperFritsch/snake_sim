@@ -1,6 +1,7 @@
-runs/
-render/videos/
+**/runs/
+*.mp4
 snake_venv*
 **/__pycache__/
 *.pyc
 *.weights.h5
+*egg*

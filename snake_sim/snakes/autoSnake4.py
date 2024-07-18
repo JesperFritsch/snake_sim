@@ -5,9 +5,9 @@ from collections import deque
 from statistics import mean
 from time import time
 
-from utils import coord_op, coord_cmp, exec_time
+from ..utils import coord_op, coord_cmp, exec_time
 
-from snakes.autoSnakeBase import AutoSnakeBase
+from .autoSnakeBase import AutoSnakeBase
 
 class AutoSnake4(AutoSnakeBase):
     TIME_LIMIT = True
