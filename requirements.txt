@@ -1,1 +1,4 @@
+pillow
 numpy
+opencv-python
+tensorflow
