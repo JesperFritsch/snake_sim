@@ -7,12 +7,12 @@ import numpy as np
 from collections import deque
 from pathlib import Path
 from time import time
-from utils import coord_op, coord_cmp
+from snake_sim.snakes.utils import coord_op, coord_cmp
 from snakes.autoSnake2 import AutoSnake2
 from snakes.autoSnake3 import AutoSnake3
 from snakes.autoSnake4 import AutoSnake4
 from snakes.autoSnakeBase import AutoSnakeBase, copy_map
-from snake_env import SnakeEnv, RunData
+from snake_sim.snakes.snake_env import SnakeEnv, RunData
 
 from pygame_render import play_runfile
 from video_render import frames_to_video

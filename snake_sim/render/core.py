@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 from collections import deque
 
-from utils import coord_op, coord_cmp
+from ..utils import coord_op, coord_cmp
 
 class SnakeRepresentation:
     def __init__(self, snake_id, head_color, body_color, expand_factor):

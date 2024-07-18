@@ -6,10 +6,10 @@ import argparse
 from multiprocessing import Pipe, Process
 from pathlib import Path
 
-from utils import DotDict
-from snake_env import SnakeEnv
-from snakes.autoSnake4 import AutoSnake4
-from render.pygame_render import play_runfile, play_stream
+from .utils import DotDict
+from .snake_env import SnakeEnv
+from .snakes.autoSnake4 import AutoSnake4
+from .render.pygame_render import play_runfile, play_stream
 config = None
 
 def setup_env(config):
@@ -51,7 +51,8 @@ def start_stream_run(conn, config):
     env.stream_run(conn,)
 
 
-def main(argv):
+def main():
+    argv = sys.argv[1:]
     global config
     ap = argparse.ArgumentParser()
     mutex = ap.add_mutually_exclusive_group(required=True)
@@ -92,5 +93,5 @@ def main(argv):
 
 
 if __name__ == '__main__':
-   main(sys.argv[1:])
+   main()
 
