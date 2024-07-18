@@ -22,7 +22,7 @@ def start_traing_run(episodes):
     env.ml_training_run(episodes)
 
 if __name__ == '__main__':
-    if 0:
+    if 1:
         start_traing_run(30000)
     else:
         parent_conn, child_conn = Pipe()
