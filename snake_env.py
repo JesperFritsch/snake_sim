@@ -67,6 +67,10 @@ class Food:
             del self.decay_counters[coord]
             self.locations.remove(coord)
 
+    def clear(self):
+        self.locations.clear()
+        self.decay_counters.clear()
+
 
 class StepData:
     def __init__(self, food: list, step: int) -> None:
@@ -208,6 +212,7 @@ class SnakeEnv:
             rand_y = 2 + round(random.random() * (self.height - 3))
             snake.set_init_coord((rand_x, rand_y))
         self.alive_snakes = self.get_alive_snakes()
+        self.food.clear()
 
     def print_map(self):
         print(f"{'':@<{self.width*3}}")
@@ -333,6 +338,7 @@ class SnakeEnv:
             u_time = time()
             direction = snake.update()
             next_coord = coord_op(snake.coord, direction, '+')
+            # print(direction, next_coord, snake.coord, snake.body_coords[1])
             if next_coord not in self.valid_tiles(snake.coord):
                 snake.kill()
             else:
@@ -451,9 +457,9 @@ class SnakeEnv:
             if aborted:
                 raise KeyboardInterrupt
 
-    def ml_training_run(self, episodes, max_steps=None, max_no_food_steps=500):
-        self.init_recorder()
-        for episode in range(episodes):
+    def ml_training_run(self, episodes, start_episode=0, max_steps=None, max_no_food_steps=200):
+        for episode in range(start_episode, episodes + start_episode):
+            self.init_recorder()
             print("Episode: ", episode)
             self.reset()
             for snake in self.snakes.values():
@@ -469,9 +475,15 @@ class SnakeEnv:
                         self.update()
                     else:
                         ongoing = False
+                    self.print_map()
 
             except KeyboardInterrupt:
                 print("Keyboard interrupt detected")
+                for snake in self.snakes.values():
+                    try:
+                        snake.save_weights()
+                    except AttributeError:
+                        pass
                 aborted = True
             finally:
                 print('Done')
