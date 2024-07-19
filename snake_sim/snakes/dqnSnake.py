@@ -162,9 +162,9 @@ class DqnSnake(AutoSnakeBase):
         # print('distance_to_food: ', distance_to_food)
         # print('last_distance_to_food: ', last_distance_to_food)
 
-        food_distance_reward = 0.1
+        food_distance_reward = 0.6
         if (distance_to_food is not None and last_distance_to_food is not None) and distance_to_food >= last_distance_to_food:
-            food_distance_reward = -(food_distance_reward * 4)
+            food_distance_reward = -food_distance_reward
         return food_reward + food_distance_reward
 
     def distance_to_food(self, from_coord):
