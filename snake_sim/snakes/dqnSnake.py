@@ -18,7 +18,7 @@ print_every = 100
 def agent2(width, height):
     model = models.Sequential()
     model.add(layers.Input(shape=(height, width, 1)))
-    model.add(layers.Conv2D(32, (3, 3), activation='relu', padding='same'))
+    model.add(layers.Conv2D(32, (3, 3), padding='same'))
     model.add(layers.Conv2D(32, (3, 3), activation='relu', padding='same'))
     model.add(layers.Flatten())
     model.add(layers.Dense(256, activation='relu'))
@@ -162,9 +162,9 @@ class DqnSnake(AutoSnakeBase):
         # print('distance_to_food: ', distance_to_food)
         # print('last_distance_to_food: ', last_distance_to_food)
 
-        food_distance_reward = 0.4
+        food_distance_reward = 0.1
         if (distance_to_food is not None and last_distance_to_food is not None) and distance_to_food >= last_distance_to_food:
-            food_distance_reward = -food_distance_reward
+            food_distance_reward = -(food_distance_reward * 4)
         return food_reward + food_distance_reward
 
     def distance_to_food(self, from_coord):
