@@ -12,6 +12,7 @@ from snake_sim.snake_env import SnakeEnv
 # from multiprocessing import Process, Pipe
 
 ACTIONS = ((0, -1), (1,  0), (0,  1), (-1, 0))
+print_every = 100
 
 
 def agent2(width, height):
@@ -44,6 +45,9 @@ class DqnSnake(AutoSnakeBase):
         self.steps = 0
         self.training_steps = 0
         self.total_reward = 0
+        self.total_rewards = []
+        self.lengths = []
+        self.nr_of_steps = []
         self.steps_to_update_target = 100
         self.steps_to_train = 4
         self.replay_batch_size = 32
@@ -62,7 +66,6 @@ class DqnSnake(AutoSnakeBase):
     def update(self):
         self.steps += 1
         self.training_steps += 1
-        print(self.training_steps)
         self.update_map(self.env.map)
         new_map_state = self.env.get_expanded_normal_map(self.id)
         if self.prev_map_state is None:
@@ -85,16 +88,22 @@ class DqnSnake(AutoSnakeBase):
             if self.training_steps % self.steps_to_update_target == 0:
                 self.update_target_model()
             self.epsilon = self.min_epsilon + (self.max_epsilon - self.min_epsilon) * np.exp(-self.epsilon_decay * self.training_steps)
-
+            if self.training_steps % print_every == 0:
+                avg_reward = sum(self.total_rewards[-print_every:]) / print_every
+                avg_steps_taken = sum(self.nr_of_steps[-print_every:]) / print_every
+                avg_length = sum(self.lengths[-print_every:]) / print_every
+                max_reward = max(self.total_rewards[-print_every:])
+                max_steps_taken = max(self.nr_of_steps[-print_every:])
+                max_length = max(self.lengths[-print_every:])
+                print(f"{f' Episode: {len(self.total_rewards)} ':#^50}")
+                print(f'Avg reward: {avg_reward}, Avg steps taken: {avg_steps_taken}, Avg length: {avg_length}, Max reward: {max_reward}, Max steps taken: {max_steps_taken}, Max length: {max_length}')
 
         if np.random.rand() < self.epsilon and self.training:
             acutal_action = random.choice(ACTIONS)
             action_index = ACTIONS.index(acutal_action)
-            print('random action')
         else:
             # print('new_map_state: ', new_map_state.shape)
             predicted = self.model(new_map_state.reshape(1, self.in_height, self.in_width, 1))
-            print(predicted)
             action_index = np.argmax(predicted)
         self.last_action = action_index
         self.prev_map_state = new_map_state
@@ -156,8 +165,6 @@ class DqnSnake(AutoSnakeBase):
         food_distance_reward = 0.4
         if (distance_to_food is not None and last_distance_to_food is not None) and distance_to_food >= last_distance_to_food:
             food_distance_reward = -food_distance_reward
-        print('food_reward: ', food_reward)
-        print('food_distance_reward: ', food_distance_reward)
         return food_reward + food_distance_reward
 
     def distance_to_food(self, from_coord):
@@ -181,7 +188,6 @@ class DqnSnake(AutoSnakeBase):
         return None
 
     def update_target_model(self):
-        print('updating target model')
         self.target_model.set_weights(self.model.get_weights())
 
     def save_weights(self):
@@ -196,6 +202,9 @@ class DqnSnake(AutoSnakeBase):
         self.replay_memory.append(step)
         self.final_train()
         self.save_weights()
+        self.lengths.append(self.length)
+        self.total_rewards.append(self.total_reward)
+        self.nr_of_steps.append(self.steps)
         return super().kill()
 
     def reset(self):

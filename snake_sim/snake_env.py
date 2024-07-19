@@ -320,7 +320,7 @@ class SnakeEnv:
             tiles.append(m_coord)
         return tiles
 
-    def update(self):
+    def update(self, verbose=True):
         self.time_step += 1
         self.map = self.fresh_map() # needed for the snakes, without it the snakes map is never cleared.
         self.alive_snakes = self.get_alive_snakes()
@@ -343,7 +343,8 @@ class SnakeEnv:
                 snake.kill()
             else:
                 snake.set_new_head(next_coord)
-            print(f'update_time for snake: {snake.id}', time() - u_time)
+            if verbose:
+                print(f'update_time for snake: {snake.id}', time() - u_time)
             if snake.alive:
                 x, y = snake.coord
                 self.snakes_info[snake.id]['current_coord'] = snake.coord
@@ -361,7 +362,8 @@ class SnakeEnv:
                 snake.id)
             self.update_snake_on_map(snake)
         self.run_data.add_step(self.time_step, new_step)
-        print(f"Step: {self.time_step}, {len(self.alive_snakes)} alive")
+        if verbose:
+            print(f"Step: {self.time_step}, {len(self.alive_snakes)} alive")
 
     def get_expanded_normal_map(self, snake_id, expand_factor=2):
         new_height, new_width = coord_op(self.map.shape, (expand_factor, expand_factor), '*')
@@ -460,7 +462,7 @@ class SnakeEnv:
     def ml_training_run(self, episodes, start_episode=0, max_steps=None, max_no_food_steps=200):
         for episode in range(start_episode, episodes + start_episode):
             self.init_recorder()
-            print("Episode: ", episode)
+            # print("Episode: ", episode)
             self.reset()
             for snake in self.snakes.values():
                 self.put_snake_on_map(snake)
@@ -472,10 +474,10 @@ class SnakeEnv:
                         highest_no_food = max([self.snakes_info[only_one.id]['last_food'] for only_one in self.alive_snakes])
                         if (self.time_step - highest_no_food) > max_no_food_steps or max_steps is not None and self.time_step > max_steps:
                             ongoing = False
-                        self.update()
+                        self.update(verbose=False)
                     else:
                         ongoing = False
-                    self.print_map()
+                    # self.print_map()
 
             except KeyboardInterrupt:
                 print("Keyboard interrupt detected")
@@ -486,12 +488,12 @@ class SnakeEnv:
                         pass
                 aborted = True
             finally:
-                print('Done')
                 # self.run_data.write_to_file(aborted=aborted, ml=True)
                 if aborted:
                     raise KeyboardInterrupt
             for snake in self.snakes.values():
                 try:
-                    print(f'Episode: {episode} total reward: {snake.total_reward}')
+                    pass
+                    # print(f'Episode: {episode} total reward: {snake.total_reward}')
                 except AttributeError:
                     pass
