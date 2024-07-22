@@ -89,14 +89,22 @@ class DqnSnake(AutoSnakeBase):
                 self.update_target_model()
             self.epsilon = self.min_epsilon + (self.max_epsilon - self.min_epsilon) * np.exp(-self.epsilon_decay * self.training_steps)
             if self.training_steps % print_every == 0:
-                avg_reward = sum(self.total_rewards[-print_every:]) / print_every
-                avg_steps_taken = sum(self.nr_of_steps[-print_every:]) / print_every
-                avg_length = sum(self.lengths[-print_every:]) / print_every
+                avg_reward = round(sum(self.total_rewards[-print_every:]) / print_every, 2)
+                avg_steps_taken = round(sum(self.nr_of_steps[-print_every:]) / print_every, 2)
+                avg_length = round(sum(self.lengths[-print_every:]) / print_every, 2)
                 max_reward = max(self.total_rewards[-print_every:])
                 max_steps_taken = max(self.nr_of_steps[-print_every:])
                 max_length = max(self.lengths[-print_every:])
                 print(f"{f' Episode: {len(self.total_rewards)} ':#^50}")
-                print(f'Avg reward: {avg_reward}, Avg steps taken: {avg_steps_taken}, Avg length: {avg_length}, Max reward: {max_reward}, Max steps taken: {max_steps_taken}, Max length: {max_length}')
+                print(f'Avg reward: {avg_reward}')
+                print(f"Avg steps taken: {avg_steps_taken}")
+                print(f"Avg length: {avg_length}")
+                print(f"Max reward: {max_reward}")
+                print(f"Max steps taken: {max_steps_taken}")
+                print(f"Max length: {max_length}")
+                print(f"Training steps: {self.training_steps}")
+                print(f"Epsilon: {self.epsilon}")
+
 
         if np.random.rand() < self.epsilon and self.training:
             acutal_action = random.choice(ACTIONS)
