@@ -54,7 +54,7 @@ class DqnSnake(AutoSnakeBase):
         self.max_epsilon = 1.0
         self.min_epsilon = 0.01
         self.epsilon = self.max_epsilon
-        self.epsilon_decay = 0.0005
+        self.epsilon_decay = 0.0001
         self.gamma = 0.95
         self.alpha = 0.5
         self.dead_reward = -1
