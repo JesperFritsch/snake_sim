@@ -1,11 +1,8 @@
-import os
 import json
-import core
 import sys
 import argparse
 import numpy as np
-import subprocess
-from render.core import FrameBuilder
+from snake_sim.render.core import FrameBuilder
 from pathlib import Path
 import cv2
 import numpy as np
