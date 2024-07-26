@@ -178,7 +178,7 @@ class SnakeEnv:
     def load_png_map(self, map_path):
         img_path = Path(map_path)
         if not img_path.is_absolute():
-            img_path = Path(__file__).parent.joinpath('maps/map_images') / img_path
+            img_path = Path(__file__).parent.parent.joinpath('maps/map_images') / img_path
         image = Image.open(img_path)
         image_matrix = np.array(image)
         map_color_mapping = {
