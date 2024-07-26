@@ -11,6 +11,8 @@ from snake_sim.utils import coord_op, coord_cmp
 from snake_sim.snakes.autoSnake4 import AutoSnake4
 from snake_sim.snake_env import SnakeEnv, RunData
 
+from snake_sim.cpp_bindings.area_check import AreaChecker
+
 from snake_sim.render.pygame_render import play_runfile
 from snake_sim.render.video_render import frames_to_video
 from snake_sim.render import core
@@ -29,9 +31,9 @@ if __name__ == '__main__':
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
 
-    MAP = 'comps.png'
+    MAP = 'B:\pythonStuff\snake_sim\maps\map_images\comps.png'
 
-    env.load_png_map(MAP)
+    env.load_png_map(Path(MAP))
     env.init_recorder()
     frame_builder = core.FrameBuilder(env.run_data.to_dict(), expand_factor, offset)
 
@@ -81,11 +83,12 @@ if __name__ == '__main__':
     # snake.update()
     # frames = None
     rundata = []
-    area_coord = (5, 0)
+    area_coord = (0, 0)
     map_copy = snake.map.copy()
     map_copy[area_coord[1], area_coord[0]] = ord('Q')
     snake.print_map(map_copy)
-
+    ac = AreaChecker(env.FOOD_TILE, env.FREE_TILE, snake.body_value, env.width, env.height)
+    print(ac)
 
     # pr = cProfile.Profile()
     # pr.enable()
@@ -105,10 +108,19 @@ if __name__ == '__main__':
 
 
     # time_e = time()
-    # for _ in range(200):
+    # for _ in range(1000):
     #     area = snake.area_check(snake.map, snake.body_coords.copy(), area_coord)
     # print(area)
     # print('area_check: ', (time() - time_e) * 1000)
+
+
+    # time_e = time()
+    # for _ in range(1000):
+    #     area = ac.area_check(snake.map, list(snake.body_coords), area_coord)
+    # print(area)
+    # print('area_check: ', (time() - time_e) * 1000)
+
+
     # time_e = time()
     # for _ in range(2000):
     #     areas = snake.get_areas_fast(snake.map, area_coord)
