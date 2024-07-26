@@ -16,7 +16,7 @@ def setup_env(config):
     env = SnakeEnv(config.grid_width, config.grid_height, config.food, config.food_decay)
     if config.get('map'):
         if not Path(config.map).is_absolute():
-            real_path = Path(__file__).parent / config.map
+            real_path = Path(__file__).parent.parent / 'maps' / 'map_images' /config.map
         else:
             real_path = Path(config.map)
         if not real_path.exists():

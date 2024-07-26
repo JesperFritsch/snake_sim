@@ -21,6 +21,9 @@ class AutoSnake4(AutoSnakeBase):
         self.calc_timeout = calc_timeout
         self.food_in_route = []
         self.failed_paths = set()
+        self.area_checker = None
+
+    def init_after_bind(self):
         self.area_checker = AreaChecker(self.env.FOOD_TILE, self.env.FREE_TILE, self.body_value, self.env.width, self.env.height)
 
     def fix_route(self, route, s_coord=None, valid_tiles=None):
@@ -570,7 +573,7 @@ class AutoSnake4(AutoSnakeBase):
                 # if check_areas or depth == 1 :
                 # print('area check needed')
                 if (area_check := area_checks.get(tile, None)) is None:
-                    area_check = self.area_checker.area_check(s_map, body_coords, tile)
+                    area_check = self.area_checker.area_check(s_map, list(body_coords), tile)
                     area_checks[tile] = area_check
                 area_check_data = area_check.copy()
                 # print(area_check)
