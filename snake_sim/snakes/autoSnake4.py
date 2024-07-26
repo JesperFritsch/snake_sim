@@ -135,7 +135,7 @@ class AutoSnake4(AutoSnakeBase):
     def check_safe_food_route(self, s_map, food_route):
         end_coord = food_route[0]
         s_map = self.occupy_route(s_map, food_route)
-        if self.area_check(s_map, self.body_coords, end_coord)['is_clear']:
+        if self.area_checker.area_check(s_map, list(self.body_coords), end_coord)['is_clear']:
             return True
         return False
 
