@@ -20,10 +20,14 @@ class Snake:
         self.coord = None
         self.length = self.start_length
 
+    def init_after_bind(self):
+        pass
+
     def bind_env(self, env):
         self.env = env
         self.height = self.env.height
         self.width = self.env.width
+        self.init_after_bind()
 
     def in_sight(self, head_coord, coord, sight_len=2):
         h_x, h_y = head_coord
