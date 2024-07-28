@@ -30,10 +30,9 @@ if __name__ == '__main__':
     expand_factor = 2
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
+    snake_map = 'comps'
 
-    MAP = 'B:\pythonStuff\snake_sim\maps\map_images\comps.png'
-
-    env.load_png_map(Path(MAP))
+    env.load_png_map(snake_map)
     env.init_recorder()
     frame_builder = core.FrameBuilder(env.run_data.to_dict(), expand_factor, offset)
 

@@ -15,13 +15,7 @@ config = None
 def setup_env(config):
     env = SnakeEnv(config.grid_width, config.grid_height, config.food, config.food_decay)
     if config.get('map'):
-        if not Path(config.map).is_absolute():
-            real_path = Path(__file__).parent.parent / 'maps' / 'map_images' /config.map
-        else:
-            real_path = Path(config.map)
-        if not real_path.exists():
-            raise FileNotFoundError(real_path)
-        env.load_png_map(real_path)
+        env.load_png_map(config.map)
     count = 0
     for snake_config in config.snake_configs:
         count += 1
@@ -74,7 +68,8 @@ def main():
     ap.add_argument('--nr-runs', type=int, help='Number of runs to generate')
     ap.add_argument('--map', type=str, help='Path to map file')
     args = ap.parse_args(argv)
-    with open('default_config.json') as config_file:
+    cfg_path = Path(__file__).parent / 'config/default_config.json' 
+    with open(cfg_path) as config_file:
         config = DotDict(json.load(config_file))
     handle_args(args)
 
