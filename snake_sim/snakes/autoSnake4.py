@@ -135,7 +135,7 @@ class AutoSnake4(AutoSnakeBase):
     def check_safe_food_route(self, s_map, food_route):
         end_coord = food_route[0]
         s_map = self.occupy_route(s_map, food_route)
-        if self.area_checker.area_check(s_map, list(self.body_coords), end_coord)['is_clear']:
+        if self.area_check_wrapper(s_map, self.body_coords, end_coord)['is_clear']:
             return True
         return False
 
@@ -302,6 +302,9 @@ class AutoSnake4(AutoSnakeBase):
                     return True
         return False
 
+
+    def area_check_wrapper(self, s_map, body_coords, start_coord):
+        return self.area_checker.area_check(s_map, list(body_coords), start_coord)
 
     def area_check(self, s_map, body_coords, start_coord, tile_count=0, food_count=0, max_index=0, checked=None, depth=0):
         current_coords = deque([start_coord])
@@ -535,13 +538,13 @@ class AutoSnake4(AutoSnakeBase):
             planned_tile = planned_route.pop()
             if planned_tile and planned_tile in valid_tiles:
                 valid_tiles.remove(planned_tile)
-                # area_check = self.area_check(s_map, body_coords, planned_tile)
-                # area_checks[planned_tile] = area_check
-                # if area_check['has_tail']:
-                #     current_results['free_path'] = True
-                #     current_results['len_gain'] = area_check['food_count']
-                #     current_results['depth'] = length
-                #     return current_results
+                area_check = self.area_check_wrapper(s_map, body_coords, planned_tile)
+                area_checks[planned_tile] = area_check
+                if area_check['has_tail']:
+                    current_results['free_path'] = True
+                    current_results['len_gain'] = area_check['food_count']
+                    current_results['depth'] = length
+                    return current_results
                 check_result = self.deep_look_ahead(
                     s_map.copy(),
                     planned_tile,
@@ -561,7 +564,10 @@ class AutoSnake4(AutoSnakeBase):
 
         target_tile = self.target_tile(s_map, body_coords, recurse_mode=True)
         valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
-
+        #sort by number of neighbours that are self body, prioritize the ones with few body neighbours to avoid spiraling inwards
+        valid_tiles.sort(
+            key=lambda it: sum([self.map[y, x] == self.body_value for (x, y) in self.neighbours(it)])
+            )
 
         if valid_tiles:
             for tile in valid_tiles:
@@ -573,7 +579,7 @@ class AutoSnake4(AutoSnakeBase):
                 # if check_areas or depth == 1 :
                 # print('area check needed')
                 if (area_check := area_checks.get(tile, None)) is None:
-                    area_check = self.area_checker.area_check(s_map, list(body_coords), tile)
+                    area_check = self.area_check_wrapper(s_map, body_coords, tile)
                     area_checks[tile] = area_check
                 area_check_data = area_check.copy()
                 # print(area_check)

@@ -108,16 +108,20 @@ class RunData:
     def add_step(self, step: int, state: StepData):
         self.steps[step] = state
 
-    def write_to_file(self, aborted=False, ml=False):
-        runs_dir = os.path.abspath(os.path.join(os.getcwd(), self.output_dir))
-        run_dir = os.path.join(runs_dir, f'grid_{self.width}x{self.height}')
-        os.makedirs(run_dir, exist_ok=True)
-        aborted_str = '_ABORTED' if aborted else ''
-        grid_str = f'{self.width}x{self.height}'
-        nr_snakes = f'{len(self.snake_data)}'
-        rand_str = utils.rand_str(6)
-        filename = f'{nr_snakes}_snakes_{grid_str}_{rand_str}_{len(self.steps)}{"_ml_" if ml else ""}{aborted_str}.json'
-        filepath = os.path.join(run_dir, filename)
+    def write_to_file(self, aborted=False, ml=False, filepath=None):
+        if filepath is None:
+            runs_dir = Path(__file__).parent / self.output_dir
+            run_dir = os.path.join(runs_dir, f'grid_{self.width}x{self.height}')
+            os.makedirs(run_dir, exist_ok=True)
+            aborted_str = '_ABORTED' if aborted else ''
+            grid_str = f'{self.width}x{self.height}'
+            nr_snakes = f'{len(self.snake_data)}'
+            rand_str = utils.rand_str(6)
+            filename = f'{nr_snakes}_snakes_{grid_str}_{rand_str}_{len(self.steps)}{"_ml_" if ml else ""}{aborted_str}.json'
+            filepath = os.path.join(run_dir, filename)
+        else:
+            filepath = Path(filepath).absolute()
+
         print(f"saving run data to '{filepath}'")
         with open(filepath, 'w') as file:
             json.dump(self.to_dict(), file)
@@ -176,7 +180,12 @@ class SnakeEnv:
         return self.base_map.copy()
 
     def load_png_map(self, map_path):
-        img_path = Path(map_path)
+        if not Path(map_path).is_absolute():
+            map_name = map_path if str(map_path).endswith('.png') else map_path + '.png'
+            img_path = Path(__file__).parent / 'maps/map_images' / map_name
+        else:
+            img_path = Path(map_path)
+            
         image = Image.open(img_path)
         image_matrix = np.array(image)
         map_color_mapping = {
