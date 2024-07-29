@@ -7,3 +7,4 @@ snake_venv*
 *egg*
 build/
 dist/
+*.so

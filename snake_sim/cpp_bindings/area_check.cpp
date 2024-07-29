@@ -33,6 +33,7 @@ struct Coord {
 
 };
 
+
 py::list coords_to_list(std::vector<Coord> coords) {
     py::list coords_list;
     for (auto& coord : coords) {
@@ -51,6 +52,10 @@ public:
         width(width),
         height(height) {}
 
+    bool is_inside(int x, int y){
+        return 0 <= x && x < this->width && 0 <= y && y < this->height;
+    }
+
     bool is_single_entrance(py::array_t<uint8_t> s_map, py::tuple coord, py::tuple check_coord){
         return _is_single_entrance(
             s_map,
@@ -63,43 +68,115 @@ public:
     bool _is_single_entrance(py::array_t<uint8_t> s_map, Coord coord, Coord check_coord) {
         auto buf = s_map.request();
         uint8_t* ptr = static_cast<uint8_t*>(buf.ptr);
-        int rows = static_cast<int>(buf.shape[0]);
         int cols = static_cast<int>(buf.shape[1]);
         int c_x = coord.x;
         int c_y = coord.y;
         int ch_x = check_coord.x;
         int ch_y = check_coord.y;
 
-        int c_perp_x = ch_y - c_y;
-        int c_perp_y = ch_x - c_x;
+        int delta_y = ch_y - c_y;
+        int delta_x = ch_x - c_x;
+        int value;
 
-        int x = ch_x + c_perp_x;
-        int y = ch_y + c_perp_y;
-        if (0 <= x && x < width && 0 <= y && y < height) {
-            if (ptr[y * cols + x] == free_value || ptr[y * cols + x] == food_value) {
-                x = c_x + c_perp_x;
-                y = c_y + c_perp_y;
-                if (0 <= x && x < width && 0 <= y && y < height) {
-                    if (ptr[y * cols + x] == free_value || ptr[y * cols + x] == food_value) {
+        std::array<Coord, 8> neighbours = {
+            Coord(c_x - 1, c_y - 1),
+            Coord(c_x, c_y - 1),
+            Coord(c_x + 1, c_y - 1),
+            Coord(c_x + 1, c_y),
+            Coord(c_x + 1, c_y + 1),
+            Coord(c_x, c_y + 1),
+            Coord(c_x - 1, c_y + 1),
+            Coord(c_x - 1, c_y)
+        };
+        std::array<unsigned int, 4> corner_values;
+        std::array<unsigned int, 4> neighbour_values;
+
+        for(unsigned int i = 0; i < neighbours.size(); i++){
+            Coord c = neighbours[i];
+            if (i % 2 == 0){
+                if (this->is_inside(c.x, c.y)){
+                    corner_values[i/2] = ptr[c.y * cols + c.x];
+                }
+                else{
+                    corner_values[i/2] = 3; // arbitrary value, just not free_value or food_value
+                }
+            }
+            else{
+                if (this->is_inside(c.x, c.y)){
+                    neighbour_values[i/2] = ptr[c.y * cols + c.x];
+                }
+                else{
+                    neighbour_values[i/2] = 3; // arbitrary value, just not free_value or food_value
+                }
+            }
+            
+            // std::cout << (ptr[c.y * cols + c.x]) << std::endl;
+        }
+        // Check the diagonals
+        // std::cout << "corner_values" << std::endl;
+        // std::cout << corner_values[0] << " " << corner_values[1] << " " << corner_values[2] << " " << corner_values[3] << std::endl;
+        // std::cout << neighbour_values[0] << " " << neighbour_values[1] << " " << neighbour_values[2] << " " << neighbour_values[3] << std::endl;
+        if (corner_values[0] > this->free_value){
+            if (corner_values[2] > this->free_value){
+                if (delta_x < 0 || delta_y > 0){
+                    if (corner_values[1] <= this->free_value || (neighbour_values[0] <= this->free_value && neighbour_values[1] <= this->free_value)){
+                        return true;
+                    }
+                }
+                else{
+                    if (corner_values[3] <= this->free_value || (neighbour_values[2] <= this->free_value && neighbour_values[3] <= this->free_value)){
+                        return true;
+                    }
+                }
+            }
+        }
+        if (corner_values[1] > this->free_value ){
+            if (corner_values[3] > this->free_value){
+                if (delta_x < 0 || delta_y < 0){
+                    if (corner_values[2] <= this->free_value || (neighbour_values[1] <= this->free_value && neighbour_values[2] <= this->free_value)){
+                        return true;
+                    }
+                }
+                else{
+                    if (corner_values[0] <= this->free_value || (neighbour_values[0] <= this->free_value && neighbour_values[3] <= this->free_value)){
+                        return true;
+                    }
+                }
+            }
+        }
+
+        int x = ch_x + delta_y;
+        int y = ch_y + delta_x;
+        if (this->is_inside(x, y)) {
+            value = ptr[y * cols + x];
+            if (value <= this->free_value) {
+                x = c_x + delta_y;
+                y = c_y + delta_x;
+                if (this->is_inside(x, y)) {
+                    value = ptr[y * cols + x];
+                    if (value <= this->free_value) {
                         return false;
                     }
                 }
             }
         }
 
-        x = ch_x - c_perp_x;
-        y = ch_y - c_perp_y;
-        if (0 <= x && x < width && 0 <= y && y < height) {
-            if (ptr[y * cols + x] == free_value || ptr[y * cols + x] == food_value) {
-                x = c_x - c_perp_x;
-                y = c_y - c_perp_y;
-                if (0 <= x && x < width && 0 <= y && y < height) {
-                    if (ptr[y * cols + x] == free_value || ptr[y * cols + x] == food_value) {
+        x = ch_x - delta_y;
+        y = ch_y - delta_x;
+        if (this->is_inside(x, y)) {
+            value = ptr[y * cols + x];
+            if (value <= this->free_value) {
+                x = c_x - delta_y;
+                y = c_y - delta_x;
+                if (this->is_inside(x, y)) {
+                    value = ptr[y * cols + x];
+                    if (value <= this->free_value) {
                         return false;
                     }
                 }
             }
         }
+
 
         return true;
     }
@@ -149,7 +226,7 @@ public:
                 food_count += 1;
             }
 
-            std::vector<Coord> neighbours = {
+            std::array<Coord, 4> neighbours = {
                 Coord(c_x, c_y - 1),
                 Coord(c_x + 1, c_y),
                 Coord(c_x, c_y + 1),
@@ -182,7 +259,7 @@ public:
                             }
                         }
 
-                        if (n_coord == tail_coord && !(tile_count == food_count == 1)) {
+                        if (n_coord == tail_coord && tile_count != 1) {
                             has_tail = true;
                             is_clear = true;
                             done = true;
@@ -239,6 +316,7 @@ private:
     uint8_t body_value;
     int width;
     int height;
+
 };
 
 PYBIND11_MODULE(area_check, m) {
