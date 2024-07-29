@@ -37,12 +37,12 @@ if __name__ == '__main__':
     frame_builder = core.FrameBuilder(env.run_data.to_dict(), expand_factor, offset)
 
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
-    test_map_filename = 'test_map1.txt'
+    test_map_filename = 'test_map2.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
     snake_char = 'A'
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
-    snake = AutoSnake4(snake_char, 1, calc_timeout=10000)
+    snake = AutoSnake4(snake_char, 1, calc_timeout=5000)
     frameshape = (frame_width, frame_height, 3)
     base_frame = frame_builder.last_frame
 
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     # snake.update()
     # frames = None
     rundata = []
-    area_coord = (0, 0)
+    area_coord = (12, 21)
     map_copy = snake.map.copy()
     map_copy[area_coord[1], area_coord[0]] = ord('Q')
     snake.print_map(map_copy)

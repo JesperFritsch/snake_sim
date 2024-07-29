@@ -151,7 +151,7 @@ class AutoSnake4(AutoSnakeBase):
             planned_route = self.route
         if self.verify_route(planned_route):
             look_ahead_tile = planned_route.pop()
-            option = self.find_route(look_ahead_tile, planned_route=planned_route, old_route=old_route)
+            option = self.find_route(look_ahead_tile, planned_route=planned_route, old_route=old_route, timeout_ms=500)
             if option['free_path']:
                 # print(option['route'])
                 # print(self.coord)
@@ -304,6 +304,7 @@ class AutoSnake4(AutoSnakeBase):
 
 
     def area_check_wrapper(self, s_map, body_coords, start_coord):
+        # return self.area_check(s_map, body_coords, start_coord)
         return self.area_checker.area_check(s_map, list(body_coords), start_coord)
 
     def area_check(self, s_map, body_coords, start_coord, tile_count=0, food_count=0, max_index=0, checked=None, depth=0):
@@ -566,7 +567,7 @@ class AutoSnake4(AutoSnakeBase):
         valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
         #sort by number of neighbours that are self body, prioritize the ones with few body neighbours to avoid spiraling inwards
         valid_tiles.sort(
-            key=lambda it: sum([self.map[y, x] == self.body_value for (x, y) in self.neighbours(it)])
+            key=lambda it: sum([self.map[y, x] == self.body_value if self.env.is_inside((x, y)) else False for x, y in self.neighbours(it)])
             )
 
         if valid_tiles:
