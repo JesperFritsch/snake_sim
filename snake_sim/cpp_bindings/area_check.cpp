@@ -65,7 +65,12 @@ public:
     }
 
 
-    bool _is_single_entrance(py::array_t<uint8_t> s_map, Coord coord, Coord check_coord) {
+    int _is_single_entrance(py::array_t<uint8_t> s_map, Coord coord, Coord check_coord) {
+        // return code 2 is for an passage like:
+        // x . .
+        // . . .
+        // . . x
+        // or flipped
         auto buf = s_map.request();
         uint8_t* ptr = static_cast<uint8_t*>(buf.ptr);
         int cols = static_cast<int>(buf.shape[1]);
@@ -109,7 +114,7 @@ public:
                     neighbour_values[i/2] = 3; // arbitrary value, just not free_value or food_value
                 }
             }
-            
+
             // std::cout << (ptr[c.y * cols + c.x]) << std::endl;
         }
         // Check the diagonals
@@ -120,12 +125,12 @@ public:
             if (corner_values[2] > this->free_value){
                 if (delta_x < 0 || delta_y > 0){
                     if (corner_values[1] <= this->free_value || (neighbour_values[0] <= this->free_value && neighbour_values[1] <= this->free_value)){
-                        return true;
+                        return 2;
                     }
                 }
                 else{
                     if (corner_values[3] <= this->free_value || (neighbour_values[2] <= this->free_value && neighbour_values[3] <= this->free_value)){
-                        return true;
+                        return 2;
                     }
                 }
             }
@@ -134,12 +139,12 @@ public:
             if (corner_values[3] > this->free_value){
                 if (delta_x < 0 || delta_y < 0){
                     if (corner_values[2] <= this->free_value || (neighbour_values[1] <= this->free_value && neighbour_values[2] <= this->free_value)){
-                        return true;
+                        return 2;
                     }
                 }
                 else{
                     if (corner_values[0] <= this->free_value || (neighbour_values[0] <= this->free_value && neighbour_values[3] <= this->free_value)){
-                        return true;
+                        return 2;
                     }
                 }
             }
@@ -155,7 +160,7 @@ public:
                 if (this->is_inside(x, y)) {
                     value = ptr[y * cols + x];
                     if (value <= this->free_value) {
-                        return false;
+                        return 0;
                     }
                 }
             }
@@ -171,14 +176,14 @@ public:
                 if (this->is_inside(x, y)) {
                     value = ptr[y * cols + x];
                     if (value <= this->free_value) {
-                        return false;
+                        return 0;
                     }
                 }
             }
         }
 
 
-        return true;
+        return 1;
     }
 
     py::dict area_check(
@@ -200,6 +205,7 @@ public:
         std::deque<Coord> current_coords;
         std::deque<Coord> to_be_checked;
         current_coords.push_back(start_coord);
+        // std::cout << "called with args:" << "tile_count: " << tile_count << " food_count: " << food_count << " max_index: " << max_index << " depth: " << depth << " start_coord: (" << start_coord.x << ", " << start_coord.y << ")" << std::endl;
 
         if (checked.size() == 0) {
             checked = std::vector<bool>(height * width, false);
@@ -243,9 +249,15 @@ public:
                         checked[n_y * width + n_x] = true;
                         int coord_val = s_map_ptr[n_y * width + n_x];
                         if (coord_val == free_value || coord_val == food_value) {
-                            if (_is_single_entrance(s_map, curr_coord, Coord(n_x, n_y))) {
+                            int entrance_code = _is_single_entrance(s_map, curr_coord, n_coord);
+                            if (entrance_code != 0) {
                                 to_be_checked.push_back(n_coord);
-                                continue;
+                                if (entrance_code == 2) {
+                                    break;
+                                }
+                                else{
+                                    continue;
+                                }
                             }
                             tile_count += 1;
                             current_coords.push_back(n_coord);
@@ -295,6 +307,12 @@ public:
                 if (area_check["is_clear"].cast<bool>()) {
                     return area_check;
                 }
+                // else {
+                //     for (auto item : area_check) {
+                //         std::cout << "Key: " << py::str(item.first) << ", Value: " << py::str(item.second) << std::endl;
+                //     }
+                //     std::cout << std::endl;
+                // }
             }
         }
 

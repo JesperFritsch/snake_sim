@@ -24,7 +24,12 @@ class AutoSnake4(AutoSnakeBase):
         self.area_checker = None
 
     def init_after_bind(self):
-        self.area_checker = AreaChecker(self.env.FOOD_TILE, self.env.FREE_TILE, self.body_value, self.env.width, self.env.height)
+        self.area_checker = AreaChecker(
+            self.env.FOOD_TILE,
+            self.env.FREE_TILE,
+            self.body_value,
+            self.env.width,
+            self.env.height)
 
     def fix_route(self, route, s_coord=None, valid_tiles=None):
         valid_tiles = valid_tiles or self.valid_tiles(self.map, self.coord)
