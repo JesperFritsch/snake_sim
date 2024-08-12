@@ -179,14 +179,27 @@ class SnakeEnv:
     def fresh_map(self):
         return self.base_map.copy()
 
+    def get_map_files(self):
+        map_dir = Path(__file__).parent / 'maps/map_images'
+        maps = {}
+        for f in map_dir.iterdir():
+            if f.is_file() and f.suffix == '.png':
+                maps[f.stem] = str(f)
+        return maps
+
     def load_png_map(self, map_path):
         if not Path(map_path).is_absolute():
-            map_name = map_path if str(map_path).endswith('.png') else map_path + '.png'
-            img_path = Path(__file__).parent / 'maps/map_images' / map_name
+            maps = self.get_map_files()
+            try:
+                img_path = Path(maps[map_path])
+            except KeyError:
+                raise ValueError(f"Map with name '{map_path}' not found")
         else:
             img_path = Path(map_path)
-            
-        image = Image.open(img_path)
+        try:
+            image = Image.open(img_path)
+        except FileNotFoundError:
+            raise ValueError(f"Map file not found: {img_path}")
         image_matrix = np.array(image)
         map_color_mapping = {
             (0,0,0,0): self.FREE_TILE,
