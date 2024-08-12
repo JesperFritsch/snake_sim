@@ -179,6 +179,7 @@ class SnakeEnv:
     def fresh_map(self):
         return self.base_map.copy()
 
+    @classmethod
     def get_map_files(self):
         map_dir = Path(__file__).parent / 'maps/map_images'
         maps = {}
