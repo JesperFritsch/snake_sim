@@ -122,7 +122,7 @@ class AutoSnake4(AutoSnakeBase):
                         options_considered = timedout_options
                     else:
                         options_considered = risk_free_options
-                    best_option = max(options.values(), key=lambda x: x['depth'])
+                    best_option = max(options.values(), key=lambda x: x['margin'])
             else:
                 if free_options:
                     best_option = min(free_options, key=lambda x: x['risk'])
@@ -156,7 +156,7 @@ class AutoSnake4(AutoSnakeBase):
             planned_route = self.route
         if self.verify_route(planned_route):
             look_ahead_tile = planned_route.pop()
-            option = self.find_route(look_ahead_tile, planned_route=planned_route, old_route=old_route, timeout_ms=500)
+            option = self.find_route(look_ahead_tile, planned_route=planned_route, old_route=old_route)
             if option['free_path']:
                 # print(option['route'])
                 # print(self.coord)
@@ -500,6 +500,7 @@ class AutoSnake4(AutoSnakeBase):
             current_results['apple_time'] = []
             current_results['len_gain'] = 0
             current_results['route'] = deque()
+            current_results['margin'] = 0
         if best_results is None:
             best_results = {}
         if s_map[new_coord[1], new_coord[0]] == self.env.FOOD_TILE:
@@ -513,6 +514,7 @@ class AutoSnake4(AutoSnakeBase):
 
         best_results['depth'] = max(best_results.get('depth', 0), current_results['depth'])
         best_results['len_gain'] = max(best_results.get('len_gain', 0), current_results['len_gain'])
+        best_results['margin'] = max(best_results.get('margin', 0), current_results['margin'])
         best_results['apple_time'] = []
         best_results['timeout'] = False
         best_results['free_path'] = False
@@ -569,15 +571,16 @@ class AutoSnake4(AutoSnakeBase):
 
 
         if valid_tiles:
-            max_tile_count = 0
+            best_margin = float('-inf')
             for tile in valid_tiles:
                 area_check = area_checks.get(tile, None)
                 if area_check is None:
                     area_check = self.area_check_wrapper(s_map, body_coords, tile)
                     area_checks[tile] = area_check
-                if area_check['tile_count'] > max_tile_count:
-                    max_tile_count = area_check['tile_count']
+                if area_check['margin'] > best_margin:
+                    best_margin = area_check['margin']
                     target_tile = tile
+                    current_results['margin'] = max(current_results.get('margin', 0), area_check['margin'])
 
             valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
 
@@ -596,6 +599,7 @@ class AutoSnake4(AutoSnakeBase):
                     return current_results
                 if not area_check['is_clear']:
                     best_results['depth'] = max(best_results['depth'], area_check['tile_count'])
+                    best_results['margin'] = max(best_results['margin'], current_results['margin'])
                     continue
                 check_result = self.deep_look_ahead(
                     s_map.copy(),
