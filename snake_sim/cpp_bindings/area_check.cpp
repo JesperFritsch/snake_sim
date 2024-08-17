@@ -231,6 +231,13 @@ public:
             std::vector<bool> checked = std::vector<bool>(),
             int depth = 0
         ) {
+
+        int best_tile_count = 0;
+        int best_food_count = 0;
+        int best_max_index = 0;
+        int best_total_steps = 0;
+        int best_margin = 0;
+
         std::vector<Coord> body_coords;
         for (auto item : body_coords_py) {
             auto coord = item.cast<py::tuple>();
@@ -252,6 +259,7 @@ public:
         bool has_tail = false;
         bool done = false;
         int total_steps = 0;
+        int margin = 0;
         tile_count += 1;
 
         auto s_map_buf = s_map.request();
@@ -318,6 +326,7 @@ public:
 
             total_steps = tile_count - food_count;
             int needed_steps = body_len - max_index;
+            margin = total_steps - needed_steps;
             if (total_steps >= needed_steps) {
                 is_clear = true;
             }
@@ -325,6 +334,12 @@ public:
                 break;
             }
         }
+
+        best_tile_count = tile_count;
+        best_food_count = food_count;
+        best_max_index = max_index;
+        best_total_steps = total_steps;
+        best_margin = margin;
 
         if (!is_clear) {
             while (!to_be_checked.empty()) {
@@ -342,26 +357,33 @@ public:
                 if (area_check["is_clear"].cast<bool>()) {
                     return area_check;
                 }
-                // else{
-                //     for (auto item : area_check) {
-                //         std::cout << "Key: " << py::str(item.first) << ", Value: " << py::str(item.second) << std::endl;
-                //     }
-                //     std::cout << "depth: " << depth + 1 << std::endl;
-                //     std::cout << std::endl;
+                if (area_check["margin"].cast<int>() > best_margin) {
+                    best_margin = area_check["margin"].cast<int>();
+                    best_total_steps = area_check["total_steps"].cast<int>();
+                    best_tile_count = area_check["tile_count"].cast<int>();
+                    best_food_count = area_check["food_count"].cast<int>();
+                    best_max_index = area_check["max_index"].cast<int>();
+                }
+                // for (auto item : area_check) {
+                //     std::cout << "Key: " << py::str(item.first) << ", Value: " << py::str(item.second) << std::endl;
                 // }
+                // std::cout << "depth: " << depth + 1 << std::endl;
+                // std::cout << std::endl;
+
 
             }
         }
 
         return py::dict(
             py::arg("is_clear") = is_clear,
-            py::arg("tile_count") = tile_count,
-            py::arg("total_steps") = total_steps,
-            py::arg("food_count") = food_count,
+            py::arg("tile_count") = best_tile_count,
+            py::arg("total_steps") = best_total_steps,
+            py::arg("food_count") = best_food_count,
             py::arg("has_tail") = has_tail,
-            py::arg("max_index") = max_index,
+            py::arg("max_index") = best_max_index,
             py::arg("start_coord") = py::make_tuple(start_coord.x, start_coord.y),
-            py::arg("needed_steps") = body_len - max_index
+            py::arg("needed_steps") = body_len - best_max_index,
+            py::arg("margin") = best_margin
         );
     }
 

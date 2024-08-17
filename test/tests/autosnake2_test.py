@@ -30,7 +30,7 @@ if __name__ == '__main__':
     expand_factor = 2
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    snake_map = 'comps'
+    snake_map = 'comps2'
 
     env.load_png_map(snake_map)
     env.init_recorder()
@@ -166,8 +166,10 @@ if __name__ == '__main__':
             tile = planned_path.pop()
         # planned_path = None
         s_time = time()
-        option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
-        print('free_path: ', option['free_path'])
+        # option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
+        # print('free_path: ', option['free_path'])
+        area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile)
+        print(f"area_check for tile {tile}: {area_check}")  
         print(f"Time: {(time() - s_time) * 1000}")
     frames = []
 
@@ -182,6 +184,6 @@ if __name__ == '__main__':
 
     frames = frame_builder.frames_from_rundata(rundata)
 
-    play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width, print_steps=False)
+    # play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width, print_steps=False)
     # video_output = Path(__file__).parent.joinpath('..', '..', 'render', 'videos', 'test_look_ahead.mp4').resolve()
     # frames_to_video(frames, str(video_output), 30, size=(640, 640))
