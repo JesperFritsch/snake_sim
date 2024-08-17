@@ -10,6 +10,32 @@
 namespace py = pybind11;
 
 
+void print_map(py::array_t<uint8_t> s_map) {
+    auto buf = s_map.request();
+    uint8_t* ptr = static_cast<uint8_t*>(buf.ptr);
+    int rows = static_cast<int>(buf.shape[0]);
+    int cols = static_cast<int>(buf.shape[1]);
+    char c;
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (ptr[i * cols + j] == 1){
+                c = '.';
+            }
+            else if(ptr[i * cols + j] == 0){
+                c = 'F';
+            }
+            else if (ptr[i * cols + j] == 2){
+                c = '#';
+            }
+            else{
+                c = (char)ptr[i * cols + j];
+            }
+            std::cout << " " << c << " ";
+        }
+        std::cout << std::endl;
+    }
+}
+
 struct Coord {
     int x;
     int y;
@@ -78,6 +104,7 @@ public:
         int c_y = coord.y;
         int ch_x = check_coord.x;
         int ch_y = check_coord.y;
+        uint8_t offmap_value = 3;
 
         int delta_y = ch_y - c_y;
         int delta_x = ch_x - c_x;
@@ -93,8 +120,8 @@ public:
             Coord(c_x - 1, c_y + 1),
             Coord(c_x - 1, c_y)
         };
-        std::array<unsigned int, 4> corner_values;
-        std::array<unsigned int, 4> neighbour_values;
+        std::array<uint8_t, 4> corner_values;
+        std::array<uint8_t, 4> neighbour_values;
 
         for(unsigned int i = 0; i < neighbours.size(); i++){
             Coord c = neighbours[i];
@@ -103,7 +130,7 @@ public:
                     corner_values[i/2] = ptr[c.y * cols + c.x];
                 }
                 else{
-                    corner_values[i/2] = 3; // arbitrary value, just not free_value or food_value
+                    corner_values[i/2] = offmap_value; // arbitrary value, just not free_value or food_value
                 }
             }
             else{
@@ -111,7 +138,7 @@ public:
                     neighbour_values[i/2] = ptr[c.y * cols + c.x];
                 }
                 else{
-                    neighbour_values[i/2] = 3; // arbitrary value, just not free_value or food_value
+                    neighbour_values[i/2] = offmap_value; // arbitrary value, just not free_value or food_value
                 }
             }
 
@@ -121,31 +148,39 @@ public:
         // std::cout << "corner_values" << std::endl;
         // std::cout << corner_values[0] << " " << corner_values[1] << " " << corner_values[2] << " " << corner_values[3] << std::endl;
         // std::cout << neighbour_values[0] << " " << neighbour_values[1] << " " << neighbour_values[2] << " " << neighbour_values[3] << std::endl;
-        if (corner_values[0] > this->free_value){
-            if (corner_values[2] > this->free_value){
-                if (delta_x < 0 || delta_y > 0){
-                    if (corner_values[1] <= this->free_value || (neighbour_values[0] <= this->free_value && neighbour_values[1] <= this->free_value)){
-                        return 2;
+        if (corner_values[0] > this->free_value && corner_values[0] != offmap_value){
+            if (corner_values[2] > this->free_value && corner_values[2] != offmap_value){
+                bool is_diagonal = true;
+                for(unsigned int i = 0; i < neighbour_values.size(); i++){
+                    if (neighbour_values[i] > this->free_value){
+                        is_diagonal = false;
+                        break;
+                    }
+                    if (i != 0 && i != 2 && corner_values[i] > this->free_value){
+                        is_diagonal = false;
+                        break;
                     }
                 }
-                else{
-                    if (corner_values[3] <= this->free_value || (neighbour_values[2] <= this->free_value && neighbour_values[3] <= this->free_value)){
-                        return 2;
-                    }
+                if (is_diagonal){
+                    return 2;
                 }
             }
         }
-        if (corner_values[1] > this->free_value ){
-            if (corner_values[3] > this->free_value){
-                if (delta_x < 0 || delta_y < 0){
-                    if (corner_values[2] <= this->free_value || (neighbour_values[1] <= this->free_value && neighbour_values[2] <= this->free_value)){
-                        return 2;
+        if (corner_values[1] > this->free_value && corner_values[1] != offmap_value){
+            if (corner_values[3] > this->free_value && corner_values[3] != offmap_value){
+                bool is_diagonal = true;
+                for(unsigned int i = 0; i < neighbour_values.size(); i++){
+                    if (neighbour_values[i] > this->free_value){
+                        is_diagonal = false;
+                        break;
+                    }
+                    if (i != 1 && i != 3 && corner_values[i] > this->free_value){
+                        is_diagonal = false;
+                        break;
                     }
                 }
-                else{
-                    if (corner_values[0] <= this->free_value || (neighbour_values[0] <= this->free_value && neighbour_values[3] <= this->free_value)){
-                        return 2;
-                    }
+                if (is_diagonal){
+                    return 2;
                 }
             }
         }
@@ -307,12 +342,14 @@ public:
                 if (area_check["is_clear"].cast<bool>()) {
                     return area_check;
                 }
-                // else {
+                // else{
                 //     for (auto item : area_check) {
                 //         std::cout << "Key: " << py::str(item.first) << ", Value: " << py::str(item.second) << std::endl;
                 //     }
+                //     std::cout << "depth: " << depth + 1 << std::endl;
                 //     std::cout << std::endl;
                 // }
+
             }
         }
 

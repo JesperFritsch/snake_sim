@@ -506,12 +506,6 @@ class AutoSnake4(AutoSnakeBase):
             length += 1
             current_results['apple_time'] = current_results['apple_time'] + [depth]
             current_results['len_gain'] = length - self.length
-        old_tail = self.update_body(new_coord, body_coords, length)
-        s_map = self.update_snake_position(s_map, body_coords, old_tail)
-        valid_tiles = self.valid_tiles(s_map, new_coord)
-        if rundata is not None:
-            rundata.append(body_coords.copy())
-
         current_results['body_coords'] = body_coords
         current_results['depth'] = depth
         current_results['route'] = current_results['route'].copy()
@@ -524,6 +518,12 @@ class AutoSnake4(AutoSnakeBase):
         best_results['free_path'] = False
         best_results['body_coords'] = max(best_results.get('body_coords', deque()), current_results['body_coords'].copy(), key=lambda o: len(o))
         best_results['route'] = max(best_results.get('route', deque()), current_results['route'], key=lambda o: len(o))
+        old_tail = self.update_body(new_coord, body_coords, length)
+        s_map = self.update_snake_position(s_map, body_coords, old_tail)
+        valid_tiles = self.valid_tiles(s_map, new_coord)
+        if rundata is not None:
+            rundata.append(body_coords.copy())
+
 
 
         if ((time() - start_time) * 1000 > timeout_ms) and self.TIME_LIMIT:
@@ -543,7 +543,6 @@ class AutoSnake4(AutoSnakeBase):
         if planned_route:
             planned_tile = planned_route.pop()
             if planned_tile and planned_tile in valid_tiles:
-                valid_tiles.remove(planned_tile)
                 area_check = self.area_check_wrapper(s_map, body_coords, planned_tile)
                 area_checks[planned_tile] = area_check
                 if area_check['has_tail']:
@@ -568,27 +567,28 @@ class AutoSnake4(AutoSnakeBase):
                 else:
                     planned_route = None
 
-        target_tile = self.target_tile(s_map, body_coords, recurse_mode=True)
-        valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
-        #sort by number of neighbours that are self body, prioritize the ones with few body neighbours to avoid spiraling inwards
-        valid_tiles.sort(
-            key=lambda it: sum([self.map[y, x] == self.body_value if self.env.is_inside((x, y)) else False for x, y in self.neighbours(it)])
-            )
 
         if valid_tiles:
+            max_tile_count = 0
+            for tile in valid_tiles:
+                area_check = area_checks.get(tile, None)
+                if area_check is None:
+                    area_check = self.area_check_wrapper(s_map, body_coords, tile)
+                    area_checks[tile] = area_check
+                if area_check['tile_count'] > max_tile_count:
+                    max_tile_count = area_check['tile_count']
+                    target_tile = tile
+
+            valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
+
             for tile in valid_tiles:
                 state_tuple = tuple([self.get_flat_map_state(s_map), tile])
                 state_hash = hash(state_tuple)
                 if state_hash in self.failed_paths:
                     continue
-                # self.print_map(s_map)
-                # if check_areas or depth == 1 :
-                # print('area check needed')
-                if (area_check := area_checks.get(tile, None)) is None:
-                    area_check = self.area_check_wrapper(s_map, body_coords, tile)
-                    area_checks[tile] = area_check
-                area_check_data = area_check.copy()
+                area_check = area_checks[tile].copy()
                 # print(area_check)
+                # self.print_map(s_map)
                 if area_check['has_tail']:
                     current_results['free_path'] = True
                     current_results['len_gain'] = area_check['food_count']
@@ -608,7 +608,6 @@ class AutoSnake4(AutoSnakeBase):
                     current_results=current_results.copy(),
                     start_time=start_time,
                     rundata=rundata,
-                    # check_areas=check_next_areas,
                     area_check_data=area_check_data)
                 if check_result['free_path'] or check_result['timeout']:
                     return check_result
