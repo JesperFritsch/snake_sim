@@ -34,7 +34,7 @@ class AutoSnake4(AutoSnakeBase):
     def fix_route(self, route, s_coord=None, valid_tiles=None):
         valid_tiles = valid_tiles or self.valid_tiles(self.map, self.coord)
         s_coord = s_coord or self.coord
-        if s_coord in route:
+        if s_coord in route and len(route) > 1:
             route = deque(list(route)[:route.index(s_coord)])
         try:
             if route[-1] not in valid_tiles:
@@ -80,6 +80,8 @@ class AutoSnake4(AutoSnakeBase):
             )
         option['coord'] = start_coord
         option['risk'] = 0
+        # print("option tile: ", start_coord)
+        # print('margin: ', option['margin'])
         # print(option)
         return option
 
@@ -163,6 +165,7 @@ class AutoSnake4(AutoSnakeBase):
                 self.set_route(option['route'])
                 if self.route:
                     next_tile = self.route.pop()
+                    # print("to food")
                     return next_tile
 
         route = self.get_best_route()
@@ -500,7 +503,7 @@ class AutoSnake4(AutoSnakeBase):
             current_results['apple_time'] = []
             current_results['len_gain'] = 0
             current_results['route'] = deque()
-            current_results['margin'] = 0
+            current_results['margin'] = -length
         if best_results is None:
             best_results = {}
         if s_map[new_coord[1], new_coord[0]] == self.env.FOOD_TILE:
@@ -514,7 +517,7 @@ class AutoSnake4(AutoSnakeBase):
 
         best_results['depth'] = max(best_results.get('depth', 0), current_results['depth'])
         best_results['len_gain'] = max(best_results.get('len_gain', 0), current_results['len_gain'])
-        best_results['margin'] = max(best_results.get('margin', 0), current_results['margin'])
+        best_results['margin'] = max(best_results.get('margin', -length), current_results['margin'])
         best_results['apple_time'] = []
         best_results['timeout'] = False
         best_results['free_path'] = False
@@ -571,7 +574,8 @@ class AutoSnake4(AutoSnakeBase):
 
 
         if valid_tiles:
-            best_margin = float('-inf')
+            best_margin = -length
+            target_tile = None
             for tile in valid_tiles:
                 area_check = area_checks.get(tile, None)
                 if area_check is None:
@@ -579,9 +583,15 @@ class AutoSnake4(AutoSnakeBase):
                     area_checks[tile] = area_check
                 if area_check['margin'] > best_margin:
                     best_margin = area_check['margin']
+                    best_results['margin'] = max(best_results['margin'], best_margin)
                     target_tile = tile
-                    current_results['margin'] = max(current_results.get('margin', 0), area_check['margin'])
-
+            # if the best margin here is less than the best margin from the previous iteration
+            # it means we but of an area, and that could lead to difficulties finding a path.
+            # best_margin + 3 was needed, otherwise we return even when its fine, for some reason.
+            # if (best_margin + 2) < current_results['margin']:
+            #     return current_results
+            if target_tile is None:
+                target_tile = self.target_tile(s_map, body_coords)
             valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
 
             for tile in valid_tiles:
@@ -601,6 +611,7 @@ class AutoSnake4(AutoSnakeBase):
                     best_results['depth'] = max(best_results['depth'], area_check['tile_count'])
                     best_results['margin'] = max(best_results['margin'], current_results['margin'])
                     continue
+                current_results['margin'] = area_check['margin']
                 check_result = self.deep_look_ahead(
                     s_map.copy(),
                     tile,

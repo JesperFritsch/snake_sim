@@ -157,20 +157,23 @@ if __name__ == '__main__':
     pr = cProfile.Profile()
     pr.enable()
 
+    choice = snake.pick_direction()
+    print(f"Choice: {choice}")
     for tile in snake.valid_tiles(snake.map, snake.coord):
         # planned_path = None
         planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
         print(f"Planned path: {planned_path}")
+        print(tile)
         # snake.print_map(snake.map)
         if planned_path:
             tile = planned_path.pop()
         # planned_path = None
         s_time = time()
-        # option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
-        # print('free_path: ', option['free_path'])
+        option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
+        print('free_path: ', option['free_path'])
+        print(f"Time: {(time() - s_time) * 1000}")
         area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile)
         print(f"area_check for tile {tile}: {area_check}")  
-        print(f"Time: {(time() - s_time) * 1000}")
     frames = []
 
     pr.disable()
@@ -180,10 +183,10 @@ if __name__ == '__main__':
     sortby = 'cumulative'
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
     ps.print_stats()
-    print(s.getvalue())
+    # print(s.getvalue())
 
     frames = frame_builder.frames_from_rundata(rundata)
 
-    # play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width, print_steps=False)
+    play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width, print_steps=False)
     # video_output = Path(__file__).parent.joinpath('..', '..', 'render', 'videos', 'test_look_ahead.mp4').resolve()
     # frames_to_video(frames, str(video_output), 30, size=(640, 640))
