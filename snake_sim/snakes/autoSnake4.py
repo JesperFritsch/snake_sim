@@ -581,6 +581,8 @@ class AutoSnake4(AutoSnakeBase):
                 if area_check is None:
                     area_check = self.area_check_wrapper(s_map, body_coords, tile)
                     area_checks[tile] = area_check
+                # print('tile: ', tile)
+                # print('area_check: ', area_check)
                 if area_check['margin'] > best_margin:
                     best_margin = area_check['margin']
                     best_results['margin'] = max(best_results['margin'], best_margin)
@@ -588,8 +590,12 @@ class AutoSnake4(AutoSnakeBase):
             # if the best margin here is less than the best margin from the previous iteration
             # it means we but of an area, and that could lead to difficulties finding a path.
             # best_margin + 3 was needed, otherwise we return even when its fine, for some reason.
-            # if (best_margin + 2) < current_results['margin']:
-            #     return current_results
+            # print('best margin: ', best_margin)
+            # print('current margin: ', current_results['margin'])
+            # self.print_map(s_map)
+            if (best_margin + 3) < current_results['margin']:
+                # print('margin break')
+                return best_results
             if target_tile is None:
                 target_tile = self.target_tile(s_map, body_coords)
             valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
@@ -612,6 +618,7 @@ class AutoSnake4(AutoSnakeBase):
                     best_results['margin'] = max(best_results['margin'], current_results['margin'])
                     continue
                 current_results['margin'] = area_check['margin']
+
                 check_result = self.deep_look_ahead(
                     s_map.copy(),
                     tile,

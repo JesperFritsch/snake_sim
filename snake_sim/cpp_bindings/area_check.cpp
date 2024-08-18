@@ -317,8 +317,8 @@ public:
                         if (n_coord == tail_coord && tile_count != 1) {
                             has_tail = true;
                             is_clear = true;
-                            done = true;
-                            break;
+                            // done = true;
+                            // break;
                         }
                     }
                 }
