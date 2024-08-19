@@ -228,6 +228,7 @@ public:
             int tile_count = 0,
             int food_count = 0,
             int max_index = 0,
+            int best_margin = 0,
             std::vector<bool> checked = std::vector<bool>(),
             int depth = 0
         ) {
@@ -236,12 +237,14 @@ public:
         int best_food_count = 0;
         int best_max_index = 0;
         int best_total_steps = 0;
-        int best_margin = 0;
 
         std::vector<Coord> body_coords;
         for (auto item : body_coords_py) {
             auto coord = item.cast<py::tuple>();
             body_coords.push_back(Coord(coord[0].cast<int>(), coord[1].cast<int>()));
+        }
+        if (depth == 0){
+            best_margin = -body_coords.size();
         }
         Coord start_coord = Coord(start_coord_py[0].cast<int>(), start_coord_py[1].cast<int>());
         std::deque<Coord> current_coords;
@@ -327,7 +330,10 @@ public:
             total_steps = tile_count - food_count;
             int needed_steps = body_len - max_index;
             margin = total_steps - needed_steps;
-            if (total_steps >= needed_steps) {
+            if (margin > best_margin) {
+                best_margin = margin;
+            }
+            if (margin >= 0) {
                 is_clear = true;
             }
             if (done) {
@@ -339,7 +345,6 @@ public:
         best_food_count = food_count;
         best_max_index = max_index;
         best_total_steps = total_steps;
-        best_margin = margin;
 
         if (!is_clear) {
             while (!to_be_checked.empty()) {
@@ -352,12 +357,13 @@ public:
                     tile_count,
                     food_count,
                     0,
+                    best_margin,
                     checked,
                     depth + 1);
                 if (area_check["is_clear"].cast<bool>()) {
                     return area_check;
                 }
-                if (area_check["margin"].cast<int>() > best_margin) {
+                if (area_check["margin"].cast<int>() >= best_margin) {
                     best_margin = area_check["margin"].cast<int>();
                     best_total_steps = area_check["total_steps"].cast<int>();
                     best_tile_count = area_check["tile_count"].cast<int>();
@@ -407,6 +413,7 @@ PYBIND11_MODULE(area_check, m) {
              py::arg("tile_count") = 0,
              py::arg("food_count") = 0,
              py::arg("max_index") = 0,
+             py::arg("best_margin") = 0,
              py::arg("checked") = std::vector<bool>(),
              py::arg("depth") = 0);
 

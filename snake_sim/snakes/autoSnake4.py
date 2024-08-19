@@ -593,7 +593,7 @@ class AutoSnake4(AutoSnakeBase):
             # print('best margin: ', best_margin)
             # print('current margin: ', current_results['margin'])
             # self.print_map(s_map)
-            if (best_margin + 3) < current_results['margin']:
+            if (best_margin + 1) < current_results['margin']:
                 # print('margin break')
                 return best_results
             if target_tile is None:
