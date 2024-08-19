@@ -82,7 +82,7 @@ if __name__ == '__main__':
     # snake.update()
     # frames = None
     rundata = []
-    area_coord = (12, 21)
+    area_coord = (16, 4)
     map_copy = snake.map.copy()
     map_copy[area_coord[1], area_coord[0]] = ord('Q')
     snake.print_map(map_copy)
@@ -157,8 +157,8 @@ if __name__ == '__main__':
     pr = cProfile.Profile()
     pr.enable()
 
-    choice = snake.pick_direction()
-    print(f"Choice: {choice}")
+    # choice = snake.pick_direction()
+    # print(f"Choice: {choice}")
     for tile in snake.valid_tiles(snake.map, snake.coord):
         # planned_path = None
         planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
@@ -169,6 +169,8 @@ if __name__ == '__main__':
             tile = planned_path.pop()
         # planned_path = None
         s_time = time()
+        # choice = snake.pick_direction()
+        # print(f"Choice: {choice}")
         option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
         print('free_path: ', option['free_path'])
         print(f"Time: {(time() - s_time) * 1000}")
@@ -183,7 +185,7 @@ if __name__ == '__main__':
     sortby = 'cumulative'
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
     ps.print_stats()
-    # print(s.getvalue())
+    print(s.getvalue())
 
     frames = frame_builder.frames_from_rundata(rundata)
 
