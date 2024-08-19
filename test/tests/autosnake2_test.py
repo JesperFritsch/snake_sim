@@ -157,8 +157,8 @@ if __name__ == '__main__':
     pr = cProfile.Profile()
     pr.enable()
 
-    # choice = snake.pick_direction()
-    # print(f"Choice: {choice}")
+    choice = snake.pick_direction()
+    print(f"Choice: {choice}")
     for tile in snake.valid_tiles(snake.map, snake.coord):
         # planned_path = None
         planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
