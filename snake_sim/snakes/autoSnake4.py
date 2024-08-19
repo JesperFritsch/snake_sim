@@ -103,9 +103,11 @@ class AutoSnake4(AutoSnakeBase):
                 route = None
             else:
                 route = None
-            option = self.find_route(coord, planned_route=route)
+            option = self.find_route(coord, planned_route=route, timeout_ms=100)
             options[coord] = option
             # print('found option: ', option)
+            # print('coord: ', coord)
+            # print('margin: ', option['margin'])
             if option['free_path'] and option['risk'] == 0:
                 break
         free_options = [o for o in options.values() if o['free_path']]
@@ -120,10 +122,6 @@ class AutoSnake4(AutoSnakeBase):
                     best_option = best_early_gain_opt
                 #If there are no free path options, consider the ones that timed out
                 else:
-                    if timedout_options := [o for o in risk_free_options if o['timeout']]:
-                        options_considered = timedout_options
-                    else:
-                        options_considered = risk_free_options
                     best_option = max(options.values(), key=lambda x: x['margin'])
             else:
                 if free_options:
@@ -486,15 +484,15 @@ class AutoSnake4(AutoSnakeBase):
                         current_results=None,
                         rundata=None,
                         timeout_ms=None,
-                        check_areas=True,
-                        area_check_data=None):
+                        branch_common=None):
         safety_buffer = 3
+        if branch_common is None:
+            branch_common = {}
+            branch_common['min_margin'] = 0
         if timeout_ms is None:
             timeout_ms = self.calc_timeout
         if start_time is None:
             start_time = time()
-        if area_check_data is None:
-            area_check_data = {}
         planned_tile = None
         if current_results is None:
             current_results = {}
@@ -542,7 +540,7 @@ class AutoSnake4(AutoSnakeBase):
         # needed_steps = area_check_data.get('needed_steps', 1) - 1
         # if needed_steps < 0:
         #     return current_results
-
+        best_margin = -length
         area_checks = {}
 
         if planned_route:
@@ -574,15 +572,12 @@ class AutoSnake4(AutoSnakeBase):
 
 
         if valid_tiles:
-            best_margin = -length
             target_tile = None
             for tile in valid_tiles:
                 area_check = area_checks.get(tile, None)
                 if area_check is None:
                     area_check = self.area_check_wrapper(s_map, body_coords, tile)
                     area_checks[tile] = area_check
-                # print('tile: ', tile)
-                # print('area_check: ', area_check)
                 if area_check['margin'] > best_margin:
                     best_margin = area_check['margin']
                     best_results['margin'] = max(best_results['margin'], best_margin)
@@ -593,7 +588,7 @@ class AutoSnake4(AutoSnakeBase):
             # print('best margin: ', best_margin)
             # print('current margin: ', current_results['margin'])
             # self.print_map(s_map)
-            if (best_margin + 3) < current_results['margin'] and best_margin < length:
+            if (best_margin + 5) < current_results['margin'] and best_margin < length:
                 # print('margin break')
                 return best_results
             if target_tile is None:
@@ -604,6 +599,8 @@ class AutoSnake4(AutoSnakeBase):
                 state_tuple = tuple([self.get_flat_map_state(s_map), tile])
                 state_hash = hash(state_tuple)
                 if state_hash in self.failed_paths:
+                    continue
+                if branch_common.get('min_margin', 0) > best_margin:
                     continue
                 area_check = area_checks[tile].copy()
                 # print(area_check)
@@ -630,8 +627,12 @@ class AutoSnake4(AutoSnakeBase):
                     current_results=current_results.copy(),
                     start_time=start_time,
                     rundata=rundata,
-                    area_check_data=area_check_data)
+                    branch_common=branch_common)
                 if check_result['free_path'] or check_result['timeout']:
                     return check_result
+                # print('failed')
+                # print(check_result)
+                if len(valid_tiles) == 1:
+                    branch_common['min_margin'] += 1
                 self.failed_paths.add(state_hash)
         return best_results

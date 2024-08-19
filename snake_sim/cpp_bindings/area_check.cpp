@@ -59,6 +59,37 @@ struct Coord {
 
 };
 
+struct AreaCheckResult {
+    bool is_clear;
+    int tile_count;
+    int total_steps;
+    int food_count;
+    bool has_tail;
+    int max_index;
+    Coord start_coord;
+    int needed_steps;
+    int margin;
+    AreaCheckResult(bool is_clear, 
+                    int tile_count, 
+                    int total_steps, 
+                    int food_count, 
+                    bool has_tail, 
+                    int max_index, 
+                    Coord start_coord, 
+                    int needed_steps, 
+                    int margin) :
+        is_clear(is_clear),
+        tile_count(tile_count),
+        total_steps(total_steps),
+        food_count(food_count),
+        has_tail(has_tail),
+        max_index(max_index),
+        start_coord(start_coord),
+        needed_steps(needed_steps),
+        margin(margin) {}
+};
+
+
 
 py::list coords_to_list(std::vector<Coord> coords) {
     py::list coords_list;
@@ -83,23 +114,23 @@ public:
     }
 
     bool is_single_entrance(py::array_t<uint8_t> s_map, py::tuple coord, py::tuple check_coord){
+        auto buf = s_map.request();
+        uint8_t* ptr = static_cast<uint8_t*>(buf.ptr);
         return _is_single_entrance(
-            s_map,
+            ptr,
             Coord(coord[0].cast<int>(), coord[1].cast<int>()),
             Coord(check_coord[0].cast<int>(), check_coord[1].cast<int>())
         );
     }
 
 
-    int _is_single_entrance(py::array_t<uint8_t> s_map, Coord coord, Coord check_coord) {
+    int _is_single_entrance(uint8_t* s_map, Coord coord, Coord check_coord) {
         // return code 2 is for an passage like:
         // x . .
         // . . .
         // . . x
         // or flipped
-        auto buf = s_map.request();
-        uint8_t* ptr = static_cast<uint8_t*>(buf.ptr);
-        int cols = static_cast<int>(buf.shape[1]);
+        int cols = this->width;
         int c_x = coord.x;
         int c_y = coord.y;
         int ch_x = check_coord.x;
@@ -127,7 +158,7 @@ public:
             Coord c = neighbours[i];
             if (i % 2 == 0){
                 if (this->is_inside(c.x, c.y)){
-                    corner_values[i/2] = ptr[c.y * cols + c.x];
+                    corner_values[i/2] = s_map[c.y * cols + c.x];
                 }
                 else{
                     corner_values[i/2] = offmap_value; // arbitrary value, just not free_value or food_value
@@ -135,14 +166,14 @@ public:
             }
             else{
                 if (this->is_inside(c.x, c.y)){
-                    neighbour_values[i/2] = ptr[c.y * cols + c.x];
+                    neighbour_values[i/2] = s_map[c.y * cols + c.x];
                 }
                 else{
                     neighbour_values[i/2] = offmap_value; // arbitrary value, just not free_value or food_value
                 }
             }
 
-            // std::cout << (ptr[c.y * cols + c.x]) << std::endl;
+            // std::cout << (s_map[c.y * cols + c.x]) << std::endl;
         }
         // Check the diagonals
         // std::cout << "corner_values" << std::endl;
@@ -188,12 +219,12 @@ public:
         int x = ch_x + delta_y;
         int y = ch_y + delta_x;
         if (this->is_inside(x, y)) {
-            value = ptr[y * cols + x];
+            value = s_map[y * cols + x];
             if (value <= this->free_value) {
                 x = c_x + delta_y;
                 y = c_y + delta_x;
                 if (this->is_inside(x, y)) {
-                    value = ptr[y * cols + x];
+                    value = s_map[y * cols + x];
                     if (value <= this->free_value) {
                         return 0;
                     }
@@ -204,12 +235,12 @@ public:
         x = ch_x - delta_y;
         y = ch_y - delta_x;
         if (this->is_inside(x, y)) {
-            value = ptr[y * cols + x];
+            value = s_map[y * cols + x];
             if (value <= this->free_value) {
                 x = c_x - delta_y;
                 y = c_y - delta_x;
                 if (this->is_inside(x, y)) {
-                    value = ptr[y * cols + x];
+                    value = s_map[y * cols + x];
                     if (value <= this->free_value) {
                         return 0;
                     }
@@ -224,29 +255,66 @@ public:
     py::dict area_check(
             py::array_t<uint8_t> s_map,
             py::list body_coords_py,
-            py::tuple start_coord_py,
-            int tile_count = 0,
-            int food_count = 0,
-            int max_index = 0,
-            int best_margin = 0,
-            std::vector<bool> checked = std::vector<bool>(),
-            int depth = 0
+            py::tuple start_coord_py
+        ){
+            auto s_map_buf = s_map.request();
+            uint8_t* s_map_ptr = static_cast<uint8_t*>(s_map_buf.ptr);
+            Coord start_coord = Coord(start_coord_py[0].cast<int>(), start_coord_py[1].cast<int>());
+            std::vector<Coord> body_coords;
+            for (auto item : body_coords_py) {
+                auto coord = item.cast<py::tuple>();
+                body_coords.push_back(Coord(coord[0].cast<int>(), coord[1].cast<int>()));
+            }
+            AreaCheckResult result = _area_check(
+                s_map_ptr,
+                body_coords,
+                start_coord,
+                0,
+                0,
+                0,
+                0,
+                std::vector<bool>(),
+                0
+            );
+            return py::dict(
+                py::arg("is_clear") = result.is_clear,
+                py::arg("tile_count") = result.tile_count,
+                py::arg("total_steps") = result.total_steps,
+                py::arg("food_count") = result.food_count,
+                py::arg("has_tail") = result.has_tail,
+                py::arg("max_index") = result.max_index,
+                py::arg("start_coord") = py::make_tuple(result.start_coord.x, result.start_coord.y),
+                py::arg("needed_steps") = result.needed_steps,
+                py::arg("margin") = result.margin
+                
+            );
+        }
+
+    AreaCheckResult _area_check(
+            uint8_t* s_map,
+            std::vector<Coord> body_coords,
+            Coord start_coord,
+            int tile_count,
+            int food_count,
+            int max_index,
+            int best_margin,
+            std::vector<bool> checked,
+            int depth
         ) {
 
         int best_tile_count = 0;
         int best_food_count = 0;
         int best_max_index = 0;
         int best_total_steps = 0;
-
-        std::vector<Coord> body_coords;
-        for (auto item : body_coords_py) {
-            auto coord = item.cast<py::tuple>();
-            body_coords.push_back(Coord(coord[0].cast<int>(), coord[1].cast<int>()));
-        }
+        int body_len = body_coords.size();
+        auto tail_coord = body_coords[body_len - 1];
+        bool is_clear = false;
+        bool has_tail = false;
+        int total_steps = 0;
+        int margin = 0;
         if (depth == 0){
             best_margin = -body_coords.size();
         }
-        Coord start_coord = Coord(start_coord_py[0].cast<int>(), start_coord_py[1].cast<int>());
         std::deque<Coord> current_coords;
         std::deque<Coord> to_be_checked;
         current_coords.push_back(start_coord);
@@ -256,17 +324,8 @@ public:
             checked = std::vector<bool>(height * width, false);
         }
         checked[start_coord.y * width + start_coord.x] = true;
-        int body_len = body_coords.size();
-        auto tail_coord = body_coords[body_len - 1];
-        bool is_clear = false;
-        bool has_tail = false;
-        bool done = false;
-        int total_steps = 0;
-        int margin = 0;
         tile_count += 1;
 
-        auto s_map_buf = s_map.request();
-        uint8_t* s_map_ptr = static_cast<uint8_t*>(s_map_buf.ptr);
         while (!current_coords.empty()) {
             auto curr_coord = current_coords.front();
             current_coords.pop_front();
@@ -274,7 +333,7 @@ public:
             c_x = curr_coord.x;
             c_y = curr_coord.y;
 
-            if (s_map_ptr[c_y * width + c_x] == food_value) {
+            if (s_map[c_y * width + c_x] == food_value) {
                 food_count += 1;
             }
 
@@ -289,40 +348,37 @@ public:
                 int n_x, n_y;
                 n_x = n_coord.x;
                 n_y = n_coord.y;
-
-                if (0 <= n_x && n_x < width && 0 <= n_y && n_y < height) {
-                    if (!checked[n_y * width + n_x]) {
-                        checked[n_y * width + n_x] = true;
-                        int coord_val = s_map_ptr[n_y * width + n_x];
-                        if (coord_val == free_value || coord_val == food_value) {
-                            int entrance_code = _is_single_entrance(s_map, curr_coord, n_coord);
-                            if (entrance_code != 0) {
-                                to_be_checked.push_back(n_coord);
-                                if (entrance_code == 2) {
-                                    break;
-                                }
-                                else{
-                                    continue;
-                                }
-                            }
-                            tile_count += 1;
-                            current_coords.push_back(n_coord);
-                        } else if (coord_val == body_value) {
-                            auto it = std::find(body_coords.begin(), body_coords.end(), n_coord);
-                            if (it != body_coords.end()) {
-                                int body_index = static_cast<int>(std::distance(body_coords.begin(), it));  // Cast to int
-                                if (body_index > max_index) {
-                                    max_index = body_index;
-                                }
-                            }
+                if (!this->is_inside(n_x, n_y)) {
+                    continue;
+                }
+                if (checked[n_y * width + n_x]) {
+                    continue;
+                }
+                checked[n_y * width + n_x] = true;
+                int coord_val = s_map[n_y * width + n_x];
+                if (coord_val == free_value || coord_val == food_value) {
+                    int entrance_code = _is_single_entrance(s_map, curr_coord, n_coord);
+                    if (entrance_code == 0) {
+                        tile_count += 1;
+                        current_coords.push_back(n_coord);
+                    }
+                    else{
+                        to_be_checked.push_back(n_coord);
+                        if (entrance_code == 2) {
+                            break;
                         }
-
-                        if (n_coord == tail_coord && tile_count != 1) {
-                            has_tail = true;
-                            is_clear = true;
-                            // done = true;
-                            // break;
+                    }
+                } else if (coord_val == body_value) {
+                    auto it = std::find(body_coords.begin(), body_coords.end(), n_coord);
+                    if (it != body_coords.end()) {
+                        int body_index = static_cast<int>(std::distance(body_coords.begin(), it));  // Cast to int
+                        if (body_index > max_index) {
+                            max_index = body_index;
                         }
+                    }
+                    if (n_coord == tail_coord && tile_count != 1) {
+                        has_tail = true;
+                        is_clear = true;
                     }
                 }
             }
@@ -336,9 +392,6 @@ public:
             if (margin >= 0) {
                 is_clear = true;
             }
-            if (done) {
-                break;
-            }
         }
 
         best_tile_count = tile_count;
@@ -350,25 +403,25 @@ public:
             while (!to_be_checked.empty()) {
                 auto coord = to_be_checked.front();
                 to_be_checked.pop_front();
-                auto area_check = this->area_check(
+                AreaCheckResult area_check = this->_area_check(
                     s_map,
-                    coords_to_list(body_coords),
-                    py::make_tuple(coord.x, coord.y),
+                    body_coords,
+                    coord,
                     tile_count,
                     food_count,
                     0,
                     best_margin,
                     checked,
                     depth + 1);
-                if (area_check["is_clear"].cast<bool>()) {
+                if (area_check.is_clear) {
                     return area_check;
                 }
-                if (area_check["margin"].cast<int>() >= best_margin) {
-                    best_margin = area_check["margin"].cast<int>();
-                    best_total_steps = area_check["total_steps"].cast<int>();
-                    best_tile_count = area_check["tile_count"].cast<int>();
-                    best_food_count = area_check["food_count"].cast<int>();
-                    best_max_index = area_check["max_index"].cast<int>();
+                if (area_check.margin >= best_margin) {
+                    best_margin = area_check.margin;
+                    best_total_steps = area_check.total_steps;
+                    best_tile_count = area_check.tile_count;
+                    best_food_count = area_check.food_count;
+                    best_max_index = area_check.max_index;
                 }
                 // for (auto item : area_check) {
                 //     std::cout << "Key: " << py::str(item.first) << ", Value: " << py::str(item.second) << std::endl;
@@ -380,16 +433,16 @@ public:
             }
         }
 
-        return py::dict(
-            py::arg("is_clear") = is_clear,
-            py::arg("tile_count") = best_tile_count,
-            py::arg("total_steps") = best_total_steps,
-            py::arg("food_count") = best_food_count,
-            py::arg("has_tail") = has_tail,
-            py::arg("max_index") = best_max_index,
-            py::arg("start_coord") = py::make_tuple(start_coord.x, start_coord.y),
-            py::arg("needed_steps") = body_len - best_max_index,
-            py::arg("margin") = best_margin
+        return AreaCheckResult(
+            is_clear,
+            best_tile_count,
+            best_total_steps,
+            best_food_count,
+            has_tail,
+            best_max_index,
+            start_coord,
+            body_len - best_max_index,
+            best_margin
         );
     }
 
@@ -409,13 +462,7 @@ PYBIND11_MODULE(area_check, m) {
         .def("area_check", &AreaChecker::area_check,
              py::arg("s_map"),
              py::arg("body_coords_py"),
-             py::arg("start_coord_py"),
-             py::arg("tile_count") = 0,
-             py::arg("food_count") = 0,
-             py::arg("max_index") = 0,
-             py::arg("best_margin") = 0,
-             py::arg("checked") = std::vector<bool>(),
-             py::arg("depth") = 0);
+             py::arg("start_coord_py"));
 
     py::class_<Coord>(m, "Coord")
         .def(py::init<int, int>())
