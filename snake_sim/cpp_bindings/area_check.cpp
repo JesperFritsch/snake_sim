@@ -10,35 +10,12 @@
 namespace py = pybind11;
 
 
-void print_map(py::array_t<uint8_t> s_map) {
-    auto buf = s_map.request();
-    uint8_t* ptr = static_cast<uint8_t*>(buf.ptr);
-    int rows = static_cast<int>(buf.shape[0]);
-    int cols = static_cast<int>(buf.shape[1]);
-    char c;
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            if (ptr[i * cols + j] == 1){
-                c = '.';
-            }
-            else if(ptr[i * cols + j] == 0){
-                c = 'F';
-            }
-            else if (ptr[i * cols + j] == 2){
-                c = '#';
-            }
-            else{
-                c = (char)ptr[i * cols + j];
-            }
-            std::cout << " " << c << " ";
-        }
-        std::cout << std::endl;
-    }
-}
-
 struct Coord {
     int x;
     int y;
+
+    Coord() : x(-1), y(-1) {}
+
     Coord(int x, int y) : x(x), y(y) {}
      // Overload operator[] to access x and y like an array
     int& operator[](size_t index) {
@@ -89,6 +66,14 @@ struct AreaCheckResult {
         margin(margin) {}
 };
 
+struct AreaStat{
+    int max_index;
+
+    AreaStat() : max_index(0) {}
+
+    AreaStat(int max_index) : max_index(max_index) {}
+};
+
 
 
 py::list coords_to_list(std::vector<Coord> coords) {
@@ -112,6 +97,34 @@ public:
     bool is_inside(int x, int y){
         return 0 <= x && x < this->width && 0 <= y && y < this->height;
     }
+
+    void print_map(uint8_t* s_map) {
+    int rows = this->height;
+    int cols = this->width;
+    char c;
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (s_map[i * cols + j] == 1){
+                c = '.';
+            }
+            else if(s_map[i * cols + j] == 0){
+                c = 'F';
+            }
+            else if (s_map[i * cols + j] == 2){
+                c = '#';
+            }
+            else{
+                c = (char)s_map[i * cols + j];
+            }
+            if (Coord(j, i) == this->print_mark){
+                c = '+';
+            }
+            std::cout << " " << c << " ";
+        }
+        std::cout << std::endl;
+    }
+    this->print_mark = Coord();
+}
 
     bool is_single_entrance(py::array_t<uint8_t> s_map, py::tuple coord, py::tuple check_coord){
         auto buf = s_map.request();
@@ -265,6 +278,8 @@ public:
                 auto coord = item.cast<py::tuple>();
                 body_coords.push_back(Coord(coord[0].cast<int>(), coord[1].cast<int>()));
             }
+            std::unordered_map<int, AreaStat> area_stats;
+            std::vector<int> checked;
             AreaCheckResult result = _area_check(
                 s_map_ptr,
                 body_coords,
@@ -273,8 +288,9 @@ public:
                 0,
                 0,
                 0,
-                std::vector<bool>(),
-                0
+                checked,
+                0,
+                area_stats
             );
             return py::dict(
                 py::arg("is_clear") = result.is_clear,
@@ -298,10 +314,10 @@ public:
             int food_count,
             int max_index,
             int best_margin,
-            std::vector<bool> checked,
-            int depth
+            std::vector<int> checked,
+            int depth,
+            std::unordered_map<int, AreaStat>& area_stats
         ) {
-
         int best_tile_count = 0;
         int best_food_count = 0;
         int best_max_index = 0;
@@ -321,9 +337,10 @@ public:
         // std::cout << "called with args:" << "tile_count: " << tile_count << " food_count: " << food_count << " max_index: " << max_index << " depth: " << depth << " start_coord: (" << start_coord.x << ", " << start_coord.y << ")" << std::endl;
 
         if (checked.size() == 0) {
-            checked = std::vector<bool>(height * width, false);
+            checked.resize(height * width);
+            std::fill(checked.begin(), checked.end(), -1);
         }
-        checked[start_coord.y * width + start_coord.x] = true;
+        checked[start_coord.y * width + start_coord.x] = depth;
         tile_count += 1;
 
         while (!current_coords.empty()) {
@@ -351,12 +368,16 @@ public:
                 if (!this->is_inside(n_x, n_y)) {
                     continue;
                 }
-                if (checked[n_y * width + n_x]) {
+                int checked_val = checked[n_y * width + n_x];
+                if (checked_val >= 0) {
+                    if (checked_val + 1 < depth) { // checked_val + 1 because we dont want to consider the area we are coming from.
+                        max_index = std::max(max_index, area_stats[checked_val].max_index);
+                    }
                     continue;
                 }
-                checked[n_y * width + n_x] = true;
                 int coord_val = s_map[n_y * width + n_x];
                 if (coord_val == free_value || coord_val == food_value) {
+                    checked[n_y * width + n_x] = depth;
                     int entrance_code = _is_single_entrance(s_map, curr_coord, n_coord);
                     if (entrance_code == 0) {
                         tile_count += 1;
@@ -403,6 +424,7 @@ public:
             while (!to_be_checked.empty()) {
                 auto coord = to_be_checked.front();
                 to_be_checked.pop_front();
+                area_stats[depth] = AreaStat(max_index);
                 AreaCheckResult area_check = this->_area_check(
                     s_map,
                     body_coords,
@@ -412,7 +434,8 @@ public:
                     0,
                     best_margin,
                     checked,
-                    depth + 1);
+                    depth + 1,
+                    area_stats);
                 if (area_check.is_clear) {
                     return area_check;
                 }
@@ -452,6 +475,7 @@ private:
     uint8_t body_value;
     int width;
     int height;
+    Coord print_mark;
 
 };
 
