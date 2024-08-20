@@ -4,6 +4,7 @@ import itertools
 from collections import deque
 from statistics import mean
 from time import time
+from pprint import pprint
 
 from snake_sim.cpp_bindings.area_check import AreaChecker
 
@@ -43,13 +44,16 @@ class AutoSnake4(AutoSnakeBase):
                     route = deque(list(route) + sub_route[1:-1])
                 except Exception as e:
                     print(e)
+                    print("Coord: ", s_coord)
                     raise ValueError('Invalid route')
         except IndexError as e:
             print(e)
             print('Route: ', route)
+            print("Coord: ", s_coord)
         except Exception as e:
             print(e)
-            print(route)
+            print('Route: ', route)
+            print("Coord: ", s_coord)
         return route
 
     def set_route(self, route: deque):
@@ -103,7 +107,7 @@ class AutoSnake4(AutoSnakeBase):
                 route = None
             else:
                 route = None
-            option = self.find_route(coord, planned_route=route, timeout_ms=100)
+            option = self.find_route(coord, planned_route=route)
             options[coord] = option
             # print('found option: ', option)
             # print('coord: ', coord)
@@ -143,10 +147,29 @@ class AutoSnake4(AutoSnakeBase):
         if self.area_check_wrapper(s_map, self.body_coords, end_coord)['is_clear']:
             return True
         return False
+    
+    def get_available_food_map(self):
+        s_map = self.map.copy()
+        valid_tiles = self.valid_tiles(self.map, self.coord)
+        future_valids = {coord: self.valid_tiles(self.map, coord) for coord in valid_tiles}
+        # if all(len(fv) == 3 for fv in future_valids.values()):
+        #     return None
+        food_map = {}
+        for coord, valids in future_valids.items():
+            if not valids:
+                continue
+            x, y = coord
+            old_map_value = s_map[y, x]
+            s_map[y, x] = self.env.BLOCKED_TILE
+            area_checks = [self.area_check_wrapper(s_map, self.body_coords, tile) for tile in valids]
+            most_food_area = max(area_checks, key=lambda x: x['food_count'])
+            food_map[coord] = most_food_area['food_count'] + (1 if old_map_value == self.env.FOOD_TILE else 0)
+            s_map[y, x] = old_map_value
+        return food_map
 
     def pick_direction(self):
         next_tile = None
-        look_ahead_tile = None
+        planned_tile = None
         closest_food_route = self.get_route(self.map, self.coord, target_tiles=[l for l in self.env.food.locations if l != self.coord])
         if closest_food_route and self.check_safe_food_route(self.map.copy(), closest_food_route):
             planned_route = closest_food_route[:-1]
@@ -154,22 +177,35 @@ class AutoSnake4(AutoSnakeBase):
         else:
             old_route = None
             planned_route = self.route
+        food_map = self.get_available_food_map()
+        if not food_map: return None
+        best_food_pair = max(food_map.items(), key=lambda x: x[1])
+        best_food_tile, best_food_value = best_food_pair
+        # self.print_map(self.map)
+        # print('best_food_tile: ', best_food_tile)
+        # print('best_food_value: ', best_food_value)
+        # print('food_map: ', food_map)
         if self.verify_route(planned_route):
-            look_ahead_tile = planned_route.pop()
-            option = self.find_route(look_ahead_tile, planned_route=planned_route, old_route=old_route)
+            planned_tile = planned_route.pop()
+            # print("planned_tile: ", planned_tile)
+            if food_map and food_map[planned_tile] < best_food_value:
+                option = self.find_route(best_food_tile, planned_route=planned_route, old_route=old_route)
+            else:
+                option = self.find_route(planned_tile, planned_route=planned_route, old_route=old_route)
             if option['free_path']:
-                # print(option['route'])
-                # print(self.coord)
                 self.set_route(option['route'])
                 if self.route:
                     next_tile = self.route.pop()
-                    # print("to food")
                     return next_tile
-
+        else:
+            option = self.find_route(best_food_tile)
+            if option['free_path']:
+                self.set_route(option['route'])
+                if self.route:
+                    next_tile = self.route.pop()
+                    return next_tile
         route = self.get_best_route()
-        # print(self.coord)
         self.set_route(route)
-        # print('route: ', self.route)
         if self.route:
             next_tile = self.route.pop()
             if not len(self.route) >= self.length:
@@ -582,25 +618,30 @@ class AutoSnake4(AutoSnakeBase):
                     best_margin = area_check['margin']
                     best_results['margin'] = max(best_results['margin'], best_margin)
                     target_tile = tile
+                # print('tile: ', tile, area_check)
             # if the best margin here is less than the best margin from the previous iteration
             # it means we but of an area, and that could lead to difficulties finding a path.
             # best_margin + 3 was needed, otherwise we return even when its fine, for some reason.
             # print('best margin: ', best_margin)
             # print('current margin: ', current_results['margin'])
+            # print("min_margin: ", branch_common.get('min_margin', 0))
             # self.print_map(s_map)
-            if (best_margin + 5) < current_results['margin'] and best_margin < length:
-                # print('margin break')
-                return best_results
+            # if (best_margin + 3) < current_results['margin'] and best_margin < length:
+            #     # print('margin break')
+            #     return best_results
             if target_tile is None:
                 target_tile = self.target_tile(s_map, body_coords)
             valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
 
             for tile in valid_tiles:
+                # print("trying tile:" , tile)
                 state_tuple = tuple([self.get_flat_map_state(s_map), tile])
                 state_hash = hash(state_tuple)
                 if state_hash in self.failed_paths:
+                    # print('failed path')
                     continue
                 if branch_common.get('min_margin', 0) > best_margin:
+                    # print('margin break')
                     continue
                 area_check = area_checks[tile].copy()
                 # print(area_check)
@@ -613,6 +654,7 @@ class AutoSnake4(AutoSnakeBase):
                 if not area_check['is_clear']:
                     best_results['depth'] = max(best_results['depth'], area_check['tile_count'])
                     best_results['margin'] = max(best_results['margin'], current_results['margin'])
+                    # print('not clear')
                     continue
                 current_results['margin'] = area_check['margin']
 
