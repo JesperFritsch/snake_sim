@@ -30,7 +30,7 @@ if __name__ == '__main__':
     expand_factor = 2
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    snake_map = 'comps'
+    snake_map = 'comps2'
 
     env.load_png_map(snake_map)
     env.init_recorder()
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     # snake.update()
     # frames = None
     rundata = []
-    area_coord = (16, 4)
+    area_coord = (12, 20)
     map_copy = snake.map.copy()
     map_copy[area_coord[1], area_coord[0]] = ord('Q')
     snake.print_map(map_copy)
@@ -178,14 +178,14 @@ if __name__ == '__main__':
 
     pr.disable()
 
-    # Print the profiling results
-    s = StringIO()
-    sortby = 'cumulative'
-    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    # print(s.getvalue())
+    # # Print the profiling results
+    # s = StringIO()
+    # sortby = 'cumulative'
+    # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    # ps.print_stats()
+    # # print(s.getvalue())
 
-    frames = frame_builder.frames_from_rundata(rundata)
+    # frames = frame_builder.frames_from_rundata(rundata)
 
     # play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width, print_steps=False)
     # video_output = Path(__file__).parent.joinpath('..', '..', 'render', 'videos', 'test_look_ahead.mp4').resolve()

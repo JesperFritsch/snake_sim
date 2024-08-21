@@ -23,15 +23,15 @@ DIR_MAPPING = {
     (-1, 0): 'left'
 }
 
-@dataclass
 class Food:
 
-    width: int
-    height: int
-    max_food: int
-    decay_count: Optional[int] = None
-    locations: set = field(default_factory=set)
-    decay_counters: dict = field(default_factory=dict)
+    def __init__(self, width: int, height: int, max_food: int, decay_count: Optional[int] = None):
+        self.width = width
+        self.height = height
+        self.max_food = max_food
+        self.decay_count = decay_count if decay_count else None
+        self.locations = set()
+        self.decay_counters = {}
 
     def generate_new(self, s_map):
         empty_tiles = []

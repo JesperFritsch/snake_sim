@@ -70,7 +70,7 @@ class AutoSnake4(AutoSnakeBase):
                 self.food_in_route.append(coord)
         self.route = route
 
-    def find_route(self, start_coord, planned_route=None, old_route=None, timeout_ms=None):
+    def explore_option(self, start_coord, planned_route=None, old_route=None, timeout_ms=None):
         time_s = time()
         option = self.deep_look_ahead(
                 self.map.copy(),
@@ -107,7 +107,7 @@ class AutoSnake4(AutoSnakeBase):
                 route = None
             else:
                 route = None
-            option = self.find_route(coord, planned_route=route)
+            option = self.explore_option(coord, planned_route=route)
             options[coord] = option
             # print('found option: ', option)
             # print('coord: ', coord)
@@ -148,26 +148,72 @@ class AutoSnake4(AutoSnakeBase):
             return True
         return False
     
+    def get_closest_accessible_food_route(self):
+        s_map = self.map.copy()
+        food_locations = self.env.food.locations.copy()
+        route = None
+        while route := self.get_route(self.map, self.coord, target_tiles=[l for l in food_locations if l != self.coord]):
+            if self.check_safe_food_route(s_map, route):
+                return route
+            else:
+                food_locations.remove(route[0])
+        return route
+
     def get_available_food_map(self):
         s_map = self.map.copy()
         valid_tiles = self.valid_tiles(self.map, self.coord)
-        future_valids = {coord: self.valid_tiles(self.map, coord) for coord in valid_tiles}
-        # if all(len(fv) == 3 for fv in future_valids.values()):
-        #     return None
-        food_map = {}
-        for coord, valids in future_valids.items():
-            if not valids:
-                continue
-            x, y = coord
-            old_map_value = s_map[y, x]
-            s_map[y, x] = self.env.BLOCKED_TILE
-            area_checks = [self.area_check_wrapper(s_map, self.body_coords, tile) for tile in valids]
-            most_food_area = max(area_checks, key=lambda x: x['food_count'])
-            food_map[coord] = most_food_area['food_count'] + (1 if old_map_value == self.env.FOOD_TILE else 0)
-            s_map[y, x] = old_map_value
+        food_map = {coord: self.area_check_wrapper(s_map, self.body_coords, coord)['food_count'] for coord in valid_tiles}
         return food_map
+        # future_valids = {coord: self.valid_tiles(self.map, coord) for coord in valid_tiles}
+        # # if all(len(fv) == 3 for fv in future_valids.values()):
+        # #     return None
+        # food_map = {}
+        # for coord, valids in future_valids.items():
+        #     if not valids:
+        #         continue
+        #     x, y = coord
+        #     old_map_value = s_map[y, x]
+        #     s_map[y, x] = self.env.BLOCKED_TILE
+        #     area_checks = [self.area_check_wrapper(s_map, self.body_coords, tile) for tile in valids]
+        #     most_food_area = max(area_checks, key=lambda x: x['food_count'])
+        #     food_map[coord] = most_food_area['food_count'] + (1 if old_map_value == self.env.FOOD_TILE else 0)
+        #     s_map[y, x] = old_map_value
+        # return food_map
 
     def pick_direction(self):
+        next_tile = None
+        planned_tile = None
+        planned_route = None
+        closest_food_route = self.get_closest_accessible_food_route()
+        if closest_food_route and self.check_safe_food_route(self.map.copy(), closest_food_route):
+            planned_route = closest_food_route[:-1]
+            planned_tile = planned_route.pop()
+        food_map = self.get_available_food_map()
+        # print(food_map)
+        # print("food route: ", closest_food_route)
+        # print("planned tile: ", planned_tile)
+        if food_map:
+            best_food_pair = max(food_map.items(), key=lambda x: x[1])
+            # print("best food pair: ", best_food_pair)
+            best_food_tile, best_food_value = best_food_pair
+            planned_tile_food_value = food_map.get(planned_tile, 0)
+            if planned_tile is None or planned_tile_food_value < best_food_value:
+                # print("food route is not best")
+                planned_tile = best_food_tile
+                planned_route = self.route
+            option = self.explore_option(planned_tile, planned_route=planned_route)
+            if option['free_path']:
+                next_tile = planned_tile
+        if next_tile is None:
+            # print("getting best route")
+            route = self.get_best_route()
+            if route:
+                next_tile = route.pop()
+        # print("next_tile: ", next_tile)
+        # self.print_map(self.map)
+        return next_tile
+    
+    def pick_direction_old(self):
         next_tile = None
         planned_tile = None
         closest_food_route = self.get_route(self.map, self.coord, target_tiles=[l for l in self.env.food.locations if l != self.coord])
@@ -178,32 +224,32 @@ class AutoSnake4(AutoSnakeBase):
             old_route = None
             planned_route = self.route
         food_map = self.get_available_food_map()
-        if not food_map: return None
-        best_food_pair = max(food_map.items(), key=lambda x: x[1])
-        best_food_tile, best_food_value = best_food_pair
-        # self.print_map(self.map)
-        # print('best_food_tile: ', best_food_tile)
-        # print('best_food_value: ', best_food_value)
-        # print('food_map: ', food_map)
-        if self.verify_route(planned_route):
-            planned_tile = planned_route.pop()
-            # print("planned_tile: ", planned_tile)
-            if food_map and food_map[planned_tile] < best_food_value:
-                option = self.find_route(best_food_tile, planned_route=planned_route, old_route=old_route)
+        if food_map:
+            best_food_pair = max(food_map.items(), key=lambda x: x[1])
+            best_food_tile, best_food_value = best_food_pair
+            # self.print_map(self.map)
+            # print('best_food_tile: ', best_food_tile)
+            # print('best_food_value: ', best_food_value)
+            # print('food_map: ', food_map)
+            if self.verify_route(planned_route):
+                planned_tile = planned_route.pop()
+                # print("planned_tile: ", planned_tile)
+                if food_map and planned_tile in food_map and food_map[planned_tile] < best_food_value:
+                    option = self.explore_option(best_food_tile, planned_route=planned_route, old_route=old_route)
+                else:
+                    option = self.explore_option(planned_tile, planned_route=planned_route, old_route=old_route)
+                if option['free_path']:
+                    self.set_route(option['route'])
+                    if self.route:
+                        next_tile = self.route.pop()
+                        return next_tile
             else:
-                option = self.find_route(planned_tile, planned_route=planned_route, old_route=old_route)
-            if option['free_path']:
-                self.set_route(option['route'])
-                if self.route:
-                    next_tile = self.route.pop()
-                    return next_tile
-        else:
-            option = self.find_route(best_food_tile)
-            if option['free_path']:
-                self.set_route(option['route'])
-                if self.route:
-                    next_tile = self.route.pop()
-                    return next_tile
+                option = self.explore_option(best_food_tile)
+                if option['free_path']:
+                    self.set_route(option['route'])
+                    if self.route:
+                        next_tile = self.route.pop()
+                        return next_tile
         route = self.get_best_route()
         self.set_route(route)
         if self.route:
@@ -345,9 +391,9 @@ class AutoSnake4(AutoSnakeBase):
         return False
 
 
-    def area_check_wrapper(self, s_map, body_coords, start_coord):
+    def area_check_wrapper(self, s_map, body_coords, start_coord, food_check=False):
         # return self.area_check(s_map, body_coords, start_coord)
-        return self.area_checker.area_check(s_map, list(body_coords), start_coord)
+        return self.area_checker.area_check(s_map, list(body_coords), start_coord, food_check=food_check)
 
     def area_check(self, s_map, body_coords, start_coord, tile_count=0, food_count=0, max_index=0, checked=None, depth=0):
         current_coords = deque([start_coord])
@@ -576,7 +622,6 @@ class AutoSnake4(AutoSnakeBase):
         # needed_steps = area_check_data.get('needed_steps', 1) - 1
         # if needed_steps < 0:
         #     return current_results
-        best_margin = -length
         area_checks = {}
 
         if planned_route:
@@ -608,6 +653,7 @@ class AutoSnake4(AutoSnakeBase):
 
 
         if valid_tiles:
+            best_margin = -length
             target_tile = None
             for tile in valid_tiles:
                 area_check = area_checks.get(tile, None)
@@ -635,11 +681,11 @@ class AutoSnake4(AutoSnakeBase):
 
             for tile in valid_tiles:
                 # print("trying tile:" , tile)
-                state_tuple = tuple([self.get_flat_map_state(s_map), tile])
-                state_hash = hash(state_tuple)
-                if state_hash in self.failed_paths:
-                    # print('failed path')
-                    continue
+                # state_tuple = tuple([self.get_flat_map_state(s_map), tile])
+                # state_hash = hash(state_tuple)
+                # if state_hash in self.failed_paths:
+                #     # print('failed path')
+                #     continue
                 if branch_common.get('min_margin', 0) > best_margin:
                     # print('margin break')
                     continue
@@ -676,5 +722,5 @@ class AutoSnake4(AutoSnakeBase):
                 # print(check_result)
                 if len(valid_tiles) == 1:
                     branch_common['min_margin'] += 1
-                self.failed_paths.add(state_hash)
+                # self.failed_paths.add(state_hash)
         return best_results
