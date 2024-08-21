@@ -90,56 +90,54 @@ class AutoSnake4(AutoSnakeBase):
         return option
 
 
-    def get_best_route(self):
+    def get_best_option(self):
         options = {}
         best_option = None
         valid_tiles = self.valid_tiles(self.map, self.coord)
-        planned_tile = None
-        if self.route:
-            planned_route = self.route.copy()
-            planned_tile = planned_route.pop()
-        else:
-            planned_tile = self.target_tile(self.map, self.body_coords)
-            planned_route = None
-        valid_tiles.sort(key=lambda x: 0 if x == planned_tile else 1)
+        area_checks = {}
+        target_tile = None
+        best_margin = -self.length
+        if not valid_tiles:
+            return None
+        for tile in valid_tiles:
+            area_checks[tile] = self.area_check_wrapper(self.map, self.body_coords, tile)
+            if area_checks[tile]['margin'] > best_margin:
+                best_margin = area_checks[tile]['margin']
+                target_tile = tile
+        valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
         for coord in valid_tiles:
-            if coord == planned_tile:
-                route = None
-            else:
-                route = None
-            option = self.explore_option(coord, planned_route=route)
+            option = self.explore_option(coord)
             options[coord] = option
             # print('found option: ', option)
             # print('coord: ', coord)
             # print('margin: ', option['margin'])
-            if option['free_path'] and option['risk'] == 0:
+            if option['free_path'] and option['margin'] >= area_checks[coord]['food_count']:
                 break
+        print(options)
+        print(area_checks)
         free_options = [o for o in options.values() if o['free_path']]
-        if options:
-            if risk_free_options := [o for o in options.values() if o['risk'] == 0]:
-                if free_riskless_options := [o for o in risk_free_options if o['free_path']]:
-                    options_considered = free_riskless_options
-                    best_len_gain = max(o['len_gain'] for o in options_considered)
-                    best_len_gain = min(best_len_gain, 10)
-                    best_len_opts = [o for o in options_considered if o['len_gain'] >= best_len_gain]
-                    best_early_gain_opt = min(best_len_opts, key=lambda o: sum(o['apple_time'][:best_len_gain]))
-                    best_option = best_early_gain_opt
-                #If there are no free path options, consider the ones that timed out
-                else:
-                    best_option = max(options.values(), key=lambda x: x['margin'])
-            else:
-                if free_options:
-                    best_option = min(free_options, key=lambda x: x['risk'])
-                else:
-                    # best_len_gain = max(o['len_gain'] for o in options.values())
-                    best_len_gain = 0
-                    if best_len_gain == 0:
-                        best_option = max(options.values(), key=lambda x: x['depth'])
-                    else:
-                        best_option = max(options.values(), key=lambda x: x['len_gain'])
+        if free_options:
+            best_option = max(free_options, key=lambda x: x['margin'])
+        else:
+            best_margin_area_tile = max(area_checks.items(), key=lambda x: x[1]['margin'])[0]
+            best_option = options[best_margin_area_tile]
         if best_option is not None:
-            return best_option['route']
-        return None
+            return best_option
+        else:
+            return None
+            
+    def head_in_open(self):
+        neighbours = ((-1, -1), (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0))
+        head_dir = coord_op(self.body_coords[1], self.coord, '-')
+        for n in neighbours:
+            if n == head_dir:
+                continue
+            x, y = coord_op(self.coord, n, '+')
+            if not self.env.is_inside((x, y) or self.map[y, x] > self.env.FREE_TILE):
+                print("head in open False")
+                return False
+        return True
+        print("head in open True")
 
     def check_safe_food_route(self, s_map, food_route):
         end_coord = food_route[0]
@@ -159,26 +157,31 @@ class AutoSnake4(AutoSnakeBase):
                 food_locations.remove(route[0])
         return route
 
-    def get_available_food_map(self):
+    def get_future_available_food_map(self):
         s_map = self.map.copy()
         valid_tiles = self.valid_tiles(self.map, self.coord)
-        food_map = {coord: self.area_check_wrapper(s_map, self.body_coords, coord)['food_count'] for coord in valid_tiles}
+        future_valids = {coord: self.valid_tiles(self.map, coord) for coord in valid_tiles}
+        food_map = {}
+        for coord, valids in future_valids.items():
+            if not valids:
+                continue
+            x, y = coord
+            old_map_value = s_map[y, x]
+            s_map[y, x] = self.env.BLOCKED_TILE
+            area_checks = [self.area_check_wrapper(s_map, self.body_coords, tile, True) for tile in valids]
+            s_map[y, x] = old_map_value
+            clear_checks = [a for a in area_checks if a['is_clear']]
+            if not clear_checks:
+                continue
+            most_food_area = max(clear_checks, key=lambda x: x['food_count'])
+            food_map[coord] = most_food_area['food_count'] + (1 if old_map_value == self.env.FOOD_TILE else 0)
         return food_map
-        # future_valids = {coord: self.valid_tiles(self.map, coord) for coord in valid_tiles}
-        # # if all(len(fv) == 3 for fv in future_valids.values()):
-        # #     return None
-        # food_map = {}
-        # for coord, valids in future_valids.items():
-        #     if not valids:
-        #         continue
-        #     x, y = coord
-        #     old_map_value = s_map[y, x]
-        #     s_map[y, x] = self.env.BLOCKED_TILE
-        #     area_checks = [self.area_check_wrapper(s_map, self.body_coords, tile) for tile in valids]
-        #     most_food_area = max(area_checks, key=lambda x: x['food_count'])
-        #     food_map[coord] = most_food_area['food_count'] + (1 if old_map_value == self.env.FOOD_TILE else 0)
-        #     s_map[y, x] = old_map_value
-        # return food_map
+
+    def get_available_areas(self):
+        s_map = self.map.copy()
+        valid_tiles = self.valid_tiles(self.map, self.coord)
+        areas_map = {coord: self.area_check_wrapper(s_map, self.body_coords, coord) for coord in valid_tiles}
+        return areas_map
 
     def pick_direction(self):
         next_tile = None
@@ -188,27 +191,39 @@ class AutoSnake4(AutoSnakeBase):
         if closest_food_route and self.check_safe_food_route(self.map.copy(), closest_food_route):
             planned_route = closest_food_route[:-1]
             planned_tile = planned_route.pop()
-        food_map = self.get_available_food_map()
-        # print(food_map)
-        # print("food route: ", closest_food_route)
-        # print("planned tile: ", planned_tile)
+        food_map = self.get_future_available_food_map()
+        areas_map = self.get_available_areas()
+        print("areas map: ", areas_map)
+        print("food map: ", food_map)
+        print("food route: ", closest_food_route)
+        print("planned tile: ", planned_tile)
         if food_map:
             best_food_pair = max(food_map.items(), key=lambda x: x[1])
-            # print("best food pair: ", best_food_pair)
+            print("best food pair: ", best_food_pair)
             best_food_tile, best_food_value = best_food_pair
             planned_tile_food_value = food_map.get(planned_tile, 0)
-            if planned_tile is None or planned_tile_food_value < best_food_value:
-                # print("food route is not best")
+            print(planned_tile is None, (planned_tile_food_value < best_food_value, not self.head_in_open()))
+            if planned_tile is None: # or planned_tile_food_value < best_food_value:
+                print("food route is not best")
                 planned_tile = best_food_tile
                 planned_route = self.route
-            option = self.explore_option(planned_tile, planned_route=planned_route)
-            if option['free_path']:
-                next_tile = planned_tile
+            planned_area = areas_map[planned_tile]
+            #this is to make sure that spawning food wont kill us
+            print(planned_area['margin'], planned_area['food_count'])
+            if planned_area['margin'] >= planned_area['food_count']:
+                print("margin enough")
+                print("planned_area: ", planned_area)
+                option = self.explore_option(planned_tile, planned_route=planned_route)
+                if option['free_path']:
+                    print("free path")
+                    print("option: ", option)
+                    next_tile = planned_tile
         if next_tile is None:
-            # print("getting best route")
-            route = self.get_best_route()
-            if route:
-                next_tile = route.pop()
+            print("getting best route")
+            option = self.get_best_option()
+            print("option: ", option)
+            if option:
+                next_tile = option['coord']
         # print("next_tile: ", next_tile)
         # self.print_map(self.map)
         return next_tile

@@ -422,7 +422,7 @@ public:
         best_food_count = food_count;
         best_max_index = max_index;
         best_total_steps = total_steps;
-        if (!is_clear || food_check) { // REMOVE TRUE IF OPTIMIZATION IS NEEDED
+        if (!is_clear || margin < food_count || food_check) { // REMOVE FOOD_CHECK IF OPTIMIZATION IS NEEDED
             while (!to_be_checked.empty()) {
                 auto coord = to_be_checked.front();
                 to_be_checked.pop_front();
@@ -439,24 +439,26 @@ public:
                     depth + 1,
                     area_stats,
                     food_check);
+                has_tail = has_tail || area_check.has_tail;
+                is_clear = is_clear || area_check.is_clear;
                 // IF OPTIMIZATION IS NEEDED, this paired with the if statement above makes the check accurate but slower
-                if (area_check.is_clear && !food_check) {
+                if (area_check.margin >= area_check.food_count && !food_check) {
                     return area_check;
                 }
-                if (area_check.margin >= best_margin && !food_check) {
+                if (!food_check && area_check.margin >= best_margin) {
                     best_margin = area_check.margin;
                     best_total_steps = area_check.total_steps;
                     best_tile_count = area_check.tile_count;
                     best_food_count = area_check.food_count;
                     best_max_index = area_check.max_index;
                 }
-                else if (food_check && area_check.food_count > best_food_count) {
-                    best_margin = area_check.margin;
-                    best_total_steps = area_check.total_steps;
-                    best_tile_count = area_check.tile_count;
-                    best_food_count = area_check.food_count;
-                    best_max_index = area_check.max_index;
-                }
+                // else if (food_check && area_check.food_count >= best_food_count && area_check.is_clear) {
+                //     best_margin = area_check.margin;
+                //     best_total_steps = area_check.total_steps;
+                //     best_tile_count = area_check.tile_count;
+                //     best_food_count = area_check.food_count;
+                //     best_max_index = area_check.max_index;
+                // }
                 // for (auto item : area_check) {
                 //     std::cout << "Key: " << py::str(item.first) << ", Value: " << py::str(item.second) << std::endl;
                 // }
