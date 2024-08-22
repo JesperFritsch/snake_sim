@@ -68,10 +68,22 @@ struct AreaCheckResult {
 
 struct AreaStat{
     int max_index;
+    int tile_count;
+    int food_count;
 
-    AreaStat() : max_index(0) {}
 
-    AreaStat(int max_index) : max_index(max_index) {}
+    AreaStat() : 
+        max_index(0),
+        tile_count(0),
+        food_count(0) {}
+
+    AreaStat(
+        int max_index,
+        int tile_count, 
+        int food_count) : 
+            max_index(max_index),
+            tile_count(tile_count),
+            food_count(food_count) {}
 };
 
 
@@ -288,7 +300,6 @@ public:
                 0,
                 0,
                 0,
-                0,
                 checked,
                 0,
                 area_stats,
@@ -312,10 +323,9 @@ public:
             uint8_t* s_map,
             std::vector<Coord> body_coords,
             Coord start_coord,
-            int tile_count,
-            int food_count,
-            int max_index,
-            int best_margin,
+            int prev_tile_count,
+            int prev_food_count,
+            int prev_margin,
             std::vector<int> checked,
             int depth,
             std::unordered_map<int, AreaStat>& area_stats,
@@ -325,19 +335,22 @@ public:
         int best_food_count = 0;
         int best_max_index = 0;
         int best_total_steps = 0;
+        int tile_count = 0;
+        int food_count = 0;
+        int max_index = 0;
+        bool connected_to_prev_area = false;
         int body_len = body_coords.size();
         auto tail_coord = body_coords[body_len - 1];
         bool is_clear = false;
         bool has_tail = false;
         int total_steps = 0;
-        int margin = 0;
+        int margin = body_coords.size();
         if (depth == 0){
-            best_margin = -body_coords.size();
+            margin = -body_coords.size();
         }
         std::deque<Coord> current_coords;
         std::deque<Coord> to_be_checked;
         current_coords.push_back(start_coord);
-        // std::cout << "called with args:" << "tile_count: " << tile_count << " food_count: " << food_count << " max_index: " << max_index << " depth: " << depth << " start_coord: (" << start_coord.x << ", " << start_coord.y << ")" << std::endl;
 
         if (checked.size() == 0) {
             checked.resize(height * width);
@@ -375,6 +388,7 @@ public:
                 if (checked_val >= 0) {
                     if (checked_val + 1 < depth) { // checked_val + 1 because we dont want to consider the area we are coming from.
                         max_index = std::max(max_index, area_stats[checked_val].max_index);
+                        connected_to_prev_area = true;
                     }
                     continue;
                 }
@@ -407,34 +421,76 @@ public:
                 }
             }
 
-            total_steps = tile_count - food_count;
             int needed_steps = body_len - max_index;
-            margin = total_steps - needed_steps;
-            if (margin > best_margin) {
-                best_margin = margin;
+            if (max_index > 0 || connected_to_prev_area) {
+                total_steps = (tile_count + prev_tile_count) - (food_count + prev_food_count);
             }
+            else{
+                total_steps = (tile_count) - (food_count);
+            }
+            margin = total_steps - needed_steps;
             if (margin >= 0) {
                 is_clear = true;
             }
         }
+        // std::cout << "called with args:" << "tile_count: " << tile_count << " food_count: " << food_count << " max_index: " << max_index << " depth: " << depth << " start_coord: (" << start_coord.x << ", " << start_coord.y << ")" << std::endl;
+        // std::cout << "  " << "prev_tile_count: " << prev_tile_count << std::endl;
+        // std::cout << "  " << "prev_food_count: " << prev_food_count << std::endl;
+        // std::cout << "  " << "prev_margin: " << prev_margin << std::endl;
+        // std::cout << "  " << "depth: " << depth << std::endl;
+        // std::cout << "  " << "margin: " << margin << std::endl;
+        // std::cout << "  " << "food_count: " << food_count << std::endl;
+        // std::cout << "  " << "total_steps: " << total_steps << std::endl;
+        // std::cout << "  " << "tile_count: " << tile_count << std::endl;
+        // std::cout << "  " << "max_index: " << max_index << std::endl;
+        // std::cout << "  " << "start_coord: (" << start_coord.x << ", " << start_coord.y << ")" << std::endl;
+        // std::cout << "  " << "is_clear: " << is_clear << std::endl;
+        // std::cout << "  " << std::endl;
+        // this->print_mark = start_coord;
+        // this->print_map(s_map);
 
-        best_tile_count = tile_count;
-        best_food_count = food_count;
+        best_tile_count = tile_count + prev_tile_count;
+        best_food_count = food_count + prev_food_count;
         best_max_index = max_index;
-        best_total_steps = total_steps;
-        if (!is_clear || margin < food_count || food_check) { // REMOVE FOOD_CHECK IF OPTIMIZATION IS NEEDED
+        best_total_steps = best_tile_count - best_food_count;
+        
+        int best_margin = margin;
+        if (!is_clear || margin < (best_food_count) || food_check) { // REMOVE FOOD_CHECK IF OPTIMIZATION IS NEEDED
+            int base_tile_count;
+            int base_food_count;
+
             while (!to_be_checked.empty()) {
                 auto coord = to_be_checked.front();
                 to_be_checked.pop_front();
-                area_stats[depth] = AreaStat(max_index);
+                area_stats[depth] = AreaStat(max_index, tile_count, food_count);
+                int x_dist = std::abs(coord.x - start_coord.x);
+                int y_dist = std::abs(coord.y - start_coord.y);
+                // std::cout << "  " << "coord: (" << coord.x << ", " << coord.y << ")" << std::endl;
+                // std::cout << "  " << "start_coord: (" << start_coord.x << ", " << start_coord.y << ")" << std::endl;
+                // std::cout << "  " << "x_dist: " << x_dist << std::endl;
+                // std::cout << "  " << "y_dist: " << y_dist << std::endl;
+
+                if ( 
+                    (x_dist == 1 && y_dist == 0) || 
+                    (x_dist == 0 && y_dist == 1)) {
+                    base_tile_count = prev_tile_count + 1;
+                    if (s_map[start_coord.y * width + start_coord.x] == food_value) {
+                        base_food_count = prev_food_count + 1;
+                    }
+                    else {
+                        base_food_count = prev_food_count;
+                    }
+                } else {
+                    base_tile_count = tile_count + prev_tile_count;
+                    base_food_count = food_count + prev_food_count;
+                }
                 AreaCheckResult area_check = this->_area_check(
                     s_map,
                     body_coords,
                     coord,
-                    tile_count,
-                    food_count,
-                    0,
-                    best_margin,
+                    base_tile_count,
+                    base_food_count,
+                    margin,
                     checked,
                     depth + 1,
                     area_stats,
@@ -443,6 +499,15 @@ public:
                 is_clear = is_clear || area_check.is_clear;
                 // IF OPTIMIZATION IS NEEDED, this paired with the if statement above makes the check accurate but slower
                 if (area_check.margin >= area_check.food_count && !food_check) {
+                    // std::cout << "depth: " << depth + 1 << std::endl;
+                    // std::cout << "margin: " << area_check.margin << std::endl;
+                    // std::cout << "food_count: " << area_check.food_count << std::endl;
+                    // std::cout << "total_steps: " << area_check.total_steps << std::endl;
+                    // std::cout << "tile_count: " << area_check.tile_count << std::endl;
+                    // std::cout << "max_index: " << area_check.max_index << std::endl;
+                    // std::cout << "start_coord: (" << area_check.start_coord.x << ", " << area_check.start_coord.y << ")" << std::endl;
+                    // std::cout << "needed_steps: " << area_check.needed_steps << std::endl;
+                    // std::cout << "is_clear: " << area_check.is_clear << std::endl;
                     return area_check;
                 }
                 if (!food_check && area_check.margin >= best_margin) {
