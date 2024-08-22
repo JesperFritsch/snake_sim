@@ -111,13 +111,14 @@ class AutoSnake4(AutoSnakeBase):
             # print('found option: ', option)
             # print('coord: ', coord)
             # print('margin: ', option['margin'])
-            if option['free_path'] and option['margin'] >= area_checks[coord]['food_count']:
+            if option['free_path'] and area_checks[coord]['margin'] >= area_checks[coord]['food_count']:
                 break
-        print(options)
-        print(area_checks)
+        # print(area_checks)
         free_options = [o for o in options.values() if o['free_path']]
         if free_options:
-            best_option = max(free_options, key=lambda x: x['margin'])
+            free_coords = [o['coord'] for o in free_options]
+            best_option_coord = max(free_coords, key=lambda x: area_checks[x]['margin'])
+            best_option = options[best_option_coord]
         else:
             best_margin_area_tile = max(area_checks.items(), key=lambda x: x[1]['margin'])[0]
             best_option = options[best_margin_area_tile]
@@ -168,7 +169,7 @@ class AutoSnake4(AutoSnakeBase):
             x, y = coord
             old_map_value = s_map[y, x]
             s_map[y, x] = self.env.BLOCKED_TILE
-            area_checks = [self.area_check_wrapper(s_map, self.body_coords, tile, True) for tile in valids]
+            area_checks = [self.area_check_wrapper(s_map, self.body_coords, tile) for tile in valids]
             s_map[y, x] = old_map_value
             clear_checks = [a for a in area_checks if a['is_clear']]
             if not clear_checks:
@@ -193,35 +194,34 @@ class AutoSnake4(AutoSnakeBase):
             planned_tile = planned_route.pop()
         food_map = self.get_future_available_food_map()
         areas_map = self.get_available_areas()
-        print("areas map: ", areas_map)
-        print("food map: ", food_map)
-        print("food route: ", closest_food_route)
-        print("planned tile: ", planned_tile)
-        if food_map:
+        # print("areas map: ", areas_map)
+        # print("food map: ", food_map)
+        # print("food route: ", closest_food_route)
+        # print("planned tile: ", planned_tile)
+        if food_map and planned_tile is not None:
             best_food_pair = max(food_map.items(), key=lambda x: x[1])
-            print("best food pair: ", best_food_pair)
+            # print("best food pair: ", best_food_pair)
             best_food_tile, best_food_value = best_food_pair
             planned_tile_food_value = food_map.get(planned_tile, 0)
-            print(planned_tile is None, (planned_tile_food_value < best_food_value, not self.head_in_open()))
-            if planned_tile is None: # or planned_tile_food_value < best_food_value:
-                print("food route is not best")
+            # print(planned_tile is None, (planned_tile_food_value < best_food_value, not self.head_in_open()))
+            if planned_tile is None or planned_tile_food_value < best_food_value:
+                # print("food route is not best")
                 planned_tile = best_food_tile
                 planned_route = self.route
             planned_area = areas_map[planned_tile]
             #this is to make sure that spawning food wont kill us
-            print(planned_area['margin'], planned_area['food_count'])
+            # print(planned_area['margin'], planned_area['food_count'])
             if planned_area['margin'] >= planned_area['food_count']:
-                print("margin enough")
-                print("planned_area: ", planned_area)
+                # print("margin enough")
+                # print("planned_area: ", planned_area)
                 option = self.explore_option(planned_tile, planned_route=planned_route)
                 if option['free_path']:
-                    print("free path")
-                    print("option: ", option)
+                    # print("free path")
+                    # print("option: ", option)
                     next_tile = planned_tile
         if next_tile is None:
-            print("getting best route")
+            # print("getting best route")
             option = self.get_best_option()
-            print("option: ", option)
             if option:
                 next_tile = option['coord']
         # print("next_tile: ", next_tile)

@@ -159,6 +159,7 @@ if __name__ == '__main__':
     choice = snake.pick_direction()
     print(f"Choice: {choice}")
     print(f"snake.coord: {snake.coord}")
+    print(snake)
     for tile in snake.valid_tiles(snake.map, snake.coord):
         # planned_path = None
         planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
@@ -168,8 +169,8 @@ if __name__ == '__main__':
             tile = planned_path.pop()
         # planned_path = None
         s_time = time()
-        option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
-        print('free_path: ', option['free_path'])
+        # option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
+        # print('free_path: ', option['free_path'])
         print(f"Time: {(time() - s_time) * 1000}")
         area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile)
         print(f"area_check for tile {tile}: {area_check}")  
