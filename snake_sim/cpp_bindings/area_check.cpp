@@ -46,14 +46,14 @@ struct AreaCheckResult {
     Coord start_coord;
     int needed_steps;
     int margin;
-    AreaCheckResult(bool is_clear, 
-                    int tile_count, 
-                    int total_steps, 
-                    int food_count, 
-                    bool has_tail, 
-                    int max_index, 
-                    Coord start_coord, 
-                    int needed_steps, 
+    AreaCheckResult(bool is_clear,
+                    int tile_count,
+                    int total_steps,
+                    int food_count,
+                    bool has_tail,
+                    int max_index,
+                    Coord start_coord,
+                    int needed_steps,
                     int margin) :
         is_clear(is_clear),
         tile_count(tile_count),
@@ -72,15 +72,15 @@ struct AreaStat{
     int food_count;
 
 
-    AreaStat() : 
+    AreaStat() :
         max_index(0),
         tile_count(0),
         food_count(0) {}
 
     AreaStat(
         int max_index,
-        int tile_count, 
-        int food_count) : 
+        int tile_count,
+        int food_count) :
             max_index(max_index),
             tile_count(tile_count),
             food_count(food_count) {}
@@ -281,7 +281,7 @@ public:
             py::array_t<uint8_t> s_map,
             py::list body_coords_py,
             py::tuple start_coord_py,
-            bool food_check
+            bool exhaustive
         ){
             auto s_map_buf = s_map.request();
             uint8_t* s_map_ptr = static_cast<uint8_t*>(s_map_buf.ptr);
@@ -303,7 +303,7 @@ public:
                 checked,
                 0,
                 area_stats,
-                food_check
+                exhaustive
             );
             return py::dict(
                 py::arg("is_clear") = result.is_clear,
@@ -315,7 +315,7 @@ public:
                 py::arg("start_coord") = py::make_tuple(result.start_coord.x, result.start_coord.y),
                 py::arg("needed_steps") = result.needed_steps,
                 py::arg("margin") = result.margin
-                
+
             );
         }
 
@@ -329,7 +329,7 @@ public:
             std::vector<int> checked,
             int depth,
             std::unordered_map<int, AreaStat>& area_stats,
-            bool food_check
+            bool exhaustive
         ) {
         int best_tile_count = 0;
         int best_food_count = 0;
@@ -453,9 +453,9 @@ public:
         best_food_count = food_count + prev_food_count;
         best_max_index = max_index;
         best_total_steps = best_tile_count - best_food_count;
-        
+
         int best_margin = margin;
-        if (!is_clear || margin < (best_food_count) || food_check) { // REMOVE FOOD_CHECK IF OPTIMIZATION IS NEEDED
+        if (!is_clear || margin < (best_food_count) || exhaustive) {
             int base_tile_count;
             int base_food_count;
 
@@ -470,8 +470,8 @@ public:
                 // std::cout << "  " << "x_dist: " << x_dist << std::endl;
                 // std::cout << "  " << "y_dist: " << y_dist << std::endl;
 
-                if ( 
-                    (x_dist == 1 && y_dist == 0) || 
+                if (
+                    (x_dist == 1 && y_dist == 0) ||
                     (x_dist == 0 && y_dist == 1)) {
                     base_tile_count = prev_tile_count + 1;
                     if (s_map[start_coord.y * width + start_coord.x] == food_value) {
@@ -494,11 +494,10 @@ public:
                     checked,
                     depth + 1,
                     area_stats,
-                    food_check);
+                    exhaustive);
                 has_tail = has_tail || area_check.has_tail;
                 is_clear = is_clear || area_check.is_clear;
-                // IF OPTIMIZATION IS NEEDED, this paired with the if statement above makes the check accurate but slower
-                if (area_check.margin >= area_check.food_count && !food_check) {
+                if (area_check.margin >= area_check.food_count && !exhaustive) {
                     // std::cout << "depth: " << depth + 1 << std::endl;
                     // std::cout << "margin: " << area_check.margin << std::endl;
                     // std::cout << "food_count: " << area_check.food_count << std::endl;
@@ -510,14 +509,14 @@ public:
                     // std::cout << "is_clear: " << area_check.is_clear << std::endl;
                     return area_check;
                 }
-                if (!food_check && area_check.margin >= best_margin) {
+                if (area_check.margin >= best_margin) {
                     best_margin = area_check.margin;
                     best_total_steps = area_check.total_steps;
                     best_tile_count = area_check.tile_count;
                     best_food_count = area_check.food_count;
                     best_max_index = area_check.max_index;
                 }
-                // else if (food_check && area_check.food_count >= best_food_count && area_check.is_clear) {
+                // else if (exhaustive && area_check.food_count >= best_food_count && area_check.is_clear) {
                 //     best_margin = area_check.margin;
                 //     best_total_steps = area_check.total_steps;
                 //     best_tile_count = area_check.tile_count;
@@ -565,7 +564,7 @@ PYBIND11_MODULE(area_check, m) {
              py::arg("s_map"),
              py::arg("body_coords_py"),
              py::arg("start_coord_py"),
-             py::arg("food_check"));
+             py::arg("exhaustive"));
 
     py::class_<Coord>(m, "Coord")
         .def(py::init<int, int>())

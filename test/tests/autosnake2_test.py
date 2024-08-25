@@ -37,7 +37,7 @@ if __name__ == '__main__':
     frame_builder = core.FrameBuilder(env.run_data.to_dict(), expand_factor, offset)
 
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
-    test_map_filename = 'test_map2.txt'
+    test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
     snake_char = 'A'
     frame_width = GRID_WIDTH * expand_factor
@@ -173,7 +173,7 @@ if __name__ == '__main__':
         # print('free_path: ', option['free_path'])
         print(f"Time: {(time() - s_time) * 1000}")
         area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile)
-        print(f"area_check for tile {tile}: {area_check}")  
+        print(f"area_check for tile {tile}: {area_check}")
     frames = []
 
     pr.disable()
