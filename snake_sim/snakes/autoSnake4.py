@@ -163,7 +163,6 @@ class AutoSnake4(AutoSnakeBase):
             else:
                 food_locations.remove(route[0])
         return route
-    @exec_time
     def get_future_available_food_map(self):
         s_map = self.map.copy()
         valid_tiles = self.valid_tiles(self.map, self.coord)
@@ -183,7 +182,6 @@ class AutoSnake4(AutoSnakeBase):
             most_food_area = max(clear_checks, key=lambda x: x['food_count'])
             food_map[coord] = most_food_area['food_count'] + (1 if old_map_value == self.env.FOOD_TILE else 0)
         return food_map
-    @exec_time
     def get_available_areas(self):
         s_map = self.map.copy()
         valid_tiles = self.valid_tiles(self.map, self.coord)
