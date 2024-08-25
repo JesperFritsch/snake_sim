@@ -3,6 +3,7 @@ import string
 import os
 import shutil
 import json
+import math
 from time import time
 
 from collections import deque
@@ -40,6 +41,9 @@ def exec_time(func):
 
 def coord_cmp(coord1, coord2):
     return coord1[0] == coord2[0] and coord1[1] == coord2[1]
+
+def distance(c1, c2):
+    return math.sqrt(math.pow(c1[0] - c2[0], 2) + math.pow(c1[1] - c2[1], 2))
 
 def coord_op(coord_left, coord_right, op):
     # Check the operation and perform it directly
