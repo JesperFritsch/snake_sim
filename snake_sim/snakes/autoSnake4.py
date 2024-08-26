@@ -674,6 +674,7 @@ class AutoSnake4(AutoSnakeBase):
                 if check_result['free_path'] or check_result['timeout']:
                     return check_result
                 else:
+                    valid_tiles.remove(planned_tile)
                     planned_route = None
 
 
