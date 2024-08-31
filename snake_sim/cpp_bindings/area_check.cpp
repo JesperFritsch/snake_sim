@@ -107,7 +107,7 @@ public:
         height(height) {}
 
     bool is_inside(int x, int y){
-        return 0 <= x && x < this->width && 0 <= y && y < this->height;
+        return !(x < 0 || y < 0 || x >= this->width || y >= this->height);
     }
 
     void print_map(uint8_t* s_map) {
@@ -149,7 +149,7 @@ public:
     }
 
 
-    int _is_single_entrance(uint8_t* s_map, Coord coord, Coord check_coord) {
+    int _is_single_entrance(uint8_t* s_map, Coord& coord, Coord& check_coord) {
         // return code 2 is for an passage like:
         // x . .
         // . . .
@@ -281,7 +281,7 @@ public:
             py::array_t<uint8_t> s_map,
             py::list body_coords_py,
             py::tuple start_coord_py,
-            bool exhaustive
+            bool food_check
         ){
             auto s_map_buf = s_map.request();
             uint8_t* s_map_ptr = static_cast<uint8_t*>(s_map_buf.ptr);
@@ -303,7 +303,7 @@ public:
                 checked,
                 0,
                 area_stats,
-                exhaustive
+                food_check
             );
             return py::dict(
                 py::arg("is_clear") = result.is_clear,
@@ -321,15 +321,15 @@ public:
 
     AreaCheckResult _area_check(
             uint8_t* s_map,
-            std::vector<Coord> body_coords,
-            Coord start_coord,
+            std::vector<Coord>& body_coords,
+            Coord& start_coord,
             int prev_tile_count,
             int prev_food_count,
             int prev_margin,
             std::vector<int> checked,
             int depth,
             std::unordered_map<int, AreaStat>& area_stats,
-            bool exhaustive
+            bool food_check
         ) {
         int best_tile_count = 0;
         int best_food_count = 0;
@@ -348,9 +348,10 @@ public:
         if (depth == 0){
             margin = -body_coords.size();
         }
-        std::deque<Coord> current_coords;
-        std::deque<Coord> to_be_checked;
+        std::vector<Coord> current_coords;
+        std::vector<Coord> to_be_checked;
         current_coords.push_back(start_coord);
+
 
         if (checked.size() == 0) {
             checked.resize(height * width);
@@ -360,8 +361,8 @@ public:
         tile_count += 1;
 
         while (!current_coords.empty()) {
-            auto curr_coord = current_coords.front();
-            current_coords.pop_front();
+            auto curr_coord = current_coords.back();
+            current_coords.pop_back();
             int c_x, c_y;
             c_x = curr_coord.x;
             c_y = curr_coord.y;
@@ -433,6 +434,12 @@ public:
                 is_clear = true;
             }
         }
+
+        best_tile_count = tile_count + prev_tile_count;
+        best_food_count = food_count + prev_food_count;
+        best_max_index = max_index;
+        best_total_steps = best_tile_count - best_food_count;
+
         // std::cout << "called with args:" << "tile_count: " << tile_count << " food_count: " << food_count << " max_index: " << max_index << " depth: " << depth << " start_coord: (" << start_coord.x << ", " << start_coord.y << ")" << std::endl;
         // std::cout << "  " << "prev_tile_count: " << prev_tile_count << std::endl;
         // std::cout << "  " << "prev_food_count: " << prev_food_count << std::endl;
@@ -449,19 +456,15 @@ public:
         // this->print_mark = start_coord;
         // this->print_map(s_map);
 
-        best_tile_count = tile_count + prev_tile_count;
-        best_food_count = food_count + prev_food_count;
-        best_max_index = max_index;
-        best_total_steps = best_tile_count - best_food_count;
 
         int best_margin = margin;
-        if (!is_clear || margin < (best_food_count) || exhaustive) {
+        if (!is_clear || margin < (best_food_count) || food_check) {
             int base_tile_count;
             int base_food_count;
 
             while (!to_be_checked.empty()) {
-                auto coord = to_be_checked.front();
-                to_be_checked.pop_front();
+                auto coord = to_be_checked.back();
+                to_be_checked.pop_back();
                 area_stats[depth] = AreaStat(max_index, tile_count, food_count);
                 int x_dist = std::abs(coord.x - start_coord.x);
                 int y_dist = std::abs(coord.y - start_coord.y);
@@ -494,42 +497,26 @@ public:
                     checked,
                     depth + 1,
                     area_stats,
-                    exhaustive);
+                    food_check);
                 has_tail = has_tail || area_check.has_tail;
                 is_clear = is_clear || area_check.is_clear;
-                if (area_check.margin >= area_check.food_count && !exhaustive) {
-                    // std::cout << "depth: " << depth + 1 << std::endl;
-                    // std::cout << "margin: " << area_check.margin << std::endl;
-                    // std::cout << "food_count: " << area_check.food_count << std::endl;
-                    // std::cout << "total_steps: " << area_check.total_steps << std::endl;
-                    // std::cout << "tile_count: " << area_check.tile_count << std::endl;
-                    // std::cout << "max_index: " << area_check.max_index << std::endl;
-                    // std::cout << "start_coord: (" << area_check.start_coord.x << ", " << area_check.start_coord.y << ")" << std::endl;
-                    // std::cout << "needed_steps: " << area_check.needed_steps << std::endl;
-                    // std::cout << "is_clear: " << area_check.is_clear << std::endl;
+                if (area_check.margin >= area_check.food_count && !food_check) {
                     return area_check;
                 }
-                if (area_check.margin >= best_margin) {
+                if (!food_check && area_check.margin >= best_margin) {
                     best_margin = area_check.margin;
                     best_total_steps = area_check.total_steps;
                     best_tile_count = area_check.tile_count;
                     best_food_count = area_check.food_count;
                     best_max_index = area_check.max_index;
                 }
-                // else if (exhaustive && area_check.food_count >= best_food_count && area_check.is_clear) {
-                //     best_margin = area_check.margin;
-                //     best_total_steps = area_check.total_steps;
-                //     best_tile_count = area_check.tile_count;
-                //     best_food_count = area_check.food_count;
-                //     best_max_index = area_check.max_index;
-                // }
-                // for (auto item : area_check) {
-                //     std::cout << "Key: " << py::str(item.first) << ", Value: " << py::str(item.second) << std::endl;
-                // }
-                // std::cout << "depth: " << depth + 1 << std::endl;
-                // std::cout << std::endl;
-
-
+                else if(food_check && area_check.food_count >= best_food_count) {
+                    best_margin = area_check.margin;
+                    best_total_steps = area_check.total_steps;
+                    best_tile_count = area_check.tile_count;
+                    best_food_count = area_check.food_count;
+                    best_max_index = area_check.max_index;
+                }
             }
         }
 
@@ -564,7 +551,7 @@ PYBIND11_MODULE(area_check, m) {
              py::arg("s_map"),
              py::arg("body_coords_py"),
              py::arg("start_coord_py"),
-             py::arg("exhaustive"));
+             py::arg("food_check"));
 
     py::class_<Coord>(m, "Coord")
         .def(py::init<int, int>())

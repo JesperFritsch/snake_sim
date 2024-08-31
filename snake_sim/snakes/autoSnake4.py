@@ -136,10 +136,8 @@ class AutoSnake4(AutoSnakeBase):
                 continue
             x, y = coord_op(self.coord, n, '+')
             if not self.env.is_inside((x, y) or self.map[y, x] > self.env.FREE_TILE):
-                print("head in open False")
                 return False
         return True
-        print("head in open True")
 
     def check_safe_food_route(self, s_map, food_route):
         end_coord = food_route[0]
@@ -185,7 +183,7 @@ class AutoSnake4(AutoSnakeBase):
     def get_available_areas(self):
         s_map = self.map.copy()
         valid_tiles = self.valid_tiles(self.map, self.coord)
-        areas_map = {coord: self.area_check_wrapper(s_map, self.body_coords, coord, True) for coord in valid_tiles}
+        areas_map = {coord: self.area_check_wrapper(s_map, self.body_coords, coord) for coord in valid_tiles}
         return areas_map
 
     def pick_direction(self):
@@ -416,9 +414,9 @@ class AutoSnake4(AutoSnakeBase):
         return False
 
 
-    def area_check_wrapper(self, s_map, body_coords, start_coord, exhaustive=False):
+    def area_check_wrapper(self, s_map, body_coords, start_coord, food_check=False):
         # return self.area_check(s_map, body_coords, start_coord)
-        return self.area_checker.area_check(s_map, list(body_coords), start_coord, exhaustive=exhaustive)
+        return self.area_checker.area_check(s_map, list(body_coords), start_coord, food_check=food_check)
 
     def area_check(self, s_map, body_coords, start_coord, tile_count=0, food_count=0, max_index=0, checked=None, depth=0):
         current_coords = deque([start_coord])
@@ -691,27 +689,11 @@ class AutoSnake4(AutoSnakeBase):
                     best_results['margin'] = max(best_results['margin'], best_margin)
                     target_tile = tile
                 # print('tile: ', tile, area_check)
-            # if the best margin here is less than the best margin from the previous iteration
-            # it means we but of an area, and that could lead to difficulties finding a path.
-            # best_margin + 3 was needed, otherwise we return even when its fine, for some reason.
-            # print('best margin: ', best_margin)
-            # print('current margin: ', current_results['margin'])
-            # print("min_margin: ", branch_common.get('min_margin', 0))
-            # self.print_map(s_map)
-            # if (best_margin + 3) < current_results['margin'] and best_margin < length:
-            #     # print('margin break')
-            #     return best_results
             if target_tile is None:
                 target_tile = self.target_tile(s_map, body_coords)
             valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
 
             for tile in valid_tiles:
-                # print("trying tile:" , tile)
-                # state_tuple = tuple([self.get_flat_map_state(s_map), tile])
-                # state_hash = hash(state_tuple)
-                # if state_hash in self.failed_paths:
-                #     # print('failed path')
-                #     continue
                 if branch_common.get('min_margin', 0) > best_margin:
                     # print('margin break')
                     continue
@@ -722,6 +704,7 @@ class AutoSnake4(AutoSnakeBase):
                     current_results['free_path'] = True
                     current_results['len_gain'] = area_check['food_count']
                     current_results['depth'] = length
+                    current_results['margin'] = area_check['margin']
                     return current_results
                 if not area_check['is_clear']:
                     best_results['depth'] = max(best_results['depth'], area_check['tile_count'])
@@ -744,9 +727,6 @@ class AutoSnake4(AutoSnakeBase):
                     branch_common=branch_common)
                 if check_result['free_path'] or check_result['timeout']:
                     return check_result
-                # print('failed')
-                # print(check_result)
                 if len(valid_tiles) == 1:
                     branch_common['min_margin'] += 1
-                # self.failed_paths.add(state_hash)
         return best_results

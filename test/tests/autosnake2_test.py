@@ -82,7 +82,7 @@ if __name__ == '__main__':
     # snake.update()
     # frames = None
     rundata = []
-    area_coord = (12, 20)
+    area_coord = (21,12)
     map_copy = snake.map.copy()
     map_copy[area_coord[1], area_coord[0]] = ord('Q')
     snake.print_map(map_copy)
@@ -115,9 +115,10 @@ if __name__ == '__main__':
 
     # time_e = time()
     # for _ in range(1000):
-    #     area = ac.area_check(snake.map, list(snake.body_coords), area_coord)
+    #     area = ac.area_check(snake.map, list(snake.body_coords), area_coord, False)
+    # execution_time = (time() - time_e) * 1000
+    # print('area_check: ', execution_time)
     # print(area)
-    # print('area_check: ', (time() - time_e) * 1000)
 
 
     # time_e = time()
@@ -156,10 +157,10 @@ if __name__ == '__main__':
 
     pr = cProfile.Profile()
     pr.enable()
-    choice = snake.pick_direction()
-    print(f"Choice: {choice}")
-    print(f"snake.coord: {snake.coord}")
-    print(snake)
+    # choice = snake.pick_direction()
+    # print(f"Choice: {choice}")
+    # print(f"snake.coord: {snake.coord}")
+    # print(snake)
     for tile in snake.valid_tiles(snake.map, snake.coord):
         # planned_path = None
         planned_path = snake.get_route(snake.map, tile , target_tiles=list(env.food.locations))
@@ -171,19 +172,24 @@ if __name__ == '__main__':
         s_time = time()
         # option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
         # print('free_path: ', option['free_path'])
-        print(f"Time: {(time() - s_time) * 1000}")
-        area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile)
-        print(f"area_check for tile {tile}: {area_check}")
+        # print(f"Time: {(time() - s_time) * 1000}")
+        # area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile, True)
+        # print(f"area_check for tile {tile}: {area_check}")
+    time_e = time()
+    area = ac.area_check(snake.map, list(snake.body_coords), area_coord, True)
+    execution_time = (time() - time_e) * 1000
+    print('area_check: ', execution_time)
+    print(area)
     frames = []
 
     pr.disable()
 
-    # # Print the profiling results
+    # Print the profiling results
     # s = StringIO()
     # sortby = 'cumulative'
     # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
     # ps.print_stats()
-    # # print(s.getvalue())
+    # print(s.getvalue())
 
     frames = frame_builder.frames_from_rundata(rundata)
 
