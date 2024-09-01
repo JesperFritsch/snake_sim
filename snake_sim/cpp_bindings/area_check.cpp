@@ -6,9 +6,9 @@
 #include <algorithm>
 #include <iostream> // Include iostream for std::cout
 #include <typeinfo> // Include typeinfo for typeid
+#include <unordered_set>
 
 namespace py = pybind11;
-
 
 struct Coord {
     int x;
@@ -34,7 +34,24 @@ struct Coord {
         return x == other.x && y == other.y;
     }
 
+    bool operator!=(const Coord& other) const {
+        return x != other.x || y != other.y;
+    }
+
+    std::size_t hash() const {
+        return x * 1000 + y;
+    }
+
 };
+
+namespace std {
+    template <>
+    struct hash<Coord> {
+        std::size_t operator()(const Coord& coord) const noexcept{
+            return coord.hash();
+        }
+    };
+}
 
 struct AreaCheckResult {
     bool is_clear;
@@ -46,6 +63,7 @@ struct AreaCheckResult {
     Coord start_coord;
     int needed_steps;
     int margin;
+    std::unordered_set<Coord> food_coords;
     AreaCheckResult(bool is_clear,
                     int tile_count,
                     int total_steps,
@@ -54,7 +72,8 @@ struct AreaCheckResult {
                     int max_index,
                     Coord start_coord,
                     int needed_steps,
-                    int margin) :
+                    int margin,
+                    std::unordered_set<Coord> food_coords) :
         is_clear(is_clear),
         tile_count(tile_count),
         total_steps(total_steps),
@@ -63,7 +82,8 @@ struct AreaCheckResult {
         max_index(max_index),
         start_coord(start_coord),
         needed_steps(needed_steps),
-        margin(margin) {}
+        margin(margin),
+        food_coords(food_coords) {}
 };
 
 struct AreaStat{
@@ -86,15 +106,6 @@ struct AreaStat{
             food_count(food_count) {}
 };
 
-
-
-py::list coords_to_list(std::vector<Coord> coords) {
-    py::list coords_list;
-    for (auto& coord : coords) {
-        coords_list.append(py::make_tuple(coord.x, coord.y));
-    }
-    return coords_list;
-}
 
 class AreaChecker {
 public:
@@ -305,6 +316,10 @@ public:
                 area_stats,
                 food_check
             );
+            py::list food_coords;
+            for (auto& food_coord : result.food_coords) {
+                food_coords.append(py::make_tuple(food_coord.x, food_coord.y));
+            }
             return py::dict(
                 py::arg("is_clear") = result.is_clear,
                 py::arg("tile_count") = result.tile_count,
@@ -314,8 +329,8 @@ public:
                 py::arg("max_index") = result.max_index,
                 py::arg("start_coord") = py::make_tuple(result.start_coord.x, result.start_coord.y),
                 py::arg("needed_steps") = result.needed_steps,
-                py::arg("margin") = result.margin
-
+                py::arg("margin") = result.margin,
+                py::arg("food_coords") = food_coords
             );
         }
 
@@ -344,11 +359,12 @@ public:
         bool is_clear = false;
         bool has_tail = false;
         int total_steps = 0;
-        int margin = body_coords.size();
+        int margin;
         if (depth == 0){
-            margin = -body_coords.size();
+            margin = static_cast<int>(-body_coords.size());
         }
-        std::vector<Coord> current_coords;
+        std::unordered_set<Coord> food_coords;
+        std::deque<Coord> current_coords;
         std::vector<Coord> to_be_checked;
         current_coords.push_back(start_coord);
 
@@ -361,13 +377,14 @@ public:
         tile_count += 1;
 
         while (!current_coords.empty()) {
-            auto curr_coord = current_coords.back();
-            current_coords.pop_back();
+            auto curr_coord = current_coords.front();
+            current_coords.pop_front();
             int c_x, c_y;
             c_x = curr_coord.x;
             c_y = curr_coord.y;
 
             if (s_map[c_y * width + c_x] == food_value) {
+                food_coords.insert(curr_coord);
                 food_count += 1;
             }
 
@@ -500,23 +517,53 @@ public:
                     food_check);
                 has_tail = has_tail || area_check.has_tail;
                 is_clear = is_clear || area_check.is_clear;
-                if (area_check.margin >= area_check.food_count && !food_check) {
-                    return area_check;
+                if(food_check){
+                    if (area_check.is_clear) {
+                        for (auto& food_coord : area_check.food_coords) {
+                            food_coords.insert(food_coord);
+                        }
+                        unsigned int food_count = food_coords.size();
+                        best_food_count = std::max(best_food_count, static_cast<int>(food_count));
+                    }
+                    if(area_check.food_count >= best_food_count) {
+                        // std::cout << "  " << "setting best values" << std::endl;
+                        best_margin = area_check.margin;
+                        best_total_steps = area_check.total_steps;
+                        best_tile_count = area_check.tile_count;
+                        best_food_count = area_check.food_count;
+                        best_max_index = area_check.max_index;
+                    }
                 }
-                if (!food_check && area_check.margin >= best_margin) {
-                    best_margin = area_check.margin;
-                    best_total_steps = area_check.total_steps;
-                    best_tile_count = area_check.tile_count;
-                    best_food_count = area_check.food_count;
-                    best_max_index = area_check.max_index;
+                else{
+                    if (area_check.margin >= area_check.food_count) {
+                        return area_check;
+                    }
+                    if (area_check.margin >= best_margin) {
+                        best_margin = area_check.margin;
+                        best_total_steps = area_check.total_steps;
+                        best_tile_count = area_check.tile_count;
+                        best_max_index = area_check.max_index;
+                        for (auto& food_coord : area_check.food_coords) {
+                            food_coords.insert(food_coord);
+                        }
+                        unsigned int food_count = food_coords.size();
+                        best_food_count = std::max(best_food_count, static_cast<int>(food_count));
+                    }
                 }
-                else if(food_check && area_check.food_count >= best_food_count) {
-                    best_margin = area_check.margin;
-                    best_total_steps = area_check.total_steps;
-                    best_tile_count = area_check.tile_count;
-                    best_food_count = area_check.food_count;
-                    best_max_index = area_check.max_index;
-                }
+                // std::cout << "  " << "best_tile_count: " << best_tile_count << std::endl;
+                // std::cout << "  " << "best_food_count: " << best_food_count << std::endl;
+                // std::cout << "  " << "depth: " << depth << std::endl;
+                // std::cout << "  " << "start_coord: (" << start_coord.x << ", " << start_coord.y << ")" << std::endl;
+                // std::cout << "  " << "coord: (" << coord.x << ", " << coord.y << ")" << std::endl;
+                // std::cout << "  " << "is_clear: " << area_check.is_clear << std::endl;
+                // std::cout << "  " << "tile_count: " << area_check.tile_count << std::endl;
+                // std::cout << "  " << "total_steps: " << area_check.total_steps << std::endl;
+                // std::cout << "  " << "food_count: " << area_check.food_count << std::endl;
+                // std::cout << "  " << "has_tail: " << area_check.has_tail << std::endl;
+                // std::cout << "  " << "max_index: " << area_check.max_index << std::endl;
+                // std::cout << "  " << "needed_steps: " << area_check.needed_steps << std::endl;
+                // std::cout << "  " << "margin: " << area_check.margin << std::endl;
+                // std::cout << "  " << std::endl;
             }
         }
 
@@ -529,7 +576,8 @@ public:
             best_max_index,
             start_coord,
             body_len - best_max_index,
-            best_margin
+            best_margin,
+            food_coords
         );
     }
 

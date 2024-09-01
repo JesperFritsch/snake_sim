@@ -141,7 +141,6 @@ class AutoSnake4(AutoSnakeBase):
 
     def check_safe_food_route(self, s_map, food_route):
         end_coord = food_route[0]
-        s_map = self.occupy_route(s_map, food_route)
         body_copy = self.body_coords.copy()
         map_copy = s_map.copy()
         for coord in food_route:
@@ -161,11 +160,14 @@ class AutoSnake4(AutoSnakeBase):
             else:
                 food_locations.remove(route[0])
         return route
+
     def get_future_available_food_map(self):
         s_map = self.map.copy()
         valid_tiles = self.valid_tiles(self.map, self.coord)
         future_valids = {coord: self.valid_tiles(self.map, coord) for coord in valid_tiles}
         food_map = {}
+        all_area_checks = {}
+        additonal_food = {}
         for coord, valids in future_valids.items():
             if not valids:
                 continue
@@ -175,11 +177,30 @@ class AutoSnake4(AutoSnakeBase):
             area_checks = [self.area_check_wrapper(s_map, self.body_coords, tile, True) for tile in valids]
             s_map[y, x] = old_map_value
             clear_checks = [a for a in area_checks if a['is_clear']]
-            if not clear_checks:
-                continue
-            most_food_area = max(clear_checks, key=lambda x: x['food_count'])
-            food_map[coord] = most_food_area['food_count'] + (1 if old_map_value == self.env.FOOD_TILE else 0)
+            if clear_checks:
+                all_area_checks[coord] = area_checks
+            additonal_food[coord] = old_map_value == self.env.FOOD_TILE
+        all_checks = [a for check in all_area_checks.values() for a in check]
+        for coord, area_checks in all_area_checks.items():
+            print("coord: ", coord)
+            print("area checks: ", area_checks)
+            if all([a['margin'] >= a['food_count'] for a in all_checks]):
+                food_coords = set()
+                for a in [a for a in all_checks]:
+                    food_coords.update(a['food_coords'])
+                most_food = len(food_coords)
+            # elif all([a['margin'] >= a['food_count'] for a in area_checks]):
+            #     food_coords = set()
+            #     for a in [a for a in area_checks]:
+            #         food_coords.update(a['food_coords'])
+            #     most_food = len(food_coords)
+            else:
+                most_food = max(area_checks, key=lambda x: x['food_count'])['food_count']
+            print("most food: ", most_food)
+            print("additonal food: ", additonal_food)
+            food_map[coord] = most_food + (1 if additonal_food[coord] else 0)
         return food_map
+
     def get_available_areas(self):
         s_map = self.map.copy()
         valid_tiles = self.valid_tiles(self.map, self.coord)
@@ -196,10 +217,10 @@ class AutoSnake4(AutoSnakeBase):
             planned_tile = planned_route.pop()
         areas_map = self.get_available_areas()
         food_map = self.get_future_available_food_map()
-        # print("areas map: ", areas_map)
-        # print("food map: ", food_map)
-        # print("food route: ", closest_food_route)
-        # print("planned tile: ", planned_tile)
+        print("areas map: ", areas_map)
+        print("food map: ", food_map)
+        print("food route: ", closest_food_route)
+        print("planned tile: ", planned_tile)
         if food_map and planned_tile is not None:
             best_food_pair = max(food_map.items(), key=lambda x: x[1])
             max_food_value = max(food_map.values())
@@ -207,32 +228,32 @@ class AutoSnake4(AutoSnakeBase):
             def cmp(c1, c2):
                 return distance(planned_tile, c1[0]) - distance(planned_tile, c2[0])
             best_food_pair = min(best_food_pairs, key=cmp_to_key(cmp))
-            # print("best food pairs: ", best_food_pairs)
-            # print("best food pair: ", best_food_pair)
+            print("best food pairs: ", best_food_pairs)
+            print("best food pair: ", best_food_pair)
             best_food_tile, best_food_value = best_food_pair
             planned_tile_food_value = food_map.get(planned_tile, 0)
             # print(planned_tile is None, (planned_tile_food_value < best_food_value, not self.head_in_open()))
             if planned_tile is None or planned_tile_food_value < best_food_value:
-                # print("food route is not best")
+                print("food route is not best")
                 planned_tile = best_food_tile
                 planned_route = self.route
             planned_area = areas_map[planned_tile]
             #this is to make sure that spawning food wont kill us
-            # print(planned_area['margin'], planned_area['food_count'])
+            print(planned_area['margin'], planned_area['food_count'])
             if planned_area['margin'] >= planned_area['food_count']:
-                # print("margin enough")
-                # print("planned_area: ", planned_area)
+                print("margin enough")
+                print("planned_area: ", planned_area)
                 option = self.explore_option(planned_tile, planned_route=planned_route)
                 if option['free_path']:
                     # print("free path")
                     # print("option: ", option)
                     next_tile = planned_tile
         if next_tile is None:
-            # print("getting best route")
+            print("getting best route")
             option = self.get_best_option()
             if option:
                 next_tile = option['coord']
-        # print("next_tile: ", next_tile)
+        print("next_tile: ", next_tile)
         # self.print_map(self.map)
         return next_tile
 
@@ -642,9 +663,6 @@ class AutoSnake4(AutoSnakeBase):
             current_results['free_path'] = True
             return current_results
 
-        # needed_steps = area_check_data.get('needed_steps', 1) - 1
-        # if needed_steps < 0:
-        #     return current_results
         area_checks = {}
 
         if planned_route:
@@ -676,6 +694,7 @@ class AutoSnake4(AutoSnakeBase):
                     planned_route = None
 
 
+        # self.print_map(s_map)
         if valid_tiles:
             best_margin = -length
             target_tile = None
@@ -699,7 +718,6 @@ class AutoSnake4(AutoSnakeBase):
                     continue
                 area_check = area_checks[tile].copy()
                 # print(area_check)
-                # self.print_map(s_map)
                 if area_check['has_tail']:
                     current_results['free_path'] = True
                     current_results['len_gain'] = area_check['food_count']
