@@ -160,7 +160,7 @@ public:
     }
 
 
-    int _is_single_entrance(uint8_t* s_map, Coord& coord, Coord& check_coord) {
+    int _is_single_entrance(uint8_t* s_map, Coord coord, Coord check_coord) {
         // return code 2 is for an passage like:
         // x . .
         // . . .
