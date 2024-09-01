@@ -182,8 +182,8 @@ class AutoSnake4(AutoSnakeBase):
             additonal_food[coord] = old_map_value == self.env.FOOD_TILE
         all_checks = [a for check in all_area_checks.values() for a in check]
         for coord, area_checks in all_area_checks.items():
-            print("coord: ", coord)
-            print("area checks: ", area_checks)
+            # print("coord: ", coord)
+            # print("area checks: ", area_checks)
             if all([a['margin'] >= a['food_count'] for a in all_checks]):
                 food_coords = set()
                 for a in [a for a in all_checks]:
@@ -196,8 +196,8 @@ class AutoSnake4(AutoSnakeBase):
             #     most_food = len(food_coords)
             else:
                 most_food = max(area_checks, key=lambda x: x['food_count'])['food_count']
-            print("most food: ", most_food)
-            print("additonal food: ", additonal_food)
+            # print("most food: ", most_food)
+            # print("additonal food: ", additonal_food)
             food_map[coord] = most_food + (1 if additonal_food[coord] else 0)
         return food_map
 
@@ -217,10 +217,10 @@ class AutoSnake4(AutoSnakeBase):
             planned_tile = planned_route.pop()
         areas_map = self.get_available_areas()
         food_map = self.get_future_available_food_map()
-        print("areas map: ", areas_map)
-        print("food map: ", food_map)
-        print("food route: ", closest_food_route)
-        print("planned tile: ", planned_tile)
+        # print("areas map: ", areas_map)
+        # print("food map: ", food_map)
+        # print("food route: ", closest_food_route)
+        # print("planned tile: ", planned_tile)
         if food_map and planned_tile is not None:
             best_food_pair = max(food_map.items(), key=lambda x: x[1])
             max_food_value = max(food_map.values())
@@ -228,32 +228,32 @@ class AutoSnake4(AutoSnakeBase):
             def cmp(c1, c2):
                 return distance(planned_tile, c1[0]) - distance(planned_tile, c2[0])
             best_food_pair = min(best_food_pairs, key=cmp_to_key(cmp))
-            print("best food pairs: ", best_food_pairs)
-            print("best food pair: ", best_food_pair)
+            # print("best food pairs: ", best_food_pairs)
+            # print("best food pair: ", best_food_pair)
             best_food_tile, best_food_value = best_food_pair
             planned_tile_food_value = food_map.get(planned_tile, 0)
             # print(planned_tile is None, (planned_tile_food_value < best_food_value, not self.head_in_open()))
             if planned_tile is None or planned_tile_food_value < best_food_value:
-                print("food route is not best")
+                # print("food route is not best")
                 planned_tile = best_food_tile
                 planned_route = self.route
             planned_area = areas_map[planned_tile]
             #this is to make sure that spawning food wont kill us
-            print(planned_area['margin'], planned_area['food_count'])
+            # print("margin: ", planned_area['margin'], "food:", planned_area['food_count'])
             if planned_area['margin'] >= planned_area['food_count']:
-                print("margin enough")
-                print("planned_area: ", planned_area)
+                # print("margin enough")
+                # print("planned_area: ", planned_area)
                 option = self.explore_option(planned_tile, planned_route=planned_route)
                 if option['free_path']:
                     # print("free path")
                     # print("option: ", option)
                     next_tile = planned_tile
         if next_tile is None:
-            print("getting best route")
+            # print("getting best route")
             option = self.get_best_option()
             if option:
                 next_tile = option['coord']
-        print("next_tile: ", next_tile)
+        # print("next_tile: ", next_tile)
         # self.print_map(self.map)
         return next_tile
 
