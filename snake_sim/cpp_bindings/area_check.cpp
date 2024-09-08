@@ -54,6 +54,7 @@ namespace std {
 }
 
 struct AreaCheckResult {
+    bool initialized;
     bool is_clear;
     int prev_tile_count;
     int prev_food_count;
@@ -67,6 +68,19 @@ struct AreaCheckResult {
     int margin;
     std::unordered_set<Coord> food_coords;
     // std::vector<int> connected_areas;
+    AreaCheckResult() :
+        initialized(false),
+        is_clear(false),
+        prev_tile_count(0),
+        prev_food_count(0),
+        tile_count(0),
+        total_steps(0),
+        food_count(0),
+        has_tail(false),
+        max_index(0),
+        start_coord(Coord()),
+        needed_steps(0),
+        margin(0) {}
     AreaCheckResult(bool is_clear,
                     int prev_tile_count,
                     int prev_food_count,
@@ -91,7 +105,8 @@ struct AreaCheckResult {
         start_coord(start_coord),
         needed_steps(needed_steps),
         margin(margin),
-        food_coords(food_coords)
+        food_coords(food_coords),
+        initialized(true)
         /*connected_areas(connected_areas)*/ {}
 };
 
@@ -363,7 +378,7 @@ public:
         int food_count = 0;
         int max_index = 0;
         bool connected_to_prev_area = false;
-        int body_len = body_coords.size();
+        size_t body_len = body_coords.size();
         auto tail_coord = body_coords[body_len - 1];
         bool is_clear = false;
         bool has_tail = false;
@@ -490,7 +505,7 @@ public:
         if (!is_clear || best_margin < (best_food_count) || food_check) {
             int base_tile_count;
             int base_food_count;
-
+            AreaCheckResult best_sub_area;
             while (!to_be_checked.empty()) {
                 auto coord = to_be_checked.back();
                 to_be_checked.pop_back();
@@ -527,6 +542,20 @@ public:
                     depth + 1,
                     area_stats,
                     food_check);
+                // std::cout << "  " << "best_tile_count: " << best_tile_count << std::endl;
+                // std::cout << "  " << "best_food_count: " << best_food_count << std::endl;
+                // std::cout << "  " << "depth: " << depth << std::endl;
+                // std::cout << "  " << "start_coord: (" << start_coord.x << ", " << start_coord.y << ")" << std::endl;
+                // std::cout << "  " << "coord: (" << coord.x << ", " << coord.y << ")" << std::endl;
+                // std::cout << "  " << "is_clear: " << area_check.is_clear << std::endl;
+                // std::cout << "  " << "tile_count: " << area_check.tile_count << std::endl;
+                // std::cout << "  " << "total_steps: " << area_check.total_steps << std::endl;
+                // std::cout << "  " << "food_count: " << area_check.food_count << std::endl;
+                // std::cout << "  " << "has_tail: " << area_check.has_tail << std::endl;
+                // std::cout << "  " << "max_index: " << area_check.max_index << std::endl;
+                // std::cout << "  " << "needed_steps: " << area_check.needed_steps << std::endl;
+                // std::cout << "  " << "margin: " << area_check.margin << std::endl;
+                // std::cout << "  " << std::endl;
                 // if (area_check.connected_areas.size() > 0) {
                 //     if (std::find(area_check.connected_areas.begin(), area_check.connected_areas.end(), depth) != area_check.connected_areas.end()) {
                 //         best_margin = area_check.margin;
@@ -544,56 +573,57 @@ public:
                 has_tail = has_tail || area_check.has_tail;
                 is_clear = is_clear || area_check.is_clear;
                 if(food_check){
-                    if (area_check.is_clear) {
-                        for (auto& food_coord : area_check.food_coords) {
-                            food_coords.insert(food_coord);
-                        }
-                        unsigned int food_count = food_coords.size();
-                        best_food_count = std::max(best_food_count, static_cast<int>(food_count));
-                    }
-                    if(area_check.food_count >= best_food_count && area_check.margin >= area_check.food_count) {
+                    // if (area_check.is_clear) {
+                        // for (auto& food_coord : area_check.food_coords) {
+                        //     food_coords.insert(food_coord);
+                        // }
+                        // unsigned int food_count = food_coords.size();
+                        // best_food_count = std::max(best_food_count, static_cast<int>(food_count));
+                    // }
+                    if(area_check.margin >= best_margin && area_check.food_count >= best_food_count) {
                         // std::cout << "  " << "setting best values" << std::endl;
+                        best_sub_area = area_check;
                         best_margin = area_check.margin;
-                        best_total_steps = area_check.total_steps;
-                        best_tile_count = area_check.tile_count;
+                        // best_total_steps = area_check.total_steps;
+                        // best_tile_count = area_check.tile_count;
                         best_food_count = area_check.food_count;
-                        best_max_index = area_check.max_index;
+                        // best_max_index = area_check.max_index;
                     }
                 }
                 else{
-                    if (area_check.margin >= area_check.food_count) {
-                        for (auto& food_coord : food_coords) {
-                            area_check.food_coords.insert(food_coord);
+                    if (area_check.margin >= area_check.food_count && area_check.is_clear) {
+                        if (food_coords.size() > 0){
+                            for (auto& food_coord : food_coords) {
+                                area_check.food_coords.insert(food_coord);
+                            }
+                            area_check.food_count = static_cast<int>(area_check.food_coords.size());
                         }
-                        area_check.food_count = static_cast<int>(area_check.food_coords.size());
                         return area_check;
                     }
                     if (area_check.margin >= best_margin) {
                         best_margin = area_check.margin;
-                        best_total_steps = area_check.total_steps;
-                        best_tile_count = area_check.tile_count;
-                        best_max_index = area_check.max_index;
-                        for (auto& food_coord : area_check.food_coords) {
-                            food_coords.insert(food_coord);
-                        }
-                        unsigned int food_count = food_coords.size();
-                        best_food_count = std::max(best_food_count, static_cast<int>(food_count));
+                        best_sub_area = area_check;
+                        // best_total_steps = area_check.total_steps;
+                        // best_tile_count = area_check.tile_count;
+                        // best_max_index = area_check.max_index;
+                        // for (auto& food_coord : area_check.food_coords) {
+                        //     food_coords.insert(food_coord);
+                        // }
+                        // unsigned int food_count = food_coords.size();
+                        // best_food_count = std::max(best_food_count, static_cast<int>(food_count));
                     }
                 }
-                // std::cout << "  " << "best_tile_count: " << best_tile_count << std::endl;
-                // std::cout << "  " << "best_food_count: " << best_food_count << std::endl;
-                // std::cout << "  " << "depth: " << depth << std::endl;
-                // std::cout << "  " << "start_coord: (" << start_coord.x << ", " << start_coord.y << ")" << std::endl;
-                // std::cout << "  " << "coord: (" << coord.x << ", " << coord.y << ")" << std::endl;
-                // std::cout << "  " << "is_clear: " << area_check.is_clear << std::endl;
-                // std::cout << "  " << "tile_count: " << area_check.tile_count << std::endl;
-                // std::cout << "  " << "total_steps: " << area_check.total_steps << std::endl;
-                // std::cout << "  " << "food_count: " << area_check.food_count << std::endl;
-                // std::cout << "  " << "has_tail: " << area_check.has_tail << std::endl;
-                // std::cout << "  " << "max_index: " << area_check.max_index << std::endl;
-                // std::cout << "  " << "needed_steps: " << area_check.needed_steps << std::endl;
-                // std::cout << "  " << "margin: " << area_check.margin << std::endl;
-                // std::cout << "  " << std::endl;
+            }
+            if (best_sub_area.initialized){
+                best_margin = best_sub_area.margin;
+                best_total_steps = best_sub_area.total_steps;
+                best_tile_count = best_sub_area.tile_count;
+                best_max_index = best_sub_area.max_index;
+                for (auto& food_coord : best_sub_area.food_coords) {
+                    food_coords.insert(food_coord);
+                }
+                size_t food_count = food_coords.size();
+                best_food_count = std::max(best_food_count, static_cast<int>(food_count));
             }
             // for (auto& sub_check : sub_checks) {
             //     int needed = body_len - sub_check.max_index;
