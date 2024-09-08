@@ -82,10 +82,10 @@ if __name__ == '__main__':
     # snake.update()
     # frames = None
     rundata = []
-    area_coord = (22,27)
-    map_copy = snake.map.copy()
-    map_copy[area_coord[1], area_coord[0]] = ord('Q')
-    snake.print_map(map_copy)
+    # area_coord = (22,27)
+    # map_copy = snake.map.copy()
+    # map_copy[area_coord[1], area_coord[0]] = ord('Q')
+    # snake.print_map(map_copy)
     ac = AreaChecker(env.FOOD_TILE, env.FREE_TILE, snake.body_value, env.width, env.height)
     print(ac)
 
@@ -157,10 +157,10 @@ if __name__ == '__main__':
 
     pr = cProfile.Profile()
     pr.enable()
-    # choice = snake.pick_direction()
-    # print(f"Choice: {choice}")
-    # print(f"snake.coord: {snake.coord}")
-    # print(snake)
+    choice = snake.pick_direction()
+    print(f"Choice: {choice}")
+    print(f"snake.coord: {snake.coord}")
+    print(snake)
     for tile in snake.valid_tiles(snake.map, snake.coord):
         # planned_path = None
         # planned_path = snake.get_closest_accessible_food_route()
