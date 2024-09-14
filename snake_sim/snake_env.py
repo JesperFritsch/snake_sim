@@ -261,6 +261,10 @@ class SnakeEnv:
                 } for s in self.snakes.values()],
             base_map=np.array(self.base_map))
 
+    def print_stats(self):
+        for snake_info in self.snakes_info.values():
+            print(f"Snake: {snake_info['id']}, length: {snake_info['length']}")
+
     def add_snake(self, snake, h_color, b_color):
         if isinstance(snake, Snake):
             snake.bind_env(self)
@@ -451,6 +455,7 @@ class SnakeEnv:
                     sys.exit(0)
         finally:
             print('Done')
+            self.print_stats()
             if self.store_runs:
                 self.run_data.write_to_file(aborted=aborted)
 
