@@ -1,12 +1,19 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>  // For automatic conversion of C++ STL containers to Python
+#include <atomic>
+#include <chrono>
 #include <deque>
+#include <queue>
+#include <thread>
 #include <vector>
 #include <algorithm>
 #include <iostream> // Include iostream for std::cout
 #include <typeinfo> // Include typeinfo for typeid
 #include <unordered_set>
+#include <mutex>
+#include <condition_variable>
+#include <functional>
 
 namespace py = pybind11;
 
@@ -52,6 +59,84 @@ namespace std {
         }
     };
 }
+
+
+#include <atomic>
+
+class ThreadPool {
+public:
+    ThreadPool(size_t numThreads) : activeTasks(0), stop(false) {
+        for (size_t i = 0; i < numThreads; ++i) {
+            workers.emplace_back([this] {
+                while (true) {
+                    std::function<void()> task;
+                    {
+                        std::unique_lock<std::mutex> lock(this->queueMutex);
+                        this->condition.wait(lock, [this] { return !this->tasks.empty() || stop; });
+                        if (this->stop && this->tasks.empty()) return; // If stopping and no tasks, exit
+                        task = std::move(this->tasks.front());
+                        this->tasks.pop();
+                    }
+
+                    activeTasks++; // Increment active tasks before executing
+
+                    // Execute the task
+                    task();
+
+                    {
+                        std::lock_guard<std::mutex> lock(this->completionMutex);
+                        activeTasks--; // Decrement active tasks after completing
+                        if (activeTasks == 0 && tasks.empty()) {
+                            completionCondition.notify_one(); // Notify when all tasks are done
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    template <class F>
+    void enqueue(F&& f) {
+        {
+            std::unique_lock<std::mutex> lock(queueMutex);
+            tasks.emplace(std::forward<F>(f));
+        }
+        condition.notify_one();
+    }
+
+    // Method to wait until all tasks are completed
+    void waitForAllTasks() {
+        std::unique_lock<std::mutex> lock(completionMutex);
+        completionCondition.wait(lock, [this] { return tasks.empty() && activeTasks == 0; });
+    }
+
+    ~ThreadPool() {
+        {
+            std::unique_lock<std::mutex> lock(queueMutex);
+            stop = true;
+        }
+        condition.notify_all();
+        for (std::thread& worker : workers) {
+            if (worker.joinable()) {
+                worker.join();
+            }
+        }
+    }
+
+private:
+    std::vector<std::thread> workers;
+    std::queue<std::function<void()>> tasks;
+    std::mutex queueMutex;
+    std::condition_variable condition;
+    bool stop;
+
+    // Track active tasks and completion
+    std::atomic<int> activeTasks;
+    std::mutex completionMutex;
+    std::condition_variable completionCondition;
+};
+
+
 
 struct AreaCheckResult {
     bool initialized;
@@ -183,9 +268,86 @@ public:
         );
     }
 
+    // int _is_single_entrance(uint8_t* s_map, Coord coord, Coord check_coord) {
+    //     int cols = this->width;
+    //     int c_x = coord.x;
+    //     int c_y = coord.y;
+    //     int ch_x = check_coord.x;
+    //     int ch_y = check_coord.y;
+    //     uint8_t offmap_value = 3; // Arbitrary value for off-map
+
+    //     int delta_y = ch_y - c_y;
+    //     int delta_x = ch_x - c_x;
+
+    //     // Pre-calculate indices and use references for speed
+    //     auto get_value = [&](int x, int y) -> uint8_t {
+    //         if (this->is_inside(x, y)) {
+    //             return s_map[y * cols + x];
+    //         }
+    //         return offmap_value; // Return offmap_value if out of bounds
+    //     };
+
+    //     // Get values of corner and neighbor cells
+    //     std::array<uint8_t, 4> corner_values = {
+    //         get_value(c_x - 1, c_y - 1),
+    //         get_value(c_x + 1, c_y - 1),
+    //         get_value(c_x + 1, c_y + 1),
+    //         get_value(c_x - 1, c_y + 1)
+    //     };
+
+    //     std::array<uint8_t, 4> neighbour_values = {
+    //         get_value(c_x, c_y - 1),
+    //         get_value(c_x + 1, c_y),
+    //         get_value(c_x, c_y + 1),
+    //         get_value(c_x - 1, c_y)
+    //     };
+
+    //     // Diagonal check optimization
+    //     auto check_diagonal = [&](int idx1, int idx2, int corner1, int corner2) -> bool {
+    //         if (corner_values[corner1] > this->free_value && corner_values[corner2] > this->free_value) {
+    //             for (int i = 0; i < 4; ++i) {
+    //                 if ((i != idx1 && i != idx2) && corner_values[i] > this->free_value) {
+    //                     return false; // Break if other corners are non-walkable
+    //                 }
+    //                 if (neighbour_values[i] > this->free_value) {
+    //                     return false;
+    //                 }
+    //             }
+    //             return true; // It's diagonal
+    //         }
+    //         return false;
+    //     };
+
+    //     // Check for diagonal patterns
+    //     if (check_diagonal(0, 2, 0, 2)) return 2;
+    //     if (check_diagonal(1, 3, 1, 3)) return 2;
+
+    //     // Check vertical and horizontal paths using delta_x and delta_y
+    //     int x = ch_x + delta_y;
+    //     int y = ch_y + delta_x;
+    //     if (this->is_inside(x, y) && get_value(x, y) <= this->free_value) {
+    //         x = c_x + delta_y;
+    //         y = c_y + delta_x;
+    //         if (this->is_inside(x, y) && get_value(x, y) <= this->free_value) {
+    //             return 0;
+    //         }
+    //     }
+
+    //     x = ch_x - delta_y;
+    //     y = ch_y - delta_x;
+    //     if (this->is_inside(x, y) && get_value(x, y) <= this->free_value) {
+    //         x = c_x - delta_y;
+    //         y = c_y - delta_x;
+    //         if (this->is_inside(x, y) && get_value(x, y) <= this->free_value) {
+    //             return 0;
+    //         }
+    //     }
+
+    //     return 1; // No single entrance found
+    // }
 
     int _is_single_entrance(uint8_t* s_map, Coord coord, Coord check_coord) {
-        // return code 2 is for an passage like:
+        // return code 2 is for a passage like:
         // x . .
         // . . .
         // . . x
@@ -233,12 +395,7 @@ public:
                 }
             }
 
-            // std::cout << (s_map[c.y * cols + c.x]) << std::endl;
         }
-        // Check the diagonals
-        // std::cout << "corner_values" << std::endl;
-        // std::cout << corner_values[0] << " " << corner_values[1] << " " << corner_values[2] << " " << corner_values[3] << std::endl;
-        // std::cout << neighbour_values[0] << " " << neighbour_values[1] << " " << neighbour_values[2] << " " << neighbour_values[3] << std::endl;
         if (corner_values[0] > this->free_value && corner_values[0] != offmap_value){
             if (corner_values[2] > this->free_value && corner_values[2] != offmap_value){
                 bool is_diagonal = true;
@@ -374,7 +531,7 @@ public:
         int best_food_count = 0;
         int best_max_index = 0;
         int best_total_steps = 0;
-        int tile_count = 0;
+        int tile_count = 1;
         int food_count = 0;
         int max_index = 0;
         bool connected_to_prev_area = false;
@@ -388,10 +545,11 @@ public:
             margin = -static_cast<int>(body_coords.size());
         }
         std::unordered_set<Coord> food_coords;
-        std::deque<Coord> current_coords;
+        std::vector<Coord> current_coords;
         std::vector<Coord> to_be_checked;
         // std::vector<int> connected_areas;
         // std::vector<AreaCheckResult> sub_checks;
+        current_coords.reserve((this->width + this->height) * 2); // arbitrary value for reserve size
         current_coords.push_back(start_coord);
 
 
@@ -400,15 +558,12 @@ public:
             std::fill(checked.begin(), checked.end(), -1);
         }
         checked[start_coord.y * width + start_coord.x] = depth;
-        tile_count += 1;
-
         while (!current_coords.empty()) {
-            auto curr_coord = current_coords.front();
-            current_coords.pop_front();
+            auto curr_coord = current_coords.back();
+            current_coords.pop_back();
             int c_x, c_y;
             c_x = curr_coord.x;
             c_y = curr_coord.y;
-
             if (s_map[c_y * width + c_x] == food_value) {
                 food_coords.insert(curr_coord);
                 food_count += 1;
@@ -423,6 +578,7 @@ public:
 
             for (auto& n_coord : neighbours) {
                 int n_x, n_y;
+
                 n_x = n_coord.x;
                 n_y = n_coord.y;
                 if (!this->is_inside(n_x, n_y)) {
@@ -465,18 +621,17 @@ public:
                     }
                 }
             }
-
-            int needed_steps = body_len - max_index;
-            if (max_index > 0 || connected_to_prev_area) {
-                total_steps = (tile_count + prev_tile_count) - (food_count + prev_food_count);
-            }
-            else{
-                total_steps = (tile_count) - (food_count);
-            }
-            margin = total_steps - needed_steps;
-            if (margin >= 0) {
-                is_clear = true;
-            }
+        }
+        int needed_steps = body_len - max_index;
+        if (max_index > 0 || connected_to_prev_area) {
+            total_steps = (tile_count + prev_tile_count) - (food_count + prev_food_count);
+        }
+        else{
+            total_steps = (tile_count) - (food_count);
+        }
+        margin = total_steps - needed_steps;
+        if (margin >= 0) {
+            is_clear = true;
         }
 
         best_tile_count = tile_count + prev_tile_count;
@@ -664,7 +819,7 @@ private:
     int width;
     int height;
     Coord print_mark;
-
+    ThreadPool thread_pool = ThreadPool(std::thread::hardware_concurrency());
 };
 
 PYBIND11_MODULE(area_check, m) {
