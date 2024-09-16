@@ -549,7 +549,7 @@ public:
         std::vector<Coord> to_be_checked;
         // std::vector<int> connected_areas;
         // std::vector<AreaCheckResult> sub_checks;
-        current_coords.reserve((this->width + this->height) * 2); // arbitrary value for reserve size
+        current_coords.reserve((this->width + this->height) * 3); // arbitrary value for reserve size
         current_coords.push_back(start_coord);
 
 
@@ -633,7 +633,6 @@ public:
         if (margin >= 0) {
             is_clear = true;
         }
-
         best_tile_count = tile_count + prev_tile_count;
         best_food_count = food_count + prev_food_count;
         best_max_index = max_index;
@@ -735,14 +734,11 @@ public:
                         // unsigned int food_count = food_coords.size();
                         // best_food_count = std::max(best_food_count, static_cast<int>(food_count));
                     // }
-                    if(area_check.margin >= best_margin && area_check.food_count >= best_food_count) {
+                    if(area_check.is_clear && area_check.margin >= best_margin && area_check.food_count >= best_food_count) {
                         // std::cout << "  " << "setting best values" << std::endl;
                         best_sub_area = area_check;
                         best_margin = area_check.margin;
-                        // best_total_steps = area_check.total_steps;
-                        // best_tile_count = area_check.tile_count;
                         best_food_count = area_check.food_count;
-                        // best_max_index = area_check.max_index;
                     }
                 }
                 else{

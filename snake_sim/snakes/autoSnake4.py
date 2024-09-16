@@ -183,19 +183,17 @@ class AutoSnake4(AutoSnakeBase):
                 all_clear_checks[coord] = clear_checks
             additonal_food[coord] = old_map_value == self.env.FOOD_TILE
         all_checks = [a for check in all_area_checks.values() for a in check]
+        combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
+        # pprint(all_area_checks)
+        # print("combine food: ", combine_food)
+        combined_food = {}
+        for a in [a for a in all_checks]:
+            combined_food.update(a['food_coords'])
         for coord, area_checks in all_clear_checks.items():
             # print("coord: ", coord)
             # print("area checks: ", area_checks)
-            if all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks]):
-                food_coords = set()
-                for a in [a for a in all_checks]:
-                    food_coords.update(a['food_coords'])
-                most_food = len(food_coords)
-            # elif all([a['margin'] >= a['food_count'] for a in area_checks]):
-            #     food_coords = set()
-            #     for a in [a for a in area_checks]:
-            #         food_coords.update(a['food_coords'])
-            #     most_food = len(food_coords)
+            if combine_food:
+                most_food = len(combined_food)
             else:
                 most_food = max(area_checks, key=lambda x: x['food_count'])['food_count']
             # print("most food: ", most_food)
@@ -520,7 +518,6 @@ class AutoSnake4(AutoSnakeBase):
 
 
     def calc_immediate_risk(self, s_map, option_coord, max_depth=None):
-        return 0
         if max_depth is None:
             max_depth = self.MAX_RISK_CALC_DEPTH
         ## OBS !!! OBS !!! OBS !!! OBS !!! OBS !!! OBS !!! OBS !!! OBS !!! OBS !!! OBS !!! OBS !!! OBS !!! OBS !!!
@@ -530,14 +527,20 @@ class AutoSnake4(AutoSnakeBase):
 
         def get_next_states(s_map):
             op_valid_tiles = {}
+            # print(self.env.snakes)
             for snake in [s for s in self.env.snakes.values() if s.alive and s is not self]:
-                coord_lists = np.where(s_map == snake.head_value, s_map)
+                # print(snake.head_value)
+                coord_lists = np.where(s_map == snake.head_value)
+                # print('coord_lists: ', coord_lists)
                 h_coord = (coord_lists[1][0], coord_lists[0][0])
+                # print('h_coord: ', h_coord)
                 op_valids = [c for c in self.valid_tiles(s_map, h_coord)]
                 op_valid_tiles[h_coord] = {}
                 op_valid_tiles[h_coord]['tiles'] = op_valids
                 op_valid_tiles[h_coord]['head_value'] = snake.head_value
                 op_valid_tiles[h_coord]['body_value'] = snake.body_value
+            # print('op_valid_tiles')
+            # pprint(op_valid_tiles)
             options_tuples = [[(obj['head_value'], c) for c in obj['tiles']] for op_c, obj in op_valid_tiles.items()]
             options_tuples = [t for t in options_tuples if len(t) != 0]
             next_states = []
@@ -558,6 +561,9 @@ class AutoSnake4(AutoSnakeBase):
                         op_x, op_y = coord
                         s_map_copy[op_y][op_x] = head_val
                     next_states.append(s_map_copy)
+            # for state in next_states:
+                # print('next state')
+                # self.print_map(state)
             return next_states
 
         def recurse(s_map, self_coord, body_coords, self_length, depth=0):
@@ -566,16 +572,24 @@ class AutoSnake4(AutoSnakeBase):
             results = []
             if s_map[self_coord[1], self_coord[0]] == self.env.FOOD_TILE:
                 self_length += 1
-            old_tail = self.update_body(self_coord, body_coords, self_length)
             for next_state_map in get_next_states(s_map.copy()):
                 if valids_in_next := self.valid_tiles(next_state_map, self_coord):
                     sub_results = []
+                    # self.print_map(next_state_map)
+                    # print(self_coord)
+                    # print(valids_in_next)
                     for self_valid in valids_in_next:
-                        next_recurse_map = self.update_snake_position(next_state_map.copy(), body_coords, old_tail)
+                        body_coords_copy = body_coords.copy()
+                        old_tail = self.update_body(self_valid, body_coords_copy, self_length)
+                        next_recurse_map = self.update_snake_position(next_state_map.copy(), body_coords_copy, old_tail)
+                        area_check = self.area_check_wrapper(next_recurse_map, body_coords_copy, self_valid)
+                        if not area_check['is_clear']:
+                            results.append(1)
+                            continue
                         # self.print_map(next_recurse_map)
                         # print('depth: ', depth)
                         # print(self.id)
-                        result = recurse(next_recurse_map, self_valid, body_coords.copy(), self_length, depth+1)
+                        result = recurse(next_recurse_map, self_valid, body_coords_copy, self_length, depth+1)
                         sub_results.append(result)
                     results.append(mean(sub_results))
                 else:
@@ -589,6 +603,7 @@ class AutoSnake4(AutoSnakeBase):
         body_coords = self.body_coords.copy()
         old_tail = self.update_body(option_coord, body_coords, self_length)
         next_state_map = self.update_snake_position(s_map.copy(), body_coords, old_tail)
+        self.print_map(next_state_map)
         return recurse(next_state_map, option_coord, body_coords, self_length)
 
 

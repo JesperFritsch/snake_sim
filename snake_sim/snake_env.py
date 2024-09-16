@@ -235,11 +235,13 @@ class SnakeEnv:
         self.alive_snakes = self.get_alive_snakes()
         self.food.clear()
 
-    def print_map(self):
+    def print_map(self, s_map=None):
+        if s_map is None:
+            s_map = self.map
         print(f"{'':@<{self.width*3}}")
         for y in range(self.height):
             print_row = []
-            for c in self.map[y]:
+            for c in s_map[y]:
                 if c == self.FREE_TILE:
                     print_row.append(' . ')
                 elif c == self.FOOD_TILE:
