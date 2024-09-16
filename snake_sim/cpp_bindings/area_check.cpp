@@ -60,83 +60,78 @@ namespace std {
     };
 }
 
+// class ThreadPool {
+// public:
+//     ThreadPool(size_t numThreads) : activeTasks(0), stop(false) {
+//         for (size_t i = 0; i < numThreads; ++i) {
+//             workers.emplace_back([this] {
+//                 while (true) {
+//                     std::function<void()> task;
+//                     {
+//                         std::unique_lock<std::mutex> lock(this->queueMutex);
+//                         this->condition.wait(lock, [this] { return !this->tasks.empty() || stop; });
+//                         if (this->stop && this->tasks.empty()) return; // If stopping and no tasks, exit
+//                         task = std::move(this->tasks.front());
+//                         this->tasks.pop();
+//                     }
 
-#include <atomic>
+//                     activeTasks++; // Increment active tasks before executing
 
-class ThreadPool {
-public:
-    ThreadPool(size_t numThreads) : activeTasks(0), stop(false) {
-        for (size_t i = 0; i < numThreads; ++i) {
-            workers.emplace_back([this] {
-                while (true) {
-                    std::function<void()> task;
-                    {
-                        std::unique_lock<std::mutex> lock(this->queueMutex);
-                        this->condition.wait(lock, [this] { return !this->tasks.empty() || stop; });
-                        if (this->stop && this->tasks.empty()) return; // If stopping and no tasks, exit
-                        task = std::move(this->tasks.front());
-                        this->tasks.pop();
-                    }
+//                     // Execute the task
+//                     task();
 
-                    activeTasks++; // Increment active tasks before executing
+//                     {
+//                         std::lock_guard<std::mutex> lock(this->completionMutex);
+//                         activeTasks--; // Decrement active tasks after completing
+//                         if (activeTasks == 0 && tasks.empty()) {
+//                             completionCondition.notify_one(); // Notify when all tasks are done
+//                         }
+//                     }
+//                 }
+//             });
+//         }
+//     }
 
-                    // Execute the task
-                    task();
+//     template <class F>
+//     void enqueue(F&& f) {
+//         {
+//             std::unique_lock<std::mutex> lock(queueMutex);
+//             tasks.emplace(std::forward<F>(f));
+//         }
+//         condition.notify_one();
+//     }
 
-                    {
-                        std::lock_guard<std::mutex> lock(this->completionMutex);
-                        activeTasks--; // Decrement active tasks after completing
-                        if (activeTasks == 0 && tasks.empty()) {
-                            completionCondition.notify_one(); // Notify when all tasks are done
-                        }
-                    }
-                }
-            });
-        }
-    }
+//     // Method to wait until all tasks are completed
+//     void waitForAllTasks() {
+//         std::unique_lock<std::mutex> lock(completionMutex);
+//         completionCondition.wait(lock, [this] { return tasks.empty() && activeTasks == 0; });
+//     }
 
-    template <class F>
-    void enqueue(F&& f) {
-        {
-            std::unique_lock<std::mutex> lock(queueMutex);
-            tasks.emplace(std::forward<F>(f));
-        }
-        condition.notify_one();
-    }
+//     ~ThreadPool() {
+//         {
+//             std::unique_lock<std::mutex> lock(queueMutex);
+//             stop = true;
+//         }
+//         condition.notify_all();
+//         for (std::thread& worker : workers) {
+//             if (worker.joinable()) {
+//                 worker.join();
+//             }
+//         }
+//     }
 
-    // Method to wait until all tasks are completed
-    void waitForAllTasks() {
-        std::unique_lock<std::mutex> lock(completionMutex);
-        completionCondition.wait(lock, [this] { return tasks.empty() && activeTasks == 0; });
-    }
+// private:
+//     std::vector<std::thread> workers;
+//     std::queue<std::function<void()>> tasks;
+//     std::mutex queueMutex;
+//     std::condition_variable condition;
+//     bool stop;
 
-    ~ThreadPool() {
-        {
-            std::unique_lock<std::mutex> lock(queueMutex);
-            stop = true;
-        }
-        condition.notify_all();
-        for (std::thread& worker : workers) {
-            if (worker.joinable()) {
-                worker.join();
-            }
-        }
-    }
-
-private:
-    std::vector<std::thread> workers;
-    std::queue<std::function<void()>> tasks;
-    std::mutex queueMutex;
-    std::condition_variable condition;
-    bool stop;
-
-    // Track active tasks and completion
-    std::atomic<int> activeTasks;
-    std::mutex completionMutex;
-    std::condition_variable completionCondition;
-};
-
-
+//     // Track active tasks and completion
+//     std::atomic<int> activeTasks;
+//     std::mutex completionMutex;
+//     std::condition_variable completionCondition;
+// };
 
 struct AreaCheckResult {
     bool initialized;
@@ -815,7 +810,7 @@ private:
     int width;
     int height;
     Coord print_mark;
-    ThreadPool thread_pool = ThreadPool(std::thread::hardware_concurrency());
+    // ThreadPool thread_pool = ThreadPool(std::thread::hardware_concurrency());
 };
 
 PYBIND11_MODULE(area_check, m) {
