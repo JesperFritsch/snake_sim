@@ -241,8 +241,6 @@ class AutoSnakeBase(Snake):
                     print_row.append(f' {chr(c)} ')
             print(''.join(print_row))
 
-
-
     def get_areas(self, s_map, s_coord):
         dirs = [d for d in DIR_MAPPING]
         corners = [coord_op(dirs[i-1], dirs[i%len(dirs)], '+') for i in range(len(dirs))]

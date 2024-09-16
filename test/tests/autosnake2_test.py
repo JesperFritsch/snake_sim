@@ -7,6 +7,7 @@ import numpy as np
 from collections import deque
 from pathlib import Path
 from time import time
+from pprint import pprint
 from snake_sim.utils import coord_op, coord_cmp
 from snake_sim.snakes.autoSnake4 import AutoSnake4
 from snake_sim.snake_env import SnakeEnv, RunData
@@ -24,58 +25,65 @@ def check_areas(snake, coord):
     print(f"Time: {(time() - s_time) * 1000}")
 
 if __name__ == '__main__':
-    GRID_WIDTH = 32
-    GRID_HEIGHT = 32
+    GRID_WIDTH = 10
+    GRID_HEIGHT = 10
     FOOD = 15
     expand_factor = 2
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
     snake_map = 'comps2'
 
-    env.load_png_map(snake_map)
+    # env.load_png_map(snake_map)
     env.init_recorder()
     frame_builder = core.FrameBuilder(env.run_data.to_dict(), expand_factor, offset)
 
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
     test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'A'
+    snake_char = 'B'
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
     snake = AutoSnake4(snake_char, 1, calc_timeout=5000)
+    env.add_snake(snake, (255, 255, 255), (0, 0, 0))
     frameshape = (frame_width, frame_height, 3)
     base_frame = frame_builder.last_frame
 
     with open(test_map_filepath) as test_map_file:
         step_state = eval(test_map_file.read())
-        env.map = env.fresh_map()
-        for snake_data in [step_state[s] for s in step_state if s not in (snake_char, 'food')]:
-            # print(snake_data)
-            core.put_snake_in_frame(base_frame, snake_data, (255, 255, 255), expand_factor=expand_factor, offset=offset)
-        for coord in step_state['food']:
-            expanded = coord_op(coord, (expand_factor, expand_factor), '*')
-            x, y = coord_op(expanded, offset, '+')
-            base_frame[y, x] = env.COLOR_MAPPING[SnakeEnv.FOOD_TILE]
-        for key, coords in step_state.items():
-            if key == snake_char:
-                value = snake.body_value
-            elif key == 'food':
-                value = SnakeEnv.FOOD_TILE
+    pprint(step_state)
+
+    env.map = env.fresh_map()
+    for snake_data in [step_state[s] for s in step_state if s not in (snake_char, 'food')]:
+        # print(snake_data)
+        core.put_snake_in_frame(base_frame, snake_data, (255, 255, 255), expand_factor=expand_factor, offset=offset)
+    for coord in step_state['food']:
+        expanded = coord_op(coord, (expand_factor, expand_factor), '*')
+        x, y = coord_op(expanded, offset, '+')
+        base_frame[y, x] = env.COLOR_MAPPING[SnakeEnv.FOOD_TILE]
+    for key, coords in step_state.items():
+        if key == 'food':
+            value = SnakeEnv.FOOD_TILE
+        else:
+            env.put_coords_on_map([coords[0]], ord(key))
+            value = ord(key.lower())
+            coords = [c for c in coords if c != coords[0]]
+        env.put_coords_on_map(coords, value)
+    for id in step_state:
+        if id != 'food':
+            print("ID: ", id, len(step_state[id]))
+            if id != snake_char:
+                s = AutoSnake4(id, 1)
+                env.add_snake(s, (176, 27, 16), (125, 19, 11))
             else:
-                value = ord('x')
-            env.put_coords_on_map(coords, value)
-    snake_head = step_state.get(snake_char)[0]
-    if snake_head is None:
-        raise ValueError("Snake head not found in test map")
-    env.add_snake(snake, (176, 27, 16), (125, 19, 11))
-    snake.body_coords = deque([tuple(c) for c in step_state.get(snake_char)])
-    snake.length = len(snake.body_coords)
-    snake.coord = snake.body_coords[0]
+                s = env.snakes[id]
+            s.body_coords = deque([tuple(c) for c in step_state.get(id)])
+            s.length = len(s.body_coords)
+            s.coord = s.body_coords[0]
+            s.x, s.y = s.coord
+            s.update_map(env.map)
     env.food.locations = set([tuple(x) for x in step_state['food'] if tuple(x) != snake.coord])
-    snake.x, snake.y = snake.coord
-    snake.update_map(env.map)
     # snake.map[22, 9] = ord('X')
-    snake.print_map(snake.map)
+    # snake.print_map(snake.map)
     # print(snake.body_coords)
     print(snake.length, snake.coord, snake.body_value)
     print(snake.coord)
@@ -87,7 +95,7 @@ if __name__ == '__main__':
     # map_copy[area_coord[1], area_coord[0]] = ord('Q')
     # snake.print_map(map_copy)
     ac = AreaChecker(env.FOOD_TILE, env.FREE_TILE, snake.body_value, env.width, env.height)
-    print(ac)
+    # print(ac)
 
     # pr = cProfile.Profile()
     # pr.enable()
@@ -113,12 +121,12 @@ if __name__ == '__main__':
     # print('area_check: ', (time() - time_e) * 1000)
 
 
-    time_e = time()
-    for _ in range(1000):
-        area = ac.area_check(snake.map, list(snake.body_coords), snake.coord, True)
-    execution_time = (time() - time_e) * 1000
-    print('area_check: ', execution_time)
-    print(area)
+    # time_e = time()
+    # for _ in range(1000):
+    #     area = ac.area_check(snake.map, list(snake.body_coords), snake.coord, True)
+    # execution_time = (time() - time_e) * 1000
+    # print('area_check: ', execution_time)
+    # print(area)
 
 
     # time_e = time()
@@ -157,11 +165,19 @@ if __name__ == '__main__':
 
     pr = cProfile.Profile()
     pr.enable()
+
     # choice = snake.pick_direction()
     # print(f"Choice: {choice}")
     # print(f"snake.coord: {snake.coord}")
     # print(snake)
-    # for tile in snake.valid_tiles(snake.map, snake.coord):
+
+
+    for tile in snake.valid_tiles(snake.map, snake.coord):
+        # s_time = time()
+        # risk = snake.calc_immediate_risk(env.map, tile, 3)
+        # print(f"Time: {(time() - s_time) * 1000}")
+        # print(f"Risk: {risk}")
+
         # planned_path = None
         # planned_path = snake.get_closest_accessible_food_route()
         # # snake.print_map(snake.map)
