@@ -171,6 +171,7 @@ class AutoSnake4(AutoSnakeBase):
         all_area_checks = {}
         all_clear_checks = {}
         additonal_food = {}
+        best_checks = []
         for coord, valids in future_valids.items():
             if not valids:
                 continue
@@ -181,8 +182,8 @@ class AutoSnake4(AutoSnakeBase):
             s_map[y, x] = old_map_value
             clear_checks = [a for a in area_checks if a['is_clear']]
             # print(coord, clear_checks)
+            all_area_checks[coord] = area_checks
             if clear_checks:
-                all_area_checks[coord] = area_checks
                 all_clear_checks[coord] = clear_checks
             additonal_food[coord] = old_map_value == self.env.FOOD_TILE
         # all_checks = [a for check in all_area_checks.values() for a in check]
