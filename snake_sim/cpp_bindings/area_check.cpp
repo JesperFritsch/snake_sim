@@ -18,6 +18,10 @@
 
 namespace py = pybind11;
 
+unsigned int cantor_pairing(int k1, int k2) {
+    return (k1 + k2) * (k1 + k2 + 1) / 2 + k2;
+}
+
 struct Coord {
     int x;
     int y;
@@ -119,6 +123,24 @@ struct AreaCheckResult {
         connected_areas(connected_areas) {}
 };
 
+class AreaNode{
+public:
+    Coord start_coord;
+    int id;
+    int max_index = 0;
+    int tile_count = 0;
+    int food_count = 0;
+    bool has_tail = false;
+    bool explored = false;
+    std::unordered_set<AreaNode*> edge_nodes;
+
+    AreaNode(Coord start_coord, int id) :
+        start_coord(start_coord),
+        id(id) {}
+
+    ~AreaNode() = default;
+};
+
 struct ExploreResults{
     int tile_count = 0;
     int food_count = 0;
@@ -164,22 +186,52 @@ struct AreaStat{
             food_count(food_count) {}
 };
 
-class AreaNode{
-public:
-    Coord start_coord;
-    int id;
-    int max_index = 0;
-    int tile_count = 0;
-    int food_count = 0;
-    bool has_tail = false;
-    bool explored = false;
-    std::unordered_set<AreaNode*> edge_nodes;
 
-    AreaNode(Coord start_coord, int id) :
-        start_coord(start_coord),
-        id(id) {}
+struct SearchStepData{
+    AreaNode* node = nullptr;
+    int total_tile_count = 0;
+    int total_food_count = 0;
+    bool has_opening = false;
+    std::unordered_set<AreaNode*> to_explore_nodes;
+    std::unordered_set<AreaNode*> dead_end_nodes;
 
-    ~AreaNode() = default;
+    // list of pairs (AreaNode*, unsigned int) where the unsigned int is the discounted tile count untill this node is reached again.
+    std::vector<std::pair<AreaNode*, unsigned int>> loop_back_node_counts;
+
+    // pair (AreaNode*, int) where int is the margin to the opening, ex. -10 means that 10 steps are needed before entering this node to reach the opening.
+    std::pair<AreaNode*, int> best_potential_opening_node = std::pair<AreaNode*, int>(nullptr, 0);
+
+    SearchStepData() = default;
+
+    SearchStepData(AreaNode* node) :
+        node(node){
+            for(auto& edge_node : node->edge_nodes){
+                to_explore_nodes.insert(edge_node);
+            }
+        }
+
+    // ~SearchStepData(){
+    //     for (auto& loop_back : loop_back_nodes){
+    //         // only delete the AreaStat pointers, the AreaNode pointers are managed by the AreaGraph
+    //         delete loop_back.second;
+    //     }
+    // }
+};
+
+struct SearchStats{
+    int tile_count;
+    int food_count;
+    int margin;
+
+    SearchStats() :
+        tile_count(0),
+        food_count(0),
+        margin(0) {}
+
+    SearchStats(int tile_count, int food_count, int margin) :
+        tile_count(tile_count),
+        food_count(food_count),
+        margin(margin) {}
 };
 
 class AreaGraph{
@@ -221,6 +273,47 @@ public:
             edge_node->edge_nodes.erase(node);
         }
         nodes.erase(id);
+    }
+
+    AreaCheckResult search_best(int snake_length, bool food_check){
+        bool done = false;
+
+        std::unordered_set<unsigned int> used_edges;
+        std::vector<SearchStepData*> search_stack;
+
+        // initialize the search data for each node
+        std::unordered_map<int, SearchStepData> node_search_data;
+        for (auto& node : nodes){
+            node_search_data[node.first] = SearchStepData(node.second.get());
+        }
+
+        // initialize the search stack with the root node
+        SearchStepData first_step_data = SearchStepData(root);
+        search_stack.push_back(&first_step_data);
+
+        AreaNode* current_node = nullptr;
+
+        while(!search_stack.empty()){
+            SearchStepData* step_data = search_stack.back();
+            current_node = step_data->node;
+
+
+
+            if (!step_data->to_explore_nodes.empty()){
+                // Get the next node to explore
+                AreaNode* next_node = *step_data->to_explore_nodes.begin();
+                step_data->to_explore_nodes.erase(next_node);
+
+                // Get the search data for the next node and add it to the search stack
+                auto next_step_data = &node_search_data[next_node->id];
+                next_step_data->to_explore_nodes.erase(current_node);
+                search_stack.push_back(next_step_data);
+            }
+            else{
+                search_stack.pop_back();
+            }
+        }
+        return AreaCheckResult();
     }
 
     ~AreaGraph() = default;
@@ -612,7 +705,7 @@ public:
                             max_index = body_index;
                         }
                     }
-                    if (n_coord == tail_coord && tile_count != 1) {
+                    if (n_coord == tail_coord && curr_coord != start_coord) {
                         has_tail = true;
                     }
                 }
@@ -667,23 +760,25 @@ public:
             }
         }
 
-        for (auto& node : graph.nodes){
-            std::cout << "Node id: " << node.first << std::endl;
-            std::cout << "  " << "start_coord: " << node.second->start_coord.x << ", " << node.second->start_coord.y << std::endl;
-            std::cout << "  " << "tile_count: " << node.second->tile_count << std::endl;
-            std::cout << "  " << "food_count: " << node.second->food_count << std::endl;
-            std::cout << "  " << "max_index: " << node.second->max_index << std::endl;
-            std::cout << "  " << "has_tail: " << node.second->has_tail << std::endl;
-            std::cout << "  " << "explored: " << node.second->explored << std::endl;
-            std::cout << "  " << "edge_nodes: ";
-            for (auto& edge_node : node.second->edge_nodes){
-                std::cout << "    " << edge_node->id << " ";
-            }
-            std::cout << std::endl;
+        // for (auto& node : graph.nodes){
+        //     std::cout << "Node id: " << node.first << std::endl;
+        //     std::cout << "  " << "start_coord: " << node.second->start_coord.x << ", " << node.second->start_coord.y << std::endl;
+        //     std::cout << "  " << "tile_count: " << node.second->tile_count << std::endl;
+        //     std::cout << "  " << "food_count: " << node.second->food_count << std::endl;
+        //     std::cout << "  " << "max_index: " << node.second->max_index << std::endl;
+        //     std::cout << "  " << "has_tail: " << node.second->has_tail << std::endl;
+        //     std::cout << "  " << "explored: " << node.second->explored << std::endl;
+        //     std::cout << "  " << "edge_nodes: ";
+        //     for (auto& edge_node : node.second->edge_nodes){
+        //         std::cout << "    " << edge_node->id << " ";
+        //     }
+        //     std::cout << std::endl;
 
-        }
+        // }
 
-        return AreaCheckResult();
+        return graph.search_best(body_coords.size(), food_check);
+
+        // return AreaCheckResult();
     }
 
     AreaCheckResult _area_check(
