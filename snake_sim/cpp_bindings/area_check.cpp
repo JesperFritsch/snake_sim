@@ -187,52 +187,48 @@ struct AreaStat{
 };
 
 
+struct LoopBackData{
+    AreaNode* node1;
+    AreaNode* node2;
+    int tile_count;
+    int food_count;
+    int steps = 0;
+
+    LoopBackData() :
+        node1(nullptr),
+        node2(nullptr),
+        tile_count(0),
+        food_count(0) {}
+
+    LoopBackData(AreaNode* node1, AreaNode* node2, int tile_count, int food_count) :
+        node1(node1),
+        node2(node2),
+        tile_count(tile_count),
+        food_count(food_count) {}
+};
+
+
 struct SearchStepData{
     AreaNode* node = nullptr;
-    int total_tile_count = 0;
-    int total_food_count = 0;
+    std::vector<AreaNode*> to_explore_nodes;
+    std::vector<AreaNode*> dead_end_nodes;
+    std::pair<AreaNode*, int> best_margin_node;
+    bool visited = false;
     bool has_opening = false;
-    std::unordered_set<AreaNode*> to_explore_nodes;
-    std::unordered_set<AreaNode*> dead_end_nodes;
 
     // list of pairs (AreaNode*, unsigned int) where the unsigned int is the discounted tile count untill this node is reached again.
-    std::vector<std::pair<AreaNode*, unsigned int>> loop_back_node_counts;
-
-    // pair (AreaNode*, int) where int is the margin to the opening, ex. -10 means that 10 steps are needed before entering this node to reach the opening.
-    std::pair<AreaNode*, int> best_potential_opening_node = std::pair<AreaNode*, int>(nullptr, 0);
+    std::vector<std::unique_ptr<LoopBackData>> loop_backs;
 
     SearchStepData() = default;
 
     SearchStepData(AreaNode* node) :
         node(node){
             for(auto& edge_node : node->edge_nodes){
-                to_explore_nodes.insert(edge_node);
+                to_explore_nodes.push_back(edge_node);
             }
         }
-
-    // ~SearchStepData(){
-    //     for (auto& loop_back : loop_back_nodes){
-    //         // only delete the AreaStat pointers, the AreaNode pointers are managed by the AreaGraph
-    //         delete loop_back.second;
-    //     }
-    // }
 };
 
-struct SearchStats{
-    int tile_count;
-    int food_count;
-    int margin;
-
-    SearchStats() :
-        tile_count(0),
-        food_count(0),
-        margin(0) {}
-
-    SearchStats(int tile_count, int food_count, int margin) :
-        tile_count(tile_count),
-        food_count(food_count),
-        margin(margin) {}
-};
 
 class AreaGraph{
 public:
@@ -276,10 +272,18 @@ public:
     }
 
     AreaCheckResult search_best(int snake_length, bool food_check){
-        bool done = false;
+        bool forward = true;
+        bool went_past_opening = false;
 
-        std::unordered_set<unsigned int> used_edges;
         std::vector<SearchStepData*> search_stack;
+        std::vector<int> total_tile_count_stack;
+        std::vector<int> total_food_count_stack;
+
+        // AreaNode, total_steps in the loop
+        std::vector<std::pair<AreaNode*, std::unique_ptr<LoopBackData>>> loop_back_track;
+
+        SearchStepData* prev_step = nullptr;
+        AreaCheckResult result;
 
         // initialize the search data for each node
         std::unordered_map<int, SearchStepData> node_search_data;
@@ -294,26 +298,140 @@ public:
         AreaNode* current_node = nullptr;
 
         while(!search_stack.empty()){
-            SearchStepData* step_data = search_stack.back();
-            current_node = step_data->node;
 
+            SearchStepData* step_data = search_stack.back();
+            step_data->visited = true;
+            current_node = step_data->node;
+            int margin_here = INT_MIN;
+            int current_tile_count = current_node->tile_count;
+            int current_food_count = current_node->food_count;
+
+            if (!step_data->loop_backs.empty()){
+                std::sort(step_data->loop_backs.begin(), step_data->loop_backs.end(), [](const std::unique_ptr<LoopBackData>& a, const std::unique_ptr<LoopBackData>& b){
+                    return a->steps > b->steps;
+                });
+                for(auto& loop_data : step_data->loop_backs){
+                    current_tile_count += loop_data->tile_count;
+                    current_food_count += loop_data->food_count;
+                }
+            }
+
+            int current_max_index = current_node->max_index;
+            int total_tile_count_here = current_tile_count + (total_tile_count_stack.empty() ? 0 : total_tile_count_stack.back());
+            int total_food_count_here = current_food_count + (total_food_count_stack.empty() ? 0 : total_food_count_stack.back());
+
+
+
+
+
+
+
+            if (forward){
+                if(current_node->has_tail){
+                    result.tile_count = total_food_count_stack.back() + current_food_count;
+                    result.food_count = total_tile_count_stack.back() + current_tile_count;
+                    result.has_tail = current_node->has_tail;
+                    result.max_index = current_node->max_index;
+                    result.margin = snake_length;
+                    break;
+                }
+            }
+
+            // If max index is larger than 0 then all of the previously can be used in the calculation
+            if (current_node->max_index > 0){
+                step_data->has_opening = true;
+                int total_steps_here = total_tile_count_here - total_food_count_here;
+                int needed_step = snake_length - current_node->max_index;
+                margin_here = total_steps_here - needed_step;
+                if (margin_here >= total_food_count_here){
+                    result.food_count = total_food_count_here;
+                    result.tile_count = total_tile_count_here;
+                    result.has_tail = current_node->has_tail;
+                    result.max_index = current_max_index;
+                    result.margin = margin_here;
+                    break;
+                }
+            }
+            else{
+                int total_steps = current_tile_count - current_food_count;
+                if (total_steps >= snake_length + current_food_count + 1){
+                    result.food_count = current_food_count;
+                    result.tile_count = current_tile_count;
+                    result.has_tail = current_node->has_tail;
+                    result.max_index = current_max_index;
+                    result.margin = total_steps - snake_length;
+                    break;
+                }
+            }
 
 
             if (!step_data->to_explore_nodes.empty()){
+                forward = true;
                 // Get the next node to explore
-                AreaNode* next_node = *step_data->to_explore_nodes.begin();
-                step_data->to_explore_nodes.erase(next_node);
-
+                AreaNode* next_node = step_data->to_explore_nodes.back();
+                step_data->to_explore_nodes.pop_back();
                 // Get the search data for the next node and add it to the search stack
                 auto next_step_data = &node_search_data[next_node->id];
-                next_step_data->to_explore_nodes.erase(current_node);
+                // Remove the current node from the next node's to explore list
+                auto new_end = std::remove(next_step_data->to_explore_nodes.begin(), next_step_data->to_explore_nodes.end(), current_node);
+                next_step_data->to_explore_nodes.erase(new_end, next_step_data->to_explore_nodes.end());
+
+                if(next_step_data->visited){
+                    auto loop_back_data = std::make_unique<LoopBackData>(current_node, nullptr, current_tile_count, current_food_count);
+                    loop_back_track.push_back(std::make_pair(next_node, std::move(loop_back_data)));
+                    continue;
+                }
+
+
+                int prev_x = search_stack[search_stack.size() - 2]->node->start_coord.x;
+                int prev_y = search_stack[search_stack.size() - 2]->node->start_coord.y;
+                int next_x = next_node->start_coord.x;
+                int next_y = next_node->start_coord.y;
+                int delta_x = next_x - prev_x;
+                int delta_y = next_y - prev_y;
+
+                // Check if path goes through a corner, if so then only extend the tile count stack by 1
+                if ((std::abs(delta_x) == 1 && std::abs(delta_y) == 1) && search_stack.size() >= 2){
+                    total_tile_count_stack.push_back(total_tile_count_here - current_tile_count + 1);
+                }
+                else{
+                    total_food_count_stack.push_back(total_food_count_here);
+                    total_tile_count_stack.push_back(total_tile_count_here);
+                }
+                went_past_opening = step_data->has_opening;
                 search_stack.push_back(next_step_data);
             }
             else{
+                forward = false;
+                went_past_opening = false;
+                prev_step = step_data;
                 search_stack.pop_back();
+                auto next_step_data = search_stack.back();
+                if (step_data->has_opening){
+                    next_step_data->has_opening = true;
+                }
+                else{
+                    next_step_data->dead_end_nodes.push_back(current_node);
+                }
+                if (!loop_back_track.empty()){
+                    for(auto it = loop_back_track.begin(); it != loop_back_track.end();){
+                        it->second->tile_count += current_tile_count;
+                        it->second->food_count += current_food_count;
+                    }
+                    auto it = std::find_if(loop_back_track.begin(), loop_back_track.end(), [current_node, next_step_data](const std::pair<AreaNode*, std::unique_ptr<LoopBackData>>& loop_data){
+                        return loop_data.first == next_step_data->node;
+                    });
+                    if (it != loop_back_track.end()){
+                        auto loop_data = std::move(it->second);
+                        loop_data->node2 = current_node;
+                        loop_data->steps = loop_data->tile_count - loop_data->food_count;
+                        next_step_data->loop_backs.push_back(std::move(loop_data));
+                        loop_back_track.erase(it);
+                    }
+                }
             }
         }
-        return AreaCheckResult();
+        return result;
     }
 
     ~AreaGraph() = default;
@@ -728,7 +846,9 @@ public:
         AreaGraph graph = AreaGraph(start_coord);
         std::deque<AreaNode*> nodes_to_explore;
         nodes_to_explore.push_back(graph.root);
+        AreaCheckResult best_result;
         while(!nodes_to_explore.empty()){
+            // std::cout << "Exploring area" << std::endl;
             auto current_node = nodes_to_explore.front();
             nodes_to_explore.pop_front();
             if (current_node->explored){
@@ -758,25 +878,25 @@ public:
                     graph.connect_nodes(current_node->id, connected_area);
                 }
             }
+            if (!food_check){
+                AreaCheckResult check_result = graph.search_best(body_coords.size(), food_check);
+                if (check_result.margin >= check_result.food_count){
+                    return check_result;
+                }
+                else{
+                    if (check_result.margin > best_result.margin){
+                        best_result = check_result;
+                    }
+                }
+            }
+        }
+        if (best_result.initialized){
+            return best_result;
+        }
+        else{
+            return graph.search_best(body_coords.size(), food_check);
         }
 
-        // for (auto& node : graph.nodes){
-        //     std::cout << "Node id: " << node.first << std::endl;
-        //     std::cout << "  " << "start_coord: " << node.second->start_coord.x << ", " << node.second->start_coord.y << std::endl;
-        //     std::cout << "  " << "tile_count: " << node.second->tile_count << std::endl;
-        //     std::cout << "  " << "food_count: " << node.second->food_count << std::endl;
-        //     std::cout << "  " << "max_index: " << node.second->max_index << std::endl;
-        //     std::cout << "  " << "has_tail: " << node.second->has_tail << std::endl;
-        //     std::cout << "  " << "explored: " << node.second->explored << std::endl;
-        //     std::cout << "  " << "edge_nodes: ";
-        //     for (auto& edge_node : node.second->edge_nodes){
-        //         std::cout << "    " << edge_node->id << " ";
-        //     }
-        //     std::cout << std::endl;
-
-        // }
-
-        return graph.search_best(body_coords.size(), food_check);
 
         // return AreaCheckResult();
     }
