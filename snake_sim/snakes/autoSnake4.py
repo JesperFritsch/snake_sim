@@ -182,20 +182,20 @@ class AutoSnake4(AutoSnakeBase):
                 all_area_checks[coord] = area_checks
                 all_clear_checks[coord] = clear_checks
             additonal_food[coord] = old_map_value == self.env.FOOD_TILE
-        all_checks = [a for check in all_area_checks.values() for a in check]
-        combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
+        # all_checks = [a for check in all_area_checks.values() for a in check]
+        # combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
         # pprint(all_area_checks)
         # print("combine food: ", combine_food)
-        combined_food = {}
-        for a in [a for a in all_checks]:
-            combined_food.update(a['food_coords'])
+        # combined_food = {}
+        # for a in [a for a in all_checks]:
+        #     combined_food.update(a['food_coords'])
         for coord, area_checks in all_clear_checks.items():
             # print("coord: ", coord)
             # print("area checks: ", area_checks)
-            if combine_food:
-                most_food = len(combined_food)
-            else:
-                most_food = max(area_checks, key=lambda x: x['food_count'])['food_count']
+            # if combine_food:
+            #     most_food = len(combined_food)
+            # else:
+            most_food = max(area_checks, key=lambda x: x['food_count'])['food_count']
             # print("most food: ", most_food)
             # print("additonal food: ", additonal_food)
             food_map[coord] = most_food + (1 if additonal_food[coord] else 0)
@@ -233,7 +233,7 @@ class AutoSnake4(AutoSnakeBase):
             best_food_tile, best_food_value = best_food_pair
             planned_tile_food_value = food_map.get(planned_tile, 0)
             # print(planned_tile is None, (planned_tile_food_value < best_food_value, not self.head_in_open()))
-            if planned_tile is None or planned_tile_food_value < best_food_value:
+            if planned_tile is None: # or planned_tile_food_value < best_food_value:
                 # print("food route is not best")
                 planned_tile = best_food_tile
                 planned_route = self.route

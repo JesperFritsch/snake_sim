@@ -31,9 +31,10 @@ if __name__ == '__main__':
     expand_factor = 2
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    snake_map = 'tricky'
-
+    snake_map = 'comps2'
+    test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap3.png"
     env.load_png_map(snake_map)
+    # env.load_png_map(test_map)
     env.init_recorder()
     frame_builder = core.FrameBuilder(env.run_data.to_dict(), expand_factor, offset)
 
@@ -94,12 +95,13 @@ if __name__ == '__main__':
     ac = AreaChecker(env.FOOD_TILE, env.FREE_TILE, snake.body_value, env.width, env.height)
 
 
-    time_e = time()
-    for _ in range(1):
-        area = ac.area_check(snake.map, list(snake.body_coords), (25, 22), True)
-    execution_time = (time() - time_e) * 1000
-    print('area_check: ', execution_time)
-    print(area)
+    # time_e = time()
+    # print(snake.length)
+    # for _ in range(1000):
+    #     area = ac.area_check(snake.map, list(snake.body_coords), (25, 20), False)
+    # execution_time = (time() - time_e) * 1000
+    # print('area_check: ', execution_time)
+    # print(area)
 
     pr = cProfile.Profile()
     pr.enable()
@@ -110,26 +112,26 @@ if __name__ == '__main__':
     # print(snake)
 
 
-    # for tile in snake.valid_tiles(snake.map, snake.coord):
-    #     # s_time = time()
-    #     # risk = snake.calc_immediate_risk(env.map, tile, 3)
-    #     # print(f"Time: {(time() - s_time) * 1000}")
-    #     # print(f"Risk: {risk}")
+    for tile in snake.valid_tiles(snake.map, snake.coord):
+        # s_time = time()
+        # risk = snake.calc_immediate_risk(env.map, tile, 3)
+        # print(f"Time: {(time() - s_time) * 1000}")
+        # print(f"Risk: {risk}")
 
-    #     # planned_path = None
-    #     # planned_path = snake.get_closest_accessible_food_route()
-    #     # # snake.print_map(snake.map)
-    #     # if planned_path:
-    #     #     snake.route = planned_path
-    #     #     planned_path.pop()
-    #     #     tile = planned_path.pop()
-    #     planned_path = None
-    #     # s_time = time()
-    #     # option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
-    #     # print('free_path: ', option['free_path'])
-    #     # # print(f"Time: {(time() - s_time) * 1000}")
-    #     area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile, False)
-    #     print(f"area_check for tile {tile}: {area_check}")
+        # planned_path = None
+        # planned_path = snake.get_closest_accessible_food_route()
+        # # snake.print_map(snake.map)
+        # if planned_path:
+        #     snake.route = planned_path
+        #     planned_path.pop()
+        #     tile = planned_path.pop()
+        planned_path = None
+        s_time = time()
+        # option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
+        # print('free_path: ', option['free_path'])
+        area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile, True)
+        print(f"Time: {(time() - s_time) * 1000}")
+        print(f"area_check for tile {tile}: {area_check}")
     # time_e = time()
     # area = ac.area_check(snake.map, list(snake.body_coords), area_coord, True)
     # execution_time = (time() - time_e) * 1000
