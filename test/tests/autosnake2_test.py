@@ -95,8 +95,8 @@ if __name__ == '__main__':
 
 
     time_e = time()
-    for _ in range(1000):
-        area = ac.area_check(snake.map, list(snake.body_coords), snake.coord, False)
+    for _ in range(1):
+        area = ac.area_check(snake.map, list(snake.body_coords), (25, 22), True)
     execution_time = (time() - time_e) * 1000
     print('area_check: ', execution_time)
     print(area)
