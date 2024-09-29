@@ -93,7 +93,7 @@ struct AreaCheckResult {
         max_index(0),
         start_coord(Coord()),
         needed_steps(0),
-        margin(0) {}
+        margin(INT_MIN) {}
     AreaCheckResult(bool is_clear,
                     int prev_tile_count,
                     int prev_food_count,
@@ -130,6 +130,9 @@ public:
     int max_index = 0;
     int tile_count = 0;
     int food_count = 0;
+
+    // one_dim is true if the area is a line that the snake can not turn around in.
+    bool is_one_dim = false;
     bool has_tail = false;
     bool explored = false;
     std::unordered_set<AreaNode*> edge_nodes;
@@ -188,23 +191,35 @@ struct AreaStat{
 
 
 struct LoopBackData{
-    AreaNode* node1;
-    AreaNode* node2;
     int tile_count;
     int food_count;
     int steps = 0;
+    std::vector<AreaNode*> nodes;
 
     LoopBackData() :
-        node1(nullptr),
-        node2(nullptr),
         tile_count(0),
         food_count(0) {}
 
-    LoopBackData(AreaNode* node1, AreaNode* node2, int tile_count, int food_count) :
-        node1(node1),
-        node2(node2),
+    LoopBackData(int tile_count, int food_count) :
         tile_count(tile_count),
         food_count(food_count) {}
+
+    void add_node(AreaNode* node){
+        nodes.push_back(node);
+    }
+
+    bool can_combine(LoopBackData* other){
+        bool res = true;
+        for(auto node : other->nodes){
+            if (std::find(nodes.begin(), nodes.end(), node) != nodes.end()){
+                if (node->is_one_dim){
+                    res = false;
+                    break;
+                }
+            }
+        }
+        return res;
+    }
 };
 
 
@@ -212,9 +227,14 @@ struct SearchStepData{
     AreaNode* node = nullptr;
     std::vector<AreaNode*> to_explore_nodes;
     std::vector<AreaNode*> dead_end_nodes;
-    std::pair<AreaNode*, int> best_margin_node;
+
+    // node*, needed_steps
+    std::vector<std::pair<AreaNode*, int>> nodes_with_openings;
+    unsigned int food_to_best_opening = 0;
+    unsigned int tiles_to_best_opening = 0;
     bool visited = false;
-    bool has_opening = false;
+    int needed_steps;
+    bool has_opening;
 
     // list of pairs (AreaNode*, unsigned int) where the unsigned int is the discounted tile count untill this node is reached again.
     std::vector<std::unique_ptr<LoopBackData>> loop_backs;
@@ -222,10 +242,12 @@ struct SearchStepData{
     SearchStepData() = default;
 
     SearchStepData(AreaNode* node) :
+        needed_steps(0),
         node(node){
             for(auto& edge_node : node->edge_nodes){
                 to_explore_nodes.push_back(edge_node);
             }
+            has_opening = node->max_index > 0;
         }
 };
 
@@ -233,15 +255,19 @@ struct SearchStepData{
 class AreaGraph{
 public:
     int next_id = 0;
+    int snake_length = 0;
     AreaNode* root = nullptr;
     std::unordered_map<int, std::unique_ptr<AreaNode>> nodes;
+    std::vector<int> new_nodes;
 
     AreaGraph(){}
 
-    AreaGraph(Coord start_coord){
+    AreaGraph(Coord start_coord, int snake_len){
+        snake_length = snake_len;
         auto root_node = std::make_unique<AreaNode>(start_coord, next_id);
         root = root_node.get();
         nodes[next_id] = std::move(root_node);
+        new_nodes.push_back(next_id);
         next_id++;
     }
 
@@ -259,6 +285,7 @@ public:
         auto new_node_ptr = new_node.get();
         this->connect_nodes(edge_node, new_node.get());
         nodes[next_id] = std::move(new_node);
+        new_nodes.push_back(next_id);
         next_id++;
         return new_node_ptr;
     }
@@ -271,9 +298,72 @@ public:
         nodes.erase(id);
     }
 
+    std::vector<LoopBackData*> get_valid_loop_backs(std::vector<AreaNode*> discard_nodes, SearchStepData* current_step_data){
+        std::vector<LoopBackData*> loops;
+        if (!current_step_data->loop_backs.empty()){
+            std::sort(current_step_data->loop_backs.begin(), current_step_data->loop_backs.end(), [](const std::unique_ptr<LoopBackData>& a, const std::unique_ptr<LoopBackData>& b){
+                return a->steps > b->steps;
+            });
+            for(const auto& loop_data_uni : current_step_data->loop_backs){
+                auto loop_data = loop_data_uni.get();
+                if (std::find_if(discard_nodes.begin(), discard_nodes.end(), [loop_data](AreaNode* node){return node == loop_data->nodes.back() || node == loop_data->nodes.front();}) != discard_nodes.end()){
+                    continue;
+                }
+                auto it = std::find_if(loops.begin(), loops.end(), [&loop_data](LoopBackData* loop){
+                    return !loop->can_combine(loop_data);
+                });
+                if (it == loops.end()){
+                    loops.push_back(loop_data);
+                }
+            }
+        }
+        return loops;
+    }
+
+    std::vector<AreaNode*> get_all_nodes_in_loop(LoopBackData* loop, std::unordered_map<int, SearchStepData>& node_search_data){
+        std::unordered_set<AreaNode*> all_nodes;
+        AreaNode* prev_node = nullptr;
+        for (auto it = loop->nodes.begin(); it != loop->nodes.end(); ++it) {
+            auto node = *it;
+            auto search_data = &node_search_data[loop->nodes.front()->id];
+            AreaNode* next_node = nullptr;
+
+            // Check if there is a next element
+            if (std::next(it) != loop->nodes.end()) {
+                next_node = *std::next(it);
+                // You can now use next_node as needed
+            }
+            std::vector<AreaNode*> discarded = {prev_node, next_node};
+
+            auto sub_loops = get_valid_loop_backs(discarded, search_data);
+            for (auto sub_loop : sub_loops) {
+                auto sub_nodes = get_all_nodes_in_loop(sub_loop, node_search_data);
+                all_nodes.insert(sub_nodes.begin(), sub_nodes.end());
+            }
+            all_nodes.insert(node);
+            prev_node = node;
+        }
+
+        return std::vector<AreaNode*>(all_nodes.begin(), all_nodes.end());
+    }
+
+    std::pair<unsigned int, unsigned int> get_total_extra_tiles(std::vector<LoopBackData*> loop_backs, std::unordered_map<int, SearchStepData>& node_search_data){
+        unsigned int extra_tiles = 0;
+        unsigned int extra_food = 0;
+        std::vector<AreaNode*> all_nodes;
+        for (auto loop_back : loop_backs){
+            auto nodes = get_all_nodes_in_loop(loop_back, node_search_data);
+            all_nodes.insert(all_nodes.end(), nodes.begin(), nodes.end());
+        }
+        for (auto node : all_nodes){
+            extra_tiles += node->tile_count;
+            extra_food += node->food_count;
+        }
+        return std::make_pair(extra_tiles, extra_food);
+    }
+
     AreaCheckResult search_best(int snake_length, bool food_check){
         bool forward = true;
-        bool went_past_opening = false;
 
         std::vector<SearchStepData*> search_stack;
         std::vector<int> total_tile_count_stack;
@@ -288,88 +378,184 @@ public:
         // initialize the search data for each node
         std::unordered_map<int, SearchStepData> node_search_data;
         for (auto& node : nodes){
-            node_search_data[node.first] = SearchStepData(node.second.get());
+            // std::cout << "setting search data for node: " << node.first << std::endl;
+            // std::cout << "node: " << node.second.get()->id << std::endl;
+            node_search_data[node.first] = std::move(SearchStepData(node.second.get()));
         }
+        // std::cout << "Root node: " << root->id << std::endl;
+        // std::cout << "Root node start coord: (" << root->start_coord.x << ", " << root->start_coord.y << ")" << std::endl;
 
         // initialize the search stack with the root node
-        SearchStepData first_step_data = SearchStepData(root);
-        search_stack.push_back(&first_step_data);
+        // SearchStepData first_step_data = SearchStepData(root, snake_length);
+        search_stack.push_back(&node_search_data[root->id]);
+
+        // std::cout << "stack size after root: " << search_stack.size() << std::endl;
+        // std::cout << "First node to explore: " << search_stack.back()->node->id << std::endl;
 
         AreaNode* current_node = nullptr;
 
         while(!search_stack.empty()){
 
             SearchStepData* step_data = search_stack.back();
-            step_data->visited = true;
             current_node = step_data->node;
-            int margin_here = INT_MIN;
+            // std::cout << "Checking new node:" << current_node->id << " (" << current_node->start_coord.x << ", " << current_node->start_coord.y << ")" << std::endl;
+            int best_needed_steps_here = INT_MAX;
             int current_tile_count = current_node->tile_count;
             int current_food_count = current_node->food_count;
-
-            if (!step_data->loop_backs.empty()){
-                std::sort(step_data->loop_backs.begin(), step_data->loop_backs.end(), [](const std::unique_ptr<LoopBackData>& a, const std::unique_ptr<LoopBackData>& b){
-                    return a->steps > b->steps;
-                });
-                for(auto& loop_data : step_data->loop_backs){
-                    current_tile_count += loop_data->tile_count;
-                    current_food_count += loop_data->food_count;
-                }
-            }
-
-            int current_max_index = current_node->max_index;
             int total_tile_count_here = current_tile_count + (total_tile_count_stack.empty() ? 0 : total_tile_count_stack.back());
             int total_food_count_here = current_food_count + (total_food_count_stack.empty() ? 0 : total_food_count_stack.back());
-
-
-
-
-
-
-
+            // std::cout << "Total tile count here: " << total_tile_count_here << std::endl;
+            // std::cout << "Total food count here: " << total_food_count_here << std::endl;
+            std::vector<AreaNode*> discarded;
+            auto all_valid_loop_backs = get_valid_loop_backs(discarded, step_data);
+            int all_extra_tiles = 0;
+            int all_extra_food = 0;
+            for (auto loop_back : all_valid_loop_backs){
+                all_extra_tiles += loop_back->tile_count;
+                all_extra_food += loop_back->food_count;
+            }
+            std::cout << "\nNEW ITERATION: " << (forward ? "--> FORWARD" : "<-- BACKWARDS") << std::endl;
+            std::cout << "Current node: " << current_node->id << std::endl;
+            std::cout << "Current node start coord: (" << current_node->start_coord.x << ", " << current_node->start_coord.y << ")" << std::endl;
+            std::cout << "Current tile count: " << current_tile_count << std::endl;
+            std::cout << "Current food count: " << current_food_count << std::endl;
+            std::cout << "Total tile count here: " << total_tile_count_here << std::endl;
+            std::cout << "Total food count here: " << total_food_count_here << std::endl;
+            std::cout << "All loop backs: ";
+            for (auto& loop : all_valid_loop_backs){
+                std::cout << "(";
+                std::cout << "(" << loop->nodes.front()->start_coord.x << ", " << loop->nodes.front()->start_coord.y << ") -> ";
+                std::cout << "(" << loop->nodes.back()->start_coord.x << ", " << loop->nodes.back()->start_coord.y << ")";
+                std::cout << ", " << loop->steps << ") ";
+            }
+            std::cout << std::endl;
+            std::cout << "All extra tiles: " << all_extra_tiles << std::endl;
+            std::cout << "All extra food: " << all_extra_food << std::endl;
+            std::cout << "Tracking loops: ";
+            for (auto& loop : loop_back_track){
+                std::cout << "(" << loop.first->id << ", " << loop.second->steps << ") ";
+            }
+            std::cout << std::endl;
             if (forward){
+                step_data->visited = true;
                 if(current_node->has_tail){
-                    result.tile_count = total_food_count_stack.back() + current_food_count;
-                    result.food_count = total_tile_count_stack.back() + current_tile_count;
+                    result.is_clear = true;
+                    result.tile_count = total_tile_count_here;
+                    result.food_count = total_food_count_here;
                     result.has_tail = current_node->has_tail;
-                    result.max_index = current_node->max_index;
                     result.margin = snake_length;
                     break;
                 }
             }
+            if (step_data->has_opening){
+                std::cout << "Has opening" << std::endl;
+                best_needed_steps_here = snake_length - current_node->max_index;
+                int best_needed_steps_node = INT_MAX;
+                std::cout << "Best needed steps here: " << best_needed_steps_here << std::endl;
+                auto min_needed_steps = std::min_element(step_data->nodes_with_openings.begin(), step_data->nodes_with_openings.end(), [](const std::pair<AreaNode*, int>& a, const std::pair<AreaNode*, int>& b){
+                    return a.second < b.second;
+                });
+                if (min_needed_steps != step_data->nodes_with_openings.end()){
+                    best_needed_steps_node = min_needed_steps->second;
+                }
+                std::cout << "Best needed steps node: " << best_needed_steps_node << std::endl;
+                std::vector<LoopBackData*> valid_loop_backs;
+                int curr_tiles;
+                int curr_food;
+                int all_food;
+                int all_tiles;
+                int food_to_opening;
+                int total_steps;
+                int margin;
+                std::pair<unsigned int, unsigned int> extra_tiles;
+                if (best_needed_steps_node < best_needed_steps_here){
+                    best_needed_steps_here = best_needed_steps_node;
+                    std::cout << "Node is best" << std::endl;
+                    int needed_steps_before_entering;
+                    AreaNode* opening_node;
+                    SearchStepData* opening_search_data;
+                    std::vector<AreaNode*> discarded;
+                    for (auto node_with_opening : step_data->nodes_with_openings){
+                        discarded.clear();
+                        needed_steps_before_entering = node_with_opening.second;
+                        opening_node = node_with_opening.first;
+                        discarded.push_back(opening_node);
+                        opening_search_data = &node_search_data[opening_node->id];
+                        valid_loop_backs = get_valid_loop_backs(discarded, step_data);
+                        int extra_tiles = 0;
+                        int extra_food = 0;
+                        for (auto loop_back : valid_loop_backs){
+                            extra_tiles += loop_back->tile_count;
+                            extra_food += loop_back->food_count;
+                        }
+                        curr_tiles = total_tile_count_here + extra_tiles;
+                        curr_food = total_food_count_here + extra_food;
+                        food_to_opening = opening_search_data->food_to_best_opening;
+                        all_food = curr_food + food_to_opening;
+                        all_tiles = curr_tiles + opening_search_data->tiles_to_best_opening;
+                        total_steps = curr_tiles - curr_food;
+                        margin = total_steps - needed_steps_before_entering;
 
-            // If max index is larger than 0 then all of the previously can be used in the calculation
-            if (current_node->max_index > 0){
-                step_data->has_opening = true;
-                int total_steps_here = total_tile_count_here - total_food_count_here;
-                int needed_step = snake_length - current_node->max_index;
-                margin_here = total_steps_here - needed_step;
-                if (margin_here >= total_food_count_here){
-                    result.food_count = total_food_count_here;
-                    result.tile_count = total_tile_count_here;
-                    result.has_tail = current_node->has_tail;
-                    result.max_index = current_max_index;
-                    result.margin = margin_here;
-                    break;
+                        if (margin > result.margin){
+                            result.food_count = all_food;
+                            result.tile_count = all_tiles;
+                            result.margin = margin;
+                        }
+                        if (result.margin >= 0){
+                            result.is_clear = true;
+                        }
+                        if (result.margin >= all_food){
+                            break;
+                        }
+                    }
+                }
+                else{
+                    std::cout << "Local is best" << std::endl;
+                    curr_tiles = total_tile_count_here + all_extra_tiles;
+                    curr_food = total_food_count_here + all_extra_food;
+                    all_food = curr_food;
+                    all_tiles = curr_tiles;
+                    total_steps = curr_tiles - curr_food;
+                    margin = total_steps - best_needed_steps_here;
+                    if (margin > result.margin){
+                        result.food_count = all_food;
+                        result.tile_count = all_tiles;
+                        result.margin = margin;
+                    }
+                    if (result.margin >= 0){
+                        result.is_clear = true;
+                    }
+                    if (result.margin >= all_food){
+                        break;
+                    }
                 }
             }
             else{
-                int total_steps = current_tile_count - current_food_count;
-                if (total_steps >= snake_length + current_food_count + 1){
-                    result.food_count = current_food_count;
-                    result.tile_count = current_tile_count;
-                    result.has_tail = current_node->has_tail;
-                    result.max_index = current_max_index;
-                    result.margin = total_steps - snake_length;
+                int curr_tiles = current_tile_count + all_extra_tiles;
+                int curr_food = current_food_count + all_extra_food;
+                int total_steps = curr_tiles - curr_food;
+                int margin = total_steps - (snake_length + 1) ;
+                std::cout << "No opening" << std::endl;
+                if (margin > result.margin){
+                    result.food_count = curr_food;
+                    result.tile_count = curr_tiles;
+                    result.margin = margin;
+                }
+                if (result.margin >= 0){
+                    result.is_clear = true;
+                }
+                if (result.margin >= curr_food){
                     break;
                 }
             }
 
-
             if (!step_data->to_explore_nodes.empty()){
+                // std::cout << "Forward to next node" << std::endl;
                 forward = true;
                 // Get the next node to explore
                 AreaNode* next_node = step_data->to_explore_nodes.back();
                 step_data->to_explore_nodes.pop_back();
+                // std::cout << "next node ID: " << next_node->id << std::endl;
                 // Get the search data for the next node and add it to the search stack
                 auto next_step_data = &node_search_data[next_node->id];
                 // Remove the current node from the next node's to explore list
@@ -377,60 +563,103 @@ public:
                 next_step_data->to_explore_nodes.erase(new_end, next_step_data->to_explore_nodes.end());
 
                 if(next_step_data->visited){
-                    auto loop_back_data = std::make_unique<LoopBackData>(current_node, nullptr, current_tile_count, current_food_count);
+                    auto loop_back_data = std::make_unique<LoopBackData>();
+                    loop_back_data->add_node(current_node);
                     loop_back_track.push_back(std::make_pair(next_node, std::move(loop_back_data)));
                     continue;
                 }
 
+                if (search_stack.size() >= 2){
+                    // Check corner
+                    int prev_x = search_stack[search_stack.size() - 2]->node->start_coord.x;
+                    int prev_y = search_stack[search_stack.size() - 2]->node->start_coord.y;
+                    int next_x = next_node->start_coord.x;
+                    int next_y = next_node->start_coord.y;
+                    int delta_x = next_x - prev_x;
+                    int delta_y = next_y - prev_y;
 
-                int prev_x = search_stack[search_stack.size() - 2]->node->start_coord.x;
-                int prev_y = search_stack[search_stack.size() - 2]->node->start_coord.y;
-                int next_x = next_node->start_coord.x;
-                int next_y = next_node->start_coord.y;
-                int delta_x = next_x - prev_x;
-                int delta_y = next_y - prev_y;
-
-                // Check if path goes through a corner, if so then only extend the tile count stack by 1
-                if ((std::abs(delta_x) == 1 && std::abs(delta_y) == 1) && search_stack.size() >= 2){
-                    total_tile_count_stack.push_back(total_tile_count_here - current_tile_count + 1);
+                    // Check if path goes through a corner, if so then only extend the tile count stack by 1
+                    // if we are currently on node 2
+                    // going like this 1 -> 2 -> 3
+                    /*
+                        x 3 x
+                        1 2 2
+                        x 2 2
+                    */
+                    if (std::abs(delta_x) == 1 && std::abs(delta_y) == 1){
+                        total_tile_count_stack.push_back(total_tile_count_here - current_tile_count + 1);
+                    }
+                    else{
+                        total_food_count_stack.push_back(total_food_count_here);
+                        total_tile_count_stack.push_back(total_tile_count_here);
+                    }
                 }
                 else{
                     total_food_count_stack.push_back(total_food_count_here);
                     total_tile_count_stack.push_back(total_tile_count_here);
                 }
-                went_past_opening = step_data->has_opening;
+                // End check corner
                 search_stack.push_back(next_step_data);
+                // std::cout << "Pushed to stack: (" << next_step_data->node->start_coord.x << ", " << next_step_data->node->start_coord.y << std::endl;
             }
             else{
                 forward = false;
-                went_past_opening = false;
-                prev_step = step_data;
                 search_stack.pop_back();
+                total_tile_count_stack.pop_back();
+                total_food_count_stack.pop_back();
+                if (search_stack.empty()){
+                    break;
+                }
                 auto next_step_data = search_stack.back();
+
+                // If this step does not have an opening, then we know that it is a dead end, becasue we would have returned if it was not
                 if (step_data->has_opening){
                     next_step_data->has_opening = true;
+                    int needed_steps = best_needed_steps_here;
+                    int total_food = current_food_count + all_extra_food;
+                    int total_tiles = current_tile_count + all_extra_tiles;
+                    int total_steps = total_tiles - total_food;
+                    needed_steps -= total_steps;
+                    next_step_data->nodes_with_openings.push_back(std::make_pair(current_node, needed_steps));
+                    next_step_data->food_to_best_opening += total_food;
+                    next_step_data->tiles_to_best_opening += total_tiles;
                 }
                 else{
                     next_step_data->dead_end_nodes.push_back(current_node);
                 }
+
                 if (!loop_back_track.empty()){
-                    for(auto it = loop_back_track.begin(); it != loop_back_track.end();){
-                        it->second->tile_count += current_tile_count;
-                        it->second->food_count += current_food_count;
+                    step_data->to_explore_nodes.push_back(next_step_data->node);
+                    step_data->visited = false;
+                    // for every loop back that we are currently tracking, we need to add this nodes tile count to the loop back
+                    for(auto it = loop_back_track.begin(); it != loop_back_track.end(); ++it){
+                        it->second->add_node(current_node);
                     }
+                    // std::cout << "Filling loop back tracking" << std::endl;
+
                     auto it = std::find_if(loop_back_track.begin(), loop_back_track.end(), [current_node, next_step_data](const std::pair<AreaNode*, std::unique_ptr<LoopBackData>>& loop_data){
                         return loop_data.first == next_step_data->node;
                     });
+                    // std::cout << "checking if loop back is found" << std::endl;
+
                     if (it != loop_back_track.end()){
                         auto loop_data = std::move(it->second);
-                        loop_data->node2 = current_node;
+                        std::vector<LoopBackData*> loops = {loop_data.get()};
+                        auto tile_count = get_total_extra_tiles(loops, node_search_data);
+                        loop_data->tile_count = tile_count.first;
+                        loop_data->food_count = tile_count.second;
                         loop_data->steps = loop_data->tile_count - loop_data->food_count;
                         next_step_data->loop_backs.push_back(std::move(loop_data));
                         loop_back_track.erase(it);
                     }
+
                 }
             }
+            std::cout << "Stack size: " << search_stack.size() << std::endl;
+            prev_step = step_data;
+            std::cout << "END OF ITERATION" << std::endl;
         }
+        new_nodes.clear();
         return result;
     }
 
@@ -843,17 +1072,17 @@ public:
         checked.resize(height * width);
         std::fill(checked.begin(), checked.end(), unexplored_area_id);
 
-        AreaGraph graph = AreaGraph(start_coord);
+        AreaGraph graph = AreaGraph(start_coord, body_coords.size());
         std::deque<AreaNode*> nodes_to_explore;
         nodes_to_explore.push_back(graph.root);
         AreaCheckResult best_result;
         while(!nodes_to_explore.empty()){
-            // std::cout << "Exploring area" << std::endl;
             auto current_node = nodes_to_explore.front();
             nodes_to_explore.pop_front();
             if (current_node->explored){
                 continue;
             }
+            // std::cout << "Exploring area start: (" << current_node->start_coord.x << ", " << current_node->start_coord.y << std::endl;
             auto result = explore_area(
                 s_map,
                 body_coords,
@@ -866,6 +1095,9 @@ public:
             }
             else{
                 current_node->tile_count = result.tile_count;
+                if (current_node->tile_count < 4){
+                    current_node->is_one_dim = true;
+                }
                 current_node->food_count = result.food_count;
                 current_node->max_index = result.max_index;
                 current_node->has_tail = result.has_tail;
@@ -878,6 +1110,16 @@ public:
                     graph.connect_nodes(current_node->id, connected_area);
                 }
             }
+            // std::cout << "explored area: (" << current_node->start_coord.x << ", " << current_node->start_coord.y << ") " << "max_index:" << current_node->max_index << std::endl;
+            // std::cout << "to explore: " << graph.node_search_data[current_node->id].get()->to_explore_nodes.size() << std::endl;
+            // for(auto& datapair : graph.node_search_data){
+            //     auto data = datapair.second.get();
+            //     std::cout << "ID: " << data->node->id << std::endl;
+            //     std::cout << "Node: (" << data->node->start_coord.x << ", " << data->node->start_coord.y << ") " << "max_index:" << data->node->max_index << std::endl;
+            //     for (auto node : data->to_explore_nodes){
+            //         std::cout << "  To explore: (" << node->start_coord.x << ", " << node->start_coord.y << ")" << std::endl;
+            //     }
+            // }
             if (!food_check){
                 AreaCheckResult check_result = graph.search_best(body_coords.size(), food_check);
                 if (check_result.margin >= check_result.food_count){
