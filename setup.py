@@ -39,7 +39,7 @@ ext_modules = [
             get_pybind_include(user=True),
         ],
         language='c++',
-        extra_compile_args=['/std:c++17'] if sys.platform == 'win32' else ['-std=c++11'],
+        extra_compile_args=['/std:c++17'] if sys.platform == 'win32' else ['-std=c++17'],
     ),
 ]
 
