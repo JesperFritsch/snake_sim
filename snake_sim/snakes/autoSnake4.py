@@ -71,17 +71,21 @@ class AutoSnake4(AutoSnakeBase):
                 self.food_in_route.append(coord)
         self.route = route
 
-    def explore_option(self, start_coord, planned_route=None, old_route=None, timeout_ms=None):
+    def explore_option(self, start_coord, food_ahead=None, old_route=None, timeout_ms=None):
         time_s = time()
+        branch_common = None
+        if food_ahead is not None:
+            branch_common = {}
+            branch_common['min_margin'] = food_ahead
         option = self.deep_look_ahead(
                 self.map.copy(),
                 start_coord,
                 self.body_coords.copy(),
                 self.length,
                 start_time=time_s,
-                planned_route=planned_route,
                 old_route=old_route,
-                timeout_ms=timeout_ms)
+                timeout_ms=timeout_ms,
+                branch_common=branch_common)
         option['coord'] = start_coord
         option['risk'] = 0
         # print("option tile: ", start_coord)
@@ -100,7 +104,7 @@ class AutoSnake4(AutoSnakeBase):
         if not valid_tiles:
             return None
         for tile in valid_tiles:
-            area_checks[tile] = self.area_check_wrapper(self.map, self.body_coords, tile, True)
+            area_checks[tile] = self.area_check_wrapper(self.map, self.body_coords, tile, exhaustive=True)
             if area_checks[tile]['margin'] > best_margin:
                 best_margin = area_checks[tile]['margin']
                 target_tile = tile
@@ -110,7 +114,6 @@ class AutoSnake4(AutoSnakeBase):
             options[coord] = option
             # print('found option: ', option)
             # print('coord: ', coord)
-            # print('margin: ', option['margin'])
             if option['free_path'] and area_checks[coord]['margin'] >= area_checks[coord]['food_count']:
                 break
         # print(area_checks)
@@ -174,7 +177,7 @@ class AutoSnake4(AutoSnakeBase):
             x, y = coord
             old_map_value = s_map[y, x]
             s_map[y, x] = self.env.BLOCKED_TILE
-            area_checks = [self.area_check_wrapper(s_map, self.body_coords, tile, True) for tile in valids]
+            area_checks = [self.area_check_wrapper(s_map, self.body_coords, tile, food_check=True) for tile in valids]
             s_map[y, x] = old_map_value
             clear_checks = [a for a in area_checks if a['is_clear']]
             # print(coord, clear_checks)
@@ -233,17 +236,16 @@ class AutoSnake4(AutoSnakeBase):
             best_food_tile, best_food_value = best_food_pair
             planned_tile_food_value = food_map.get(planned_tile, 0)
             # print(planned_tile is None, (planned_tile_food_value < best_food_value, not self.head_in_open()))
-            if planned_tile is None: # or planned_tile_food_value < best_food_value:
+            if planned_tile is None or planned_tile_food_value < best_food_value:
                 # print("food route is not best")
                 planned_tile = best_food_tile
-                planned_route = self.route
             planned_area = areas_map[planned_tile]
             #this is to make sure that spawning food wont kill us
             # print("margin: ", planned_area['margin'], "food:", planned_area['food_count'])
             if planned_area['margin'] >= planned_area['food_count']:
                 # print("margin enough")
                 # print("planned_area: ", planned_area)
-                option = self.explore_option(planned_tile, planned_route=planned_route)
+                option = self.explore_option(planned_tile, food_ahead=planned_area['food_count'])
                 if option['free_path']:
                     # print("free path")
                     # print("option: ", option)
@@ -435,9 +437,9 @@ class AutoSnake4(AutoSnakeBase):
         return False
 
 
-    def area_check_wrapper(self, s_map, body_coords, start_coord, food_check=False):
+    def area_check_wrapper(self, s_map, body_coords, start_coord, target_margin=0, food_check=False, exhaustive=False):
         # return self.area_check(s_map, body_coords, start_coord)
-        return self.area_checker.area_check(s_map, list(body_coords), start_coord, food_check=food_check)
+        return self.area_checker.area_check(s_map, list(body_coords), start_coord, target_margin, food_check, exhaustive)
 
     def area_check(self, s_map, body_coords, start_coord, tile_count=0, food_count=0, max_index=0, checked=None, depth=0):
         current_coords = deque([start_coord])
@@ -623,7 +625,6 @@ class AutoSnake4(AutoSnakeBase):
                         old_route=None,
                         depth=1,
                         best_results=None,
-                        planned_route=None,
                         current_results=None,
                         rundata=None,
                         timeout_ms=None,
@@ -636,7 +637,6 @@ class AutoSnake4(AutoSnakeBase):
             timeout_ms = self.calc_timeout
         if start_time is None:
             start_time = time()
-        planned_tile = None
         if current_results is None:
             current_results = {}
             current_results['timeout'] = False
@@ -682,44 +682,13 @@ class AutoSnake4(AutoSnakeBase):
 
         area_checks = {}
 
-        if planned_route:
-            planned_tile = planned_route.pop()
-            if planned_tile and planned_tile in valid_tiles:
-                area_check = self.area_check_wrapper(s_map, body_coords, planned_tile)
-                area_checks[planned_tile] = area_check
-                if area_check['has_tail']:
-                    current_results['free_path'] = True
-                    current_results['len_gain'] = area_check['food_count']
-                    current_results['depth'] = length
-                    return current_results
-                check_result = self.deep_look_ahead(
-                    s_map.copy(),
-                    planned_tile,
-                    body_coords.copy(),
-                    length,
-                    depth=depth+1,
-                    planned_route=planned_route,
-                    best_results=best_results,
-                    old_route=old_route,
-                    current_results=current_results.copy(),
-                    start_time=start_time,
-                    rundata=rundata,
-                    branch_common=branch_common)
-                if check_result['free_path'] or check_result['timeout']:
-                    return check_result
-                else:
-                    valid_tiles.remove(planned_tile)
-                    planned_route = None
-
-
-        # self.print_map(s_map)
         if valid_tiles:
             best_margin = -length
             target_tile = None
             for tile in valid_tiles:
                 area_check = area_checks.get(tile, None)
                 if area_check is None:
-                    area_check = self.area_check_wrapper(s_map, body_coords, tile)
+                    area_check = self.area_check_wrapper(s_map, body_coords, tile, target_margin=branch_common['min_margin'])
                     area_checks[tile] = area_check
                 if area_check['margin'] > best_margin:
                     best_margin = area_check['margin']
@@ -730,6 +699,11 @@ class AutoSnake4(AutoSnakeBase):
                 target_tile = self.target_tile(s_map, body_coords)
             valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
 
+            # print(" ")
+            # self.print_map(s_map)
+            # print({"food": [list(c) for c in self.env.food.locations], self.id: body_coords})
+            # print(area_checks)
+            # print("min_margin: ", branch_common['min_margin'])
             for tile in valid_tiles:
                 if branch_common.get('min_margin', 0) > best_margin:
                     # print('margin break')
