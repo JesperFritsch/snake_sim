@@ -407,7 +407,6 @@ public:
             int total_tile_count_here = current_countable_tiles + tiles_before;
             int total_food_count_here = current_countable_food + food_before;
             int tiles_here;
-            int food_here;
             int needed_steps;
             int margin;
             int total_steps;
@@ -425,12 +424,10 @@ public:
             // this is how loops in the graph are handled
             if (step_data->first_visit()){
                 tiles_here = current_node->tile_count;
-                food_here = current_node->food_count;
             }
             else{
                 // tiles_until_here and food_until_here are only set at the first visit
                 tiles_here = total_tile_count_here - step_data->tiles_until_here;
-                food_here = total_food_count_here - step_data->food_until_here;
             }
 
             if (step_data->node->max_index > 0){
@@ -541,7 +538,6 @@ public:
                 // if we visit an area more than once we only want to add the additional tiles and food once,
                 // additional_tiles() returns the additional tiles and food for the current node if it is the first visit
                 // else 0 for both
-                auto additinal = step_data->additional_tiles();
                 if (search_stack.size() >= 3){
                     // Check corner
                     int prev_x = search_stack[search_stack.size() - 3]->node->start_coord.x;
@@ -581,8 +577,6 @@ public:
                 if (search_stack.empty()){
                     break;
                 }
-                auto next_step_data = search_stack.back();
-                auto next_node = next_step_data->node;
                 step_data->exit();
             }
             prev_node = current_node;
@@ -979,7 +973,6 @@ public:
         bool food_check,
         bool exhaustive
     ){
-        bool safe_margin = false;
         std::vector<int> checked;
         checked.resize(height * width);
         std::fill(checked.begin(), checked.end(), unexplored_area_id);
