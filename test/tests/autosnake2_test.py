@@ -32,14 +32,9 @@ if __name__ == '__main__':
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
     snake_map = 'tricky'
-<<<<<<< HEAD
     # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap.png"
     env.load_png_map(snake_map)
     # env.load_png_map(test_map)
-=======
-
-    env.load_png_map(snake_map)
->>>>>>> 1ce7d88 (Dont combine food)
     env.init_recorder()
     frame_builder = core.FrameBuilder(env.run_data.to_dict(), expand_factor, offset)
 
@@ -56,13 +51,10 @@ if __name__ == '__main__':
 
     with open(test_map_filepath) as test_map_file:
         step_state = eval(test_map_file.read())
-<<<<<<< HEAD
     # step_state = {
     #     "food": [],
     #     "A": deque([(0, 0) for _ in range(200)])
     # }
-=======
->>>>>>> 1ce7d88 (Dont combine food)
     # pprint(step_state)
 
     env.map = env.fresh_map()
@@ -108,7 +100,6 @@ if __name__ == '__main__':
     ac = AreaChecker(env.FOOD_TILE, env.FREE_TILE, snake.body_value, env.width, env.height)
 
 
-<<<<<<< HEAD
     # time_e = time()
     # print(snake.length)
     # for _ in range(1000):
@@ -116,14 +107,6 @@ if __name__ == '__main__':
     # execution_time = (time() - time_e) * 1000
     # print('area_check: ', execution_time)
     # print(area)
-=======
-    time_e = time()
-    for _ in range(1):
-        area = ac.area_check(snake.map, list(snake.body_coords), snake.coord, True)
-    execution_time = (time() - time_e) * 1000
-    print('area_check: ', execution_time)
-    print(area)
->>>>>>> 1ce7d88 (Dont combine food)
 
     pr = cProfile.Profile()
     pr.enable()
