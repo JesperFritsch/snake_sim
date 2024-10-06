@@ -31,8 +31,8 @@ if __name__ == '__main__':
     expand_factor = 2
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    snake_map = 'comps2'
-    test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap3.png"
+    snake_map = 'tricky'
+    # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap.png"
     env.load_png_map(snake_map)
     # env.load_png_map(test_map)
     env.init_recorder()
@@ -51,6 +51,10 @@ if __name__ == '__main__':
 
     with open(test_map_filepath) as test_map_file:
         step_state = eval(test_map_file.read())
+    # step_state = {
+    #     "food": [],
+    #     "A": deque([(0, 0) for _ in range(200)])
+    # }
     # pprint(step_state)
 
     env.map = env.fresh_map()
@@ -65,6 +69,7 @@ if __name__ == '__main__':
         if key == 'food':
             value = SnakeEnv.FOOD_TILE
         else:
+            print(coords[0], key)
             env.put_coords_on_map([coords[0]], ord(key))
             value = ord(key.lower())
             coords = [c for c in coords if c != coords[0]]
@@ -98,7 +103,7 @@ if __name__ == '__main__':
     # time_e = time()
     # print(snake.length)
     # for _ in range(1000):
-    #     area = ac.area_check(snake.map, list(snake.body_coords), (25, 20), False)
+    #     area = ac.area_check(snake.map, list(snake.body_coords), coord_op(snake.coord, (0, 1), '+'), False)
     # execution_time = (time() - time_e) * 1000
     # print('area_check: ', execution_time)
     # print(area)
@@ -106,10 +111,12 @@ if __name__ == '__main__':
     pr = cProfile.Profile()
     pr.enable()
 
-    # choice = snake.pick_direction()
-    # print(f"Choice: {choice}")
-    # print(f"snake.coord: {snake.coord}")
-    # print(snake)
+    stime = time()
+    choice = snake.pick_direction()
+    print(f"Choice: {choice}")
+    print(f"snake.coord: {snake.coord}")
+    print(snake)
+    print(f"Time: {(time() - stime) * 1000}")
 
 
     for tile in snake.valid_tiles(snake.map, snake.coord):
@@ -118,20 +125,33 @@ if __name__ == '__main__':
         # print(f"Time: {(time() - s_time) * 1000}")
         # print(f"Risk: {risk}")
 
-        # planned_path = None
+        planned_path = None
         # planned_path = snake.get_closest_accessible_food_route()
         # # snake.print_map(snake.map)
         # if planned_path:
         #     snake.route = planned_path
         #     planned_path.pop()
         #     tile = planned_path.pop()
-        planned_path = None
-        s_time = time()
+        # planned_path = None
+        # s_time = time()
         # option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
-        # print('free_path: ', option['free_path'])
-        area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile, True)
-        print(f"Time: {(time() - s_time) * 1000}")
-        print(f"area_check for tile {tile}: {area_check}")
+        # print(f'free_path: {tile}', option['free_path'])
+        # print(f"Time: {(time() - s_time) * 1000}")
+
+        # s_time = time()
+        # area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile, False)
+        # print(f"Time: {(time() - s_time) * 1000}")
+        # print(f"area_check for tile {tile}: {area_check}")
+
+    # print(snake.get_future_available_food_map())
+    # s_time = time()
+    # head_dist = (0, -1)
+    # area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), coord_op(snake.coord, head_dist, '+'), food_check=False, exhaustive=True)
+    # print(f"area_check for tile {coord_op(snake.coord, head_dist, '+')}: {area_check}")
+    # print(f"Time: {(time() - s_time) * 1000}")
+
+    # option = snake.deep_look_ahead(snake.map.copy(), coord_op(snake.coord, head_dist, '+'), snake.body_coords.copy(), snake.length, rundata=rundata, branch_common={"min_margin": 14})
+    # print(f"area_check for tile {head_dist}: {option['free_path']}")
     # time_e = time()
     # area = ac.area_check(snake.map, list(snake.body_coords), area_coord, True)
     # execution_time = (time() - time_e) * 1000
@@ -150,6 +170,6 @@ if __name__ == '__main__':
 
     frames = frame_builder.frames_from_rundata(rundata)
 
-    # play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width, print_steps=False)
+    play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width, print_steps=False)
     # video_output = Path(__file__).parent.joinpath('..', '..', 'render', 'videos', 'test_look_ahead.mp4').resolve()
     # frames_to_video(frames, str(video_output), 30, size=(640, 640))
