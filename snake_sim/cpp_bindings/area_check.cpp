@@ -105,6 +105,7 @@ struct AreaCheckResult {
 class AreaNode{
 public:
     Coord start_coord;
+    Coord end_coord = Coord();
     int id;
     int max_index = 0;
     int tile_count = 0;
@@ -371,7 +372,6 @@ public:
             search_nodes_data[node.second.get()] = SearchNode(node.second.get());
         }
         // pair(cantor_pairing of from_node - to_node, needed_steps), are the elements to be cached
-        std::vector<std::pair<unsigned int, AreaCheckResult>> cached_results;
         std::vector<SearchNode*> search_stack;
         std::vector<int> total_tile_count_stack;
         std::vector<int> total_food_count_stack;
@@ -454,9 +454,7 @@ public:
             }
 
             if (food_check){
-                if (current_result.margin > current_result.food_count &&
-                    current_result.food_count > best_result.food_count
-                    ){
+                if (current_result.margin >= current_result.food_count && (current_result.food_count >= best_result.food_count)){
                     best_result = current_result;
                 }
             }
@@ -473,10 +471,13 @@ public:
             // std::cout << "nr_visits: " << step_data->nr_visits << std::endl;
             // std::cout << "Current node: " << current_node->id << std::endl;
             // std::cout << "start coord: (" << current_node->start_coord.x << ", " << current_node->start_coord.y << ")" << std::endl;
+            // std::cout << "end coord: (" << current_node->end_coord.x << ", " << current_node->end_coord.y << ")" << std::endl;
+            // std::cout << "node tile count: " << current_node->tile_count << std::endl;
+            // std::cout << "node food count: " << current_node->food_count << std::endl;
+            // std::cout << "is one dim: " << current_node->is_one_dim << std::endl;
+            // std::cout << "has tail: " << current_node->has_tail << std::endl;
             // std::cout << "Tiles before: " << tiles_before << std::endl;
             // std::cout << "Food before: " << food_before << std::endl;
-            // std::cout << "Tiles here: " << tiles_here << std::endl;
-            // std::cout << "Food here: " << food_here << std::endl;
             // std::cout << "current node tile count: " << current_countable_tiles << std::endl;
             // std::cout << "current node food count: " << current_countable_food << std::endl;
             // std::cout << "tiles until here: " << step_data->tiles_until_here << std::endl;
@@ -484,7 +485,6 @@ public:
             // std::cout << "needed steps: " << needed_steps << std::endl;
             // std::cout << "total steps: " << total_steps << std::endl;
             // std::cout << "margin: " << margin << std::endl;
-            // std::cout << "cached results: " << cached_results.size() << std::endl;
             // std::cout << "searched edges now: ";
             // for(auto edge : step_data->searched_edges.back()){
             //     std::cout << edge << ", ";
@@ -499,6 +499,11 @@ public:
             // for(auto edge_node : step_data->node->edge_nodes){
             //     std::cout << "(" << edge_node.first->id << ", " << edge_node.second << "), ";
             // }
+            // std::cout << "search stack: (";
+            // for(auto node : search_stack){
+            //     std::cout << node->node->id << ", ";
+            // }
+            // std::cout << ")" << std::endl;
             // std::cout << std::endl;
             // std::cout << "current result: \n";
             // std::cout << "  is clear: " << current_result.is_clear << std::endl;
@@ -542,10 +547,14 @@ public:
                     // Check corner
                     int prev_x = search_stack[search_stack.size() - 3]->node->start_coord.x;
                     int prev_y = search_stack[search_stack.size() - 3]->node->start_coord.y;
+                    int prev_x2 = search_stack[search_stack.size() - 3]->node->end_coord.x;
+                    int prev_y2 = search_stack[search_stack.size() - 3]->node->end_coord.y;
                     int next_x = next_node->start_coord.x;
                     int next_y = next_node->start_coord.y;
                     int delta_x = next_x - prev_x;
                     int delta_y = next_y - prev_y;
+                    int delta_x2 = next_x - prev_x2;
+                    int delta_y2 = next_y - prev_y2;
 
                     // Check if path goes through a corner, if so then only extend the tile count stack by 1
                     // if we are currently on node 2
@@ -555,7 +564,8 @@ public:
                         1 2 2
                         x 2 2
                     */
-                    if (std::abs(delta_x) == 1 && std::abs(delta_y) == 1){
+                    if ((std::abs(delta_x) == 1 && std::abs(delta_y) == 1) ||
+                        (prev_x2 != -1 && prev_y2 != -1 && (std::abs(delta_x2) == 1 && std::abs(delta_y2) == 1))){
                         total_tile_count_stack.push_back(tiles_before + 1);
                         total_food_count_stack.push_back(food_before);
                     }
@@ -955,7 +965,7 @@ public:
                             max_index = body_index;
                         }
                     }
-                    if (n_coord == tail_coord && curr_coord != start_coord) {
+                    if (n_coord == tail_coord && !(curr_coord == start_coord && area_id == 0)) {
                         max_index = body_len - 1;
                         has_tail = true;
                     }
@@ -1013,13 +1023,20 @@ public:
                 continue;
             }
             // If an area has just one tile, no max index and only one area to explore, then we can just add the tile to the previous node
-            if (prev_node != nullptr && prev_node->is_one_dim && result.tile_count == 1 && result.max_index == 0 && result.to_explore.size() <= 1){
+            // std::cout << "Current coord: (" << current_coord.x << ", " << current_coord.y << ")" << std::endl;
+            // std::cout << "Prev node: " << (prev_node == nullptr ? -1 : prev_node->id) << std::endl;
+            // std::cout << "tile count: " << result.tile_count << std::endl;
+            // std::cout << "max index: " << result.max_index << std::endl;
+            // std::cout << "prev is one dim: " << (prev_node == nullptr ? false : prev_node->is_one_dim) << std::endl;
+            // std::cout << "has tail: " << result.has_tail << std::endl;
+            if (prev_node != nullptr && prev_node->is_one_dim && result.tile_count == 1 && result.max_index == 0 && (result.connected_areas.size() + result.to_explore.size() == 2)){
                 // std::cout << "Adding to previous node" << std::endl;
                 current_node = prev_node;
                 current_node->tile_count += result.tile_count;
                 current_node->food_count += result.food_count;
                 current_node->max_index = result.max_index;
                 current_node->has_tail = result.has_tail;
+                current_node->end_coord = current_coord;
                 // std::cout << "Added to previous node" << std::endl;
             }
             else{
@@ -1029,7 +1046,7 @@ public:
                 current_node->food_count = result.food_count;
                 current_node->max_index = result.max_index;
                 current_node->has_tail = result.has_tail;
-                if (current_node->tile_count < 4 && prev_node != nullptr && prev_node->tile_count == 1){ // a node cant really have 2 or 3 tiles, next step after 1 is 4, but anyways...
+                if (current_node->tile_count == 1 && (result.connected_areas.size() + result.to_explore.size() == 2)){ // a node cant really have 2 or 3 tiles, next step after 1 is 4, but anyways...
                     current_node->is_one_dim = true;
                 }
             }
@@ -1042,8 +1059,6 @@ public:
             for (auto& area_start_coord : result.to_explore){
                 areas_to_explore.push_back(ExploreData(area_start_coord, graph.next_id++, current_node));
             }
-            // std::cout << "Added new areas to explore" << std::endl;
-            prev_node = current_node;
         }
         // std::cout << "Graph size: " << graph.nodes.size() << std::endl;
         return graph.search_best2(body_coords.size(), target_margin, food_check, exhaustive);
