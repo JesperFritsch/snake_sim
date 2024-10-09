@@ -36,6 +36,7 @@ class AutoSnake4(AutoSnakeBase):
     def fix_route(self, route, s_coord=None, valid_tiles=None):
         valid_tiles = valid_tiles or self.valid_tiles(self.map, self.coord)
         s_coord = s_coord or self.coord
+        # print("Coord: ", s_coord)
         if s_coord in route and len(route) > 1:
             route = deque(list(route)[:route.index(s_coord)])
         try:
@@ -145,11 +146,14 @@ class AutoSnake4(AutoSnakeBase):
         end_coord = food_route[0]
         body_copy = self.body_coords.copy()
         map_copy = s_map.copy()
-        for coord in food_route:
-            old_tail = self.update_body(coord, body_copy, self.length)
+        # print(food_route)
+        for coord in reversed(food_route):
+            old_tail = self.update_body(coord, body_copy, self.length + 1)
             self.update_snake_position(map_copy, body_copy, old_tail)
-        valid_tiles = self.valid_tiles(s_map, end_coord)
-        area_checks = [self.area_check_wrapper(s_map, body_copy, tile) for tile in valid_tiles]
+        # self.print_map(map_copy)
+        valid_tiles = self.valid_tiles(map_copy, end_coord)
+        area_checks = [self.area_check_wrapper(map_copy, body_copy, tile) for tile in valid_tiles]
+        # print("area checks: ", area_checks, "tiles", valid_tiles)
         return any([a["margin"] >= a["food_count"] for a in area_checks])
 
     def get_closest_accessible_food_route(self):
@@ -157,9 +161,13 @@ class AutoSnake4(AutoSnakeBase):
         food_locations = self.env.food.locations.copy()
         route = None
         while route := self.get_route(self.map, self.coord, target_tiles=[l for l in food_locations if l != self.coord]):
+            # print("route: ", route)
+            route = self.fix_route(route)
             if self.check_safe_food_route(s_map, route):
+                # print("safe route", route)
                 return route
             else:
+                # print("unsafe route", route)
                 food_locations.remove(route[0])
         return route
 
@@ -173,33 +181,37 @@ class AutoSnake4(AutoSnakeBase):
         additonal_food = {}
         best_checks = []
         for coord, valids in future_valids.items():
+            # print("coord: ", coord)
             if not valids:
                 continue
             x, y = coord
-            old_map_value = s_map[y, x]
-            s_map[y, x] = self.env.BLOCKED_TILE
-            area_checks = [self.area_check_wrapper(s_map, self.body_coords, tile, food_check=True) for tile in valids]
-            s_map[y, x] = old_map_value
+            body_coords_copy = self.body_coords.copy()
+            map_copy = s_map.copy()
+            old_map_value = map_copy[y, x]
+            old_tail = self.update_body(coord, body_coords_copy, self.length)
+            self.update_snake_position(map_copy, body_coords_copy, old_tail)
+            area_checks = [self.area_check_wrapper(map_copy, body_coords_copy, tile, food_check=True) for tile in valids]
             clear_checks = [a for a in area_checks if a['is_clear']]
+            # print([(a["margin"], a["food_count"]) for a in area_checks])
             # print(coord, clear_checks)
             all_area_checks[coord] = area_checks
             if clear_checks:
                 all_clear_checks[coord] = clear_checks
             additonal_food[coord] = old_map_value == self.env.FOOD_TILE
-        # all_checks = [a for check in all_area_checks.values() for a in check]
-        # combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
-        # pprint(all_area_checks)
-        # print("combine food: ", combine_food)
-        # combined_food = {}
-        # for a in [a for a in all_checks]:
-        #     combined_food.update(a['food_coords'])
+        all_checks = [a for check in all_area_checks.values() for a in check]
+        combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
+        combine_food = False
+        if all_checks:
+            combined_food = max([a['food_count'] for a in all_checks])
+        else:
+            combined_food = 0
         for coord, area_checks in all_clear_checks.items():
             # print("coord: ", coord)
             # print("area checks: ", area_checks)
-            # if combine_food:
-            #     most_food = len(combined_food)
-            # else:
-            most_food = max(area_checks, key=lambda x: x['food_count'])['food_count']
+            if combine_food:
+                most_food = combined_food
+            else:
+                most_food = max(area_checks, key=lambda x: x['food_count'])['food_count']
             # print("most food: ", most_food)
             # print("additonal food: ", additonal_food)
             food_map[coord] = most_food + (1 if additonal_food[coord] else 0)
@@ -217,10 +229,11 @@ class AutoSnake4(AutoSnakeBase):
         planned_route = None
         closest_food_route = self.get_closest_accessible_food_route()
         if closest_food_route:
-            planned_route = closest_food_route[:-1]
+            planned_route = closest_food_route
             planned_tile = planned_route.pop()
         areas_map = self.get_available_areas()
         food_map = self.get_future_available_food_map()
+        # print("planned_tile", planned_tile)
         # print("areas map: ", areas_map)
         # print("food map: ", food_map)
         # print("food route: ", closest_food_route)

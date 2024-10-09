@@ -31,15 +31,16 @@ if __name__ == '__main__':
     expand_factor = 2
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    snake_map = 'tricky'
-    # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap.png"
+    snake_map = 'comps2'
+    # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap3.png"
     env.load_png_map(snake_map)
+
     # env.load_png_map(test_map)
     env.init_recorder()
     frame_builder = core.FrameBuilder(env.run_data.to_dict(), expand_factor, offset)
 
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
-    test_map_filename = 'test_map1.txt'
+    test_map_filename = 'test_map2.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
     snake_char = 'A'
     frame_width = GRID_WIDTH * expand_factor
@@ -119,34 +120,28 @@ if __name__ == '__main__':
     print(f"Time: {(time() - stime) * 1000}")
 
 
-    for tile in snake.valid_tiles(snake.map, snake.coord):
+    # for tile in snake.valid_tiles(snake.map, snake.coord):
         # s_time = time()
         # risk = snake.calc_immediate_risk(env.map, tile, 3)
         # print(f"Time: {(time() - s_time) * 1000}")
         # print(f"Risk: {risk}")
 
-        planned_path = None
-        # planned_path = snake.get_closest_accessible_food_route()
-        # # snake.print_map(snake.map)
-        # if planned_path:
-        #     snake.route = planned_path
-        #     planned_path.pop()
-        #     tile = planned_path.pop()
-        # planned_path = None
         # s_time = time()
-        # option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata, planned_route=planned_path)
+        # option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata)
         # print(f'free_path: {tile}', option['free_path'])
         # print(f"Time: {(time() - s_time) * 1000}")
 
         # s_time = time()
-        # area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile, False)
+        # area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile, food_check=False, exhaustive=False)
         # print(f"Time: {(time() - s_time) * 1000}")
         # print(f"area_check for tile {tile}: {area_check}")
 
     # print(snake.get_future_available_food_map())
     # s_time = time()
-    # head_dist = (0, -1)
-    # area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), coord_op(snake.coord, head_dist, '+'), food_check=False, exhaustive=True)
+    # head_dist = (-1, 0)
+    # start_coord = coord_op(snake.coord, head_dist, '+')
+    # # start_coord = 0, 28
+    # area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), start_coord, food_check=True, exhaustive=False)
     # print(f"area_check for tile {coord_op(snake.coord, head_dist, '+')}: {area_check}")
     # print(f"Time: {(time() - s_time) * 1000}")
 
@@ -170,6 +165,6 @@ if __name__ == '__main__':
 
     frames = frame_builder.frames_from_rundata(rundata)
 
-    play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width, print_steps=False)
+    # play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width, print_steps=False)
     # video_output = Path(__file__).parent.joinpath('..', '..', 'render', 'videos', 'test_look_ahead.mp4').resolve()
     # frames_to_video(frames, str(video_output), 30, size=(640, 640))
