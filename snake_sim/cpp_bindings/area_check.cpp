@@ -543,7 +543,8 @@ public:
                 // if we visit an area more than once we only want to add the additional tiles and food once,
                 // additional_tiles() returns the additional tiles and food for the current node if it is the first visit
                 // else 0 for both
-                if (search_stack.size() >= 3){
+                bool is_corner = false;
+                if (search_stack.size() >= 3  && current_node->tile_count > 1){
                     // Check corner
                     int prev_x = search_stack[search_stack.size() - 3]->node->start_coord.x;
                     int prev_y = search_stack[search_stack.size() - 3]->node->start_coord.y;
@@ -566,13 +567,29 @@ public:
                     */
                     if ((std::abs(delta_x) == 1 && std::abs(delta_y) == 1) ||
                         (prev_x2 != -1 && prev_y2 != -1 && (std::abs(delta_x2) == 1 && std::abs(delta_y2) == 1))){
-                        total_tile_count_stack.push_back(tiles_before + 1);
-                        total_food_count_stack.push_back(food_before);
+                        is_corner = true;
+                        // total_tile_count_stack.push_back(tiles_before + 1);
+                        // total_food_count_stack.push_back(food_before);
                     }
-                    else{
-                        total_tile_count_stack.push_back(total_tile_count_here);
-                        total_food_count_stack.push_back(total_food_count_here);
+                    // else{
+                    //     total_tile_count_stack.push_back(total_tile_count_here);
+                    //     total_food_count_stack.push_back(total_food_count_here);
+                    // }
+                }
+                else if (current_node->tile_count > 1){
+                    int curr_x = current_node->start_coord.x;
+                    int curr_y = current_node->start_coord.y;
+                    int next_x = next_node->start_coord.x;
+                    int next_y = next_node->start_coord.y;
+                    int delta_x = next_x - curr_x;
+                    int delta_y = next_y - curr_y;
+                    if(std::abs(delta_x) == 1 && std::abs(delta_y) == 0 || std::abs(delta_x) == 0 && std::abs(delta_y) == 1){
+                        is_corner = true;
                     }
+                }
+                if (is_corner){
+                    total_tile_count_stack.push_back(tiles_before + 1);
+                    total_food_count_stack.push_back(food_before);
                 }
                 else{
                     total_tile_count_stack.push_back(total_tile_count_here);
@@ -1009,10 +1026,13 @@ public:
                 checked
             );
             // std::cout << "Explored area: " << current_id << std::endl;
+            // std::cout << "Current coord: (" << current_coord.x << ", " << current_coord.y << ")" << std::endl;
+            // std::cout << "Prev node: " << (prev_node == nullptr ? -1 : prev_node->id) << std::endl;
             // std::cout << "Tile count: " << result.tile_count << std::endl;
             // std::cout << "Food count: " << result.food_count << std::endl;
             // std::cout << "Max index: " << result.max_index << std::endl;
             // std::cout << "Has tail: " << result.has_tail << std::endl;
+            // std::cout << "prev is one dim: " << (prev_node == nullptr ? false : prev_node->is_one_dim) << std::endl;
             // for (auto& connected_area : result.connected_areas){
             //     std::cout << "Connected area: " << connected_area << std::endl;
             // }
@@ -1023,12 +1043,6 @@ public:
                 continue;
             }
             // If an area has just one tile, no max index and only one area to explore, then we can just add the tile to the previous node
-            // std::cout << "Current coord: (" << current_coord.x << ", " << current_coord.y << ")" << std::endl;
-            // std::cout << "Prev node: " << (prev_node == nullptr ? -1 : prev_node->id) << std::endl;
-            // std::cout << "tile count: " << result.tile_count << std::endl;
-            // std::cout << "max index: " << result.max_index << std::endl;
-            // std::cout << "prev is one dim: " << (prev_node == nullptr ? false : prev_node->is_one_dim) << std::endl;
-            // std::cout << "has tail: " << result.has_tail << std::endl;
             if (prev_node != nullptr && prev_node->is_one_dim && result.tile_count == 1 && result.max_index == 0 && (result.connected_areas.size() + result.to_explore.size() == 2)){
                 // std::cout << "Adding to previous node" << std::endl;
                 current_node = prev_node;
@@ -1037,7 +1051,6 @@ public:
                 current_node->max_index = result.max_index;
                 current_node->has_tail = result.has_tail;
                 current_node->end_coord = current_coord;
-                // std::cout << "Added to previous node" << std::endl;
             }
             else{
                 // std::cout << "Adding node to graph" << std::endl;
@@ -1046,7 +1059,7 @@ public:
                 current_node->food_count = result.food_count;
                 current_node->max_index = result.max_index;
                 current_node->has_tail = result.has_tail;
-                if (current_node->tile_count == 1 && (result.connected_areas.size() + result.to_explore.size() == 2)){ // a node cant really have 2 or 3 tiles, next step after 1 is 4, but anyways...
+                if (current_node->tile_count == 1 && (result.connected_areas.size() + result.to_explore.size() == 2) && current_node->max_index == 0){ // a node cant really have 2 or 3 tiles, next step after 1 is 4, but anyways...
                     current_node->is_one_dim = true;
                 }
             }

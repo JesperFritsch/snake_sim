@@ -48,10 +48,20 @@ def handle_events():
 def play_stream(stream_conn, expand=2):
     snakes = {}
     frames = []
+    any_ate = []
+    any_turned = []
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
     surface = pygame.Surface(screen.get_size())
     surface = surface.convert()
+    sound_mixer = pygame.mixer
+    sound_mixer.init()
+    eat_sound = sound_mixer.Sound("snake_sim/render/sounds/eat.wav")
+    left_sound = sound_mixer.Sound("snake_sim/render/sounds/turn_left.wav")
+    right_sound = sound_mixer.Sound("snake_sim/render/sounds/turn_right.wav")
+    eat_sound.set_volume(1)
+    left_sound.set_volume(1)
+    right_sound.set_volume(1)
 
     # wait for init data
     while not stream_conn.poll():
@@ -73,6 +83,24 @@ def play_stream(stream_conn, expand=2):
             step_data = stream_conn.recv()
             new_frames = frame_builder.step_to_frames(step_data)
             frames.extend(new_frames)
+            added_sound = False
+            for snake_data in step_data["snakes"]:
+                if snake_data['did_eat']:
+                   any_ate.extend([False, True])
+                   added_sound = True
+                if snake_data['did_turn']:
+                    if snake_data['did_turn'] == 'left':
+                        any_turned.extend(["left", None])
+                    else:
+                        any_turned.extend(["right", None])
+                    added_sound = True
+                if added_sound:
+                    break
+            if len(any_ate) < len(frames):
+                any_ate.extend([False, False])
+            if len(any_turned) < len(frames):
+                any_turned.extend([None, None])
+
         fps = default_fps
         speed_up = 20
         play_direction = 1
@@ -106,6 +134,13 @@ def play_stream(stream_conn, expand=2):
             frame_counter = max(min(frame_counter + play_direction, len(frames) - 1), 0)
             if 0 <= frame_counter < len(frames):
                 frame = frames[frame_counter]
+                if any_ate[frame_counter]:
+                    eat_sound.play()
+                if any_turned[frame_counter]:
+                    if any_turned[frame_counter] == "left":
+                        left_sound.play()
+                    else:
+                        right_sound.play()
                 play_direction = 1
                 # print(f"step: {frame_counter // expand}")
                 draw_frame(screen, frame)
@@ -130,6 +165,11 @@ def play_runfile(filename=None, frames=None, grid_width=None, grid_height=None, 
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
     surface = pygame.Surface(screen.get_size())
     surface = surface.convert()
+    sound_mixer = pygame.mixer
+    sound_mixer.init()
+    eat_sound = sound_mixer.Sound("snake_sim/render/sounds/eat.wav")
+    eat_sound.set_volume(0.5)
+    eat_sound.play()
 
     drawGray(surface, grid_width, grid_height)
     running = True

@@ -79,13 +79,42 @@ class StepData:
         self.step = step
 
     def add_snake_data(self, snake_coords: list, head_dir: tuple, tail_dir: tuple, snake_id: str):
+        did_eat = False
+        turn = None
+        if snake_coords[0] in self.food:
+            did_eat = True
+        last_dir = coord_op(snake_coords[1], snake_coords[2], '-')
+        if last_dir != head_dir:
+            if last_dir == (0, -1):
+                if head_dir == (1, 0):
+                    turn = 'right'
+                else:
+                    turn = 'left'
+            elif last_dir == (1, 0):
+                if head_dir == (0, 1):
+                    turn = 'right'
+                else:
+                    turn = 'left'
+            elif last_dir == (0, 1):
+                if head_dir == (-1, 0):
+                    turn = 'right'
+                else:
+                    turn = 'left'
+            elif last_dir == (-1, 0):
+                if head_dir == (0, -1):
+                    turn = 'right'
+                else:
+                    turn = 'left'
+
         self.snakes.append({
             'snake_id': snake_id,
             'curr_head': snake_coords[0],
             'prev_head': snake_coords[1],
             'curr_tail': snake_coords[-1],
             'head_dir': head_dir,
-            'tail_dir': tail_dir
+            'tail_dir': tail_dir,
+            'did_eat': did_eat,
+            'did_turn': turn
         })
 
     def to_dict(self):

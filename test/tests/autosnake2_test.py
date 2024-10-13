@@ -31,7 +31,7 @@ if __name__ == '__main__':
     expand_factor = 2
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    snake_map = 'comps2'
+    snake_map = 'threeway'
     # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap3.png"
     env.load_png_map(snake_map)
 
@@ -121,27 +121,27 @@ if __name__ == '__main__':
 
 
     # for tile in snake.valid_tiles(snake.map, snake.coord):
-        # s_time = time()
-        # risk = snake.calc_immediate_risk(env.map, tile, 3)
-        # print(f"Time: {(time() - s_time) * 1000}")
-        # print(f"Risk: {risk}")
+    #     # s_time = time()
+    #     # risk = snake.calc_immediate_risk(env.map, tile, 3)
+    #     # print(f"Time: {(time() - s_time) * 1000}")
+    #     # print(f"Risk: {risk}")
 
-        # s_time = time()
-        # option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata)
-        # print(f'free_path: {tile}', option['free_path'])
-        # print(f"Time: {(time() - s_time) * 1000}")
+    #     # s_time = time()
+    #     # option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata)
+    #     # print(f'free_path: {tile}', option['free_path'])
+    #     # print(f"Time: {(time() - s_time) * 1000}")
 
-        # s_time = time()
-        # area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile, food_check=False, exhaustive=False)
-        # print(f"Time: {(time() - s_time) * 1000}")
-        # print(f"area_check for tile {tile}: {area_check}")
+    #     s_time = time()
+    #     area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile, food_check=True, exhaustive=False)
+    #     print(f"Time: {(time() - s_time) * 1000}")
+    #     print(f"area_check for tile {tile}: {area_check}")
 
     # print(snake.get_future_available_food_map())
     # s_time = time()
-    # head_dist = (-1, 0)
+    # head_dist = (0, 1)
     # start_coord = coord_op(snake.coord, head_dist, '+')
     # # start_coord = 0, 28
-    # area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), start_coord, food_check=True, exhaustive=False)
+    # area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), start_coord, food_check=False, exhaustive=False)
     # print(f"area_check for tile {coord_op(snake.coord, head_dist, '+')}: {area_check}")
     # print(f"Time: {(time() - s_time) * 1000}")
 
