@@ -25,8 +25,7 @@ def setup_env(config):
     return env
 
 
-def handle_args(args):
-    global config
+def handle_args(args, config):
 
     if args.grid_width:
         config.grid_width = args.grid_width
@@ -42,13 +41,14 @@ def handle_args(args):
         config.map = args.map
     if not args.food_decay is None:
         config.food_decay = args.food_decay or None
-
     if args.stream and args.nr_runs:
         raise ValueError('Cannot specify --nr-runs with --stream')
+    if args.sound:
+        config.sound = args.sound
 
 def start_stream_run(conn, config):
     env = setup_env(config)
-    env.stream_run(conn,)
+    env.stream_run(conn)
 
 
 def main():
@@ -67,14 +67,15 @@ def main():
     ap.add_argument('--calc-timeout', type=int, help='Timeout for calculation')
     ap.add_argument('--nr-runs', type=int, help='Number of runs to generate')
     ap.add_argument('--map', type=str, help='Path to map file')
+    ap.add_argument('--sound', action='store_true', help='Play sound', default=False)
     args = ap.parse_args(argv)
-    cfg_path = Path(__file__).parent / 'config/default_config.json' 
+    cfg_path = Path(__file__).parent / 'config/default_config.json'
     with open(cfg_path) as config_file:
         config = DotDict(json.load(config_file))
-    handle_args(args)
+    handle_args(args, config)
 
     if args.play_file:
-        play_runfile(Path(args.play_file))
+        play_runfile(filepath=Path(args.play_file), sound_on=config.sound)
 
     elif args.compute:
         env = setup_env(config)
@@ -86,7 +87,7 @@ def main():
     elif args.stream:
         parent_conn, child_conn = Pipe()
         env_p = Process(target=start_stream_run, args=(child_conn, config))
-        render_p = Process(target=play_stream, args=(parent_conn,))
+        render_p = Process(target=play_stream, args=(parent_conn, config.sound))
         render_p.start()
         env_p.start()
         render_p.join()

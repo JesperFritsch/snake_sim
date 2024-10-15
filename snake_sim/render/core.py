@@ -36,7 +36,7 @@ class SnakeRepresentation:
 
 
 class FrameBuilder:
-    def __init__(self, run_meta_data, expand_factor=2, offset=(0, 0)):
+    def __init__(self, run_meta_data, expand_factor=2, offset=(1, 1)):
         self.width = run_meta_data['width']
         self.height = run_meta_data['height']
         self.base_map = np.array(run_meta_data['base_map'])

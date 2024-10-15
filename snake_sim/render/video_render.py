@@ -39,7 +39,7 @@ def make_video(run_file, out_dir, fps, frames_multiply=1):
         run_data = json.load(run_file)
         metadata = run_data.copy()
         del metadata['steps']
-        frame_builder = FrameBuilder(metadata, expand_factor=2, offset=(1, 1))
+        frame_builder = FrameBuilder(metadata)
         for step_nr, step_data in run_data['steps'].items():
             subframes = frame_builder.step_to_frames(step_data)
             for frame in subframes:

@@ -5,6 +5,7 @@
     "snake_count": 7,
     "calc_timeout": 7000,
     "food_decay": 500,
+    "sound": false,
     "snake_configs": [
         {
             "snake":{
