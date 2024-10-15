@@ -27,20 +27,21 @@ def check_areas(snake, coord):
 if __name__ == '__main__':
     GRID_WIDTH = 32
     GRID_HEIGHT = 32
+
     FOOD = 15
     expand_factor = 2
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    snake_map = 'threeway'
-    # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap3.png"
-    env.load_png_map(snake_map)
+    # snake_map = 'threeway'
+    # # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap3.png"
+    # env.load_png_map(snake_map)
 
     # env.load_png_map(test_map)
     env.init_recorder()
     frame_builder = core.FrameBuilder(env.run_data.to_dict(), expand_factor, offset)
 
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
-    test_map_filename = 'test_map2.txt'
+    test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
     snake_char = 'A'
     frame_width = GRID_WIDTH * expand_factor
@@ -66,14 +67,14 @@ if __name__ == '__main__':
         expanded = coord_op(coord, (expand_factor, expand_factor), '*')
         x, y = coord_op(expanded, offset, '+')
         base_frame[y, x] = env.COLOR_MAPPING[SnakeEnv.FOOD_TILE]
+    env.put_coords_on_map(step_state['food'], SnakeEnv.FOOD_TILE)
     for key, coords in step_state.items():
         if key == 'food':
-            value = SnakeEnv.FOOD_TILE
-        else:
-            print(coords[0], key)
-            env.put_coords_on_map([coords[0]], ord(key))
-            value = ord(key.lower())
-            coords = [c for c in coords if c != coords[0]]
+            continue
+        print(coords[0], key)
+        env.put_coords_on_map([coords[0]], ord(key))
+        value = ord(key.lower())
+        coords = [c for c in coords if c != coords[0]]
         env.put_coords_on_map(coords, value)
     for id in step_state:
         if id != 'food':
@@ -91,6 +92,7 @@ if __name__ == '__main__':
     env.food.locations = set([tuple(x) for x in step_state['food'] if tuple(x) != snake.coord])
     # snake.map[22, 9] = ord('X')
     snake.print_map(snake.map)
+    # env.print_map(env.map)
     # print(snake.body_coords)
     print(snake.length, snake.coord, snake.body_value)
     print(snake.coord)
@@ -112,12 +114,12 @@ if __name__ == '__main__':
     pr = cProfile.Profile()
     pr.enable()
 
-    stime = time()
-    choice = snake.pick_direction()
-    print(f"Choice: {choice}")
-    print(f"snake.coord: {snake.coord}")
-    print(snake)
-    print(f"Time: {(time() - stime) * 1000}")
+    # stime = time()
+    # choice = snake.pick_direction()
+    # print(f"Choice: {choice}")
+    # print(f"snake.coord: {snake.coord}")
+    # print(snake)
+    # print(f"Time: {(time() - stime) * 1000}")
 
 
     # for tile in snake.valid_tiles(snake.map, snake.coord):

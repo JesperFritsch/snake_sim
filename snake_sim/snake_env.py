@@ -5,16 +5,18 @@ import os
 import sys
 from PIL import Image
 import numpy as np
-from typing import Optional
+from typing import Optional, List
+from collections import deque
 
 from . import utils
-from .utils import coord_op, exec_time
+from .utils import coord_op, exec_time, coord_cmp
 from pathlib import Path
 from .render import core as render
 from .snakes.snake import Snake
 from .render.core import put_snake_in_frame
 from time import time
 from dataclasses import dataclass, field
+from snake_sim.snakes.snake import Snake
 
 DIR_MAPPING = {
     (0, -1): 'up',
@@ -74,9 +76,16 @@ class Food:
 
 class StepData:
     def __init__(self, food: list, step: int) -> None:
-        self.snakes = []
+        self.snakes: List[dict] = []
         self.food = food
         self.step = step
+
+    @classmethod
+    def from_dict(cls, step_dict):
+        step_data = cls(food=step_dict['food'], step=step_dict['step'])
+        for snake_data in step_dict['snakes']:
+            step_data.snakes.append(snake_data)
+        return step_data
 
     def add_snake_data(self, snake_coords: list, head_dir: tuple, tail_dir: tuple, snake_id: str):
         did_eat = False
@@ -109,7 +118,7 @@ class StepData:
         self.snakes.append({
             'snake_id': snake_id,
             'curr_head': snake_coords[0],
-            'prev_head': snake_coords[1],
+            'prev_head': snake_coords[1] if len(snake_coords) > 1 else snake_coords[0],
             'curr_tail': snake_coords[-1],
             'head_dir': head_dir,
             'tail_dir': tail_dir,
@@ -132,10 +141,61 @@ class RunData:
         self.snake_data = snake_data
         self.base_map = base_map
         self.output_dir = output_dir
+        self.food_value = SnakeEnv.FOOD_TILE
+        self.free_value = SnakeEnv.FREE_TILE
+        self.blocked_value = SnakeEnv.BLOCKED_TILE
+        self.color_mapping = SnakeEnv.COLOR_MAPPING
         self.steps = {}
+
+    @classmethod
+    def from_dict(cls, run_dict):
+        run_data = cls(
+            width=run_dict['width'],
+            height=run_dict['height'],
+            snake_data=run_dict['snake_data'],
+            base_map=np.array(run_dict['base_map'], dtype=np.uint8)
+        )
+        for step_nr, step_dict in run_dict['steps'].items():
+            step_data_obj = StepData.from_dict(step_dict)
+            run_data.add_step(int(step_nr), step_data_obj)
+        run_data.food_value = run_dict['food_value']
+        run_data.free_value = run_dict['free_value']
+        run_data.blocked_value = run_dict['blocked_value']
+        run_data.color_mapping = run_dict['color_mapping']
+        return run_data
+
+    @classmethod
+    def from_json_file(cls, filepath):
+        with open(filepath) as file:
+            return cls.from_dict(json.load(file))
 
     def add_step(self, step: int, state: StepData):
         self.steps[step] = state
+
+    def get_coord_mapping(self, step_nr):
+        steps = self.steps
+        final_step = len(steps)
+        current = 1
+        coords_map = {}
+        last_step: StepData = steps[current]
+        current_step: StepData = None
+        while current <= step_nr < final_step:
+            current_step = steps[current]
+            snake_data = current_step.snakes
+            for snake in snake_data:
+                body = coords_map.setdefault(snake['snake_id'], deque([snake['prev_head']]))
+                curr_head = snake['curr_head']
+                body.appendleft(curr_head)
+                if last_step is not None:
+                    last_snake_step = list(filter(lambda x: x['snake_id'] == snake['snake_id'], last_step.snakes))[0]
+                    if not coord_cmp(last_snake_step['curr_tail'], snake['curr_tail']):
+                        body.pop()
+            current += 1
+            last_step = current_step
+        if current_step is not None:
+            coords_map['food'] = current_step.food
+            return coords_map
+        return None
 
     def write_to_file(self, aborted=False, ml=False, filepath=None):
         if filepath is None:
@@ -167,10 +227,10 @@ class RunData:
         return {
             'width': self.width,
             'height': self.height,
-            'food_value': SnakeEnv.FOOD_TILE,
-            'free_value': SnakeEnv.FREE_TILE,
-            'blocked_value': SnakeEnv.BLOCKED_TILE,
-            'color_mapping': SnakeEnv.COLOR_MAPPING,
+            'food_value': self.food_value,
+            'free_value': self.free_value,
+            'blocked_value': self.blocked_value,
+            'color_mapping': self.color_mapping,
             'snake_data': self.snake_data,
             'base_map': self.base_map.tolist(),
             'steps': {k: v.to_dict() for k, v in self.steps.items()}
@@ -300,8 +360,8 @@ class SnakeEnv:
         if isinstance(snake, Snake):
             snake.bind_env(self)
             while True:
-                rand_x = 2 + round(random.random() * (self.width - 3))
-                rand_y = 2 + round(random.random() * (self.height - 3))
+                rand_x = round(random.random() * (self.width - 1))
+                rand_y = round(random.random() * (self.height - 1))
                 if not self.map[rand_y, rand_x] == self.FREE_TILE:
                     continue
                 break
@@ -476,7 +536,8 @@ class SnakeEnv:
                         if (self.time_step - highest_no_food) > max_no_food_steps or max_steps is not None and self.time_step > max_steps:
                             ongoing = False
                         self.update()
-                        conn.send(self.run_data.steps[self.time_step].to_dict())
+                        if any(snake_data['alive'] for snake_data in self.snakes_info.values()):
+                            conn.send(self.run_data.steps[self.time_step].to_dict())
                     else:
                         ongoing = False
                         # break
