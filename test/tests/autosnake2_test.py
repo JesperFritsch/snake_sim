@@ -32,9 +32,9 @@ if __name__ == '__main__':
     expand_factor = 2
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    # snake_map = 'threeway'
-    # # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap3.png"
-    # env.load_png_map(snake_map)
+    snake_map = 'wavy'
+    # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap3.png"
+    env.load_png_map(snake_map)
 
     # env.load_png_map(test_map)
     env.init_recorder()
@@ -114,12 +114,12 @@ if __name__ == '__main__':
     pr = cProfile.Profile()
     pr.enable()
 
-    # stime = time()
-    # choice = snake.pick_direction()
-    # print(f"Choice: {choice}")
-    # print(f"snake.coord: {snake.coord}")
-    # print(snake)
-    # print(f"Time: {(time() - stime) * 1000}")
+    stime = time()
+    choice = snake.pick_direction()
+    print(f"Choice: {choice}")
+    print(f"snake.coord: {snake.coord}")
+    print(snake)
+    print(f"Time: {(time() - stime) * 1000}")
 
 
     # for tile in snake.valid_tiles(snake.map, snake.coord):
