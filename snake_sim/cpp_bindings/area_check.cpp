@@ -305,12 +305,20 @@ struct SearchNode{
 class AreaGraph{
 public:
     int next_id = 0;
+    int map_width = 0;
+    int map_height = 0;
     AreaNode* root = nullptr;
     std::unordered_map<int, std::unique_ptr<AreaNode>> nodes;
 
     AreaGraph(){
         nodes.reserve(200);
     }
+
+    AreaGraph(int width, int height) :
+        map_width(width),
+        map_height(height) {
+            nodes.reserve(200);
+        }
 
     void connect_nodes(int id1, int id2){
         if (get_node(id1) == nullptr || get_node(id2) == nullptr || id1 == id2){
@@ -363,7 +371,7 @@ public:
         nodes.erase(id);
     }
 
-    AreaCheckResult search_best2(int snake_length, int target_margin, bool food_check, bool exhaustive){
+    AreaCheckResult search_best2(int snake_length, uint8_t* s_map, uint8_t food_value, int width, int target_margin, bool food_check, bool exhaustive){
         bool forward = true;
         bool skipped_one = false;
         // Map to keep track of visited nodes
@@ -544,6 +552,7 @@ public:
                 // additional_tiles() returns the additional tiles and food for the current node if it is the first visit
                 // else 0 for both
                 bool is_corner = false;
+                bool corner_has_food = false;
                 if (search_stack.size() >= 3  && current_node->tile_count > 1){
                     // Check corner
                     int prev_x = search_stack[search_stack.size() - 3]->node->start_coord.x;
@@ -556,7 +565,6 @@ public:
                     int delta_y = next_y - prev_y;
                     int delta_x2 = next_x - prev_x2;
                     int delta_y2 = next_y - prev_y2;
-
                     // Check if path goes through a corner, if so then only extend the tile count stack by 1
                     // if we are currently on node 2
                     // going like this 1 -> 2 -> 3
@@ -565,11 +573,21 @@ public:
                         1 2 2
                         x 2 2
                     */
-                    if ((std::abs(delta_x) == 1 && std::abs(delta_y) == 1) ||
-                        (prev_x2 != -1 && prev_y2 != -1 && (std::abs(delta_x2) == 1 && std::abs(delta_y2) == 1))){
+                    if (std::abs(delta_x) == 1 && std::abs(delta_y) == 1){
                         is_corner = true;
-                        // total_tile_count_stack.push_back(tiles_before + 1);
-                        // total_food_count_stack.push_back(food_before);
+                        int pot_f_x = prev_x + delta_x;
+                        int pot_f_y = prev_y + delta_y;
+                        if (s_map[prev_y * width + pot_f_x] == food_value || s_map[pot_f_y * width + prev_x] == food_value){
+                            corner_has_food = true;
+                        }
+                    }
+                    if (prev_x2 != -1 && prev_y2 != -1 && (std::abs(delta_x2) == 1 && std::abs(delta_y2) == 1)){
+                        is_corner = true;
+                        int pot_f_x = prev_x2 + delta_x2;
+                        int pot_f_y = prev_y2 + delta_y2;
+                        if (s_map[prev_y2 * width + pot_f_x] == food_value || s_map[pot_f_y * width + prev_x2] == food_value){
+                            corner_has_food = true;
+                        }
                     }
                     // else{
                     //     total_tile_count_stack.push_back(total_tile_count_here);
@@ -586,10 +604,14 @@ public:
                     if(std::abs(delta_x) == 1 && std::abs(delta_y) == 0 || std::abs(delta_x) == 0 && std::abs(delta_y) == 1){
                         is_corner = true;
                     }
+                    if(s_map[curr_y * width + curr_x] == food_value){
+                        corner_has_food = true;
+                    }
+
                 }
                 if (is_corner){
                     total_tile_count_stack.push_back(tiles_before + 1);
-                    total_food_count_stack.push_back(food_before);
+                    total_food_count_stack.push_back(food_before + (corner_has_food ? 1 : 0));
                 }
                 else{
                     total_tile_count_stack.push_back(total_tile_count_here);
@@ -1074,7 +1096,7 @@ public:
             }
         }
         // std::cout << "Graph size: " << graph.nodes.size() << std::endl;
-        return graph.search_best2(body_coords.size(), target_margin, food_check, exhaustive);
+        return graph.search_best2(body_coords.size(), s_map, food_value, width, target_margin, food_check, exhaustive);
     }
 
 private:

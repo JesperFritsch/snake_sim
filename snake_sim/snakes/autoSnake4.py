@@ -200,7 +200,7 @@ class AutoSnake4(AutoSnakeBase):
             additonal_food[coord] = old_map_value == self.env.FOOD_TILE
         all_checks = [a for check in all_area_checks.values() for a in check]
         combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
-        combine_food = False
+        # combine_food = False
         if all_checks:
             combined_food = max([a['food_count'] for a in all_checks])
         else:
@@ -233,6 +233,9 @@ class AutoSnake4(AutoSnakeBase):
             planned_tile = planned_route.pop()
         areas_map = self.get_available_areas()
         food_map = self.get_future_available_food_map()
+        if len(self.env.alive_snakes) > 1:
+            max_food = max([x for x in food_map.values()] or [0])
+            food_map = {k: max_food for k in food_map}
         # print("planned_tile", planned_tile)
         # print("areas map: ", areas_map)
         # print("food map: ", food_map)

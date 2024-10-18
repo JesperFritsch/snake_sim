@@ -123,6 +123,7 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
     sim_step = 0
     play_direction = 1
     pause = False
+    last_frame = None
     while running:
         sim_step = (frame_counter // 2) + 1
         fps = default_fps
@@ -144,8 +145,6 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
                 elif event.key == pygame.K_RETURN:
                     print(run_data.get_coord_mapping(sim_step))
         if keys[pygame.K_LCTRL]:
-            if keys[pygame.K_LSHIFT]:
-                frame_counter += 5 * play_direction
             if keys[pygame.K_LEFT]:
                 play_direction = -1
                 fps = default_fps * speed_up
@@ -153,6 +152,8 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
             elif keys[pygame.K_RIGHT]:
                 fps = default_fps * speed_up
                 new_frame = True
+            if keys[pygame.K_LSHIFT]:
+                frame_counter += 5 * play_direction
 
         if new_frame:
             frame_counter = max(min(frame_counter + play_direction, len(frame_buffer) - 1), 0)
@@ -166,8 +167,9 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
                             left_sound.play()
                         elif sound == 'right':
                             right_sound.play()
-                play_direction = 1
-                draw_frame(screen, frame)
+                if frame is not last_frame:
+                    draw_frame(screen, frame)
+                last_frame = frame
                 pygame.display.flip()
             if frame_counter == len(frame_buffer) - 1:
                 pause = True
