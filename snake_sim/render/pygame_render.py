@@ -171,8 +171,8 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
                     draw_frame(screen, frame)
                 last_frame = frame
                 pygame.display.flip()
-            if frame_counter == len(frame_buffer) - 1:
-                pause = True
+            # if frame_counter == len(frame_buffer) - 1:
+            #     pause = True
         clock.tick(fps)
     pygame.quit()
 
