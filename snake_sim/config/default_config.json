@@ -6,6 +6,7 @@
     "calc_timeout": 7000,
     "food_decay": 500,
     "sound": false,
+    "fps": 10,
     "snake_configs": [
         {
             "snake":{

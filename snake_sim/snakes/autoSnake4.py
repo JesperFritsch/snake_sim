@@ -453,7 +453,6 @@ class AutoSnake4(AutoSnakeBase):
                     return True
         return False
 
-
     def area_check_wrapper(self, s_map, body_coords, start_coord, target_margin=0, food_check=False, exhaustive=False):
         # return self.area_check(s_map, body_coords, start_coord)
         return self.area_checker.area_check(s_map, list(body_coords), start_coord, target_margin, food_check, exhaustive)

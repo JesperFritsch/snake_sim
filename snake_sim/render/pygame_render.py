@@ -101,7 +101,7 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
             sound_buffer.extend([turn_sounds, eat_sounds])
 
 
-def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_height, sound_on=True):
+def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_height, sound_on=True, fps_playback=10):
 
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
@@ -118,7 +118,6 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
 
     drawGray(surface, grid_width, grid_height)
     running = True
-    default_fps = 10
     frame_counter = 0
     sim_step = 0
     play_direction = 1
@@ -126,7 +125,7 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
     last_frame = None
     while running:
         sim_step = (frame_counter // 2) + 1
-        fps = default_fps
+        fps = fps_playback
         speed_up = 20
         play_direction = 1
         keys = pygame.key.get_pressed()
@@ -147,10 +146,10 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
         if keys[pygame.K_LCTRL]:
             if keys[pygame.K_LEFT]:
                 play_direction = -1
-                fps = default_fps * speed_up
+                fps = fps_playback * speed_up
                 new_frame = True
             elif keys[pygame.K_RIGHT]:
-                fps = default_fps * speed_up
+                fps = fps_playback * speed_up
                 new_frame = True
             if keys[pygame.K_LSHIFT]:
                 frame_counter += 5 * play_direction
@@ -177,7 +176,7 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
     pygame.quit()
 
 
-def play_stream(stream_conn, sound_on=True):
+def play_stream(stream_conn, fps=10, sound_on=True):
     sound_buffer = []
     frame_buffer = []
     run_data = RunData(0, 0, [], np.array([])) # create this here so that the stream thread and the play thread can share the same object
@@ -187,10 +186,10 @@ def play_stream(stream_conn, sound_on=True):
     # wait for the stream thread to initialize the run data
     while run_data.width == 0 and run_data.height == 0:
         pass
-    play_run(frame_buffer, sound_buffer, run_data, run_data.width, run_data.height, sound_on=sound_on)
+    play_run(frame_buffer, sound_buffer, run_data, run_data.width, run_data.height, sound_on=sound_on, fps_playback=fps)
 
 
-def play_runfile(filepath=None, frames=None, grid_height=None, grid_width=None, sound_on=True):
+def play_runfile(filepath=None, frames=None, grid_height=None, grid_width=None, sound_on=True, fps=10):
     if filepath:
         run_data = RunData.from_json_file(filepath)
         grid_height = run_data.height
@@ -199,5 +198,5 @@ def play_runfile(filepath=None, frames=None, grid_height=None, grid_width=None, 
     elif all([frames, grid_height, grid_width]):
         frame_buffer = frames
         sound_buffer = [[] * len(frame_buffer)]
-    play_run(frame_buffer, sound_buffer, run_data, grid_width, grid_height, sound_on=sound_on)
+    play_run(frame_buffer, sound_buffer, run_data, grid_width, grid_height, sound_on=sound_on, fps_playback=fps)
 
