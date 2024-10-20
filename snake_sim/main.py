@@ -45,6 +45,8 @@ def handle_args(args, config):
         raise ValueError('Cannot specify --nr-runs with --stream')
     if args.sound:
         config.sound = args.sound
+    if args.fps:
+        config.fps = args.fps
 
 def start_stream_run(conn, config):
     env = setup_env(config)
@@ -68,6 +70,7 @@ def main():
     ap.add_argument('--nr-runs', type=int, help='Number of runs to generate')
     ap.add_argument('--map', type=str, help='Path to map file')
     ap.add_argument('--sound', action='store_true', help='Play sound', default=False)
+    ap.add_argument('--fps', type=int, help='Frames per second', default=10)
     args = ap.parse_args(argv)
     cfg_path = Path(__file__).parent / 'config/default_config.json'
     with open(cfg_path) as config_file:
@@ -75,7 +78,7 @@ def main():
     handle_args(args, config)
 
     if args.play_file:
-        play_runfile(filepath=Path(args.play_file), sound_on=config.sound)
+        play_runfile(filepath=Path(args.play_file), sound_on=config.sound, fps=config.fps)
 
     elif args.compute:
         env = setup_env(config)
@@ -87,7 +90,7 @@ def main():
     elif args.stream:
         parent_conn, child_conn = Pipe()
         env_p = Process(target=start_stream_run, args=(child_conn, config))
-        render_p = Process(target=play_stream, args=(parent_conn, config.sound))
+        render_p = Process(target=play_stream, args=(parent_conn, config.fps, config.sound))
         render_p.start()
         env_p.start()
         render_p.join()
