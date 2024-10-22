@@ -320,6 +320,26 @@ public:
             nodes.reserve(200);
         }
 
+    void print_graph(){
+        std::cout << "####### Graph begin ####### " << std::endl;
+        for (auto& node : nodes){
+            std::cout << "Node id: " << node.first << std::endl;
+            std::cout << "  start coord: (" << node.second->start_coord.x << ", " << node.second->start_coord.y << ")" << std::endl;
+            std::cout << "  end coord: (" << node.second->end_coord.x << ", " << node.second->end_coord.y << ")" << std::endl;
+            std::cout << "  tile count: " << node.second->tile_count << std::endl;
+            std::cout << "  food count: " << node.second->food_count << std::endl;
+            std::cout << "  max index: " << node.second->max_index << std::endl;
+            std::cout << "  is one dim: " << node.second->is_one_dim << std::endl;
+            std::cout << "  has tail: " << node.second->has_tail << std::endl;
+            std::cout << "  edge nodes: ";
+            for(auto edge_node : node.second->edge_nodes){
+                std::cout << "(" << edge_node.first->id << ", " << edge_node.second << "), ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << "####### Graph end ####### " << std::endl;
+    }
+
     void connect_nodes(int id1, int id2){
         if (get_node(id1) == nullptr || get_node(id2) == nullptr || id1 == id2){
             return;
@@ -1065,7 +1085,7 @@ public:
                 continue;
             }
             // If an area has just one tile, no max index and only one area to explore, then we can just add the tile to the previous node
-            if (prev_node != nullptr && prev_node->is_one_dim && result.tile_count == 1 && result.max_index == 0 && (result.connected_areas.size() + result.to_explore.size() == 2)){
+            if (prev_node != nullptr && prev_node->is_one_dim && result.tile_count == 1 && result.max_index == 0 && ((result.connected_areas.size() + result.to_explore.size()) <= 2)){
                 // std::cout << "Adding to previous node" << std::endl;
                 current_node = prev_node;
                 current_node->tile_count += result.tile_count;
@@ -1096,7 +1116,9 @@ public:
             }
         }
         // std::cout << "Graph size: " << graph.nodes.size() << std::endl;
-        return graph.search_best2(body_coords.size(), s_map, food_value, width, target_margin, food_check, exhaustive);
+        graph.print_graph();
+        return AreaCheckResult();
+        // return graph.search_best2(body_coords.size(), s_map, food_value, width, target_margin, food_check, exhaustive);
     }
 
 private:
