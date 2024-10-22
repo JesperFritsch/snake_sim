@@ -265,8 +265,10 @@ class SnakeEnv:
         self.store_runs = True
         self.food = Food(width=width, height=height, max_food=food, decay_count=food_decay)
 
+
     def fresh_map(self):
         return self.base_map.copy()
+
 
     @classmethod
     def get_map_files(self):
@@ -276,6 +278,7 @@ class SnakeEnv:
             if f.is_file() and f.suffix == '.png':
                 maps[f.stem] = str(f)
         return maps
+
 
     def load_png_map(self, map_path):
         if not Path(map_path).is_absolute():
@@ -305,6 +308,7 @@ class SnakeEnv:
                     print(f"Color at (x={x}, y={y}) not found in color mapping: {color}")
         self.map = self.fresh_map()
 
+
     def reset(self):
         self.time_step = 0
         self.map = self.fresh_map()
@@ -324,6 +328,7 @@ class SnakeEnv:
         self.alive_snakes = self.get_alive_snakes()
         self.food.clear()
 
+
     def print_map(self, s_map=None):
         if s_map is None:
             s_map = self.map
@@ -341,6 +346,7 @@ class SnakeEnv:
                     print_row.append(f' {chr(c)} ')
             print(''.join(print_row))
 
+
     def init_recorder(self):
         self.run_data = RunData(
             width=self.width,
@@ -352,9 +358,11 @@ class SnakeEnv:
                 } for s in self.snakes.values()],
             base_map=np.array(self.base_map))
 
+
     def print_stats(self):
         for snake_info in self.snakes_info.values():
             print(f"Snake: {snake_info['id']}, length: {snake_info['length']}")
+
 
     def add_snake(self, snake, h_color, b_color):
         if isinstance(snake, Snake):
@@ -390,15 +398,19 @@ class SnakeEnv:
         else:
             raise ValueError(f"Obj: {repr(snake)} is not of type {Snake}")
 
+
     def remove_snake(self, snake_id):
         del self.snakes[snake_id]
+
 
     def is_inside(self, coord):
         x, y = coord
         return (0 <= x < self.width and 0 <= y < self.height)
 
+
     def get_alive_snakes(self):
         return [s for h, s in self.snakes.items() if self.snakes_info[h]['alive']]
+
 
     def update_snake_on_map(self, snake):
         head = snake.body_coords[0]
@@ -410,6 +422,7 @@ class SnakeEnv:
             x, y = snake.body_coords[i]
             self.map[y, x] = snake.head_value if (x, y) == head else snake.body_value
 
+
     def put_snake_on_map(self, snake):
         for coord in snake.body_coords:
             x, y = coord
@@ -417,10 +430,12 @@ class SnakeEnv:
         x, y = snake.coord
         self.map[y, x] = snake.head_value
 
+
     def put_coords_on_map(self, coords, value):
         for coord in coords:
             x, y = coord
             self.map[y, x] = value
+
 
     def valid_tiles(self, coord, discount=None):
         tiles = []
@@ -435,6 +450,7 @@ class SnakeEnv:
                 continue
             tiles.append(m_coord)
         return tiles
+
 
     def update(self, verbose=True):
         self.time_step += 1
@@ -481,6 +497,7 @@ class SnakeEnv:
         if verbose:
             print(f"Step: {self.time_step}, {len(self.alive_snakes)} alive")
 
+
     def get_expanded_normal_map(self, snake_id, expand_factor=2):
         new_height, new_width = coord_op(self.map.shape, (expand_factor, expand_factor), '*')
         expanded_map = np.full((new_height, new_width), self.FREE_TILE, dtype=np.uint8)
@@ -493,6 +510,7 @@ class SnakeEnv:
                 expanded_map[snake.y * expand_factor, snake.x * expand_factor] = self.NORM_MAIN_HEAD
         expanded_map = expanded_map.reshape(new_height, new_width, 1)
         return expanded_map
+
 
     def get_normalized_map(self, snake_id):
         """ Used by ML models to get the map in a normalized format """
@@ -551,6 +569,7 @@ class SnakeEnv:
             if self.store_runs:
                 self.run_data.write_to_file(aborted=aborted)
 
+
     def generate_run(self, max_steps=None, max_no_food_steps=500):
         start_time = time()
         self.init_recorder()
@@ -576,6 +595,7 @@ class SnakeEnv:
             self.run_data.write_to_file(aborted=aborted)
             if aborted:
                 raise KeyboardInterrupt
+
 
     def ml_training_run(self, episodes, start_episode=0, max_steps=None, max_no_food_steps=200):
         for episode in range(start_episode, episodes + start_episode):

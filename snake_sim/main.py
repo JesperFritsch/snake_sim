@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .utils import DotDict
 from .snake_env import SnakeEnv
-from .snakes.autoSnake4 import AutoSnake4
+from .snakes.auto_snake import AutoSnake
 from .render.pygame_render import play_runfile, play_stream
 config = None
 
@@ -19,7 +19,7 @@ def setup_env(config):
     count = 0
     for snake_config in config.snake_configs:
         count += 1
-        env.add_snake(AutoSnake4(**snake_config['snake'], calc_timeout=config.calc_timeout), **snake_config['env'])
+        env.add_snake(AutoSnake(**snake_config['snake'], calc_timeout=config.calc_timeout), **snake_config['env'])
         if count == config.snake_count:
             break
     return env

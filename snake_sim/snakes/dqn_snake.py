@@ -7,7 +7,7 @@ from snake_sim.utils import coord_op
 from tensorflow import keras
 from tensorflow.keras import models, layers
 from collections import deque
-from snake_sim.snakes.autoSnakeBase import AutoSnakeBase
+from snake_sim.snakes.auto_snake_base import AutoSnakeBase
 from snake_sim.snake_env import SnakeEnv
 # from multiprocessing import Process, Pipe
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from time import time
 from pprint import pprint
 from snake_sim.utils import coord_op, coord_cmp
-from snake_sim.snakes.autoSnake4 import AutoSnake4
+from snake_sim.snakes.AutoSnake import AutoSnake
 from snake_sim.snake_env import SnakeEnv, RunData
 
 from snake_sim.cpp_bindings.area_check import AreaChecker
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     snake_char = 'A'
     frame_width = GRID_WIDTH * expand_factor
     frame_height = GRID_HEIGHT * expand_factor
-    snake = AutoSnake4(snake_char, 1, calc_timeout=5000)
+    snake = AutoSnake(snake_char, 1, calc_timeout=5000)
     env.add_snake(snake, (255, 255, 255), (0, 0, 0))
     frameshape = (frame_width, frame_height, 3)
     base_frame = frame_builder.last_frame
@@ -80,7 +80,7 @@ if __name__ == '__main__':
         if id != 'food':
             print("ID: ", id, len(step_state[id]))
             if id != snake_char:
-                s = AutoSnake4(id, 1)
+                s = AutoSnake(id, 1)
                 env.add_snake(s, (176, 27, 16), (125, 19, 11))
             else:
                 s = env.snakes[id]
