@@ -197,6 +197,7 @@ def play_runfile(filepath=None, frames=None, grid_height=None, grid_width=None, 
         frame_buffer, sound_buffer = frames_sound_from_run_data(run_data)
     elif all([frames, grid_height, grid_width]):
         frame_buffer = frames
-        sound_buffer = [[] * len(frame_buffer)]
+        sound_buffer = [[None]] * len(frame_buffer)
+        run_data = RunData(grid_width, grid_height, [], np.array([]))
     play_run(frame_buffer, sound_buffer, run_data, grid_width, grid_height, sound_on=sound_on, fps_playback=fps)
 

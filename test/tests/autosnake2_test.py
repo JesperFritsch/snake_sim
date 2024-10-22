@@ -9,7 +9,7 @@ from pathlib import Path
 from time import time
 from pprint import pprint
 from snake_sim.utils import coord_op, coord_cmp
-from snake_sim.snakes.AutoSnake import AutoSnake
+from snake_sim.snakes.auto_snake import AutoSnake
 from snake_sim.snake_env import SnakeEnv, RunData
 
 from snake_sim.cpp_bindings.area_check import AreaChecker
@@ -114,29 +114,29 @@ if __name__ == '__main__':
     pr = cProfile.Profile()
     pr.enable()
 
-    stime = time()
-    choice = snake.pick_direction()
-    print(f"Choice: {choice}")
-    print(f"snake.coord: {snake.coord}")
-    print(snake)
-    print(f"Time: {(time() - stime) * 1000}")
+    # stime = time()
+    # choice = snake._pick_direction()
+    # print(f"Choice: {choice}")
+    # print(f"snake.coord: {snake.coord}")
+    # print(snake)
+    # print(f"Time: {(time() - stime) * 1000}")
 
 
-    # for tile in snake.valid_tiles(snake.map, snake.coord):
-    #     # s_time = time()
-    #     # risk = snake.calc_immediate_risk(env.map, tile, 3)
-    #     # print(f"Time: {(time() - s_time) * 1000}")
-    #     # print(f"Risk: {risk}")
+    for tile in snake._valid_tiles(snake.map, snake.coord):
+        # s_time = time()
+        # risk = snake.calc_immediate_risk(env.map, tile, 3)
+        # print(f"Time: {(time() - s_time) * 1000}")
+        # print(f"Risk: {risk}")
 
-    #     # s_time = time()
-    #     # option = snake.deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata)
-    #     # print(f'free_path: {tile}', option['free_path'])
-    #     # print(f"Time: {(time() - s_time) * 1000}")
+        s_time = time()
+        option = snake._deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata)
+        print(f'free_path: {tile}', option['free_path'])
+        print(f"Time: {(time() - s_time) * 1000}")
 
-    #     s_time = time()
-    #     area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), tile, food_check=True, exhaustive=False)
-    #     print(f"Time: {(time() - s_time) * 1000}")
-    #     print(f"area_check for tile {tile}: {area_check}")
+        # s_time = time()
+        # area_check = snake._area_check_wrapper(snake.map, snake.body_coords.copy(), tile, food_check=False, exhaustive=False)
+        # print(f"Time: {(time() - s_time) * 1000}")
+        # print(f"area_check for tile {tile}: {area_check}")
 
     # print(snake.get_future_available_food_map())
     # s_time = time()
@@ -167,6 +167,6 @@ if __name__ == '__main__':
 
     frames = frame_builder.frames_from_rundata(rundata)
 
-    # play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width, print_steps=False)
+    play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width)
     # video_output = Path(__file__).parent.joinpath('..', '..', 'render', 'videos', 'test_look_ahead.mp4').resolve()
     # frames_to_video(frames, str(video_output), 30, size=(640, 640))
