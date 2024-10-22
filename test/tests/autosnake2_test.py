@@ -32,11 +32,12 @@ if __name__ == '__main__':
     expand_factor = 2
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    snake_map = 'items'
-    # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap3.png"
-    env.load_png_map(snake_map)
+    # snake_map = 'map1'
+    # env.load_png_map(snake_map)
 
-    # env.load_png_map(test_map)
+    test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap.png"
+    env.load_png_map(test_map)
+
     env.init_recorder()
     frame_builder = core.FrameBuilder(env.run_data.to_dict(), expand_factor, offset)
 
@@ -51,13 +52,13 @@ if __name__ == '__main__':
     frameshape = (frame_width, frame_height, 3)
     base_frame = frame_builder.last_frame
 
-    with open(test_map_filepath) as test_map_file:
-        step_state = eval(test_map_file.read())
-    # step_state = {
-    #     "food": [],
-    #     "A": deque([(0, 0) for _ in range(200)])
-    # }
-    # pprint(step_state)
+    # with open(test_map_filepath) as test_map_file:
+    #     step_state = eval(test_map_file.read())
+    step_state = {
+        "food": [],
+        "A": deque([(0, 0) for _ in range(200)])
+    }
+    pprint(step_state)
 
     env.map = env.fresh_map()
     for snake_data in [step_state[s] for s in step_state if s not in (snake_char, 'food')]:
@@ -114,12 +115,12 @@ if __name__ == '__main__':
     pr = cProfile.Profile()
     pr.enable()
 
-    stime = time()
-    choice = snake.pick_direction()
-    print(f"Choice: {choice}")
-    print(f"snake.coord: {snake.coord}")
-    print(snake)
-    print(f"Time: {(time() - stime) * 1000}")
+    # stime = time()
+    # choice = snake.pick_direction()
+    # print(f"Choice: {choice}")
+    # print(f"snake.coord: {snake.coord}")
+    # print(snake)
+    # print(f"Time: {(time() - stime) * 1000}")
 
 
     # for tile in snake.valid_tiles(snake.map, snake.coord):
@@ -139,13 +140,13 @@ if __name__ == '__main__':
     #     print(f"area_check for tile {tile}: {area_check}")
 
     # print(snake.get_future_available_food_map())
-    # s_time = time()
-    # head_dist = (0, 1)
+    s_time = time()
+    head_dist = (0, 1)
     # start_coord = coord_op(snake.coord, head_dist, '+')
-    # # start_coord = 0, 28
-    # area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), start_coord, food_check=False, exhaustive=False)
-    # print(f"area_check for tile {coord_op(snake.coord, head_dist, '+')}: {area_check}")
-    # print(f"Time: {(time() - s_time) * 1000}")
+    start_coord = 0, 28
+    area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), start_coord, food_check=False, exhaustive=False)
+    print(f"area_check for tile {start_coord}: {area_check}")
+    print(f"Time: {(time() - s_time) * 1000}")
 
     # option = snake.deep_look_ahead(snake.map.copy(), coord_op(snake.coord, head_dist, '+'), snake.body_coords.copy(), snake.length, rundata=rundata, branch_common={"min_margin": 14})
     # print(f"area_check for tile {head_dist}: {option['free_path']}")
