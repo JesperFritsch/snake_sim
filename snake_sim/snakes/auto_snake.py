@@ -222,7 +222,7 @@ class AutoSnake(AutoSnakeBase):
         return next_tile
 
 
-    def _target_tile(self, s_map, body_coords, ):
+    def _target_tile(self, body_coords):
         self_coord = body_coords[0]
         s_dir = coord_op(self_coord, body_coords[1], '-')
         return coord_op(self_coord, s_dir, '+')

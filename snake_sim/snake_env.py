@@ -7,6 +7,7 @@ from PIL import Image
 import numpy as np
 from typing import Optional, List
 from collections import deque
+from typing import List
 
 from . import utils
 from .utils import coord_op, exec_time, coord_cmp
@@ -456,13 +457,12 @@ class SnakeEnv:
         self.time_step += 1
         self.map = self.fresh_map() # needed for the snakes, without it the snakes map is never cleared.
         self.alive_snakes = self.get_alive_snakes()
-        alive_snakes = self.alive_snakes
+        alive_snakes: List[Snake] = self.alive_snakes
         random.shuffle(alive_snakes)
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
         self.food.generate_new(self.map)
         self.food.remove_old(self.map)
-        # self.print_map()
         new_step = StepData(food=list(self.food.locations), step=self.time_step)
         for snake in alive_snakes:
             old_tail = snake.body_coords[-1]
@@ -470,7 +470,6 @@ class SnakeEnv:
             u_time = time()
             direction = snake.update()
             next_coord = coord_op(snake.coord, direction, '+')
-            # print(direction, next_coord, snake.coord, snake.body_coords[1])
             if next_coord not in self.valid_tiles(snake.coord):
                 snake.kill()
             else:
