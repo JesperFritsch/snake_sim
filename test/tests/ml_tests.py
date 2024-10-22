@@ -1,5 +1,5 @@
 from snake_sim.snake_env import SnakeEnv
-from snake_sim.snakes.dqnSnake import DqnSnake
+from snake_sim.snakes.dqn_snake import DqnSnake
 from multiprocessing import Pipe, Process
 from snake_sim.render.pygame_render import play_stream
 
