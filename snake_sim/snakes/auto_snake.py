@@ -306,7 +306,7 @@ class AutoSnake(AutoSnakeBase):
                     best_results['margin'] = max(best_results['margin'], best_margin)
                     target_tile = tile
             if target_tile is None:
-                target_tile = self._target_tile(s_map, body_coords)
+                target_tile = self._target_tile(body_coords)
             valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
 
             for tile in valid_tiles:
