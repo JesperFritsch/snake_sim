@@ -1,5 +1,12 @@
 from collections import deque
-from ..utils import exec_time
+from snake_sim.utils import exec_time, coord_op
+
+DIRS = (
+    (0, -1),
+    (1,  0),
+    (0,  1),
+    (-1, 0)
+)
 
 class Snake:
     def __init__(self, id: str, start_length: int):
@@ -49,6 +56,21 @@ class Snake:
     def update(self):
         print("This method is not implemented")
         raise NotImplementedError
+
+    def _valid_tiles(self, s_map, coord, discount=None):
+        """Returns a list of valid tiles from a given coord"""
+        dirs = []
+        for direction in DIRS:
+            m_coord = coord_op(coord, direction, '+')
+            x_move, y_move = m_coord
+            if m_coord == discount:
+                dirs.append(m_coord)
+            elif not self.env.is_inside(m_coord):
+                continue
+            elif s_map[y_move, x_move] not in self.env.valid_tile_values:
+                continue
+            dirs.append(m_coord)
+        return dirs
 
     def update_body(self, new_head, body_coords: deque, length):
         body_coords.appendleft(new_head)

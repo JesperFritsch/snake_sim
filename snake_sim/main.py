@@ -3,25 +3,38 @@ import sys
 import datetime
 import json
 import argparse
+import threading
 from multiprocessing import Pipe, Process
 from pathlib import Path
 
-from .utils import DotDict
-from .snake_env import SnakeEnv
-from .snakes.auto_snake import AutoSnake
-from .render.pygame_render import play_runfile, play_stream
+from snake_sim.controllers.keyboard_controller import ControllerCollection
+from snake_sim.utils import DotDict
+from snake_sim.snake_env import SnakeEnv
+from snake_sim.snakes.auto_snake import AutoSnake
+from snake_sim.snakes.manual_snake import ManualSnake
+from snake_sim.render.pygame_render import play_runfile, play_stream
 config = None
 
 def setup_env(config):
     env = SnakeEnv(config.grid_width, config.grid_height, config.food, config.food_decay)
     if config.get('map'):
         env.load_png_map(config.map)
-    count = 0
-    for snake_config in config.snake_configs:
+    count = config.players
+
+    if config.players != 0:
+        ctl_collection = ControllerCollection()
+        for player in range(config.players):
+            snake_config = config.snake_configs[player]
+            man_snake = ManualSnake(**snake_config['snake'])
+            ctl_collection.bind_controller(man_snake)
+            env.add_snake(man_snake, **snake_config['env'])
+        ctl_collection.handle_controllers() # this reads the keyboard input in a separate thread
+
+    for snake_config in config.snake_configs[config.players:]:
+        if count >= config.snake_count:
+            break
         count += 1
         env.add_snake(AutoSnake(**snake_config['snake'], calc_timeout=config.calc_timeout), **snake_config['env'])
-        if count == config.snake_count:
-            break
     return env
 
 
@@ -47,10 +60,13 @@ def handle_args(args, config):
         config.sound = args.sound
     if args.fps:
         config.fps = args.fps
+    if args.players:
+        config.players = args.players
+
 
 def start_stream_run(conn, config):
     env = setup_env(config)
-    env.stream_run(conn)
+    env.stream_run(conn, fps=config.fps)
 
 
 def main():
@@ -62,6 +78,7 @@ def main():
     mutex.add_argument('--compute', action='store_true', help='Compute a run file')
     mutex.add_argument('--stream', action='store_true', help='compute and live-stream the run')
     ap.add_argument('--snake-count', type=int, help='Number of snakes to simulate')
+    ap.add_argument('--players', type=int, help='Number of players', default=0)
     ap.add_argument('--grid-width', type=int, help='Width of the grid')
     ap.add_argument('--grid-height', type=int, help='Height of the grid')
     ap.add_argument('--food', type=int, help='Number of food to spawn')
@@ -90,7 +107,7 @@ def main():
     elif args.stream:
         parent_conn, child_conn = Pipe()
         env_p = Process(target=start_stream_run, args=(child_conn, config))
-        render_p = Process(target=play_stream, args=(parent_conn, config.fps, config.sound))
+        render_p = Process(target=play_stream, args=(parent_conn, config.fps, config.sound), kwargs={'keep_up': (config.players != 0)})
         render_p.start()
         env_p.start()
         render_p.join()

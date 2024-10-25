@@ -2,17 +2,14 @@ import math
 import itertools
 from collections import deque
 from array import array
+from statistics import mean
 import numpy as np
 from time import time
 
-from ..utils import coord_op, exec_time
+from snake_sim.utils import coord_op, exec_time
 
-from .snake import Snake
-from statistics import mean
-from ..snake_env import (
-        DIR_MAPPING,
-        SnakeEnv
-    )
+from snake_sim.snakes.snake import Snake
+from snake_sim.snake_env import SnakeEnv
 
 def copy_map(s_map):
     return [array('B', row) for row in s_map]
@@ -27,7 +24,6 @@ class AutoSnakeBase(Snake):
         self.y = None
         self.route: deque = deque()
         self.start_time = 0
-        self.map_to_print = None
         self.length = start_length
         self.alive_opps = []
 
@@ -37,7 +33,6 @@ class AutoSnakeBase(Snake):
     def update(self):
         self.start_time = time()
         self.update_map(self.env.map)
-        self.map_to_print = self.map.copy()
         next_tile = self._pick_direction()
         if next_tile is None:
             next_tile = self.coord
@@ -108,21 +103,5 @@ class AutoSnakeBase(Snake):
                 else:
                     print_row.append(f' {chr(c)} ')
             print(''.join(print_row))
-
-
-    def _valid_tiles(self, s_map, coord, discount=None):
-        """Returns a list of valid tiles from a given coord"""
-        dirs = []
-        for direction in DIR_MAPPING:
-            m_coord = coord_op(coord, direction, '+')
-            x_move, y_move = m_coord
-            if m_coord == discount:
-                dirs.append(m_coord)
-            elif not self.env.is_inside(m_coord):
-                continue
-            elif s_map[y_move, x_move] not in self.env.valid_tile_values:
-                continue
-            dirs.append(m_coord)
-        return dirs
 
 

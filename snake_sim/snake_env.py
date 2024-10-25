@@ -3,11 +3,13 @@ import array
 import json
 import os
 import sys
+import time
 from PIL import Image
 import numpy as np
 from typing import Optional, List
 from collections import deque
 from typing import List
+from multiprocessing.connection import PipeConnection
 
 from . import utils
 from .utils import coord_op, exec_time, coord_cmp
@@ -15,7 +17,6 @@ from pathlib import Path
 from .render import core as render
 from .snakes.snake import Snake
 from .render.core import put_snake_in_frame
-from time import time
 from dataclasses import dataclass, field
 from snake_sim.snakes.snake import Snake
 
@@ -367,7 +368,6 @@ class SnakeEnv:
 
     def add_snake(self, snake, h_color, b_color):
         if isinstance(snake, Snake):
-            snake.bind_env(self)
             while True:
                 rand_x = round(random.random() * (self.width - 1))
                 rand_y = round(random.random() * (self.height - 1))
@@ -396,6 +396,7 @@ class SnakeEnv:
                 self.snakes[snake.id] = snake
             else:
                 raise ValueError(f"Obj: {repr(snake)} has the same id as Obj: {repr(self.snakes[snake.id])}")
+            snake.bind_env(self)
         else:
             raise ValueError(f"Obj: {repr(snake)} is not of type {Snake}")
 
@@ -467,7 +468,7 @@ class SnakeEnv:
         for snake in alive_snakes:
             old_tail = snake.body_coords[-1]
             self.snakes_info[snake.id]['length'] = snake.length
-            u_time = time()
+            u_time = time.time()
             direction = snake.update()
             next_coord = coord_op(snake.coord, direction, '+')
             if next_coord not in self.valid_tiles(snake.coord):
@@ -475,7 +476,7 @@ class SnakeEnv:
             else:
                 snake.set_new_head(next_coord)
             if verbose:
-                print(f'update_time for snake: {snake.id}', time() - u_time)
+                print(f'update_time for snake: {snake.id}', time.time() - u_time)
             if snake.alive:
                 x, y = snake.coord
                 self.snakes_info[snake.id]['current_coord'] = snake.coord
@@ -527,95 +528,65 @@ class SnakeEnv:
                 norm_map[norm_map == body_value] = self.NORM_MAIN_BODY
 
 
-    def stream_run(self, conn, max_steps=None, max_no_food_steps=500):
+    def start_run(self, conn: Optional[PipeConnection]=None, max_steps=None, max_no_food_steps=500, verbose=True, fps=None):
         self.init_recorder()
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
         ongoing = True
         aborted = False
-        #send init data
-        init_data = self.run_data.to_dict()
-        del init_data['steps']
-        conn.send(init_data)
-        #wait for init ack
+        if not conn is None:
+            #send init data
+            init_data = self.run_data.to_dict()
+            del init_data['steps']
+            conn.send(init_data)
         try:
             while ongoing:
-                try:
-                    if conn.poll():
-                        data = conn.recv()
-                        if data == 'stop':
-                            conn.send('stopped')
-                            ongoing = False
-                            aborted = True
-                            break
-                    if self.alive_snakes:
-                        highest_no_food = max([self.snakes_info[only_one.id]['last_food'] for only_one in self.alive_snakes])
-                        if (self.time_step - highest_no_food) > max_no_food_steps or max_steps is not None and self.time_step > max_steps:
-                            ongoing = False
-                        self.update()
-                        if any(snake_data['alive'] for snake_data in self.snakes_info.values()):
-                            conn.send(self.run_data.steps[self.time_step].to_dict())
-                    else:
+                start_time = time.time()
+                if not conn is None and conn.poll():
+                    data = conn.recv()
+                    if data == 'stop':
+                        conn.send('stopped')
                         ongoing = False
-                        # break
-
-                except KeyboardInterrupt:
-                    aborted = True
-                    sys.exit(0)
+                        aborted = True
+                        break
+                if self.alive_snakes:
+                    highest_no_food = max([self.snakes_info[only_one.id]['last_food'] for only_one in self.alive_snakes])
+                    if (self.time_step - highest_no_food) > max_no_food_steps or max_steps is not None and self.time_step > max_steps:
+                        ongoing = False
+                    self.update(verbose=verbose)
+                    if not conn is None and any(snake_data['alive'] for snake_data in self.snakes_info.values()):
+                        conn.send(self.run_data.steps[self.time_step].to_dict())
+                    if fps is not None:
+                        sleep_time = 1 / (fps / 2)
+                        time_diff = time.time() - start_time
+                        time.sleep(sleep_time - time_diff)
+                else:
+                    ongoing = False
+        except KeyboardInterrupt:
+            aborted = True
+            raise
         finally:
             print('Done')
             self.print_stats()
             if self.store_runs:
                 self.run_data.write_to_file(aborted=aborted)
 
-
-    def generate_run(self, max_steps=None, max_no_food_steps=500):
-        start_time = time()
-        self.init_recorder()
-        for snake in self.snakes.values():
-            self.put_snake_on_map(snake)
-        ongoing = True
-        aborted = False
+    def stream_run(self, conn, max_steps=None, verbose=True, fps=None):
         try:
-            while ongoing:
-                print(f"Step: {self.time_step}, passed time sec: {time() - start_time:.2f} {len(self.alive_snakes)} alive")
-                if self.alive_snakes:
-                    highest_no_food = max([self.snakes_info[only_one.id]['last_food'] for only_one in self.alive_snakes])
-                    if (self.time_step - highest_no_food) > max_no_food_steps or max_steps is not None and self.time_step > max_steps:
-                        ongoing = False
-                    self.update()
-                else:
-                    ongoing = False
+            self.start_run(conn, max_steps, verbose=verbose, fps=fps)
         except KeyboardInterrupt:
-            print("Keyboard interrupt detected")
-            aborted = True
-        finally:
-            print('Done')
-            self.run_data.write_to_file(aborted=aborted)
-            if aborted:
-                raise KeyboardInterrupt
+            pass
 
+    def generate_run(self, max_steps=None, verbose=True):
+        try:
+            self.start_run(max_steps, verbose=verbose)
+        except KeyboardInterrupt:
+            pass
 
-    def ml_training_run(self, episodes, start_episode=0, max_steps=None, max_no_food_steps=200):
+    def ml_training_run(self, episodes, start_episode=0):
         for episode in range(start_episode, episodes + start_episode):
-            self.init_recorder()
-            # print("Episode: ", episode)
-            self.reset()
-            for snake in self.snakes.values():
-                self.put_snake_on_map(snake)
-            ongoing = True
-            aborted = False
             try:
-                while ongoing:
-                    if self.alive_snakes:
-                        highest_no_food = max([self.snakes_info[only_one.id]['last_food'] for only_one in self.alive_snakes])
-                        if (self.time_step - highest_no_food) > max_no_food_steps or max_steps is not None and self.time_step > max_steps:
-                            ongoing = False
-                        self.update(verbose=False)
-                    else:
-                        ongoing = False
-                    # self.print_map()
-
+                self.start_run(verbose=False)
             except KeyboardInterrupt:
                 print("Keyboard interrupt detected")
                 for snake in self.snakes.values():
@@ -623,14 +594,3 @@ class SnakeEnv:
                         snake.save_weights()
                     except AttributeError:
                         pass
-                aborted = True
-            finally:
-                # self.run_data.write_to_file(aborted=aborted, ml=True)
-                if aborted:
-                    raise KeyboardInterrupt
-            for snake in self.snakes.values():
-                try:
-                    pass
-                    # print(f'Episode: {episode} total reward: {snake.total_reward}')
-                except AttributeError:
-                    pass
