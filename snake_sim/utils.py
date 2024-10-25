@@ -5,6 +5,7 @@ import shutil
 import json
 import math
 from time import time
+from collections.abc import Iterable
 
 from collections import deque
 
@@ -13,6 +14,8 @@ class DotDict(dict):
         for k, v in other_dict.items():
             if isinstance(v, dict):
                 v = DotDict(v)
+            # elif isinstance(v, Iterable) and not isinstance(v, str):
+            #     v = [DotDict(e) if isinstance(e, dict) else e for e in v]
             self[k] = v
 
     def __getattr__(self, attr):

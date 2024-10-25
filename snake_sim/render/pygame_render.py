@@ -101,7 +101,7 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
             sound_buffer.extend([turn_sounds, eat_sounds])
 
 
-def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_height, sound_on=True, fps_playback=10):
+def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_height, sound_on=True, fps_playback=10, keep_up=False):
 
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
@@ -156,27 +156,31 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
 
         if new_frame:
             frame_counter = max(min(frame_counter + play_direction, len(frame_buffer) - 1), 0)
-            if 0 <= frame_counter < len(frame_buffer):
-                frame = frame_buffer[frame_counter]
-                if sound_on:
-                    for sound in sound_buffer[frame_counter]:
-                        if sound == 'eat':
-                            eat_sound.play()
-                        elif sound == 'left':
-                            left_sound.play()
-                        elif sound == 'right':
-                            right_sound.play()
-                if frame is not last_frame:
-                    draw_frame(screen, frame)
-                last_frame = frame
-                pygame.display.flip()
-            # if frame_counter == len(frame_buffer) - 1:
-            #     pause = True
+            is_kept_up = False
+            while not is_kept_up:
+                if 0 <= frame_counter < len(frame_buffer):
+                    frame = frame_buffer[frame_counter]
+                    if sound_on:
+                        for sound in sound_buffer[frame_counter]:
+                            if sound == 'eat':
+                                eat_sound.play()
+                            elif sound == 'left':
+                                left_sound.play()
+                            elif sound == 'right':
+                                right_sound.play()
+                    if frame is not last_frame:
+                        draw_frame(screen, frame)
+                    last_frame = frame
+                    pygame.display.flip()
+                    is_kept_up = True
+                else:
+                    print("end of buffer")
+
         clock.tick(fps)
     pygame.quit()
 
 
-def play_stream(stream_conn, fps=10, sound_on=True):
+def play_stream(stream_conn, fps=10, sound_on=True, keep_up=False):
     sound_buffer = []
     frame_buffer = []
     run_data = RunData(0, 0, [], np.array([])) # create this here so that the stream thread and the play thread can share the same object
@@ -186,7 +190,7 @@ def play_stream(stream_conn, fps=10, sound_on=True):
     # wait for the stream thread to initialize the run data
     while run_data.width == 0 and run_data.height == 0:
         pass
-    play_run(frame_buffer, sound_buffer, run_data, run_data.width, run_data.height, sound_on=sound_on, fps_playback=fps)
+    play_run(frame_buffer, sound_buffer, run_data, run_data.width, run_data.height, sound_on=sound_on, fps_playback=fps, keep_up=keep_up)
 
 
 def play_runfile(filepath=None, frames=None, grid_height=None, grid_width=None, sound_on=True, fps=10):
