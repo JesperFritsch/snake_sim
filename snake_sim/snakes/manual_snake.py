@@ -3,6 +3,8 @@
 
 from snake_sim.snakes.snake import Snake
 from snake_sim.utils import coord_op
+
+
 class ManualSnake(Snake):
     def __init__(self, id: str, start_length: int):
         super().__init__(id, start_length)

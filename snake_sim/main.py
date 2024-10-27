@@ -1,9 +1,6 @@
-import os
 import sys
-import datetime
 import json
 import argparse
-import threading
 from multiprocessing import Pipe, Process
 from pathlib import Path
 
@@ -60,13 +57,17 @@ def handle_args(args, config):
         config.sound = args.sound
     if args.fps:
         config.fps = args.fps
-    if args.players:
+    if args.players is not None:
         config.players = args.players
 
 
 def start_stream_run(conn, config):
     env = setup_env(config)
-    env.stream_run(conn, fps=config.fps)
+    if config.players != 0:
+        fps = config.fps
+    else:
+        fps = None
+    env.stream_run(conn, fps=fps)
 
 
 def main():
@@ -107,7 +108,7 @@ def main():
     elif args.stream:
         parent_conn, child_conn = Pipe()
         env_p = Process(target=start_stream_run, args=(child_conn, config))
-        render_p = Process(target=play_stream, args=(parent_conn, config.fps, config.sound), kwargs={'keep_up': (config.players != 0)})
+        render_p = Process(target=play_stream, args=(parent_conn, config.fps, config.sound))
         render_p.start()
         env_p.start()
         render_p.join()

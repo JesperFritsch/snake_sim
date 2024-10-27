@@ -1,8 +1,5 @@
-import threading
-import time
-from pynput import keyboard
-
 from typing import Set
+from pynput import keyboard
 
 from snake_sim.snakes.manual_snake import ManualSnake
 
@@ -43,8 +40,7 @@ class SingleSnakeController:
 
 
 class ControllerCollection:
-    def __init__(self, read_period=0.015) -> None:
-        self.read_period = read_period
+    def __init__(self) -> None:
         self.controllers: Set[SingleSnakeController] = set()
 
     def bind_controller(self, snake):

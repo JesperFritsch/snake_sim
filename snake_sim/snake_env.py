@@ -267,10 +267,17 @@ class SnakeEnv:
         self.store_runs = True
         self.food = Food(width=width, height=height, max_food=food, decay_count=food_decay)
 
+    def resize(self, width, height):
+        self.width = width
+        self.height = height
+        self.base_map = np.full((height, width), self.FREE_TILE, dtype=np.uint8)
+        max_food = self.food.max_food
+        decay_count = self.food.decay_count
+        self.food = Food(width=width, height=height, max_food=max_food, decay_count=decay_count)
+        self.map = self.fresh_map
 
     def fresh_map(self):
         return self.base_map.copy()
-
 
     @classmethod
     def get_map_files(self):
@@ -295,6 +302,7 @@ class SnakeEnv:
             image = Image.open(img_path)
         except FileNotFoundError:
             raise ValueError(f"Map file not found: {img_path}")
+        self.resize(*image.size)
         image_matrix = np.array(image)
         map_color_mapping = {
             (0,0,0,0): self.FREE_TILE,
@@ -559,7 +567,8 @@ class SnakeEnv:
                     if fps is not None:
                         sleep_time = 1 / (fps / 2)
                         time_diff = time.time() - start_time
-                        time.sleep(sleep_time - time_diff)
+                        if time_diff < sleep_time:
+                            time.sleep(sleep_time - time_diff)
                 else:
                     ongoing = False
         except KeyboardInterrupt:
