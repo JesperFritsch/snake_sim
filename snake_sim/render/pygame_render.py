@@ -1,16 +1,17 @@
-
-SCREEN_WIDTH = 1000
-SCREEN_HEIGHT = 1000
-
 import pygame
 import json
 import numpy as np
 import threading
 from pathlib import Path
+import asyncio
+
+SCREEN_WIDTH = 1000
+SCREEN_HEIGHT = 1000
 
 from snake_sim.render import core
 from snake_sim.snake_env import RunData, StepData
 
+queue = asyncio.Queue()
 
 def frames_from_runfile(filepath, expand_factor=2):
     frames = []
@@ -67,20 +68,23 @@ def handle_events():
             raise KeyboardInterrupt
 
 
-def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data: RunData):
+async def handle_stream(stream_conn, sound_on=True):
 
     while not stream_conn.poll(0.05):
         pass
 
     run_meta_data = stream_conn.recv()
 
+    await queue.put(run_meta_data)
+    run_data = RunData(0, 0, [], np.array([]))
     run_data.height = run_meta_data['height']
     run_data.width = run_meta_data['width']
     run_data.base_map = np.array(run_meta_data['base_map'], dtype=np.uint8)
     run_data.snake_data = run_meta_data['snake_data']
-
-    frame_builder = core.FrameBuilder(run_meta_data=run_meta_data)
-
+    
+    await asyncio.sleep(0.001)
+    
+    step_count = 0
     while True:
         if stream_conn.poll(0.05):
             turn_sounds = []
@@ -89,40 +93,44 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
             step_data = StepData.from_dict(step_data_dict)
             step_count = step_data.step
             run_data.add_step(step_count, step_data)
-            new_frames = frame_builder.step_to_frames(step_data_dict)
-            frame_buffer.extend(new_frames)
-            for snake_data in step_data_dict["snakes"]:
-                if snake_data['did_eat']:
-                    eat_sounds.append('eat')
-                if snake_data["did_turn"] == 'left':
-                    turn_sounds.append('left')
-                elif snake_data["did_turn"] == 'right':
-                    turn_sounds.append('right')
-            sound_buffer.extend([turn_sounds, eat_sounds])
+            await queue.put(step_data_dict)
+            if sound_on:
+                for snake_data in step_data_dict["snakes"]:
+                    if snake_data['did_eat']:
+                        eat_sounds.append('eat')
+                    if snake_data["did_turn"] == 'left':
+                        turn_sounds.append('left')
+                    elif snake_data["did_turn"] == 'right':
+                        turn_sounds.append('right')
+        await asyncio.sleep(0.001)
 
 
-def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_height, sound_on=True, fps_playback=10):
-
+async def play_run(sound_on=True, fps_playback=10):
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
     surface = pygame.Surface(screen.get_size())
     surface = surface.convert()
     sound_mixer = pygame.mixer
     sound_mixer.init()
-    eat_sound = sound_mixer.Sound("snake_sim/render/sounds/eat.wav")
-    left_sound = sound_mixer.Sound("snake_sim/render/sounds/turn_left.wav")
-    right_sound = sound_mixer.Sound("snake_sim/render/sounds/turn_right.wav")
-    eat_sound.set_volume(1)
-    left_sound.set_volume(1)
-    right_sound.set_volume(1)
-
-    drawGray(surface, grid_width, grid_height)
+    if sound_on:
+        eat_sound = sound_mixer.Sound("snake_sim/render/sounds/eat.wav")
+        left_sound = sound_mixer.Sound("snake_sim/render/sounds/turn_left.wav")
+        right_sound = sound_mixer.Sound("snake_sim/render/sounds/turn_right.wav")
+        eat_sound.set_volume(1)
+        left_sound.set_volume(1)
+        right_sound.set_volume(1)
+    run_meta_data = await queue.get()
+    frame_builder = core.FrameBuilder(run_meta_data=run_meta_data)
+    run_data = RunData(0, 0, [], np.array([]))
+    run_data.height = run_meta_data['height']
+    run_data.width = run_meta_data['width']
+    drawGray(surface, run_data.width, run_data.height)
+    queue.task_done()
     running = True
     frame_counter = 0
     sim_step = 0
     play_direction = 1
     pause = False
-    last_frame = None
     while running:
         sim_step = (frame_counter // 2) + 1
         fps = fps_playback
@@ -153,40 +161,33 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
                 new_frame = True
             if keys[pygame.K_LSHIFT]:
                 frame_counter += 5 * play_direction
-
-        if new_frame:
-            frame_counter = max(min(frame_counter + play_direction, len(frame_buffer) - 1), 0)
-            if 0 <= frame_counter < len(frame_buffer):
-                frame = frame_buffer[frame_counter]
-                if sound_on:
-                    for sound in sound_buffer[frame_counter]:
-                        if sound == 'eat':
-                            eat_sound.play()
-                        elif sound == 'left':
-                            left_sound.play()
-                        elif sound == 'right':
-                            right_sound.play()
-                if frame is not last_frame:
-                    draw_frame(screen, frame)
-                last_frame = frame
-                pygame.display.flip()
-
+        
+        await asyncio.sleep(0.001)
+        step_data_dict = await queue.get()
+        frames = frame_builder.step_to_frames(step_data_dict)
+        queue.task_done()
+        for frame in frames:
+            draw_frame(screen, frame)
+        pygame.display.flip()
+        await asyncio.sleep(0.001)
         clock.tick(fps)
+        print(f"Frame: {frame_counter}, Step: {sim_step}")
+        
     pygame.quit()
 
 
 def play_stream(stream_conn, fps=10, sound_on=True):
+    asyncio.run(play_stream_async(stream_conn, fps, sound_on))
+
+async def play_stream_async(stream_conn, fps=10, sound_on=True):
     sound_buffer = []
     frame_buffer = []
     run_data = RunData(0, 0, [], np.array([])) # create this here so that the stream thread and the play thread can share the same object
-    stream_thread = threading.Thread(target=handle_stream, args=(stream_conn, frame_buffer, sound_buffer, run_data))
-    stream_thread.daemon = True
-    stream_thread.start()
     # wait for the stream thread to initialize the run data
-    while run_data.width == 0 and run_data.height == 0:
-        pass
-    play_run(frame_buffer, sound_buffer, run_data, run_data.width, run_data.height, sound_on=sound_on, fps_playback=fps)
-
+    handle_stream_task = asyncio.create_task(handle_stream(stream_conn))
+    play_run_task = asyncio.create_task(play_run(sound_on=sound_on, fps_playback=fps))
+    await handle_stream_task
+    await play_run_task
 
 def play_runfile(filepath=None, frames=None, grid_height=None, grid_width=None, sound_on=True, fps=10):
     if filepath:
