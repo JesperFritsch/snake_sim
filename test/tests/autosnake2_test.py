@@ -44,8 +44,8 @@ if __name__ == '__main__':
     test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
     snake_char = 'A'
-    frame_width = GRID_WIDTH * expand_factor
-    frame_height = GRID_HEIGHT * expand_factor
+    frame_width = env.width * expand_factor
+    frame_height = env.height * expand_factor
     snake = AutoSnake(snake_char, 1, calc_timeout=5000)
     env.add_snake(snake, (255, 255, 255), (0, 0, 0))
     frameshape = (frame_width, frame_height, 3)
