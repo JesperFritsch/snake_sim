@@ -75,6 +75,7 @@ struct AreaCheckResult {
     int margin;
     int needed_steps;
     bool has_opening;
+    float margin_over_tiles;
     AreaCheckResult() :
         is_clear(false),
         tile_count(0),
@@ -83,7 +84,8 @@ struct AreaCheckResult {
         has_tail(false),
         margin(INT_MIN),
         needed_steps(0),
-        has_opening(false) {}
+        has_opening(false),
+        margin_over_tiles(0) {}
     AreaCheckResult(bool is_clear,
                     int tile_count,
                     int total_steps,
@@ -91,7 +93,8 @@ struct AreaCheckResult {
                     bool has_tail,
                     int margin,
                     int needed_steps,
-                    bool has_opening) :
+                    bool has_opening,
+                    float margin_over_tiles) :
         is_clear(is_clear),
         tile_count(tile_count),
         total_steps(total_steps),
@@ -99,7 +102,8 @@ struct AreaCheckResult {
         has_tail(has_tail),
         margin(margin),
         needed_steps(needed_steps),
-        has_opening(has_opening) {}
+        has_opening(has_opening),
+        margin_over_tiles(margin_over_tiles) {}
 };
 
 class AreaNode{
@@ -371,7 +375,7 @@ public:
         nodes.erase(id);
     }
 
-    AreaCheckResult search_best2(int snake_length, uint8_t* s_map, uint8_t food_value, int width, int target_margin, bool food_check, bool exhaustive){
+    AreaCheckResult search_best2(int snake_length, uint8_t* s_map, uint8_t food_value, int width, int target_margin, bool food_check, bool exhaustive, float safe_margin_factor){
         bool forward = true;
         bool skipped_one = false;
         // Map to keep track of visited nodes
@@ -426,6 +430,7 @@ public:
                 best_result.is_clear = true;
                 best_result.tile_count = total_tile_count_here;
                 best_result.food_count = total_food_count_here;
+                best_result.margin_over_tiles = 1;
                 break;
             }
 
@@ -457,6 +462,7 @@ public:
             current_result.tile_count = calc_tiles;
             current_result.food_count = calc_food;
             current_result.needed_steps = needed_steps;
+            current_result.margin_over_tiles = (float)margin / (float)calc_tiles;
             if(current_result.margin >= 0){
                 current_result.is_clear = true;
             }
@@ -470,7 +476,7 @@ public:
                 if (current_result.margin > best_result.margin){
                     best_result = current_result;
                 }
-                if ((best_result.margin >= target_margin && best_result.margin >= best_result.food_count) && !exhaustive){
+                if ((best_result.margin >= target_margin && best_result.margin >= best_result.food_count) && !exhaustive && current_result.margin_over_tiles >= safe_margin_factor){
                     break;
                 }
             }
@@ -891,7 +897,8 @@ public:
             py::tuple start_coord_py,
             int target_margin,
             bool food_check,
-            bool exhaustive
+            bool exhaustive,
+            float safe_margin_factor
         ){
             auto s_map_buf = s_map.request();
             uint8_t* s_map_ptr = static_cast<uint8_t*>(s_map_buf.ptr);
@@ -908,7 +915,8 @@ public:
                 start_coord,
                 target_margin,
                 food_check,
-                exhaustive
+                exhaustive,
+                safe_margin_factor
             );
             return py::dict(
                 py::arg("is_clear") = result.is_clear,
@@ -916,7 +924,8 @@ public:
                 py::arg("total_steps") = result.total_steps,
                 py::arg("food_count") = result.food_count,
                 py::arg("has_tail") = result.has_tail,
-                py::arg("margin") = result.margin
+                py::arg("margin") = result.margin,
+                py::arg("margin_over_tiles") = result.margin_over_tiles
             );
         }
 
@@ -1020,7 +1029,8 @@ public:
         Coord& start_coord,
         int target_margin,
         bool food_check,
-        bool exhaustive
+        bool exhaustive,
+        float safe_margin_factor
     ){
         std::vector<int> checked;
         checked.resize(height * width);
@@ -1096,7 +1106,7 @@ public:
             }
         }
         // std::cout << "Graph size: " << graph.nodes.size() << std::endl;
-        return graph.search_best2(body_coords.size(), s_map, food_value, width, target_margin, food_check, exhaustive);
+        return graph.search_best2(body_coords.size(), s_map, food_value, width, target_margin, food_check, exhaustive, safe_margin_factor);
     }
 
 private:
@@ -1120,7 +1130,8 @@ PYBIND11_MODULE(area_check, m) {
             py::arg("start_coord_py"),
             py::arg("target_margin"),
             py::arg("food_check"),
-            py::arg("exhaustive"));
+            py::arg("exhaustive"),
+            py::arg("safe_margin_factor"));
 
     py::class_<Coord>(m, "Coord")
         .def(py::init<int, int>())
