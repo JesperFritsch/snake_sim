@@ -43,7 +43,7 @@ if __name__ == '__main__':
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
     test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'B'
+    snake_char = 'A'
     frame_width = env.width * expand_factor
     frame_height = env.height * expand_factor
     snake = AutoSnake(snake_char, 1, calc_timeout=1500)

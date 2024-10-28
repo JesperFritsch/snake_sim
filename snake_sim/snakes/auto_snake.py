@@ -16,7 +16,7 @@ from ..utils import coord_op, distance, exec_time
 from .auto_snake_base import AutoSnakeBase
 
 class BFSFrame:
-    def __init__(self, try_coord, s_map, body_coords, tiles_to_visit, area_checks, best_margin, has_tail, target_margin=0):
+    def __init__(self, try_coord, s_map, body_coords, tiles_to_visit, area_checks, best_margin, has_tail, best_margin_over_tiles, target_margin=0):
         """ target_margin is the minimum margin used when checking areas """
         self.try_coord = try_coord
         self.map = s_map
@@ -27,6 +27,7 @@ class BFSFrame:
         self.target_margin = target_margin
         self.has_tail = has_tail
         self.visited_tiles = set()
+        self.best_margin_over_tiles = best_margin_over_tiles
 
     def get_next_tile(self):
         if self.tiles_to_visit:
@@ -84,17 +85,7 @@ class AutoSnake(AutoSnakeBase):
 
 
     def _explore_option(self, start_coord, food_ahead=0, timeout_ms=None):
-        area_check = self._area_check_wrapper(self.map, self.body_coords, start_coord, exhaustive=True)
         # This is taking the risk of not finding that the snake cant use all the tiles in the area.
-        if area_check['margin'] > 0 and area_check['total_steps'] > 0:
-            chance_of_making_it = (area_check['margin'] / area_check['total_steps'])
-            print("steps: ", area_check['total_steps'])
-            print("margin: ", area_check['margin'])
-            print("Risk of unreachables: ", chance_of_making_it)
-            if chance_of_making_it > 0.15:
-                print("Quick return")
-                return True
-
         safe_option = self._best_first_search(
                 self.map.copy(),
                 self.body_coords.copy(),
@@ -148,7 +139,7 @@ class AutoSnake(AutoSnakeBase):
         route = None
         while route := self._get_route(self.map, self.coord, target_tiles=[l for l in food_locations if l != self.coord]):
             route = self._fix_route(route)
-            if self._check_safe_food_route(s_map, route):
+            if self._check_safe_food_route(s_map, route) or True:
                 return route
             else:
                 food_locations.remove(route[0])
@@ -243,30 +234,42 @@ class AutoSnake(AutoSnakeBase):
                 next_tile = option
         return next_tile
 
-
     def _target_tile(self, body_coords):
         self_coord = body_coords[0]
         s_dir = coord_op(self_coord, body_coords[1], '-')
         return coord_op(self_coord, s_dir, '+')
 
+    @exec_time
+    def _area_check_wrapper(self, s_map, body_coords, start_coord, target_margin=0, food_check=False, exhaustive=False, safe_margin_factor=0.0):
+        return self.area_checker.area_check(s_map, list(body_coords), start_coord, target_margin, food_check, exhaustive, float(safe_margin_factor))
 
-    def _area_check_wrapper(self, s_map, body_coords, start_coord, target_margin=0, food_check=False, exhaustive=False):
-        return self.area_checker.area_check(s_map, list(body_coords), start_coord, target_margin, food_check, exhaustive)
-
-    def _create_bfs_frame(self, new_coord, s_map, body_coords, min_margin=0):
+    @exec_time
+    def _create_bfs_frame(self, new_coord, s_map, body_coords, min_margin=0, safe_margin_factor=0):
         body_copy = body_coords.copy()
         map_copy = s_map.copy()
         old_tail = self.update_body(new_coord, body_copy, len(body_copy))
         self._update_snake_position(map_copy, body_copy, old_tail)
         valid_tiles = self._valid_tiles(map_copy, new_coord)
         best_margin = -len(body_coords)
-        area_checks = self._check_areas(map_copy, body_copy, valid_tiles, target_margin=min_margin)
+        best_margin_over_tiles = 0
+        area_checks = self._check_areas(map_copy, body_copy, valid_tiles, target_margin=min_margin, safe_margin_factor=safe_margin_factor)
         if area_checks:
             best_margin = max([a['margin'] for a in area_checks.values()])
+            best_margin_over_tiles = max([a['margin_over_tiles'] for a in area_checks.values()])
         tiles_to_visit = [t for t in valid_tiles if area_checks[t]['is_clear']]
         tiles_to_visit.sort(key=lambda x: area_checks[x]['margin'])
         has_tail = any([a['has_tail'] for a in area_checks.values()])
-        return BFSFrame(new_coord, map_copy, body_copy, tiles_to_visit, area_checks, best_margin=best_margin, target_margin=min_margin, has_tail=has_tail)
+        return BFSFrame(
+            new_coord,
+            map_copy,
+            body_copy,
+            tiles_to_visit,
+            area_checks,
+            best_margin=best_margin,
+            target_margin=min_margin,
+            has_tail=has_tail,
+            best_margin_over_tiles=best_margin_over_tiles
+        )
 
     def _check_areas(self, s_map, body_coords, tiles, target_margin=0, **kwargs):
         areas = {}
@@ -275,12 +278,13 @@ class AutoSnake(AutoSnakeBase):
             areas[tile] = area_check
         return areas
 
-    def _best_first_search(self, s_map, body_coords, new_coord, min_margin=0, timeout_ms=None, rundata=None):
+    @exec_time
+    def _best_first_search(self, s_map, body_coords, new_coord, min_margin=0, safe_margin_factor=0.05, timeout_ms=None, rundata=None):
         if timeout_ms is None:
             timeout_ms = self.calc_timeout
         search_stack: List[BFSFrame] = []
 
-        search_stack.append(self._create_bfs_frame(new_coord, s_map, body_coords, min_margin))
+        search_stack.append(self._create_bfs_frame(new_coord, s_map, body_coords, min_margin, safe_margin_factor=safe_margin_factor))
 
         start_time = time()
         while search_stack:
@@ -299,13 +303,17 @@ class AutoSnake(AutoSnakeBase):
             if ((time() - start_time) * 1000 > timeout_ms) and self.TIME_LIMIT:
                 return False
 
-            # If this is true then the search is done
-            # risk_of_unreachables = 1
-            # if frame.area_checks:
-            #     best_area = max(frame.area_checks.values(), key=lambda x: x['margin'])
-            #     if best_area['margin'] > 0 and best_area['total_steps'] > 0:
-            #         capped_margin = min(best_area['margin'], best_area['total_steps'])
-            #         risk_of_unreachables = 1 - (capped_margin / best_area['total_steps'])
+            # if the margin is large enough compared to the number of tiles left, then we can assume that we will fit in the area
+            # and we dont need to actually find a path to the end
+            # but that only works if the number of tiles left is large enough, if an area has 5 tiles and the margin is 1
+            # then best_margin_over_tiles will be 0.2 which might be over the limit, but there is a high risk of unreachables
+            print("margin over tiles: ", frame.best_margin_over_tiles)
+            print("margin: ", frame.best_margin)
+            print("tiles", [s['tile_count'] for s in frame.area_checks.values()])
+            if (frame.best_margin_over_tiles >= safe_margin_factor) and (frame.best_margin > frame.best_margin_over_tiles * 40):
+                print("Quick return")
+                return True
+
             if len(search_stack) > len(body_coords) + 1 or frame.has_tail:
                 return True
             next_tile = frame.get_next_tile()
@@ -320,7 +328,7 @@ class AutoSnake(AutoSnakeBase):
                 else:
                     search_stack.pop()
             else:
-                next_frame = self._create_bfs_frame(next_tile, s_map, body_coords, min_margin)
+                next_frame = self._create_bfs_frame(next_tile, s_map, body_coords, min_margin, safe_margin_factor=safe_margin_factor)
                 search_stack.append(next_frame)
         return False
 
