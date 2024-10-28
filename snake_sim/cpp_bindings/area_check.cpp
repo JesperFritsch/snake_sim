@@ -1013,7 +1013,7 @@ public:
                             max_index = body_index;
                         }
                     }
-                    if (n_coord == tail_coord && !(curr_coord == start_coord && area_id == 0)) {
+                    if (n_coord == tail_coord && !(curr_coord == start_coord)) {
                         max_index = body_len - 1;
                         has_tail = true;
                     }

@@ -25,8 +25,8 @@ def check_areas(snake, coord):
     print(f"Time: {(time() - s_time) * 1000}")
 
 if __name__ == '__main__':
-    GRID_WIDTH = 32
-    GRID_HEIGHT = 32
+    GRID_WIDTH = 64
+    GRID_HEIGHT = 64
 
     FOOD = 15
     expand_factor = 2
@@ -61,7 +61,6 @@ if __name__ == '__main__':
 
     env.map = env.fresh_map()
     for snake_data in [step_state[s] for s in step_state if s not in (snake_char, 'food')]:
-        # print(snake_data)
         core.put_snake_in_frame(base_frame, snake_data, (255, 255, 255), expand_factor=expand_factor, offset=offset)
     for coord in step_state['food']:
         expanded = coord_op(coord, (expand_factor, expand_factor), '*')
@@ -139,7 +138,7 @@ if __name__ == '__main__':
         print(f"Time: {(time() - s_time) * 1000}")
 
         s_time = time()
-        area_check = snake._area_check_wrapper(snake.map, snake.body_coords.copy(), tile, food_check=False, exhaustive=False)
+        area_check = snake._area_check_wrapper(snake.map, snake.body_coords.copy(), tile, food_check=False, exhaustive=False, safe_margin_factor=0.08)
         print(f"Time: {(time() - s_time) * 1000}")
         print(f"area_check for tile {tile}: {area_check}")
 
@@ -168,8 +167,8 @@ if __name__ == '__main__':
     s = StringIO()
     sortby = 'tottime'
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print(s.getvalue())
+    # ps.print_stats()
+    # print(s.getvalue())
 
     frames = frame_builder.frames_from_rundata(rundata)
 
