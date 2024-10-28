@@ -6,6 +6,7 @@ import pygame
 import json
 import numpy as np
 import threading
+import time
 from pathlib import Path
 
 from snake_sim.render import core
@@ -158,19 +159,20 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
             frame_counter = max(min(frame_counter + play_direction, len(frame_buffer) - 1), 0)
             if 0 <= frame_counter < len(frame_buffer):
                 frame = frame_buffer[frame_counter]
-                if sound_on:
-                    for sound in sound_buffer[frame_counter]:
-                        if sound == 'eat':
-                            eat_sound.play()
-                        elif sound == 'left':
-                            left_sound.play()
-                        elif sound == 'right':
-                            right_sound.play()
                 if frame is not last_frame:
+                    if sound_on:
+                        for sound in sound_buffer[frame_counter]:
+                            if sound == 'eat':
+                                eat_sound.play()
+                            elif sound == 'left':
+                                left_sound.play()
+                            elif sound == 'right':
+                                right_sound.play()
                     draw_frame(screen, frame)
                 last_frame = frame
                 pygame.display.flip()
-
+            while (frame_counter >= len(frame_buffer) - 1) and frame_counter < (len(run_data.steps) * 2) - 1:
+                time.sleep(0.01)
         clock.tick(fps)
     pygame.quit()
 
@@ -198,5 +200,8 @@ def play_runfile(filepath=None, frames=None, grid_height=None, grid_width=None, 
         frame_buffer = frames
         sound_buffer = [[None]] * len(frame_buffer)
         run_data = RunData(grid_width, grid_height, [], np.array([]))
+        run_data.steps = {i: StepData([], i) for i in range(1, int(len(frame_buffer) / 2) + 1)}
+    else:
+        return
     play_run(frame_buffer, sound_buffer, run_data, grid_width, grid_height, sound_on=sound_on, fps_playback=fps)
 

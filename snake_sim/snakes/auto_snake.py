@@ -1,7 +1,9 @@
 import random
 import numpy as np
 import itertools
+from typing import List
 from collections import deque
+from dataclasses import dataclass
 from statistics import mean
 from functools import cmp_to_key
 from time import time
@@ -12,6 +14,27 @@ from snake_sim.cpp_bindings.area_check import AreaChecker
 from ..utils import coord_op, distance, exec_time
 
 from .auto_snake_base import AutoSnakeBase
+
+class BFSFrame:
+    def __init__(self, try_coord, s_map, body_coords, tiles_to_visit, area_checks, best_margin, has_tail, target_margin=0):
+        """ target_margin is the minimum margin used when checking areas """
+        self.try_coord = try_coord
+        self.map = s_map
+        self.body_coords = body_coords
+        self.tiles_to_visit = tiles_to_visit
+        self.area_checks = area_checks
+        self.best_margin = best_margin
+        self.target_margin = target_margin
+        self.has_tail = has_tail
+        self.visited_tiles = set()
+
+    def get_next_tile(self):
+        if self.tiles_to_visit:
+            tile = self.tiles_to_visit.pop()
+            self.visited_tiles.add(tile)
+            return tile
+        return None
+
 
 class AutoSnake(AutoSnakeBase):
     TIME_LIMIT = True
@@ -60,23 +83,24 @@ class AutoSnake(AutoSnakeBase):
         return route
 
 
-    def _explore_option(self, start_coord, food_ahead=None, timeout_ms=None):
-        time_s = time()
-        branch_common = None
-        if food_ahead is not None:
-            branch_common = {}
-            branch_common['min_margin'] = food_ahead
-        option = self._deep_look_ahead(
+    def _explore_option(self, start_coord, food_ahead=0, timeout_ms=None):
+        area_check = self._area_check_wrapper(self.map, self.body_coords, start_coord, exhaustive=True)
+        # This is taking the risk of not finding that the snake cant use all the tiles in the area.
+        if area_check['margin'] > 0 and area_check['total_steps'] > 0:
+            chance_of_making_it = (area_check['margin'] / area_check['total_steps'])
+            print("steps: ", area_check['total_steps'])
+            print("margin: ", area_check['margin'])
+            print("Risk of unreachables: ", chance_of_making_it)
+            if chance_of_making_it > 0.15:
+                print("Quick return")
+                return True
+
+        safe_option = self._best_first_search(
                 self.map.copy(),
-                start_coord,
                 self.body_coords.copy(),
-                self.length,
-                start_time=time_s,
-                timeout_ms=timeout_ms,
-                branch_common=branch_common)
-        option['coord'] = start_coord
-        option['risk'] = 0
-        return option
+                start_coord,
+                min_margin=food_ahead)
+        return safe_option
 
 
     def _get_best_option(self):
@@ -86,28 +110,20 @@ class AutoSnake(AutoSnakeBase):
         valid_tiles = self._valid_tiles(self.map, self.coord)
         area_checks = {}
         target_tile = None
-        best_margin = -self.length
         if not valid_tiles:
             return None
-        for tile in valid_tiles:
-            area_checks[tile] = self._area_check_wrapper(self.map, self.body_coords, tile, exhaustive=True)
-            if area_checks[tile]['margin'] > best_margin:
-                best_margin = area_checks[tile]['margin']
-                target_tile = tile
+        area_checks = self._check_areas(self.map, self.body_coords, valid_tiles, exhaustive=True)
         valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
         for coord in valid_tiles:
-            option = self._explore_option(coord)
-            options[coord] = option
-            if option['free_path'] and area_checks[coord]['margin'] >= area_checks[coord]['food_count']:
+            safe_option = self._explore_option(coord)
+            options[coord] = safe_option
+            if safe_option and area_checks[coord]['margin'] >= area_checks[coord]['food_count']:
                 break
-        free_options = [o for o in options.values() if o['free_path']]
+        free_options = [coord for coord, o in options.items() if o]
         if free_options:
-            free_coords = [o['coord'] for o in free_options]
-            best_option_coord = max(free_coords, key=lambda x: area_checks[x]['margin'])
-            best_option = options[best_option_coord]
+            best_option = max(free_options, key=lambda x: area_checks[x]['margin'])
         else:
-            best_margin_area_tile = max(area_checks.items(), key=lambda x: x[1]['margin'])[0]
-            best_option = options[best_margin_area_tile]
+            best_option = max(area_checks.items(), key=lambda x: x[1]['margin'])[0]
         if best_option is not None:
             return best_option
         else:
@@ -147,7 +163,6 @@ class AutoSnake(AutoSnakeBase):
         all_area_checks = {}
         all_clear_checks = {}
         additonal_food = {}
-        best_checks = []
         for coord, valids in future_valids.items():
             if not valids:
                 continue
@@ -196,6 +211,10 @@ class AutoSnake(AutoSnakeBase):
             planned_tile = planned_route.pop()
         areas_map = self._get_available_areas()
         food_map = self._get_future_available_food_map()
+        # print("Food Map: ", food_map)
+        # print("Areas Map: ", areas_map)
+        # print("Planned Route: ", planned_route)
+        # print("Planned Tile: ", planned_tile)
         if len(self.env.alive_snakes) > 1:
             max_food = max([x for x in food_map.values()] or [0])
             food_map = {k: max_food for k in food_map}
@@ -209,16 +228,19 @@ class AutoSnake(AutoSnakeBase):
             best_food_tile, best_food_value = best_food_pair
             planned_tile_food_value = food_map.get(planned_tile, 0)
             if planned_tile is None or planned_tile_food_value < best_food_value:
+                # print("not best food tile")
                 planned_tile = best_food_tile
             planned_area = areas_map[planned_tile]
             if planned_area['margin'] >= planned_area['food_count']:
-                option = self._explore_option(planned_tile, food_ahead=planned_area['food_count'])
-                if option['free_path']:
+                # print("margin is enough")
+                safe_option = self._explore_option(planned_tile, food_ahead=planned_area['food_count'])
+                if safe_option:
                     next_tile = planned_tile
         if next_tile is None:
+            # print("getting best option")
             option = self._get_best_option()
             if option:
-                next_tile = option['coord']
+                next_tile = option
         return next_tile
 
 
@@ -230,6 +252,77 @@ class AutoSnake(AutoSnakeBase):
 
     def _area_check_wrapper(self, s_map, body_coords, start_coord, target_margin=0, food_check=False, exhaustive=False):
         return self.area_checker.area_check(s_map, list(body_coords), start_coord, target_margin, food_check, exhaustive)
+
+    def _create_bfs_frame(self, new_coord, s_map, body_coords, min_margin=0):
+        body_copy = body_coords.copy()
+        map_copy = s_map.copy()
+        old_tail = self.update_body(new_coord, body_copy, len(body_copy))
+        self._update_snake_position(map_copy, body_copy, old_tail)
+        valid_tiles = self._valid_tiles(map_copy, new_coord)
+        best_margin = -len(body_coords)
+        area_checks = self._check_areas(map_copy, body_copy, valid_tiles, target_margin=min_margin)
+        if area_checks:
+            best_margin = max([a['margin'] for a in area_checks.values()])
+        tiles_to_visit = [t for t in valid_tiles if area_checks[t]['is_clear']]
+        tiles_to_visit.sort(key=lambda x: area_checks[x]['margin'])
+        has_tail = any([a['has_tail'] for a in area_checks.values()])
+        return BFSFrame(new_coord, map_copy, body_copy, tiles_to_visit, area_checks, best_margin=best_margin, target_margin=min_margin, has_tail=has_tail)
+
+    def _check_areas(self, s_map, body_coords, tiles, target_margin=0, **kwargs):
+        areas = {}
+        for tile in tiles:
+            area_check = self._area_check_wrapper(s_map, body_coords, tile, target_margin=target_margin, **kwargs)
+            areas[tile] = area_check
+        return areas
+
+    def _best_first_search(self, s_map, body_coords, new_coord, min_margin=0, timeout_ms=None, rundata=None):
+        if timeout_ms is None:
+            timeout_ms = self.calc_timeout
+        search_stack: List[BFSFrame] = []
+
+        search_stack.append(self._create_bfs_frame(new_coord, s_map, body_coords, min_margin))
+
+        start_time = time()
+        while search_stack:
+            frame: BFSFrame = search_stack[-1]
+            s_map = frame.map
+            new_coord = frame.try_coord
+            body_coords = frame.body_coords
+
+            # self.print_map(s_map)
+            # print("Area checks: ", frame.area_checks)
+            # print({"food": self.env.food.locations, self.id: body_coords})
+
+            if rundata is not None:
+                rundata.append(body_coords.copy())
+
+            if ((time() - start_time) * 1000 > timeout_ms) and self.TIME_LIMIT:
+                return False
+
+            # If this is true then the search is done
+            # risk_of_unreachables = 1
+            # if frame.area_checks:
+            #     best_area = max(frame.area_checks.values(), key=lambda x: x['margin'])
+            #     if best_area['margin'] > 0 and best_area['total_steps'] > 0:
+            #         capped_margin = min(best_area['margin'], best_area['total_steps'])
+            #         risk_of_unreachables = 1 - (capped_margin / best_area['total_steps'])
+            if len(search_stack) > len(body_coords) + 1 or frame.has_tail:
+                return True
+            next_tile = frame.get_next_tile()
+            if next_tile is None:
+                if (len(frame.visited_tiles) + len(frame.tiles_to_visit)) == 1:
+                    min_margin += 1
+                    for frame in reversed(search_stack):
+                        if frame.best_margin < min_margin:
+                            search_stack.pop()
+                        else:
+                            break
+                else:
+                    search_stack.pop()
+            else:
+                next_frame = self._create_bfs_frame(next_tile, s_map, body_coords, min_margin)
+                search_stack.append(next_frame)
+        return False
 
 
     def _deep_look_ahead(self, s_map, new_coord, body_coords, length,
