@@ -3,24 +3,45 @@ from pynput import keyboard
 
 from snake_sim.snakes.manual_snake import ManualSnake
 
-DEFAULT_KEYS = (
+DEFAULT_KEYS_EXPLICIT = (
     {
-        'a': 'left',
-        's': 'right',
+        'w': 'explicit_up',
+        's': 'explicit_down',
+        'a': 'explicit_left',
+        'd': 'explicit_right',
     },
     {
-        'k': 'left',
-        'l': 'right',
+        'i': 'explicit_up',
+        'k': 'explicit_down',
+        'j': 'explicit_left',
+        'l': 'explicit_right',
     },
     {
-        'v': 'left',
-        'b': 'right',
+        't': 'explicit_up',
+        'g': 'explicit_down',
+        'f': 'explicit_left',
+        'h': 'explicit_right',
+    },
+)
+
+DEFAULT_KEYS_IMPLICIT = (
+    {
+        'a': 'implicit_left',
+        's': 'implicit_right',
+    },
+    {
+        'k': 'implicit_left',
+        'l': 'implicit_right',
+    },
+    {
+        'f': 'implicit_left',
+        'g': 'implicit_right',
     },
 )
 
 
 class SingleSnakeController:
-    def __init__(self, snake: ManualSnake, keys: dict):
+    def __init__(self, snake: ManualSnake, keys: dict) -> None:
         self.snake = snake
         self.keys = keys
 
@@ -30,7 +51,7 @@ class SingleSnakeController:
             if key == keyboard.KeyCode.from_char(bound_key):
                 actions.append(bound_action)
         if len(actions) == 1:
-            self.snake.set_direction_choice(actions[0])
+            self.snake.set_direction(actions[0])
 
     def get_action(self):
         return None
@@ -43,8 +64,14 @@ class ControllerCollection:
     def __init__(self) -> None:
         self.controllers: Set[SingleSnakeController] = set()
 
-    def bind_controller(self, snake):
+    def bind_controller(self, snake, controller_type='explicit'):
         controller_index = len(self.controllers)
+        if controller_type == 'explicit':
+            DEFAULT_KEYS = DEFAULT_KEYS_EXPLICIT
+        elif controller_type == 'implicit':
+            DEFAULT_KEYS = DEFAULT_KEYS_IMPLICIT
+        else:
+            raise ValueError(f"Invalid controller type: {controller_type}")
         controller = SingleSnakeController(snake, DEFAULT_KEYS[controller_index])
         self.controllers.add(controller)
 

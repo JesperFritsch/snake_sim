@@ -22,7 +22,7 @@ def setup_env(config):
         ctl_collection = ControllerCollection()
         for player in range(config.players):
             snake_config = config.snake_configs[player]
-            man_snake = ManualSnake(**snake_config['snake'])
+            man_snake = ManualSnake(**snake_config['snake'], help=1)
             ctl_collection.bind_controller(man_snake)
             env.add_snake(man_snake, **snake_config['env'])
         ctl_collection.handle_controllers() # this reads the keyboard input in a separate thread

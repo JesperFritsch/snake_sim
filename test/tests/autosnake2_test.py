@@ -32,7 +32,7 @@ if __name__ == '__main__':
     expand_factor = 2
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    snake_map = 'items'
+    snake_map = 'combined4'
     # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap3.png"
     env.load_png_map(snake_map)
 
@@ -43,10 +43,10 @@ if __name__ == '__main__':
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
     test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'A'
+    snake_char = 'B'
     frame_width = env.width * expand_factor
     frame_height = env.height * expand_factor
-    snake = AutoSnake(snake_char, 1, calc_timeout=5000)
+    snake = AutoSnake(snake_char, 1, calc_timeout=1500)
     env.add_snake(snake, (255, 255, 255), (0, 0, 0))
     frameshape = (frame_width, frame_height, 3)
     base_frame = frame_builder.last_frame
@@ -123,47 +123,53 @@ if __name__ == '__main__':
 
 
     for tile in snake._valid_tiles(snake.map, snake.coord):
+    #     s_time = time()
+    #     risk = snake.calc_immediate_risk(env.map, tile, 3)
+    #     print(f"Time: {(time() - s_time) * 1000}")
+    #     print(f"Risk: {risk}")
+
         # s_time = time()
-        # risk = snake.calc_immediate_risk(env.map, tile, 3)
+        # option = snake._deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata)
+        # print(f'_deep_look_ahead: {tile}', option['free_path'])
         # print(f"Time: {(time() - s_time) * 1000}")
-        # print(f"Risk: {risk}")
 
         s_time = time()
-        option = snake._deep_look_ahead(snake.map.copy(), tile, snake.body_coords.copy(), snake.length, rundata=rundata)
-        print(f'free_path: {tile}', option['free_path'])
+        option = snake._best_first_search(snake.map.copy(), snake.body_coords.copy(), tile, rundata=rundata)
+        print(f'_best_first_search: {tile}', option)
         print(f"Time: {(time() - s_time) * 1000}")
 
-        # s_time = time()
-        # area_check = snake._area_check_wrapper(snake.map, snake.body_coords.copy(), tile, food_check=False, exhaustive=False)
-        # print(f"Time: {(time() - s_time) * 1000}")
-        # print(f"area_check for tile {tile}: {area_check}")
+        s_time = time()
+        area_check = snake._area_check_wrapper(snake.map, snake.body_coords.copy(), tile, food_check=False, exhaustive=False)
+        print(f"Time: {(time() - s_time) * 1000}")
+        print(f"area_check for tile {tile}: {area_check}")
 
-    # print(snake.get_future_available_food_map())
+    # # print(snake.get_future_available_food_map())
     # s_time = time()
-    # head_dist = (0, 1)
+    # head_dist = (1, 0)
     # start_coord = coord_op(snake.coord, head_dist, '+')
-    # # start_coord = 0, 28
-    # area_check = snake.area_check_wrapper(snake.map, snake.body_coords.copy(), start_coord, food_check=False, exhaustive=False)
-    # print(f"area_check for tile {coord_op(snake.coord, head_dist, '+')}: {area_check}")
-    # print(f"Time: {(time() - s_time) * 1000}")
+    # # # start_coord = 0, 28
+    # # area_check = snake._area_check_wrapper(snake.map, snake.body_coords.copy(), start_coord, food_check=False, exhaustive=False, target_margin=100)
+    # # print(f"area_check for tile {coord_op(snake.coord, head_dist, '+')}: {area_check}")
 
-    # option = snake.deep_look_ahead(snake.map.copy(), coord_op(snake.coord, head_dist, '+'), snake.body_coords.copy(), snake.length, rundata=rundata, branch_common={"min_margin": 14})
-    # print(f"area_check for tile {head_dist}: {option['free_path']}")
-    # time_e = time()
-    # area = ac.area_check(snake.map, list(snake.body_coords), area_coord, True)
-    # execution_time = (time() - time_e) * 1000
-    # print('area_check: ', execution_time)
-    # print(area)
+    # # option = snake._deep_look_ahead(snake.map.copy(), coord_op(snake.coord, head_dist, '+'), snake.body_coords.copy(), snake.length, rundata=rundata)
+    # option = snake._best_first_search(snake.map.copy(), snake.body_coords.copy(), coord_op(snake.coord, head_dist, '+'), rundata=rundata)
+    # print(f"area_check for tile {head_dist}: {option}")
+    # print(f"Time: {(time() - s_time) * 1000}")
+    # # # time_e = time()
+    # # # area = ac.area_check(snake.map, list(snake.body_coords), area_coord, True)
+    # # execution_time = (time() - time_e) * 1000
+    # # print('area_check: ', execution_time)
+    # # print(area)
     # frames = []
 
     pr.disable()
 
     # Print the profiling results
     s = StringIO()
-    sortby = 'cumulative'
+    sortby = 'tottime'
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    # ps.print_stats()
-    # print(s.getvalue())
+    ps.print_stats()
+    print(s.getvalue())
 
     frames = frame_builder.frames_from_rundata(rundata)
 
