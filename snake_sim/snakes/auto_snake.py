@@ -16,7 +16,17 @@ from ..utils import coord_op, distance, exec_time
 from .auto_snake_base import AutoSnakeBase
 
 class BFSFrame:
-    def __init__(self, try_coord, s_map, body_coords, tiles_to_visit, area_checks, best_margin, has_tail, best_margin_over_tiles, target_margin=0):
+    def __init__(self, 
+                 try_coord, 
+                 s_map, 
+                 body_coords, 
+                 tiles_to_visit, 
+                 area_checks, 
+                 best_margin, 
+                 has_tail, 
+                 best_margin_over_tiles,
+                 has_safe_food_margin, 
+                 target_margin=0):
         """ target_margin is the minimum margin used when checking areas """
         self.try_coord = try_coord
         self.map = s_map
@@ -27,6 +37,7 @@ class BFSFrame:
         self.target_margin = target_margin
         self.has_tail = has_tail
         self.visited_tiles = set()
+        self.has_safe_food_margin = has_safe_food_margin
         self.best_margin_over_tiles = best_margin_over_tiles
 
     def get_next_tile(self):
@@ -253,18 +264,19 @@ class AutoSnake(AutoSnakeBase):
         valid_tiles = self._valid_tiles(map_copy, new_coord)
         best_margin = -len(body_coords)
         best_margin_over_tiles = 0
-        if len(valid_tiles) > 1:
-            area_checks = self._check_areas(map_copy, body_copy, valid_tiles, target_margin=min_margin, safe_margin_factor=safe_margin_factor)
-        else:
-            area_checks = {}
+        has_safe_food_margin = False
+        area_checks = self._check_areas(map_copy, body_copy, valid_tiles, target_margin=min_margin, safe_margin_factor=safe_margin_factor)
         if area_checks:
             best_margin = max([a['margin'] for a in area_checks.values()])
             best_margin_over_tiles = max([a['margin_over_tiles'] for a in area_checks.values()])
             tiles_to_visit = [t for t in valid_tiles if area_checks[t]['is_clear']]
             tiles_to_visit.sort(key=lambda x: area_checks[x]['margin'])
+            has_safe_food_margin = any([a['margin'] >= a['food_count'] for a in area_checks.values()])
+            has_tail = any([a['has_tail'] for a in area_checks.values()])
         else:
-            tiles_to_visit = valid_tiles
-        has_tail = any([a['has_tail'] for a in area_checks.values()])
+            tiles_to_visit = []
+            has_tail = False
+            
         return BFSFrame(
             new_coord,
             map_copy,
@@ -274,7 +286,8 @@ class AutoSnake(AutoSnakeBase):
             best_margin=best_margin,
             target_margin=min_margin,
             has_tail=has_tail,
-            best_margin_over_tiles=best_margin_over_tiles
+            best_margin_over_tiles=best_margin_over_tiles,
+            has_safe_food_margin=has_safe_food_margin
         )
 
     def _check_areas(self, s_map, body_coords, tiles, target_margin=0, **kwargs):
@@ -308,11 +321,14 @@ class AutoSnake(AutoSnakeBase):
             # and we dont need to actually find a path to the end
             # but that only works if the number of tiles left is large enough, if an area has 5 tiles and the margin is 1
             # then best_margin_over_tiles will be 0.2 which might be over the limit, but there is a high risk of unreachables
-            if (frame.best_margin_over_tiles >= safe_margin_factor) and (frame.best_margin > frame.best_margin_over_tiles * 40):
+            if (frame.best_margin_over_tiles >= safe_margin_factor and 
+                frame.best_margin > frame.best_margin_over_tiles * 40 and
+                frame.has_safe_food_margin):
                 return True
 
             if len(search_stack) > len(body_coords) + 1 or frame.has_tail:
                 return True
+            
             next_tile = frame.get_next_tile()
             if next_tile is None:
                 if (len(frame.visited_tiles) + len(frame.tiles_to_visit)) == 1:
@@ -327,6 +343,7 @@ class AutoSnake(AutoSnakeBase):
             else:
                 next_frame = self._create_bfs_frame(next_tile, s_map, body_coords, min_margin, safe_margin_factor=safe_margin_factor)
                 search_stack.append(next_frame)
+                
         return False
 
 
