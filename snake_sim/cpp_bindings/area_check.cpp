@@ -607,7 +607,7 @@ public:
                     int next_y = next_node->start_coord.y;
                     int delta_x = next_x - curr_x;
                     int delta_y = next_y - curr_y;
-                    if(std::abs(delta_x) == 1 && std::abs(delta_y) == 0 || std::abs(delta_x) == 0 && std::abs(delta_y) == 1){
+                    if((std::abs(delta_x) == 1 && std::abs(delta_y) == 0 )|| (std::abs(delta_x) == 0 && std::abs(delta_y) == 1)){
                         is_corner = true;
                     }
                     if(s_map[curr_y * width + curr_x] == food_value){
@@ -1013,7 +1013,7 @@ public:
                             max_index = body_index;
                         }
                     }
-                    if (n_coord == tail_coord && !(curr_coord == start_coord)) {
+                    if (n_coord == tail_coord) {
                         max_index = body_len - 1;
                         has_tail = true;
                     }

@@ -49,9 +49,9 @@ class Snake:
     def set_new_head(self, coord):
         self.x, self.y = coord
         self.coord = coord
-        self.update_body(self.coord, self.body_coords, self.length)
         if self.map[self.y, self.x] == self.env.FOOD_TILE:
             self.length += 1
+        self.update_body(self.coord, self.body_coords, self.length)
 
     def update(self):
         print("This method is not implemented")
