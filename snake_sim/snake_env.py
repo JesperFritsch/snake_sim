@@ -9,7 +9,7 @@ import numpy as np
 from typing import Optional, List
 from collections import deque
 from typing import List
-from multiprocessing.connection import PipeConnection
+from multiprocessing.connection import Connection
 
 from . import utils
 from .utils import coord_op, exec_time, coord_cmp
@@ -536,7 +536,7 @@ class SnakeEnv:
                 norm_map[norm_map == body_value] = self.NORM_MAIN_BODY
 
 
-    def start_run(self, conn: Optional[PipeConnection]=None, max_steps=None, max_no_food_steps=500, verbose=True, fps=None):
+    def start_run(self, conn: Optional[Connection]=None, max_steps=None, max_no_food_steps=500, verbose=True, fps=None):
         self.init_recorder()
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
