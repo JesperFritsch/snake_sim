@@ -171,7 +171,7 @@ class AutoSnake(AutoSnakeBase):
             additonal_food[coord] = old_map_value == self.env.FOOD_TILE
         all_checks = [a for check in all_area_checks.values() for a in check]
         combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
-        combine_food = False
+        # combine_food = False
         if all_checks:
             combined_food = max([a['food_count'] for a in all_checks])
         else:
@@ -298,10 +298,6 @@ class AutoSnake(AutoSnakeBase):
             new_coord = frame.try_coord
             body_coords = frame.body_coords
 
-            # self.print_map(s_map)
-            # print("Area checks: ", frame.area_checks)
-            # print({"food": self.env.food.locations, self.id: body_coords})
-
             if rundata is not None:
                 rundata.append(body_coords.copy())
 
@@ -312,11 +308,7 @@ class AutoSnake(AutoSnakeBase):
             # and we dont need to actually find a path to the end
             # but that only works if the number of tiles left is large enough, if an area has 5 tiles and the margin is 1
             # then best_margin_over_tiles will be 0.2 which might be over the limit, but there is a high risk of unreachables
-            # print("margin over tiles: ", frame.best_margin_over_tiles)
-            # print("margin: ", frame.best_margin)
-            # print("tiles", [s['tile_count'] for s in frame.area_checks.values()])
             if (frame.best_margin_over_tiles >= safe_margin_factor) and (frame.best_margin > frame.best_margin_over_tiles * 40):
-                # print("Quick return")
                 return True
 
             if len(search_stack) > len(body_coords) + 1 or frame.has_tail:
