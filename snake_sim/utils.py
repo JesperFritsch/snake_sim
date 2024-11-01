@@ -3,6 +3,7 @@ import string
 import os
 import shutil
 import json
+import platform
 import math
 from time import time
 from collections.abc import Iterable
@@ -50,6 +51,19 @@ def coord_cmp(coord1, coord2):
 def distance(c1, c2):
     return math.sqrt(math.pow(c1[0] - c2[0], 2) + math.pow(c1[1] - c2[1], 2))
 
+
+def is_headless():
+    if platform.system() == "Windows":
+        try:
+            import ctypes
+            user32 = ctypes.windll.user32
+            # Check if there are zero monitors
+            return user32.GetSystemMetrics(80) == 0  # SM_CMONITORS
+        except Exception:
+            return True  # Assume headless if detection fails
+    else:
+        # For Unix-like systems, check DISPLAY variable
+        return os.environ.get("DISPLAY") is None
 
 def coord_op(coord_left, coord_right, op):
     # Check the operation and perform it directly

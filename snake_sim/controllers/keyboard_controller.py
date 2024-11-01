@@ -1,4 +1,13 @@
 from typing import Set
+
+from snake_sim.utils import is_headless
+
+# This is a workaround for running the code in a headless environment, pynput requires a display
+if is_headless():
+    from pyvirtualdisplay import Display
+    display = Display(visible=False, size=(1024, 768))
+    display.start()
+
 from pynput import keyboard
 
 from snake_sim.snakes.manual_snake import ManualSnake
