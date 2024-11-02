@@ -536,10 +536,12 @@ class SnakeEnv:
                 norm_map[norm_map == body_value] = self.NORM_MAIN_BODY
 
 
-    def start_run(self, conn: Optional[Connection]=None, max_steps=None, max_no_food_steps=500, verbose=True, fps=None):
+    def start_run(self, conn: Optional[Connection]=None, max_steps=None, max_no_food_steps=0, verbose=True, fps=None):
         self.init_recorder()
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
+        if max_no_food_steps == 0:
+            max_no_food_steps = self.width * self.height
         ongoing = True
         aborted = False
         if not conn is None:
