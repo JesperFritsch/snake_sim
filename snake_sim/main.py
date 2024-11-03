@@ -10,8 +10,6 @@ from snake_sim.snakes.auto_snake import AutoSnake
 from snake_sim.snakes.manual_snake import ManualSnake
 from snake_sim.render.pygame_render import play_runfile, play_stream, play_game
 from snake_sim.cli import cli
-config = None
-
 
 def setup_game(config):
     env = SnakeEnv(config.grid_width, config.grid_height, config.food, config.food_decay)

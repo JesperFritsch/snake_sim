@@ -115,9 +115,9 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
     surface = surface.convert()
     sound_mixer = pygame.mixer
     sound_mixer.init()
-    eat_sound = sound_mixer.Sound("snake_sim/render/sounds/eat.wav")
-    left_sound = sound_mixer.Sound("snake_sim/render/sounds/turn_left.wav")
-    right_sound = sound_mixer.Sound("snake_sim/render/sounds/turn_right.wav")
+    eat_sound = sound_mixer.Sound(str(Path(__file__).parent / "sounds/eat.wav"))
+    left_sound = sound_mixer.Sound(str(Path(__file__).parent / "sounds/turn_left.wav"))
+    right_sound = sound_mixer.Sound(str(Path(__file__).parent / "sounds/turn_right.wav"))
     eat_sound.set_volume(1)
     left_sound.set_volume(1)
     right_sound.set_volume(1)
