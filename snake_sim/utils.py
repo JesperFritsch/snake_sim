@@ -20,10 +20,7 @@ class DotDict(dict):
             self[k] = v
 
     def __getattr__(self, attr):
-        try:
-            return self[attr]
-        except KeyError:
-            raise AttributeError()
+        return self.get(attr, None)
 
     def __setattr__(self, attr, value):
         self[attr] = value
