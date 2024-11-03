@@ -12,6 +12,7 @@ from pathlib import Path
 from snake_sim.render import core
 from snake_sim.snake_env import RunData, StepData
 
+STREAM_IS_LIVE = False
 
 def frames_from_runfile(filepath, expand_factor=2):
     frames = []
@@ -69,10 +70,11 @@ def handle_events():
 
 
 def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data: RunData):
-
+    global STREAM_IS_LIVE
     while not stream_conn.poll(0.05):
         pass
 
+    STREAM_IS_LIVE = True
     run_meta_data = stream_conn.recv()
 
     run_data.height = run_meta_data['height']
@@ -82,27 +84,30 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
 
     frame_builder = core.FrameBuilder(run_meta_data=run_meta_data)
 
-    while True:
-        if stream_conn.poll(0.05):
-            turn_sounds = []
-            eat_sounds = []
-            step_data_dict = stream_conn.recv()
-            step_data = StepData.from_dict(step_data_dict)
-            step_count = step_data.step
-            run_data.add_step(step_count, step_data)
-            new_frames = frame_builder.step_to_frames(step_data_dict)
-            frame_buffer.extend(new_frames)
-            for snake_data in step_data_dict["snakes"]:
-                if snake_data['did_eat']:
-                    eat_sounds.append('eat')
-                if snake_data["did_turn"] == 'left':
-                    turn_sounds.append('left')
-                elif snake_data["did_turn"] == 'right':
-                    turn_sounds.append('right')
-            sound_buffer.extend([turn_sounds, eat_sounds])
+    while STREAM_IS_LIVE:
+        turn_sounds = []
+        eat_sounds = []
+        payload = stream_conn.recv()
+        if payload == 'stopped':
+            STREAM_IS_LIVE = False
+            break
+        step_data_dict = payload
+        step_data = StepData.from_dict(step_data_dict)
+        step_count = step_data.step
+        run_data.add_step(step_count, step_data)
+        new_frames = frame_builder.step_to_frames(step_data_dict)
+        frame_buffer.extend(new_frames)
+        for snake_data in step_data_dict["snakes"]:
+            if snake_data['did_eat']:
+                eat_sounds.append('eat')
+            if snake_data["did_turn"] == 'left':
+                turn_sounds.append('left')
+            elif snake_data["did_turn"] == 'right':
+                turn_sounds.append('right')
+        sound_buffer.extend([turn_sounds, eat_sounds])
 
 
-def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_height, sound_on=True, fps_playback=10):
+def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_height, fps_playback, sound_on=True, keep_up=False):
 
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
@@ -171,8 +176,10 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
                     draw_frame(screen, frame)
                 last_frame = frame
                 pygame.display.flip()
-            while (frame_counter >= len(frame_buffer) - 1) and frame_counter < (len(run_data.steps) * 2) - 1:
-                time.sleep(0.01)
+            while (frame_counter >= len(frame_buffer) - 1) and STREAM_IS_LIVE:
+                time.sleep(0.05)
+            if keep_up and frame_counter < len(frame_buffer) - 2:
+                fps = fps_playback * 10
         clock.tick(fps)
     pygame.quit()
 
@@ -186,22 +193,33 @@ def play_stream(stream_conn, fps=10, sound_on=True):
     stream_thread.start()
     # wait for the stream thread to initialize the run data
     while run_data.width == 0 and run_data.height == 0:
-        pass
+        time.sleep(0.1)
     play_run(frame_buffer, sound_buffer, run_data, run_data.width, run_data.height, sound_on=sound_on, fps_playback=fps)
 
 
-def play_runfile(filepath=None, frames=None, grid_height=None, grid_width=None, sound_on=True, fps=10):
-    if filepath:
-        run_data = RunData.from_json_file(filepath)
-        grid_height = run_data.height
-        grid_width = run_data.width
-        frame_buffer, sound_buffer = frames_sound_from_run_data(run_data)
-    elif all([frames, grid_height, grid_width]):
-        frame_buffer = frames
-        sound_buffer = [[None]] * len(frame_buffer)
-        run_data = RunData(grid_width, grid_height, [], np.array([]))
-        run_data.steps = {i: StepData([], i) for i in range(1, int(len(frame_buffer) / 2) + 1)}
-    else:
-        return
+def play_frame_buffer(frame_buffer, grid_width, grid_height, fps=10):
+    sound_buffer = [[None]] * len(frame_buffer)
+    run_data = RunData(grid_width, grid_height, [], np.array([]))
+    run_data.steps = {i: StepData([], i) for i in range(1, int(len(frame_buffer) / 2) + 1)}
+    play_run(frame_buffer, sound_buffer, run_data, grid_width, grid_height, fps_playback=fps)
+
+
+def play_runfile(filepath=None, sound_on=True, fps=10):
+    run_data = RunData.from_json_file(filepath)
+    grid_height = run_data.height
+    grid_width = run_data.width
+    frame_buffer, sound_buffer = frames_sound_from_run_data(run_data)
     play_run(frame_buffer, sound_buffer, run_data, grid_width, grid_height, sound_on=sound_on, fps_playback=fps)
 
+
+def play_game(conn, fps, sound_on=True):
+    sound_buffer = []
+    frame_buffer = []
+    run_data = RunData(0, 0, [], np.array([])) # create this here so that the stream thread and the play thread can share the same object
+    stream_thread = threading.Thread(target=handle_stream, args=(conn, frame_buffer, sound_buffer, run_data))
+    stream_thread.daemon = True
+    stream_thread.start()
+    # wait for the stream thread to initialize the run data
+    while run_data.width == 0 and run_data.height == 0:
+        time.sleep(0.1)
+    play_run(frame_buffer, sound_buffer, run_data, run_data.width, run_data.height, sound_on=sound_on, keep_up=True, fps_playback=fps)

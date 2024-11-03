@@ -14,7 +14,7 @@ from snake_sim.snake_env import SnakeEnv, RunData
 
 from snake_sim.cpp_bindings.area_check import AreaChecker
 
-from snake_sim.render.pygame_render import play_runfile
+from snake_sim.render.pygame_render import play_frame_buffer
 from snake_sim.render.video_render import frames_to_video
 from snake_sim.render import core
 
@@ -172,6 +172,6 @@ if __name__ == '__main__':
 
     frames = frame_builder.frames_from_rundata(rundata)
 
-    play_runfile(frames=frames, grid_width=frame_width, grid_height=frame_width)
+    play_frame_buffer(frames, grid_width=frame_width, grid_height=frame_width)
     # video_output = Path(__file__).parent.joinpath('..', '..', 'render', 'videos', 'test_look_ahead.mp4').resolve()
     # frames_to_video(frames, str(video_output), 30, size=(640, 640))
