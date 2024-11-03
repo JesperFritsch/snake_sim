@@ -16,16 +16,16 @@ from ..utils import coord_op, distance, exec_time
 from .auto_snake_base import AutoSnakeBase
 
 class BFSFrame:
-    def __init__(self, 
-                 try_coord, 
-                 s_map, 
-                 body_coords, 
-                 tiles_to_visit, 
-                 area_checks, 
-                 best_margin, 
-                 has_tail, 
+    def __init__(self,
+                 try_coord,
+                 s_map,
+                 body_coords,
+                 tiles_to_visit,
+                 area_checks,
+                 best_margin,
+                 has_tail,
                  best_margin_over_tiles,
-                 has_safe_food_margin, 
+                 has_safe_food_margin,
                  target_margin=0):
         """ target_margin is the minimum margin used when checking areas """
         self.try_coord = try_coord
@@ -183,7 +183,7 @@ class AutoSnake(AutoSnakeBase):
             additonal_food[coord] = old_map_value == self.env.FOOD_TILE
         all_checks = [a for check in all_area_checks.values() for a in check]
         combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
-        combine_food = False
+        # combine_food = False
         if all_checks:
             combined_food = max([a['food_count'] for a in all_checks])
         else:
@@ -277,7 +277,7 @@ class AutoSnake(AutoSnakeBase):
         else:
             tiles_to_visit = []
             has_tail = False
-            
+
         return BFSFrame(
             new_coord,
             map_copy,
@@ -305,9 +305,9 @@ class AutoSnake(AutoSnakeBase):
 
         first_bfs_frame = self._create_bfs_frame(new_coord, s_map, body_coords, min_margin, safe_margin_factor=safe_margin_factor)
         if first_bfs_frame.area_checks:
-            food_ahead = max([a['food_count'] for a in first_bfs_frame.area_checks.values()])
+            max_food = max([a['food_count'] for a in first_bfs_frame.area_checks.values()])
         else:
-            food_ahead = 0
+            max_food = 0
         search_stack.append(first_bfs_frame)
         start_time = time()
         while search_stack:
@@ -327,7 +327,7 @@ class AutoSnake(AutoSnakeBase):
             # but that only works if the number of tiles left is large enough, if an area has 5 tiles and the margin is 1
             # then best_margin_over_tiles will be 0.2 which might be over the limit, but there is a high risk of unreachables
             if frame.has_safe_food_margin:
-                if (frame.best_margin_over_tiles >= safe_margin_factor and 
+                if (frame.best_margin_over_tiles >= safe_margin_factor and
                     frame.best_margin > frame.best_margin_over_tiles * 40):
                     return True
 
@@ -335,7 +335,7 @@ class AutoSnake(AutoSnakeBase):
                     return True
             else:
                 return False
-            
+
             next_tile = frame.get_next_tile()
             if next_tile is None:
                 if (len(frame.visited_tiles) + len(frame.tiles_to_visit)) == 1:
@@ -348,14 +348,14 @@ class AutoSnake(AutoSnakeBase):
                 else:
                     search_stack.pop()
             else:
-                next_frame = self._create_bfs_frame(next_tile, 
-                                                    s_map, 
-                                                    body_coords, 
-                                                    min_margin, 
+                next_frame = self._create_bfs_frame(next_tile,
+                                                    s_map,
+                                                    body_coords,
+                                                    min_margin,
                                                     safe_margin_factor=safe_margin_factor,
-                                                    safe_food_margin=food_ahead)
+                                                    safe_food_margin=max_food)
                 search_stack.append(next_frame)
-                
+
         return False
 
 
