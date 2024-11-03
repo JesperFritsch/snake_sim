@@ -536,7 +536,7 @@ class SnakeEnv:
                 norm_map[norm_map == body_value] = self.NORM_MAIN_BODY
 
 
-    def start_run(self, conn: Optional[Connection]=None, max_steps=None, max_no_food_steps=0, verbose=True, fps=None):
+    def start_run(self, conn: Optional[Connection]=None, max_steps=None, max_no_food_steps=0, verbose=False, steps_per_min=None):
         self.init_recorder()
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
@@ -552,13 +552,20 @@ class SnakeEnv:
         try:
             while ongoing:
                 start_time = time.time()
-                if not conn is None and conn.poll():
-                    data = conn.recv()
-                    if data == 'stop':
-                        conn.send('stopped')
+                if not conn is None:
+                    try:
+                        if conn.poll():
+                            data = conn.recv()
+                            if data == 'stop':
+                                conn.send('stopped')
+                                ongoing = False
+                                aborted = True
+                                break
+                    except BrokenPipeError:
                         ongoing = False
                         aborted = True
                         break
+
                 if self.alive_snakes:
                     highest_no_food = max([self.snakes_info[only_one.id]['last_food'] for only_one in self.alive_snakes])
                     if (self.time_step - highest_no_food) > max_no_food_steps or max_steps is not None and self.time_step > max_steps:
@@ -566,8 +573,8 @@ class SnakeEnv:
                     self.update(verbose=verbose)
                     if not conn is None and any(snake_data['alive'] for snake_data in self.snakes_info.values()):
                         conn.send(self.run_data.steps[self.time_step].to_dict())
-                    if fps is not None:
-                        sleep_time = 1 / (fps / 2)
+                    if not steps_per_min is None:
+                        sleep_time = 60 / steps_per_min
                         time_diff = time.time() - start_time
                         if time_diff < sleep_time:
                             time.sleep(sleep_time - time_diff)
@@ -577,20 +584,30 @@ class SnakeEnv:
             aborted = True
             raise
         finally:
-            print('Done')
             self.print_stats()
             if self.store_runs:
                 self.run_data.write_to_file(aborted=aborted)
+            if not conn is None:
+                try:
+                    conn.send('stopped')
+                except BrokenPipeError:
+                    pass
 
-    def stream_run(self, conn, max_steps=None, verbose=True, fps=None):
+    def stream_run(self, conn, max_steps=None, verbose=False):
         try:
-            self.start_run(conn, max_steps, verbose=verbose, fps=fps)
+            self.start_run(conn, max_steps, verbose=verbose)
         except KeyboardInterrupt:
             pass
 
-    def generate_run(self, max_steps=None, verbose=True):
+    def generate_run(self, max_steps=None, verbose=False):
         try:
             self.start_run(max_steps, verbose=verbose)
+        except KeyboardInterrupt:
+            pass
+
+    def game_run(self, conn: Connection, max_steps=None, steps_per_min=None, verbose=False):
+        try:
+            self.start_run(conn, max_steps, verbose=verbose, steps_per_min=steps_per_min)
         except KeyboardInterrupt:
             pass
 
