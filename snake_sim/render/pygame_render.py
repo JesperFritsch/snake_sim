@@ -76,7 +76,6 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
 
     STREAM_IS_LIVE = True
     run_meta_data = stream_conn.recv()
-
     run_data.height = run_meta_data['height']
     run_data.width = run_meta_data['width']
     run_data.base_map = np.array(run_meta_data['base_map'], dtype=np.uint8)
