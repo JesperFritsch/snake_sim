@@ -200,7 +200,7 @@ class AutoSnake(AutoSnakeBase):
     def _get_available_areas(self):
         s_map = self.map.copy()
         valid_tiles = self._valid_tiles(self.map, self.coord)
-        areas_map = {coord: self._area_check_wrapper(s_map, self.body_coords, coord) for coord in valid_tiles}
+        areas_map = {coord: self._area_check_wrapper(s_map, self.body_coords, coord, safe_margin_factor=self.SAFE_MARGIN_FACTOR) for coord in valid_tiles}
         return areas_map
 
 
@@ -234,7 +234,7 @@ class AutoSnake(AutoSnakeBase):
                 # print("not best food tile")
                 planned_tile = best_food_tile
             planned_area = areas_map[planned_tile]
-            if planned_area['margin'] >= planned_area['food_count']:
+            if planned_area['margin'] >= planned_area['food_count'] and planned_area["margin_over_tiles"] >= self.SAFE_MARGIN_FACTOR:
                 # print("margin is enough")
                 safe_option = self._explore_option(planned_tile, food_ahead=planned_area['food_count'])
                 if safe_option:
