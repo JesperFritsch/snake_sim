@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package snakegame;
+
+// Define a message for 2D positions
+message Position {
+    int32 x = 1;
+    int32 y = 2;
+}
+
+// Message to define RGB color mapping
+message RGB {
+    int32 r = 1;
+    int32 g = 2;
+    int32 b = 3;
+}
+
+// Message representing each snake's properties
+message Snake {
+    string snake_id = 1;
+    Position curr_head = 2;
+    Position prev_head = 3;
+    Position curr_tail = 4;
+    Position head_dir = 5;
+    Position tail_dir = 6;
+    bool did_eat = 7;
+    string did_turn = 8; // Can be empty string if null
+    repeated Position body = 9;
+}
+
+// Message representing the state at a particular game step
+message StepData {
+    repeated Snake snakes = 1;
+    repeated Position food = 2;
+    uint32 step = 3;
+}
+
+// Main message for the game configuration and state
+message RunData {
+    int32 width = 1;
+    int32 height = 2;
+    int32 food_value = 3;
+    int32 free_value = 4;
+    int32 blocked_value = 5;
+
+    // Color mapping: mapping an integer identifier to an RGB color
+    map<int32, RGB> color_mapping = 6;
+
+    // Snake data: each snake has color properties
+    repeated SnakeData snake_data = 7;
+
+    // The base map represented as a 2D grid (flattened for protobuf support)
+    repeated int32 base_map = 8;
+
+    // Steps: map each step number to a StepData message
+    map<int32, StepData> steps = 9;
+}
+
+// Define SnakeData with color information for each snake
+message SnakeData {
+    string snake_id = 1;
+    RGB head_color = 2;
+    RGB body_color = 3;
+}
