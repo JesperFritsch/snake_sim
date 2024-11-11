@@ -19,6 +19,7 @@ from .snakes.snake import Snake
 from .render.core import put_snake_in_frame
 from dataclasses import dataclass, field
 from snake_sim.snakes.snake import Snake
+from snake_sim.protobuf.python import sim_msgs_pb2
 
 DIR_MAPPING = {
     (0, -1): 'up',
@@ -77,10 +78,11 @@ class Food:
 
 
 class StepData:
-    def __init__(self, food: list, step: int) -> None:
+    def __init__(self, food: list, step: int, include_body: bool=False) -> None:
         self.snakes: List[dict] = []
         self.food = food
         self.step = step
+        self.include_body = include_body
 
     @classmethod
     def from_dict(cls, step_dict):
@@ -88,6 +90,25 @@ class StepData:
         for snake_data in step_dict['snakes']:
             step_data.snakes.append(snake_data)
         return step_data
+
+    @classmethod
+    def from_protobuf(cls, step_data):
+        step = cls(food=[(f.x, f.y) for f in step_data.food], step=step_data.step)
+        for snake in step_data.snakes:
+            snake_data = {
+                'snake_id': snake.snake_id,
+                'curr_head': (snake.curr_head.x, snake.curr_head.y),
+                'prev_head': (snake.prev_head.x, snake.prev_head.y),
+                'curr_tail': (snake.curr_tail.x, snake.curr_tail.y),
+                'head_dir': (snake.head_dir.x, snake.head_dir.y),
+                'tail_dir': (snake.tail_dir.x, snake.tail_dir.y),
+                'did_eat': snake.did_eat,
+                'did_turn': snake.did_turn
+            }
+            if snake.body:
+                snake_data['body'] = [(c.x, c.y) for c in snake.body]
+            step.snakes.append(snake_data)
+        return step
 
     def add_snake_data(self, snake_coords: list, head_dir: tuple, tail_dir: tuple, snake_id: str):
         did_eat = False
@@ -117,7 +138,7 @@ class StepData:
                 else:
                     turn = 'left'
 
-        self.snakes.append({
+        base_snake_data = {
             'snake_id': snake_id,
             'curr_head': snake_coords[0],
             'prev_head': snake_coords[1] if len(snake_coords) > 1 else snake_coords[0],
@@ -125,8 +146,13 @@ class StepData:
             'head_dir': head_dir,
             'tail_dir': tail_dir,
             'did_eat': did_eat,
-            'did_turn': turn
-        })
+            'did_turn': turn,
+        }
+
+        if self.include_body:
+            base_snake_data['body'] = snake_coords
+
+        self.snakes.append(base_snake_data)
 
     def to_dict(self):
         return {
@@ -134,6 +160,29 @@ class StepData:
             'food': self.food,
             'step': self.step
         }
+
+    def to_protobuf(self):
+        step_data = sim_msgs_pb2.StepData()
+        step_data.step = self.step
+        for snake_data in self.snakes:
+            snake = step_data.snakes.add()
+            snake.snake_id = snake_data['snake_id']
+            snake.curr_head.x, snake.curr_head.y = snake_data['curr_head']
+            snake.prev_head.x, snake.prev_head.y = snake_data['prev_head']
+            snake.curr_tail.x, snake.curr_tail.y = snake_data['curr_tail']
+            snake.head_dir.x, snake.head_dir.y = snake_data['head_dir']
+            snake.tail_dir.x, snake.tail_dir.y = snake_data['tail_dir']
+            snake.did_eat = snake_data['did_eat']
+            if snake_data['did_turn']:
+                snake.did_turn = snake_data['did_turn']
+            if self.include_body:
+                for coord in snake_data['body']:
+                    body_coord = snake.body.add()
+                    body_coord.x, body_coord.y = coord
+        for coord in self.food:
+            food = step_data.food.add()
+            food.x, food.y = coord
+        return step_data
 
 
 class RunData:
@@ -163,13 +212,39 @@ class RunData:
         run_data.food_value = run_dict['food_value']
         run_data.free_value = run_dict['free_value']
         run_data.blocked_value = run_dict['blocked_value']
-        run_data.color_mapping = run_dict['color_mapping']
+        run_data.color_mapping = {int(k): v for k, v in run_dict['color_mapping'].items()}
         return run_data
 
     @classmethod
     def from_json_file(cls, filepath):
         with open(filepath) as file:
             return cls.from_dict(json.load(file))
+
+    @classmethod
+    def from_protobuf(cls, run_data):
+        run = cls(
+            width=run_data.width,
+            height=run_data.height,
+            snake_data=[{
+                'snake_id': snake.snake_id,
+                'head_color': (snake.head_color.r, snake.head_color.g, snake.head_color.b),
+                'body_color': (snake.body_color.r, snake.body_color.g, snake.body_color.b)
+            } for snake in run_data.snake_data],
+            base_map=np.array(run_data.base_map, dtype=np.uint8)
+        )
+        run.color_mapping.update({int(k): (v.r, v.g, v.b) for k, v in run_data.color_mapping.items()})
+        for step_nr, step in run_data.steps.items():
+            step_data = StepData.from_protobuf(step)
+            run.add_step(step_nr, step_data)
+        run.base_map = np.frombuffer(bytes(run_data.base_map), dtype=np.uint8).reshape(run.height, run.width)
+        return run
+
+    @classmethod
+    def from_protobuf_file(cls, filepath):
+        run_data = sim_msgs_pb2.RunData()
+        with open(filepath, 'rb') as file:
+            run_data.ParseFromString(file.read())
+        return cls.from_protobuf(run_data)
 
     def add_step(self, step: int, state: StepData):
         self.steps[step] = state
@@ -199,7 +274,7 @@ class RunData:
             return coords_map
         return None
 
-    def write_to_file(self, aborted=False, ml=False, filepath=None):
+    def write_to_file(self, aborted=False, ml=False, filepath=None, as_proto=False):
         if filepath is None:
             runs_dir = Path(__file__).parent / self.output_dir
             run_dir = os.path.join(runs_dir, f'grid_{self.width}x{self.height}')
@@ -208,22 +283,21 @@ class RunData:
             grid_str = f'{self.width}x{self.height}'
             nr_snakes = f'{len(self.snake_data)}'
             rand_str = utils.rand_str(6)
-            filename = f'{nr_snakes}_snakes_{grid_str}_{rand_str}_{len(self.steps)}{"_ml_" if ml else ""}{aborted_str}.json'
+            file_type = "pb" if as_proto else "json"
+            filename = f'{nr_snakes}_snakes_{grid_str}_{rand_str}_{len(self.steps)}{"_ml_" if ml else ""}{aborted_str}.{file_type}'
             filepath = os.path.join(run_dir, filename)
         else:
             filepath = Path(filepath).absolute()
+        as_proto = as_proto or filepath.suffix == '.pb'
 
         print(f"saving run data to '{filepath}'")
-        with open(filepath, 'w') as file:
-            json.dump(self.to_dict(), file)
-        pixel_changes = render.pixel_changes_from_runfile(filepath, 2)
-        if self.width == 32 and self.height == 32:
-            rpi_runs_dir = os.path.join(run_dir, 'rpi')
-            os.makedirs(rpi_runs_dir, exist_ok=True)
-            rpi_filepath = os.path.join(rpi_runs_dir, f'{nr_snakes}_snakes_rpi_{rand_str}_{len(self.steps)}{aborted_str}.run')
-            with open(rpi_filepath, 'w') as file:
-                for change in pixel_changes:
-                    file.write(json.dumps(change) + '\n')
+        if as_proto:
+            run_data = self.to_protobuf()
+            with open(filepath, 'wb') as file:
+                file.write(run_data.SerializeToString())
+        else:
+            with open(filepath, 'w') as file:
+                json.dump(self.to_dict(), file)
 
     def to_dict(self):
         return {
@@ -237,6 +311,28 @@ class RunData:
             'base_map': self.base_map.tolist(),
             'steps': {k: v.to_dict() for k, v in self.steps.items()}
         }
+
+    def to_protobuf(self):
+        run_data = sim_msgs_pb2.RunData()
+        run_data.width = self.width
+        run_data.height = self.height
+        run_data.food_value = self.food_value
+        run_data.free_value = self.free_value
+        run_data.blocked_value = self.blocked_value
+        for key, value in self.color_mapping.items():
+            run_data.color_mapping[key].r = value[0]
+            run_data.color_mapping[key].g = value[1]
+            run_data.color_mapping[key].b = value[2]
+        for snake_data in self.snake_data:
+            snake = run_data.snake_data.add()
+            snake.snake_id = snake_data['snake_id']
+            snake.head_color.r, snake.head_color.g, snake.head_color.b = snake_data['head_color']
+            snake.body_color.r, snake.body_color.g, snake.body_color.b = snake_data['body_color']
+        for step_nr, step_data in self.steps.items():
+            step_data = step_data.to_protobuf()
+            run_data.steps[step_nr].CopyFrom(step_data)
+        run_data.base_map.extend(self.base_map.tobytes())
+        return run_data
 
 
 class SnakeEnv:

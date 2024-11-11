@@ -1,7 +1,8 @@
 pillow
 numpy
 opencv-python
-tensorflow
 pygame
 pybind11
 pynput
+protobuf
+pyvirtualdisplay
