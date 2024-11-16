@@ -6,7 +6,7 @@ import sys
 import time
 from PIL import Image
 import numpy as np
-from typing import Optional, List
+from typing import Optional, List, Dict
 from collections import deque
 from typing import List
 from multiprocessing.connection import Connection
@@ -78,11 +78,10 @@ class Food:
 
 
 class StepData:
-    def __init__(self, food: list, step: int, include_body: bool=False) -> None:
+    def __init__(self, food: list, step: int) -> None:
         self.snakes: List[dict] = []
         self.food = food
         self.step = step
-        self.include_body = include_body
 
     @classmethod
     def from_dict(cls, step_dict):
@@ -147,19 +146,12 @@ class StepData:
             'tail_dir': tail_dir,
             'did_eat': did_eat,
             'did_turn': turn,
+            'body': snake_coords
         }
-
-        if self.include_body:
-            base_snake_data['body'] = snake_coords
-
         self.snakes.append(base_snake_data)
 
     def to_dict(self):
-        return {
-            'snakes': self.snakes,
-            'food': self.food,
-            'step': self.step
-        }
+        return self.__dict__
 
     def to_protobuf(self):
         step_data = sim_msgs_pb2.StepData()
@@ -196,7 +188,7 @@ class RunData:
         self.free_value = SnakeEnv.FREE_TILE
         self.blocked_value = SnakeEnv.BLOCKED_TILE
         self.color_mapping = SnakeEnv.COLOR_MAPPING
-        self.steps = {}
+        self.steps: Dict[int, StepData] = {}
 
     @classmethod
     def from_dict(cls, run_dict):
@@ -222,21 +214,21 @@ class RunData:
 
     @classmethod
     def from_protobuf(cls, run_data):
+        meta_data = run_data.run_meta_data
         run = cls(
-            width=run_data.width,
-            height=run_data.height,
+            width=meta_data.width,
+            height=meta_data.height,
             snake_data=[{
                 'snake_id': snake.snake_id,
                 'head_color': (snake.head_color.r, snake.head_color.g, snake.head_color.b),
                 'body_color': (snake.body_color.r, snake.body_color.g, snake.body_color.b)
-            } for snake in run_data.snake_data],
-            base_map=np.array(run_data.base_map, dtype=np.uint8)
+            } for snake in meta_data.snake_data],
+            base_map=np.frombuffer(bytes(meta_data.base_map), dtype=np.uint8).reshape(meta_data.height, meta_data.width)
         )
-        run.color_mapping.update({int(k): (v.r, v.g, v.b) for k, v in run_data.color_mapping.items()})
+        run.color_mapping.update({int(k): (v.r, v.g, v.b) for k, v in meta_data.color_mapping.items()})
         for step_nr, step in run_data.steps.items():
             step_data = StepData.from_protobuf(step)
             run.add_step(step_nr, step_data)
-        run.base_map = np.frombuffer(bytes(run_data.base_map), dtype=np.uint8).reshape(run.height, run.width)
         return run
 
     @classmethod
@@ -285,7 +277,7 @@ class RunData:
             rand_str = utils.rand_str(6)
             file_type = "pb" if as_proto else "json"
             filename = f'{nr_snakes}_snakes_{grid_str}_{rand_str}_{len(self.steps)}{"_ml_" if ml else ""}{aborted_str}.{file_type}'
-            filepath = os.path.join(run_dir, filename)
+            filepath = Path(os.path.join(run_dir, filename))
         else:
             filepath = Path(filepath).absolute()
         as_proto = as_proto or filepath.suffix == '.pb'
@@ -314,24 +306,25 @@ class RunData:
 
     def to_protobuf(self):
         run_data = sim_msgs_pb2.RunData()
-        run_data.width = self.width
-        run_data.height = self.height
-        run_data.food_value = self.food_value
-        run_data.free_value = self.free_value
-        run_data.blocked_value = self.blocked_value
+        metadata = run_data.run_meta_data
+        metadata.width = self.width
+        metadata.height = self.height
+        metadata.food_value = self.food_value
+        metadata.free_value = self.free_value
+        metadata.blocked_value = self.blocked_value
         for key, value in self.color_mapping.items():
-            run_data.color_mapping[key].r = value[0]
-            run_data.color_mapping[key].g = value[1]
-            run_data.color_mapping[key].b = value[2]
+            metadata.color_mapping[key].r = value[0]
+            metadata.color_mapping[key].g = value[1]
+            metadata.color_mapping[key].b = value[2]
         for snake_data in self.snake_data:
-            snake = run_data.snake_data.add()
+            snake = metadata.snake_data.add()
             snake.snake_id = snake_data['snake_id']
             snake.head_color.r, snake.head_color.g, snake.head_color.b = snake_data['head_color']
             snake.body_color.r, snake.body_color.g, snake.body_color.b = snake_data['body_color']
         for step_nr, step_data in self.steps.items():
             step_data = step_data.to_protobuf()
             run_data.steps[step_nr].CopyFrom(step_data)
-        run_data.base_map.extend(self.base_map.tobytes())
+        metadata.base_map.extend(self.base_map.tobytes())
         return run_data
 
 
@@ -362,6 +355,7 @@ class SnakeEnv:
         self.run_data = None
         self.store_runs = True
         self.food = Food(width=width, height=height, max_food=food, decay_count=food_decay)
+
 
     def resize(self, width, height):
         self.width = width
@@ -689,7 +683,7 @@ class SnakeEnv:
                 except BrokenPipeError:
                     pass
 
-    def stream_run(self, conn, max_steps=None, verbose=False):
+    def stream_run(self, conn, max_steps=None, verbose=False, as_proto=False):
         try:
             self.start_run(conn, max_steps, verbose=verbose)
         except KeyboardInterrupt:

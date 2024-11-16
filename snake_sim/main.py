@@ -94,6 +94,8 @@ def main():
         render_p.start()
         env_p.start()
         render_p.join()
+        parent_conn.send('stop')
+
 
 if __name__ == '__main__':
     main()
