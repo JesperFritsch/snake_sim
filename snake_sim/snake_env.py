@@ -493,7 +493,8 @@ class SnakeEnv:
                 self.snakes[snake.id] = snake
             else:
                 raise ValueError(f"Obj: {repr(snake)} has the same id as Obj: {repr(self.snakes[snake.id])}")
-            snake.bind_env(self)
+            env_data = self._get_env_data(snake.id)
+            snake.init_env(env_data)
         else:
             raise ValueError(f"Obj: {repr(snake)} is not of type {Snake}")
 
@@ -506,6 +507,17 @@ class SnakeEnv:
         x, y = coord
         return (0 <= x < self.width and 0 <= y < self.height)
 
+
+    def _get_env_data(self, snake_id):
+        return {
+            'width': self.width,
+            'height': self.height,
+            'map': list(self.map.flatten()),
+            'food_locations': self.food.locations,
+            'FOOD_TILE': self.FOOD_TILE,
+            'FREE_TILE': self.FREE_TILE,
+            'BLOCKED_TILE': self.BLOCKED_TILE,
+        }
 
     def get_alive_snakes(self):
         return [s for h, s in self.snakes.items() if self.snakes_info[h]['alive']]
@@ -550,23 +562,26 @@ class SnakeEnv:
             tiles.append(m_coord)
         return tiles
 
-
-    def update(self, verbose=True):
-        self.time_step += 1
+    def update_map(self):
         self.map = self.fresh_map() # needed for the snakes, without it the snakes map is never cleared.
-        self.alive_snakes = self.get_alive_snakes()
-        alive_snakes: List[Snake] = self.alive_snakes
-        random.shuffle(alive_snakes)
         for snake in self.snakes.values():
             self.put_snake_on_map(snake)
         self.food.generate_new(self.map)
         self.food.remove_old(self.map)
+
+    def update(self, verbose=True):
+        self.time_step += 1
+        self.update_map()
+        self.alive_snakes = self.get_alive_snakes()
+        alive_snakes: List[Snake] = self.alive_snakes
+        random.shuffle(alive_snakes)
         new_step = StepData(food=list(self.food.locations), step=self.time_step)
         for snake in alive_snakes:
             old_tail = snake.body_coords[-1]
             self.snakes_info[snake.id]['length'] = snake.length
             u_time = time.time()
-            direction = snake.update()
+            env_data = self._get_env_data(snake.id)
+            direction = snake.update(env_data)
             next_coord = coord_op(snake.coord, direction, '+')
             if next_coord not in self.valid_tiles(snake.coord):
                 snake.kill()
