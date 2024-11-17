@@ -167,10 +167,9 @@ class StepData:
             snake.did_eat = snake_data['did_eat']
             if snake_data['did_turn']:
                 snake.did_turn = snake_data['did_turn']
-            if self.include_body:
-                for coord in snake_data['body']:
-                    body_coord = snake.body.add()
-                    body_coord.x, body_coord.y = coord
+            for coord in snake_data['body']:
+                body_coord = snake.body.add()
+                body_coord.x, body_coord.y = coord
         for coord in self.food:
             food = step_data.food.add()
             food.x, food.y = coord
@@ -673,15 +672,17 @@ class SnakeEnv:
         except KeyboardInterrupt:
             aborted = True
             raise
+        except BrokenPipeError:
+            pass
         finally:
             self.print_stats()
-            if self.store_runs:
-                self.run_data.write_to_file(aborted=aborted)
             if not conn is None:
                 try:
                     conn.send('stopped')
                 except BrokenPipeError:
                     pass
+            if self.store_runs:
+                self.run_data.write_to_file(aborted=aborted, as_proto=True)
 
     def stream_run(self, conn, max_steps=None, verbose=False, as_proto=False):
         try:
