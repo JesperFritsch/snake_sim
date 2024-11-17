@@ -115,7 +115,7 @@ class AutoSnake(AutoSnakeBase):
         area_checks = {}
         if not valid_tiles:
             return None
-        area_checks = self._check_areas(self.map, self.body_coords, valid_tiles, exhaustive=True)
+        area_checks = self._check_areas(self.map, self.body_coords, valid_tiles, target_margin=0, safe_margin_factor=self.SAFE_MARGIN_FACTOR)
         valid_tiles.sort(key=lambda x: area_checks[x]['margin_over_tiles'], reverse=True)
         for coord in valid_tiles:
             safe_option = self._explore_option(coord)
@@ -151,10 +151,10 @@ class AutoSnake(AutoSnakeBase):
         route = None
         while route := self._get_route(self.map, self.coord, target_tiles=[l for l in food_locations if l != self.coord]):
             route = self._fix_route(route)
-            if self._check_safe_food_route(s_map, route) or True:
-                return route
-            else:
-                food_locations.remove(route[0])
+            return route
+            # if self._check_safe_food_route(s_map, route) or True:
+            # else:
+            #     food_locations.remove(route[0])
         return route
 
 
@@ -213,14 +213,17 @@ class AutoSnake(AutoSnakeBase):
             planned_route = closest_food_route
             planned_tile = planned_route.pop()
         areas_map = self._get_available_areas()
-        food_map = self._get_future_available_food_map()
         # print("Food Map: ", food_map)
         # print("Areas Map: ", areas_map)
         # print("Planned Route: ", planned_route)
         # print("Planned Tile: ", planned_tile)
         if len(self.env.alive_snakes) > 1:
-            max_food = max([x for x in food_map.values()] or [0])
-            food_map = {k: max_food for k in food_map}
+            food_map = {coord: 0 for coord in areas_map.keys()}
+        else:
+            food_map = self._get_future_available_food_map()
+
+        # print("Food Map: ", food_map)
+        # print(planned_tile)
         if food_map and planned_tile is not None:
             best_food_pair = max(food_map.items(), key=lambda x: x[1])
             max_food_value = max(food_map.values())
@@ -234,11 +237,12 @@ class AutoSnake(AutoSnakeBase):
                 # print("not best food tile")
                 planned_tile = best_food_tile
             planned_area = areas_map[planned_tile]
-            if planned_area['margin'] >= planned_area['food_count'] and planned_area["margin_over_tiles"] >= self.SAFE_MARGIN_FACTOR:
-                # print("margin is enough")
-                safe_option = self._explore_option(planned_tile, food_ahead=planned_area['food_count'])
-                if safe_option:
-                    next_tile = planned_tile
+            # print("Planned Area: ", planned_area)
+            # if planned_area['margin'] >= planned_area['food_count']:
+            #     print("margin is enough")
+            safe_option = self._explore_option(planned_tile, food_ahead=planned_area['food_count'])
+            if safe_option:
+                next_tile = planned_tile
         if next_tile is None:
             # print("getting best option")
             option = self._get_best_option()

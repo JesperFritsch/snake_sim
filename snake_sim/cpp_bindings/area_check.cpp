@@ -8,6 +8,7 @@
 #include <thread>
 #include <memory>
 #include <vector>
+#include <numeric>
 #include <algorithm>
 #include <iostream> // Include iostream for std::cout
 #include <typeinfo> // Include typeinfo for typeid
@@ -797,6 +798,12 @@ public:
         };
         std::array<uint8_t, 4> corner_values;
         std::array<uint8_t, 4> neighbour_values;
+        unsigned int blocked_neighbours = std::accumulate(neighbours.begin(), neighbours.end(), 0, [this, s_map, cols](int sum, Coord c) {
+            return sum + (this->is_inside(c.x, c.y) && s_map[c.y * cols + c.x] > this->free_value);
+        });
+        if (blocked_neighbours < 2){
+            return 0;
+        }
 
         for(unsigned int i = 0; i < neighbours.size(); i++){
             Coord c = neighbours[i];
@@ -934,7 +941,11 @@ public:
         std::vector<Coord>& body_coords,
         Coord& start_coord,
         int area_id,
-        std::vector<int>& checked
+        std::vector<int>& checked,
+        bool early_exit,
+        int snake_length,
+        float safe_margin_factor,
+        int target_margin
     ){
         int tile_count = 0;
         int food_count = 0;
@@ -954,6 +965,7 @@ public:
         std::deque<Coord> current_coords;
         current_coords.push_back(start_coord);
         checked[start_coord.y * width + start_coord.x] = area_id;
+        // std::cout << "Start coord: (" << start_coord.x << ", " << start_coord.y << ")" << std::endl;
         while (!current_coords.empty()) {
             auto curr_coord = current_coords.front();
             current_coords.pop_front();
@@ -1019,6 +1031,25 @@ public:
                     }
                 }
             }
+            target_margin = std::max(target_margin, food_count);
+            int total_steps = tile_count - food_count;
+            int needed_steps = snake_length - max_index;
+            int margin = total_steps - needed_steps;
+            double margin_over_tiles = (float)margin / (float)tile_count;
+            // std::cout << "Tile count: " << tile_count << std::endl;
+            // std::cout << "Food count: " << food_count << std::endl;
+            // std::cout << "Max index: " << max_index << std::endl;
+            // std::cout << "Has tail: " << has_tail << std::endl;
+            // std::cout << "margin: " << margin << std::endl;
+            // std::cout << "margin over tiles: " << margin_over_tiles << std::endl;
+            // std::cout << "target margin: " << target_margin << std::endl;
+            // std::cout << "safe margin factor: " << safe_margin_factor << std::endl;
+            // std::cout << "early exit: " << early_exit << std::endl;
+            // std::cout << std::endl;
+
+            if (early_exit && margin_over_tiles >= safe_margin_factor && margin >= target_margin) {
+                break;
+            }
         }
         return ExploreResults(tile_count, food_count, max_index, has_tail, connected_areas, to_explore);
     }
@@ -1055,7 +1086,11 @@ public:
                 body_coords,
                 current_coord,
                 current_id,
-                checked
+                checked,
+                !(food_check || exhaustive),
+                body_coords.size(),
+                safe_margin_factor,
+                target_margin
             );
             // std::cout << "Explored area: " << current_id << std::endl;
             // std::cout << "Current coord: (" << current_coord.x << ", " << current_coord.y << ")" << std::endl;
