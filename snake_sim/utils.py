@@ -11,7 +11,7 @@ from collections.abc import Iterable
 from collections import deque
 
 class DotDict(dict):
-    def __init__(self, other_dict):
+    def __init__(self, other_dict={}):
         for k, v in other_dict.items():
             if isinstance(v, dict):
                 v = DotDict(v)

@@ -9,7 +9,6 @@ from time import time
 from snake_sim.utils import coord_op, exec_time
 
 from snake_sim.snakes.snake import Snake
-from snake_sim.snake_env import SnakeEnv
 
 def copy_map(s_map):
     return [array('B', row) for row in s_map]
@@ -19,7 +18,6 @@ class AutoSnakeBase(Snake):
 
     def __init__(self, id: str, start_length: int):
         super().__init__(id, start_length)
-        self.env: SnakeEnv
         self.x = None
         self.y = None
         self.route: deque = deque()
@@ -30,9 +28,10 @@ class AutoSnakeBase(Snake):
     def _pick_direction(self):
         raise NotImplementedError
 
-    def update(self):
+    def update(self, env_data: dict):
         self.start_time = time()
-        self.update_map(self.env.map)
+        self.set_env_data(env_data)
+        self.update_map(self.env_data.map)
         next_tile = self._pick_direction()
         if next_tile is None:
             next_tile = self.coord
@@ -42,7 +41,7 @@ class AutoSnakeBase(Snake):
     def _update_snake_position(self, s_map, body_coords, old_tail):
         head = body_coords[0]
         if old_tail is not None:
-            s_map[old_tail[1], old_tail[0]] = self.env.FREE_TILE
+            s_map[old_tail[1], old_tail[0]] = self.env_data.FREE_TILE
         for i in range(2):
             x, y = body_coords[i]
             s_map[y, x] = self.head_value if body_coords[i] == head else self.body_value
@@ -53,7 +52,7 @@ class AutoSnakeBase(Snake):
         """Returns a route from start to end or to the first found tile of target_tiles"""
         if target_tiles is None and end is None:
             raise ValueError("end and target_tiles can't both be None")
-        checked = np.full((self.env.height, self.env.width), fill_value=False, dtype=bool)
+        checked = np.full((self.env_data.height, self.env_data.width), fill_value=False, dtype=bool)
         current_coords = [start]
         coord_map = {}
         coord_maps = []
@@ -94,11 +93,11 @@ class AutoSnakeBase(Snake):
         for row in s_map:
             print_row = []
             for c in row:
-                if c == self.env.FREE_TILE:
+                if c == self.env_data.FREE_TILE:
                     print_row.append(' . ')
-                elif c == self.env.FOOD_TILE:
+                elif c == self.env_data.FOOD_TILE:
                     print_row.append(' F ')
-                elif c == self.env.BLOCKED_TILE:
+                elif c == self.env_data.BLOCKED_TILE:
                     print_row.append(' # ')
                 else:
                     print_row.append(f' {chr(c)} ')

@@ -60,15 +60,17 @@ class AutoSnake(AutoSnakeBase):
         self.failed_paths = set()
         self.area_checker = None
 
-
     def _init_after_bind(self):
         self.area_checker = AreaChecker(
-            self.env.FOOD_TILE,
-            self.env.FREE_TILE,
+            self.env_data.FOOD_TILE,
+            self.env_data.FREE_TILE,
             self.body_value,
-            self.env.width,
-            self.env.height)
+            self.env_data.width,
+            self.env_data.height)
 
+    def is_inside(self, coord):
+        x, y = coord
+        return (0 <= x < self.env_data.width and 0 <= y < self.env_data.height)
 
     def _fix_route(self, route, s_coord=None, valid_tiles=None):
         valid_tiles = valid_tiles or self._valid_tiles(self.map, self.coord)
@@ -132,6 +134,46 @@ class AutoSnake(AutoSnakeBase):
         else:
             return None
 
+    def might_close_area(self, s_map, head_coord, neck_coord):
+        """
+        This should cover all scenarios where an area check is needed.
+        checking if the head will close of any area.
+        and checking if the head creates paths that are one tile wide.
+        """
+        free_value = self.env_data.FREE_TILE
+        food_value = self.env_data.FOOD_TILE
+        head_dir = (head_coord[0] - neck_coord[0], head_coord[1] - neck_coord[1])
+        perp_axis = (head_dir[1], head_dir[0])
+        coord_ahead = (head_coord[0] + head_dir[0], head_coord[1] + head_dir[1])
+
+        if not self.is_inside(coord_ahead):
+            return True
+
+        if s_map[coord_ahead[1], coord_ahead[0]] != free_value and s_map[coord_ahead[1], coord_ahead[0]] != food_value:
+            return True
+        besides_a = (head_coord[0] + perp_axis[0], head_coord[1] + perp_axis[1])
+        besides_b = (head_coord[0] - perp_axis[0], head_coord[1] - perp_axis[1])
+        diag_a_ahead = (coord_ahead[0] + perp_axis[0], coord_ahead[1] + perp_axis[1])
+        diag_b_ahead = (coord_ahead[0] - perp_axis[0], coord_ahead[1] - perp_axis[1])
+
+        if self.is_inside(diag_a_ahead) and self.is_inside(besides_a):
+            if s_map[diag_a_ahead[1], diag_a_ahead[0]] != free_value and s_map[diag_a_ahead[1], diag_a_ahead[0]] != food_value:
+                if s_map[besides_a[1], besides_a[0]] == free_value or s_map[besides_a[1], besides_a[0]] == food_value:
+                    return True
+            besides2 = (head_coord[0] + perp_axis[0] * 2, head_coord[1] + perp_axis[1] * 2)
+            if s_map[besides_a[1], besides_a[0]] == free_value or s_map[besides_a[1], besides_a[0]] == food_value:
+                if self.is_inside(besides2) and (s_map[besides2[1], besides2[0]] != free_value and s_map[besides2[1], besides2[0]] != food_value):
+                    return True
+
+        if self.is_inside(diag_b_ahead) and self.is_inside(besides_b):
+            if s_map[diag_b_ahead[1], diag_b_ahead[0]] != free_value and s_map[diag_b_ahead[1], diag_b_ahead[0]] != food_value:
+                if s_map[besides_b[1], besides_b[0]] == free_value or s_map[besides_b[1], besides_b[0]] == food_value:
+                    return True
+            besides2 = (head_coord[0] - perp_axis[0] * 2, head_coord[1] - perp_axis[1] * 2)
+            if s_map[besides_b[1], besides_b[0]] == free_value or s_map[besides_b[1], besides_b[0]] == food_value:
+                if self.is_inside(besides2) and (s_map[besides2[1], besides2[0]] != free_value and s_map[besides2[1], besides2[0]] != food_value):
+                    return True
+        return False
 
     def _check_safe_food_route(self, s_map, food_route):
         end_coord = food_route[0]
@@ -147,7 +189,7 @@ class AutoSnake(AutoSnakeBase):
 
     def _get_closest_accessible_food_route(self):
         s_map = self.map.copy()
-        food_locations = self.env.food.locations.copy()
+        food_locations = self.env_data.food_locations
         route = None
         while route := self._get_route(self.map, self.coord, target_tiles=[l for l in food_locations if l != self.coord]):
             route = self._fix_route(route)
@@ -180,7 +222,7 @@ class AutoSnake(AutoSnakeBase):
             all_area_checks[coord] = area_checks
             if clear_checks:
                 all_clear_checks[coord] = clear_checks
-            additonal_food[coord] = old_map_value == self.env.FOOD_TILE
+            additonal_food[coord] = old_map_value == self.env_data.FOOD_TILE
         all_checks = [a for check in all_area_checks.values() for a in check]
         combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
         combine_food = False
@@ -216,7 +258,10 @@ class AutoSnake(AutoSnakeBase):
         # print("Areas Map: ", areas_map)
         # print("Planned Route: ", planned_route)
         # print("Planned Tile: ", planned_tile)
-        food_map = self._get_future_available_food_map()
+        if planned_tile and self.might_close_area(self.map, planned_tile, self.coord):
+            food_map = self._get_future_available_food_map()
+        else:
+            food_map = {k: 0 for k in areas_map.keys()}
 
         # print("Food Map: ", food_map)
         # print(planned_tile)
@@ -258,7 +303,7 @@ class AutoSnake(AutoSnakeBase):
         body_copy = body_coords.copy()
         map_copy = s_map.copy()
         length = len(body_coords)
-        if s_map[new_coord[1], new_coord[0]] == self.env.FOOD_TILE:
+        if s_map[new_coord[1], new_coord[0]] == self.env_data.FOOD_TILE:
             length += 1
         old_tail = self.update_body(new_coord, body_copy, length)
         self._update_snake_position(map_copy, body_copy, old_tail)
@@ -385,7 +430,7 @@ class AutoSnake(AutoSnakeBase):
             current_results['margin'] = -length
         if best_results is None:
             best_results = {}
-        if s_map[new_coord[1], new_coord[0]] == self.env.FOOD_TILE:
+        if s_map[new_coord[1], new_coord[0]] == self.env_data.FOOD_TILE:
             length += 1
             current_results['apple_time'] = current_results['apple_time'] + [depth]
             current_results['len_gain'] = length - self.length

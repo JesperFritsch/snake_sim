@@ -1,5 +1,6 @@
+import numpy as np
 from collections import deque
-from snake_sim.utils import exec_time, coord_op
+from snake_sim.utils import exec_time, coord_op, DotDict
 
 DIRS = (
     (0, -1),
@@ -8,7 +9,16 @@ DIRS = (
     (-1, 0)
 )
 
-class Snake:
+
+class ISnake:
+    def __init__(self):
+        pass
+
+    def update(self, env_data: dict):
+        raise NotImplementedError
+
+
+class Snake(ISnake):
     def __init__(self, id: str, start_length: int):
         self.id = id.upper()
         self.start_length = start_length
@@ -17,9 +27,12 @@ class Snake:
         self.head_value = ord(self.id)
         self.body_coords = deque()
         self.coord = None
-        self.env = None
         self.map = None
         self.length = self.start_length
+        self.env_data = DotDict()
+
+    def set_env_data(self, env_data: dict):
+        self.env_data.update(env_data)
 
     def reset(self):
         self.alive = True
@@ -30,10 +43,8 @@ class Snake:
     def _init_after_bind(self):
         pass
 
-    def bind_env(self, env):
-        self.env = env
-        self.height = self.env.height
-        self.width = self.env.width
+    def init_env(self, env_data):
+        self.set_env_data(env_data)
         self._init_after_bind()
 
     def in_sight(self, head_coord, coord, sight_len=2):
@@ -49,13 +60,9 @@ class Snake:
     def set_new_head(self, coord):
         self.x, self.y = coord
         self.coord = coord
-        if self.map[self.y, self.x] == self.env.FOOD_TILE:
+        if self.map[self.y, self.x] == self.env_data.FOOD_TILE:
             self.length += 1
         self.update_body(self.coord, self.body_coords, self.length)
-
-    def update(self):
-        print("This method is not implemented")
-        raise NotImplementedError
 
     def _valid_tiles(self, s_map, coord, discount=None):
         """Returns a list of valid tiles from a given coord"""
@@ -65,9 +72,9 @@ class Snake:
             x_move, y_move = m_coord
             if m_coord == discount:
                 dirs.append(m_coord)
-            elif not self.env.is_inside(m_coord):
+            elif not self.is_inside(m_coord):
                 continue
-            elif s_map[y_move, x_move] not in self.env.valid_tile_values:
+            elif s_map[y_move, x_move] not in (self.env_data.FREE_TILE, self.env_data.FOOD_TILE):
                 continue
             dirs.append(m_coord)
         return dirs
@@ -80,7 +87,7 @@ class Snake:
         return old_tail
 
     def update_map(self, map):
-        self.map = map.copy()
+        self.map = np.array(map, dtype=np.uint8).reshape(self.env_data.height, self.env_data.width)
 
     def kill(self):
         self.alive = False
