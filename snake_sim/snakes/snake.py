@@ -14,7 +14,7 @@ class ISnake:
     def __init__(self):
         pass
 
-    def update(self, env_data: dict):
+    def update(self, env_data: dict) -> tuple: # -> (int, int) as direction (1, 0) for right (-1, 0) for left
         raise NotImplementedError
 
 
