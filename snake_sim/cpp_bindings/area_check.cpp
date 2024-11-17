@@ -603,7 +603,7 @@ public:
                     //     total_food_count_stack.push_back(total_food_count_here);
                     // }
                 }
-                else if (current_node->tile_count > 1){
+                if (current_node->tile_count > 1 && !is_corner){
                     int curr_x = current_node->start_coord.x;
                     int curr_y = current_node->start_coord.y;
                     int next_x = next_node->start_coord.x;
@@ -619,8 +619,10 @@ public:
 
                 }
                 if (is_corner){
-                    total_tile_count_stack.push_back(tiles_before + 1);
-                    total_food_count_stack.push_back(food_before + (corner_has_food ? 1 : 0));
+                    int tiles_before_actually = (current_node->id == 0 ? 0 : tiles_before);
+                    int food_before_actually = (current_node->id == 0 ? 0 : food_before);
+                    total_tile_count_stack.push_back(tiles_before_actually + 1);
+                    total_food_count_stack.push_back(food_before_actually + (corner_has_food ? 1 : 0));
                 }
                 else{
                     total_tile_count_stack.push_back(total_tile_count_here);
@@ -812,10 +814,10 @@ public:
 
         std::array<uint8_t, 4> corner_values;
         std::array<uint8_t, 4> neighbour_values;
-        unsigned int blocked_neighbours = std::accumulate(ch_neighbours.begin(), ch_neighbours.end(), 0, [this, s_map, cols](int sum, Coord c) {
-            return sum + (!this->is_inside(c.x, c.y) || s_map[c.y * cols + c.x] > this->free_value);
-        });
-        if (blocked_neighbours < 2){
+
+        if(std::all_of(ch_neighbours.begin(), ch_neighbours.end(), [this, &s_map, cols](const Coord& c) {
+            return this->is_inside(c.x, c.y) && s_map[c.y * cols + c.x] <= this->free_value;
+        })){
             return 0;
         }
 
@@ -1048,12 +1050,17 @@ public:
             }
             int calc_target_margin = std::max(std::max(target_margin, food_count), 1);
             int total_steps = tile_count - food_count;
-            int needed_steps = snake_length;
+            int needed_steps = (max_index > 0) ? snake_length - max_index : snake_length + 1;
             int margin = total_steps - needed_steps;
             double margin_over_tiles = (float)margin / (float)tile_count;
-            // for some reason we dont cover a big enough area for margin_over_tiles to be over the safe_margin_factor
-            // if we dont multiply it by 1.1 here.
-            if (early_exit && margin_over_tiles >= (safe_margin_factor * 1.1) && margin >= calc_target_margin) {
+            if (early_exit && margin_over_tiles > (safe_margin_factor * 2) && margin > calc_target_margin) {
+                // std::cout << "Early exit" << std::endl;
+                // std::cout << "Margin over tiles: " << margin_over_tiles << std::endl;
+                // std::cout << "Margin: " << margin << std::endl;
+                // std::cout << "Target margin: " << calc_target_margin << std::endl;
+                // std::cout << "Tile count: " << tile_count << std::endl;
+                // std::cout << "Food count: " << food_count << std::endl;
+
                 did_early_exit = true;
                 break;
             }
