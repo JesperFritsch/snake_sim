@@ -25,8 +25,8 @@ def check_areas(snake, coord):
     print(f"Time: {(time() - s_time) * 1000}")
 
 if __name__ == '__main__':
-    GRID_WIDTH = 64
-    GRID_HEIGHT = 64
+    GRID_WIDTH = 128
+    GRID_HEIGHT = 128
 
     FOOD = 15
     expand_factor = 2
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
     snake_map = 'sign'
     # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap3.png"
-    env.load_png_map(snake_map)
+    # env.load_png_map(snake_map)
 
     # env.load_png_map(test_map)
     env.init_recorder()
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
     test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'A'
+    snake_char = 'Z'
     frame_width = env.width * expand_factor
     frame_height = env.height * expand_factor
     snake = AutoSnake(snake_char, 1, calc_timeout=1500)
@@ -90,7 +90,7 @@ if __name__ == '__main__':
             s.update_map(env.map)
     env.food.locations = set([tuple(x) for x in step_state['food'] if tuple(x) != snake.coord])
     # snake.map[22, 9] = ord('X')
-    snake.print_map(snake.map)
+    # snake.print_map(snake.map)
     # env.print_map(env.map)
     # print(snake.body_coords)
     print(snake.length, snake.coord, snake.body_value)
