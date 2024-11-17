@@ -175,7 +175,7 @@ class AutoSnake(AutoSnakeBase):
             old_map_value = map_copy[y, x]
             old_tail = self.update_body(coord, body_coords_copy, self.length)
             self._update_snake_position(map_copy, body_coords_copy, old_tail)
-            area_checks = [self._area_check_wrapper(map_copy, body_coords_copy, tile, food_check=True) for tile in valids]
+            area_checks = [self._area_check_wrapper(map_copy, body_coords_copy, tile, food_check=False) for tile in valids]
             clear_checks = [a for a in area_checks if a['is_clear']]
             all_area_checks[coord] = area_checks
             if clear_checks:
@@ -183,7 +183,7 @@ class AutoSnake(AutoSnakeBase):
             additonal_food[coord] = old_map_value == self.env.FOOD_TILE
         all_checks = [a for check in all_area_checks.values() for a in check]
         combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
-        # combine_food = False
+        combine_food = False
         if all_checks:
             combined_food = max([a['food_count'] for a in all_checks])
         else:
@@ -213,14 +213,10 @@ class AutoSnake(AutoSnakeBase):
             planned_route = closest_food_route
             planned_tile = planned_route.pop()
         areas_map = self._get_available_areas()
-        # print("Food Map: ", food_map)
         # print("Areas Map: ", areas_map)
         # print("Planned Route: ", planned_route)
         # print("Planned Tile: ", planned_tile)
-        if len(self.env.alive_snakes) > 1:
-            food_map = {coord: 0 for coord in areas_map.keys()}
-        else:
-            food_map = self._get_future_available_food_map()
+        food_map = self._get_future_available_food_map()
 
         # print("Food Map: ", food_map)
         # print(planned_tile)
@@ -238,11 +234,11 @@ class AutoSnake(AutoSnakeBase):
                 planned_tile = best_food_tile
             planned_area = areas_map[planned_tile]
             # print("Planned Area: ", planned_area)
-            # if planned_area['margin'] >= planned_area['food_count']:
-            #     print("margin is enough")
-            safe_option = self._explore_option(planned_tile, food_ahead=planned_area['food_count'])
-            if safe_option:
-                next_tile = planned_tile
+            if planned_area['margin'] >= planned_area['food_count'] and planned_area['margin_over_tiles'] >= self.SAFE_MARGIN_FACTOR:
+                # print("margin is enough")
+                safe_option = self._explore_option(planned_tile, food_ahead=planned_area['food_count'])
+                if safe_option:
+                    next_tile = planned_tile
         if next_tile is None:
             # print("getting best option")
             option = self._get_best_option()

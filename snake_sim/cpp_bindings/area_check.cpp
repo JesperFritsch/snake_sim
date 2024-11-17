@@ -188,6 +188,7 @@ struct ExploreResults{
     int food_count = 0;
     int max_index = 0;
     bool has_tail = false;
+    bool early_exit = false;
     std::vector<int> connected_areas;
     std::vector<Coord> to_explore;
 
@@ -201,6 +202,7 @@ struct ExploreResults{
         int food_count,
         int max_index,
         bool has_tail,
+        bool early_exit,
         std::vector<int> connected_areas,
         std::vector<Coord> to_explore) :
             tile_count(tile_count),
@@ -796,10 +798,22 @@ public:
             Coord(c_x - 1, c_y + 1),
             Coord(c_x - 1, c_y)
         };
+
+        std::array<Coord, 8> ch_neighbours = {
+            Coord(ch_x - 1, ch_y - 1),
+            Coord(ch_x, ch_y - 1),
+            Coord(ch_x + 1, ch_y - 1),
+            Coord(ch_x + 1, ch_y),
+            Coord(ch_x + 1, ch_y + 1),
+            Coord(ch_x, ch_y + 1),
+            Coord(ch_x - 1, ch_y + 1),
+            Coord(ch_x - 1, ch_y)
+        };
+
         std::array<uint8_t, 4> corner_values;
         std::array<uint8_t, 4> neighbour_values;
-        unsigned int blocked_neighbours = std::accumulate(neighbours.begin(), neighbours.end(), 0, [this, s_map, cols](int sum, Coord c) {
-            return sum + (this->is_inside(c.x, c.y) && s_map[c.y * cols + c.x] > this->free_value);
+        unsigned int blocked_neighbours = std::accumulate(ch_neighbours.begin(), ch_neighbours.end(), 0, [this, s_map, cols](int sum, Coord c) {
+            return sum + (!this->is_inside(c.x, c.y) || s_map[c.y * cols + c.x] > this->free_value);
         });
         if (blocked_neighbours < 2){
             return 0;
@@ -951,13 +965,14 @@ public:
         int food_count = 0;
         int max_index = 0;
         bool has_tail = false;
+        bool did_early_exit = false;
         std::vector<Coord> to_explore;
         std::vector<int> connected_areas;
         to_explore.reserve(10);
         connected_areas.reserve(10);
         int checked_value = checked[start_coord.y * width + start_coord.x];
         if(checked_value != unexplored_area_id && checked_value != area_id){
-            return ExploreResults(tile_count, food_count, max_index, has_tail, connected_areas, to_explore);
+            return ExploreResults(tile_count, food_count, max_index, has_tail, did_early_exit, connected_areas, to_explore);
         }
         tile_count += 1;
         size_t body_len = body_coords.size();
@@ -1031,27 +1046,19 @@ public:
                     }
                 }
             }
-            target_margin = std::max(target_margin, food_count);
+            int calc_target_margin = std::max(std::max(target_margin, food_count), 1);
             int total_steps = tile_count - food_count;
-            int needed_steps = snake_length - max_index;
+            int needed_steps = snake_length;
             int margin = total_steps - needed_steps;
             double margin_over_tiles = (float)margin / (float)tile_count;
-            // std::cout << "Tile count: " << tile_count << std::endl;
-            // std::cout << "Food count: " << food_count << std::endl;
-            // std::cout << "Max index: " << max_index << std::endl;
-            // std::cout << "Has tail: " << has_tail << std::endl;
-            // std::cout << "margin: " << margin << std::endl;
-            // std::cout << "margin over tiles: " << margin_over_tiles << std::endl;
-            // std::cout << "target margin: " << target_margin << std::endl;
-            // std::cout << "safe margin factor: " << safe_margin_factor << std::endl;
-            // std::cout << "early exit: " << early_exit << std::endl;
-            // std::cout << std::endl;
-
-            if (early_exit && margin_over_tiles >= safe_margin_factor && margin >= target_margin) {
+            // for some reason we dont cover a big enough area for margin_over_tiles to be over the safe_margin_factor
+            // if we dont multiply it by 1.1 here.
+            if (early_exit && margin_over_tiles >= (safe_margin_factor * 1.1) && margin >= calc_target_margin) {
+                did_early_exit = true;
                 break;
             }
         }
-        return ExploreResults(tile_count, food_count, max_index, has_tail, connected_areas, to_explore);
+        return ExploreResults(tile_count, food_count, max_index, has_tail, did_early_exit, connected_areas, to_explore);
     }
 
     AreaCheckResult _area_check2(

@@ -34,7 +34,7 @@ if __name__ == '__main__':
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
     snake_map = 'sign'
     # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap3.png"
-    # env.load_png_map(snake_map)
+    env.load_png_map(snake_map)
 
     # env.load_png_map(test_map)
     env.init_recorder()
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     test_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'test_data'))
     test_map_filename = 'test_map1.txt'
     test_map_filepath = os.path.join(test_data_dir, test_map_filename)
-    snake_char = 'Z'
+    snake_char = 'A'
     frame_width = env.width * expand_factor
     frame_height = env.height * expand_factor
     snake = AutoSnake(snake_char, 1, calc_timeout=1500)
@@ -171,7 +171,6 @@ if __name__ == '__main__':
     # print(s.getvalue())
 
     frames = frame_builder.frames_from_rundata(rundata)
-
     play_frame_buffer(frames, grid_width=frame_width, grid_height=frame_width)
     # video_output = Path(__file__).parent.joinpath('..', '..', 'render', 'videos', 'test_look_ahead.mp4').resolve()
     # frames_to_video(frames, str(video_output), 30, size=(640, 640))

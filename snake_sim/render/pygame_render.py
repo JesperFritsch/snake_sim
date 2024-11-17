@@ -204,7 +204,13 @@ def play_frame_buffer(frame_buffer, grid_width, grid_height, fps=10):
 
 
 def play_runfile(filepath=None, sound_on=True, fps=10):
-    run_data = RunData.from_json_file(filepath)
+    file_path = Path(filepath)
+    if not file_path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+    if file_path.suffix == '.json':
+        run_data = RunData.from_json_file(filepath)
+    if file_path.suffix == '.pb':
+        run_data = RunData.from_protobuf_file(filepath)
     grid_height = run_data.height
     grid_width = run_data.width
     frame_buffer, sound_buffer = frames_sound_from_run_data(run_data)
