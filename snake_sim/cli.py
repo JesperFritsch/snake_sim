@@ -50,7 +50,7 @@ def cli(argv, config: DotDict):
 
     # Subparser for compute
     compute_parser = subparsers.add_parser('compute', help='Compute a run file')
-    compute_parser.add_argument('--nr-runs', type=positive_int, help='Number of runs to generate')
+    compute_parser.add_argument('--nr-runs', type=positive_int, default=1, help='Number of runs to generate')
     add_common_arguments(compute_parser)
     add_run_config_arguments(compute_parser)
 

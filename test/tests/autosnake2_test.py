@@ -2,6 +2,7 @@ import os
 import itertools
 import cProfile
 import pstats
+import sys
 from io import StringIO
 import numpy as np
 from collections import deque
@@ -32,9 +33,9 @@ if __name__ == '__main__':
     expand_factor = 2
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    snake_map = 'sign'
+    snake_map = 'combined4'
     # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap3.png"
-    # env.load_png_map(snake_map)
+    env.load_png_map(snake_map)
 
     # env.load_png_map(test_map)
     env.init_recorder()
@@ -91,7 +92,8 @@ if __name__ == '__main__':
     env.food.locations = set([tuple(x) for x in step_state['food'] if tuple(x) != snake.coord])
     # snake.map[22, 9] = ord('X')
     # snake.print_map(snake.map)
-    # env.print_map(env.map)
+    env.print_map(env.map)
+    sys.stdout.flush()
     # print(snake.body_coords)
     print(snake.length, snake.coord, snake.body_value)
     print(snake.coord)
@@ -113,13 +115,14 @@ if __name__ == '__main__':
     pr = cProfile.Profile()
     pr.enable()
 
-    stime = time()
-    choice = snake._pick_direction()
-    print(f"Choice: {choice}")
-    print(f"snake.coord: {snake.coord}")
-    print(snake)
-    print(f"Time: {(time() - stime) * 1000}")
+    # stime = time()
+    # choice = snake._pick_direction()
+    # print(f"Choice: {choice}")
+    # print(f"snake.coord: {snake.coord}")
+    # print(snake)
+    # print(f"Time: {(time() - stime) * 1000}")
 
+    print("is_single: ", ac.is_single_entrance(snake.map, (28,11), (28,12)))
 
     for tile in snake._valid_tiles(snake.map, snake.coord):
     #     s_time = time()
@@ -132,10 +135,10 @@ if __name__ == '__main__':
         # print(f'_deep_look_ahead: {tile}', option['free_path'])
         # print(f"Time: {(time() - s_time) * 1000}")
 
-        s_time = time()
-        option = snake._best_first_search(snake.map.copy(), snake.body_coords.copy(), tile, rundata=rundata, safe_margin_factor=snake.SAFE_MARGIN_FACTOR)
-        print(f'_best_first_search: {tile}', option)
-        print(f"Time: {(time() - s_time) * 1000}")
+        # s_time = time()
+        # option = snake._best_first_search(snake.map.copy(), snake.body_coords.copy(), tile, rundata=rundata, safe_margin_factor=snake.SAFE_MARGIN_FACTOR)
+        # print(f'_best_first_search: {tile}', option)
+        # print(f"Time: {(time() - s_time) * 1000}")
 
         s_time = time()
         area_check = snake._area_check_wrapper(snake.map, snake.body_coords.copy(), tile, food_check=False, exhaustive=False, safe_margin_factor=0.08)
@@ -144,9 +147,9 @@ if __name__ == '__main__':
 
     # # print(snake.get_future_available_food_map())
     # s_time = time()
-    # head_dist = (1, 0)
+    # head_dist = (0, 1)
     # start_coord = coord_op(snake.coord, head_dist, '+')
-    # # # start_coord = 0, 28
+    # # start_coord = 0, 28
     # # area_check = snake._area_check_wrapper(snake.map, snake.body_coords.copy(), start_coord, food_check=False, exhaustive=False, target_margin=100)
     # # print(f"area_check for tile {coord_op(snake.coord, head_dist, '+')}: {area_check}")
 
@@ -154,11 +157,11 @@ if __name__ == '__main__':
     # option = snake._best_first_search(snake.map.copy(), snake.body_coords.copy(), coord_op(snake.coord, head_dist, '+'), rundata=rundata)
     # print(f"area_check for tile {head_dist}: {option}")
     # print(f"Time: {(time() - s_time) * 1000}")
-    # # # time_e = time()
-    # # # area = ac.area_check(snake.map, list(snake.body_coords), area_coord, True)
-    # # execution_time = (time() - time_e) * 1000
-    # # print('area_check: ', execution_time)
-    # # print(area)
+    # time_e = time()
+    # area = snake._area_check_wrapper(snake.map, snake.body_coords, start_coord)
+    # execution_time = (time() - time_e) * 1000
+    # print('area_check: ', execution_time)
+    # print(area)
     # frames = []
 
     pr.disable()
