@@ -257,7 +257,7 @@ class AutoSnake(AutoSnakeBase):
         valid_tiles = self._valid_tiles(self.map, self.coord)
         # print("Planned Route: ", planned_route)
         # print("Planned Tile: ", planned_tile)
-        if planned_tile and self.might_close_area(self.map, planned_tile, self.coord) and False:
+        if planned_tile and self.might_close_area(self.map, planned_tile, self.coord):
             food_map = self._get_future_available_food_map()
         else:
             food_map = {k: 0 for k in valid_tiles}

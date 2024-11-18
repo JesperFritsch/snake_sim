@@ -28,12 +28,22 @@ message SnakeStep {
     Position tail_dir = 6;
     bool did_eat = 7;
     string did_turn = 8; // Can be empty string if null
-    repeated Position body = 9;
+}
+
+message FullSnakeStep {
+    SnakeStep step_data = 1;
+    repeated Position body = 2;
 }
 
 // Message representing the state at a particular game step
 message StepData {
     repeated SnakeStep snakes = 1;
+    repeated Position food = 2;
+    uint32 step = 3;
+}
+
+message FullStepData {
+    repeated FullSnakeStep snakes = 1;
     repeated Position food = 2;
     uint32 step = 3;
 }

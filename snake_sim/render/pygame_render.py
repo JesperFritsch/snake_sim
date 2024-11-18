@@ -31,7 +31,9 @@ def frames_sound_from_run_data(run_data, expand_factor=2):
     frames_buffer = []
     sound_buffer = []
     frame_builder = core.FrameBuilder(run_data.to_dict(), expand_factor)
-    for step_nr, step_data in run_data.steps.items():
+    nr_steps = len(run_data.steps)
+    for step_nr in range(1, nr_steps + 1):
+        step_data = run_data.steps[step_nr]
         new_frames = frame_builder.step_to_frames(step_data.to_dict())
         frames_buffer.extend(new_frames)
         turn_sounds = []

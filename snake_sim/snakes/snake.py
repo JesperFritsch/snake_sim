@@ -86,8 +86,8 @@ class Snake(ISnake):
             old_tail = body_coords.pop()
         return old_tail
 
-    def update_map(self, map):
-        self.map = np.array(map, dtype=np.uint8).reshape(self.env_data.height, self.env_data.width)
+    def update_map(self, map: bytes):
+        self.map = np.frombuffer(map, dtype=np.uint8).reshape(self.env_data.height, self.env_data.width)
 
     def kill(self):
         self.alive = False
