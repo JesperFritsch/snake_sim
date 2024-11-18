@@ -15,6 +15,9 @@ message RGB {
     int32 b = 3;
 }
 
+
+// Messages for STREAMING ######################################
+
 // Message representing each snake's properties
 message SnakeStep {
     string snake_id = 1;
@@ -35,6 +38,7 @@ message StepData {
     uint32 step = 3;
 }
 
+// Message representing the metadata for the game
 message RunMetaData {
     int32 width = 1;
     int32 height = 2;
@@ -79,4 +83,20 @@ message PixelChanges {
 message PixelData {
     Position coord = 1;
     RGB color = 2;
+}
+
+// MESSAGES BETWEEN SNAKE AND ENVIRONMENT ######################################
+
+message EnvData {
+    int32 width = 1;
+    int32 height = 2;
+    bytes map = 3;
+    repeated Position food = 4;
+    int32 FOOD_VALUE = 5;
+    int32 FREE_VALUE = 6;
+    int32 BLOCKED_VALUE = 7;
+}
+
+message SnakeAction {
+    Position action = 2;
 }
