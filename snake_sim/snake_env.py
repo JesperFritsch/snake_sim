@@ -512,7 +512,7 @@ class SnakeEnv:
         return {
             'width': self.width,
             'height': self.height,
-            'map': list(self.map.flatten()),
+            'map': self.map.tobytes(),
             'food_locations': self.food.locations,
             'FOOD_TILE': self.FOOD_TILE,
             'FREE_TILE': self.FREE_TILE,
