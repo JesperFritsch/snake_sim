@@ -254,14 +254,13 @@ class AutoSnake(AutoSnakeBase):
         if closest_food_route:
             planned_route = closest_food_route
             planned_tile = planned_route.pop()
-        areas_map = self._get_available_areas()
-        # print("Areas Map: ", areas_map)
+        valid_tiles = self._valid_tiles(self.map, self.coord)
         # print("Planned Route: ", planned_route)
         # print("Planned Tile: ", planned_tile)
-        if planned_tile and self.might_close_area(self.map, planned_tile, self.coord):
+        if planned_tile and self.might_close_area(self.map, planned_tile, self.coord) and False:
             food_map = self._get_future_available_food_map()
         else:
-            food_map = {k: 0 for k in areas_map.keys()}
+            food_map = {k: 0 for k in valid_tiles}
 
         # print("Food Map: ", food_map)
         # print(planned_tile)
@@ -277,7 +276,7 @@ class AutoSnake(AutoSnakeBase):
             if planned_tile is None or planned_tile_food_value < best_food_value:
                 # print("not best food tile")
                 planned_tile = best_food_tile
-            planned_area = areas_map[planned_tile]
+            planned_area = self._area_check_wrapper(self.map, self.body_coords, planned_tile, safe_margin_factor=self.SAFE_MARGIN_FACTOR)
             # print("Planned Area: ", planned_area)
             if planned_area['margin'] >= planned_area['food_count'] and planned_area['margin_over_tiles'] >= self.SAFE_MARGIN_FACTOR:
                 # print("margin is enough")
@@ -285,7 +284,6 @@ class AutoSnake(AutoSnakeBase):
                 if safe_option:
                     next_tile = planned_tile
         if next_tile is None:
-            # print("getting best option")
             option = self._get_best_option()
             if option:
                 next_tile = option
