@@ -37,6 +37,7 @@ class Food:
         self.decay_count = decay_count if decay_count else None
         self.locations = set()
         self.decay_counters = {}
+        self.newest_food = []
 
     def generate_new(self, s_map):
         empty_tiles = []
@@ -153,9 +154,10 @@ class StepData:
     def to_dict(self):
         return self.__dict__
 
-    def to_protobuf(self):
+    def to_protobuf(self, full_state=False):
         step_data = sim_msgs_pb2.StepData()
         step_data.step = self.step
+        step_data.full_state = full_state
         for snake_data in self.snakes:
             snake = step_data.snakes.add()
             snake.snake_id = snake_data['snake_id']
@@ -167,9 +169,10 @@ class StepData:
             snake.did_eat = snake_data['did_eat']
             if snake_data['did_turn']:
                 snake.did_turn = snake_data['did_turn']
-            for coord in snake_data['body']:
-                body_coord = snake.body.add()
-                body_coord.x, body_coord.y = coord
+            if full_state:
+                for coord in snake_data['body']:
+                    body_coord = snake.body.add()
+                    body_coord.x, body_coord.y = coord
         for coord in self.food:
             food = step_data.food.add()
             food.x, food.y = coord
@@ -303,7 +306,7 @@ class RunData:
             'steps': {k: v.to_dict() for k, v in self.steps.items()}
         }
 
-    def to_protobuf(self):
+    def to_protobuf(self, full_state=False):
         run_data = sim_msgs_pb2.RunData()
         metadata = run_data.run_meta_data
         metadata.width = self.width
@@ -321,7 +324,7 @@ class RunData:
             snake.head_color.r, snake.head_color.g, snake.head_color.b = snake_data['head_color']
             snake.body_color.r, snake.body_color.g, snake.body_color.b = snake_data['body_color']
         for step_nr, step_data in self.steps.items():
-            step_data = step_data.to_protobuf()
+            step_data = step_data.to_protobuf(full_state)
             run_data.steps[step_nr].CopyFrom(step_data)
         metadata.base_map.extend(self.base_map.tobytes())
         return run_data
