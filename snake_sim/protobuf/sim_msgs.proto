@@ -28,11 +28,7 @@ message SnakeStep {
     Position tail_dir = 6;
     bool did_eat = 7;
     string did_turn = 8; // Can be empty string if null
-}
-
-message FullSnakeStep {
-    SnakeStep step_data = 1;
-    repeated Position body = 2;
+    repeated Position body = 9;
 }
 
 // Message representing the state at a particular game step
@@ -40,12 +36,7 @@ message StepData {
     repeated SnakeStep snakes = 1;
     repeated Position food = 2;
     uint32 step = 3;
-}
-
-message FullStepData {
-    repeated FullSnakeStep snakes = 1;
-    repeated Position food = 2;
-    uint32 step = 3;
+    bool full_state = 4;
 }
 
 // Message representing the metadata for the game
@@ -109,4 +100,24 @@ message EnvData {
 
 message SnakeAction {
     Position action = 2;
+}
+
+// client -> server Requests ######################################
+
+message Request{
+    string type = 1;
+    bytes payload = 2;
+}
+
+message PixelChangesRequest {
+    // The step number for which the pixel changes are requested, end_step should be treated as inclusive
+    int32 start_step = 1;
+    int32 end_step = 2;
+}
+
+message StepDataRequest {
+    // The step number for which the step data is requested, end_step should be treated as inclusive
+    int32 start_step = 1;
+    int32 end_step = 2;
+    bool full_state = 3;
 }
