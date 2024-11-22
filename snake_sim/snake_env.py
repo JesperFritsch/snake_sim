@@ -19,7 +19,7 @@ from .snakes.snake import Snake
 from .render.core import put_snake_in_frame
 from dataclasses import dataclass, field
 from snake_sim.snakes.snake import Snake
-from snake_sim.protobuf.python import sim_msgs_pb2
+from snake_sim.protobuf import sim_msgs_pb2
 
 DIR_MAPPING = {
     (0, -1): 'up',

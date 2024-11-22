@@ -114,14 +114,15 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
     surface = pygame.Surface(screen.get_size())
     surface = surface.convert()
-    sound_mixer = pygame.mixer
-    sound_mixer.init()
-    eat_sound = sound_mixer.Sound(str(Path(__file__).parent / "sounds/eat.wav"))
-    left_sound = sound_mixer.Sound(str(Path(__file__).parent / "sounds/turn_left.wav"))
-    right_sound = sound_mixer.Sound(str(Path(__file__).parent / "sounds/turn_right.wav"))
-    eat_sound.set_volume(1)
-    left_sound.set_volume(1)
-    right_sound.set_volume(1)
+    if sound_on:
+        sound_mixer = pygame.mixer
+        sound_mixer.init()
+        eat_sound = sound_mixer.Sound(str(Path(__file__).parent / "sounds/eat.wav"))
+        left_sound = sound_mixer.Sound(str(Path(__file__).parent / "sounds/turn_left.wav"))
+        right_sound = sound_mixer.Sound(str(Path(__file__).parent / "sounds/turn_right.wav"))
+        eat_sound.set_volume(1)
+        left_sound.set_volume(1)
+        right_sound.set_volume(1)
 
     drawGray(surface, grid_width, grid_height)
     running = True
