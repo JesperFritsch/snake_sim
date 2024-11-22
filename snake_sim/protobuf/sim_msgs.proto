@@ -8,6 +8,13 @@ message Position {
     int32 y = 2;
 }
 
+enum Direction {
+    UP = 0;
+    DOWN = 1;
+    LEFT = 2;
+    RIGHT = 3;
+}
+
 // Message to define RGB color mapping
 message RGB {
     int32 r = 1;
@@ -120,4 +127,12 @@ message StepDataRequest {
     int32 start_step = 1;
     int32 end_step = 2;
     bool full_state = 3;
+}
+
+message Empty {
+}
+
+service RemoteSnake {
+    rpc initEnvData(Empty) returns (EnvData) {}
+    rpc update(stream SnakeAction) returns (stream EnvData) {}
 }
