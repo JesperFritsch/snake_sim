@@ -132,7 +132,7 @@ message StepDataRequest {
 message Empty {
 }
 
-service RemoteSnake {
+service RemoteSnakeService {
     rpc initEnvData(Empty) returns (EnvData) {}
     rpc update(stream SnakeAction) returns (stream EnvData) {}
 }
