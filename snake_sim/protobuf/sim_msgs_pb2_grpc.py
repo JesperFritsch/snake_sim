@@ -25,7 +25,7 @@ if _version_not_supported:
     )
 
 
-class RemoteSnakeStub(object):
+class RemoteSnakeServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -35,18 +35,18 @@ class RemoteSnakeStub(object):
             channel: A grpc.Channel.
         """
         self.initEnvData = channel.unary_unary(
-                '/snakesim.RemoteSnake/initEnvData',
+                '/snakesim.RemoteSnakeService/initEnvData',
                 request_serializer=snake__sim_dot_protobuf_dot_sim__msgs__pb2.Empty.SerializeToString,
                 response_deserializer=snake__sim_dot_protobuf_dot_sim__msgs__pb2.EnvData.FromString,
                 _registered_method=True)
         self.update = channel.stream_stream(
-                '/snakesim.RemoteSnake/update',
+                '/snakesim.RemoteSnakeService/update',
                 request_serializer=snake__sim_dot_protobuf_dot_sim__msgs__pb2.SnakeAction.SerializeToString,
                 response_deserializer=snake__sim_dot_protobuf_dot_sim__msgs__pb2.EnvData.FromString,
                 _registered_method=True)
 
 
-class RemoteSnakeServicer(object):
+class RemoteSnakeServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def initEnvData(self, request, context):
@@ -62,7 +62,7 @@ class RemoteSnakeServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_RemoteSnakeServicer_to_server(servicer, server):
+def add_RemoteSnakeServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'initEnvData': grpc.unary_unary_rpc_method_handler(
                     servicer.initEnvData,
@@ -76,13 +76,13 @@ def add_RemoteSnakeServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'snakesim.RemoteSnake', rpc_method_handlers)
+            'snakesim.RemoteSnakeService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('snakesim.RemoteSnake', rpc_method_handlers)
+    server.add_registered_method_handlers('snakesim.RemoteSnakeService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class RemoteSnake(object):
+class RemoteSnakeService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -99,7 +99,7 @@ class RemoteSnake(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/snakesim.RemoteSnake/initEnvData',
+            '/snakesim.RemoteSnakeService/initEnvData',
             snake__sim_dot_protobuf_dot_sim__msgs__pb2.Empty.SerializeToString,
             snake__sim_dot_protobuf_dot_sim__msgs__pb2.EnvData.FromString,
             options,
@@ -126,7 +126,7 @@ class RemoteSnake(object):
         return grpc.experimental.stream_stream(
             request_iterator,
             target,
-            '/snakesim.RemoteSnake/update',
+            '/snakesim.RemoteSnakeService/update',
             snake__sim_dot_protobuf_dot_sim__msgs__pb2.SnakeAction.SerializeToString,
             snake__sim_dot_protobuf_dot_sim__msgs__pb2.EnvData.FromString,
             options,
