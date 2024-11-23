@@ -192,13 +192,14 @@ class AutoSnake(AutoSnakeBase):
     def _get_closest_accessible_food_route(self):
         s_map = self.map.copy()
         food_locations = self.env_data.food_locations
-        route = None
-        while route := self._get_route(self.map, self.coord, target_tiles=[l for l in food_locations if l != self.coord]):
+        route = self._get_route(self.map, self.coord, target_tiles=[l for l in food_locations if l != self.coord])
+        while route:
             route = self._fix_route(route)
             return route
             # if self._check_safe_food_route(s_map, route) or True:
             # else:
             #     food_locations.remove(route[0])
+            route = self._get_route(self.map, self.coord, target_tiles=[l for l in food_locations if l != self.coord])
         return route
 
 
@@ -219,14 +220,14 @@ class AutoSnake(AutoSnakeBase):
             old_map_value = map_copy[y, x]
             old_tail = self.update_body(coord, body_coords_copy, self.length)
             self._update_snake_position(map_copy, body_coords_copy, old_tail)
-            area_checks = [self._area_check_wrapper(map_copy, body_coords_copy, tile, food_check=False) for tile in valids]
+            area_checks = [self._area_check_wrapper(map_copy, body_coords_copy, tile, food_check=True) for tile in valids]
             clear_checks = [a for a in area_checks if a['is_clear']]
             all_area_checks[coord] = area_checks
             if clear_checks:
                 all_clear_checks[coord] = clear_checks
             additonal_food[coord] = old_map_value == self.env_data.FOOD_TILE
         all_checks = [a for check in all_area_checks.values() for a in check]
-        combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
+        # combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
         combine_food = False
         if all_checks:
             combined_food = max([a['food_count'] for a in all_checks])
