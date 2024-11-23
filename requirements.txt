@@ -6,3 +6,6 @@ pybind11
 pynput
 protobuf
 pyvirtualdisplay
+grpcio
+grpcio-tools
+setuptools-grpc

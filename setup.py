@@ -1,4 +1,5 @@
 from setuptools import setup, Extension
+from setuptools.command.build import build
 import os
 import sys
 
@@ -43,7 +44,13 @@ ext_modules = [
     ),
 ]
 
+class grpc_build(build):
+    sub_commands = [
+        ('build_grpc', None),
+    ] + build.sub_commands
+
 setup(
     ext_modules=ext_modules,
     setup_requires=['pybind11>=2.5.0'],
+    cmdclass={'build': grpc_build},
 )
