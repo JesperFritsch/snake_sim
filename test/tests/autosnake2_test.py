@@ -115,12 +115,12 @@ if __name__ == '__main__':
     pr = cProfile.Profile()
     pr.enable()
 
-    # stime = time()
-    # choice = snake._pick_direction()
-    # print(f"Choice: {choice}")
-    # print(f"snake.coord: {snake.coord}")
-    # print(snake)
-    # print(f"Time: {(time() - stime) * 1000}")
+    stime = time()
+    choice = snake._pick_direction()
+    print(f"Choice: {choice}")
+    print(f"snake.coord: {snake.coord}")
+    print(snake)
+    print(f"Time: {(time() - stime) * 1000}")
 
     print("is_single: ", ac.is_single_entrance(snake.map, (28,11), (28,12)))
 
@@ -135,10 +135,10 @@ if __name__ == '__main__':
         # print(f'_deep_look_ahead: {tile}', option['free_path'])
         # print(f"Time: {(time() - s_time) * 1000}")
 
-        # s_time = time()
-        # option = snake._best_first_search(snake.map.copy(), snake.body_coords.copy(), tile, rundata=rundata, safe_margin_factor=snake.SAFE_MARGIN_FACTOR)
-        # print(f'_best_first_search: {tile}', option)
-        # print(f"Time: {(time() - s_time) * 1000}")
+        s_time = time()
+        option = snake._best_first_search(snake.map.copy(), snake.body_coords.copy(), tile, rundata=rundata, safe_margin_factor=snake.SAFE_MARGIN_FACTOR)
+        print(f'_best_first_search: {tile}', option)
+        print(f"Time: {(time() - s_time) * 1000}")
 
         s_time = time()
         area_check = snake._area_check_wrapper(snake.map, snake.body_coords.copy(), tile, food_check=False, exhaustive=False, safe_margin_factor=0.08)
