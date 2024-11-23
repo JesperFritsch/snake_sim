@@ -33,7 +33,7 @@ if __name__ == '__main__':
     expand_factor = 2
     offset = (1, 1)
     env = SnakeEnv(GRID_WIDTH, GRID_HEIGHT, FOOD)
-    snake_map = 'combined4'
+    snake_map = 'comps2'
     # test_map = r"B:\pythonStuff\snake_sim\snake_sim\maps\test_maps\testmap3.png"
     env.load_png_map(snake_map)
 
@@ -102,7 +102,8 @@ if __name__ == '__main__':
     rundata = []
     # area_coord = (22,27)
     ac = AreaChecker(env.FOOD_TILE, env.FREE_TILE, snake.body_value, env.width, env.height)
-
+    snake.set_env_data(env._get_env_data(snake.id))
+    snake.update_map(snake.env_data.map)
 
     # time_e = time()
     # print(snake.length)
