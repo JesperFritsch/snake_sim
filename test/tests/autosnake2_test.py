@@ -62,7 +62,7 @@ if __name__ == '__main__':
 
     env.map = env.fresh_map()
     for snake_data in [step_state[s] for s in step_state if s not in (snake_char, 'food')]:
-        core.put_snake_in_frame(base_frame, snake_data, (255, 255, 255), expand_factor=expand_factor, offset=offset)
+        core.put_snake_in_frame(base_frame, snake_data, (255, 255, 255), h_color=(0, 0, 255), expand_factor=expand_factor, offset=offset)
     for coord in step_state['food']:
         expanded = coord_op(coord, (expand_factor, expand_factor), '*')
         x, y = coord_op(expanded, offset, '+')

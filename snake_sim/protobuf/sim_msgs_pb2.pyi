@@ -19,6 +19,12 @@ class MessageType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     STEP_DATA: _ClassVar[MessageType]
     RUN_META_DATA: _ClassVar[MessageType]
     PIXEL_CHANGES: _ClassVar[MessageType]
+
+class RequestType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    PIXEL_CHANGES_REQ: _ClassVar[RequestType]
+    STEP_DATA_REQ: _ClassVar[RequestType]
+    RUN_META_DATA_REQ: _ClassVar[RequestType]
 UP: Direction
 DOWN: Direction
 LEFT: Direction
@@ -27,6 +33,9 @@ RUN_DATA: MessageType
 STEP_DATA: MessageType
 RUN_META_DATA: MessageType
 PIXEL_CHANGES: MessageType
+PIXEL_CHANGES_REQ: RequestType
+STEP_DATA_REQ: RequestType
+RUN_META_DATA_REQ: RequestType
 
 class Position(_message.Message):
     __slots__ = ("x", "y")
@@ -141,10 +150,12 @@ class MsgWrapper(_message.Message):
     def __init__(self, type: _Optional[_Union[MessageType, str]] = ..., payload: _Optional[bytes] = ...) -> None: ...
 
 class PixelChanges(_message.Message):
-    __slots__ = ("pixels",)
+    __slots__ = ("pixels", "full_state")
     PIXELS_FIELD_NUMBER: _ClassVar[int]
+    FULL_STATE_FIELD_NUMBER: _ClassVar[int]
     pixels: _containers.RepeatedCompositeFieldContainer[PixelData]
-    def __init__(self, pixels: _Optional[_Iterable[_Union[PixelData, _Mapping]]] = ...) -> None: ...
+    full_state: bool
+    def __init__(self, pixels: _Optional[_Iterable[_Union[PixelData, _Mapping]]] = ..., full_state: bool = ...) -> None: ...
 
 class PixelData(_message.Message):
     __slots__ = ("coord", "color")
@@ -182,9 +193,9 @@ class Request(_message.Message):
     __slots__ = ("type", "payload")
     TYPE_FIELD_NUMBER: _ClassVar[int]
     PAYLOAD_FIELD_NUMBER: _ClassVar[int]
-    type: str
+    type: RequestType
     payload: bytes
-    def __init__(self, type: _Optional[str] = ..., payload: _Optional[bytes] = ...) -> None: ...
+    def __init__(self, type: _Optional[_Union[RequestType, str]] = ..., payload: _Optional[bytes] = ...) -> None: ...
 
 class PixelChangesRequest(_message.Message):
     __slots__ = ("start_step", "end_step")
@@ -203,6 +214,24 @@ class StepDataRequest(_message.Message):
     end_step: int
     full_state: bool
     def __init__(self, start_step: _Optional[int] = ..., end_step: _Optional[int] = ..., full_state: bool = ...) -> None: ...
+
+class RunMetaDataRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class RequestAck(_message.Message):
+    __slots__ = ("type", "payload")
+    TYPE_FIELD_NUMBER: _ClassVar[int]
+    PAYLOAD_FIELD_NUMBER: _ClassVar[int]
+    type: RequestType
+    payload: bytes
+    def __init__(self, type: _Optional[_Union[RequestType, str]] = ..., payload: _Optional[bytes] = ...) -> None: ...
+
+class RunUpdate(_message.Message):
+    __slots__ = ("final_step",)
+    FINAL_STEP_FIELD_NUMBER: _ClassVar[int]
+    final_step: int
+    def __init__(self, final_step: _Optional[int] = ...) -> None: ...
 
 class Empty(_message.Message):
     __slots__ = ()
