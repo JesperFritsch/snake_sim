@@ -83,10 +83,12 @@ class StepData:
         self.snakes: List[dict] = []
         self.food = food
         self.step = step
+        self.full_state = True
 
     @classmethod
     def from_dict(cls, step_dict):
         step_data = cls(food=step_dict['food'], step=step_dict['step'])
+        step_data.full_state = all([snake.get('body') for snake in step_dict['snakes']])
         for snake_data in step_dict['snakes']:
             step_data.snakes.append(snake_data)
         return step_data
@@ -103,10 +105,13 @@ class StepData:
                 'head_dir': (snake.head_dir.x, snake.head_dir.y),
                 'tail_dir': (snake.tail_dir.x, snake.tail_dir.y),
                 'did_eat': snake.did_eat,
-                'did_turn': snake.did_turn
+                'did_turn': snake.did_turn,
+                'body': []
             }
             if snake.body:
                 snake_data['body'] = [(c.x, c.y) for c in snake.body]
+            else:
+                step.full_state = False
             step.snakes.append(snake_data)
         return step
 
@@ -151,8 +156,17 @@ class StepData:
         }
         self.snakes.append(base_snake_data)
 
-    def to_dict(self):
-        return self.__dict__
+    def to_dict(self, full_state=False):
+        if full_state:
+            return self.__dict__
+        else:
+            snakes = [snake.copy() for snake in self.snakes]
+            for snake in snakes:
+                snake['body'] = []
+            not_full_state = self.__dict__.copy()
+            not_full_state['snakes'] = snakes
+            not_full_state['full_state'] = False
+            return not_full_state
 
     def to_protobuf(self, full_state=False):
         step_data = sim_msgs_pb2.StepData()

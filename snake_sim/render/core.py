@@ -1,10 +1,16 @@
 import json
 import math
 import numpy as np
+from typing import Dict
 from pathlib import Path
 from collections import deque
 
 from ..utils import coord_op, coord_cmp
+
+
+class OutOfSyncError(Exception):
+    pass
+
 
 class SnakeRepresentation:
     def __init__(self, snake_id, head_color, body_color, expand_factor):
@@ -34,6 +40,18 @@ class SnakeRepresentation:
         if expand_step == self.expand_factor:
             self.last_head = step_snake_data['curr_head']
 
+    def set_full_body(self, body_coords):
+        self.body = deque()
+        for i, curr_coord in enumerate(reversed(body_coords)[1:]):
+            prev_coord = body_coords[i - 1]
+            snake_data = {}
+            snake_data['prev_head'] = prev_coord
+            snake_data['curr_head'] = curr_coord
+            snake_data['tail_dir'] = (0, 0)
+            snake_data['head_dir'] = coord_op(curr_coord, prev_coord, '-')
+            for n in range(1, self.expand_factor + 1):
+                self.update(snake_data, n)
+
 
 class FrameBuilder:
     def __init__(self, run_meta_data, expand_factor=2, offset=(1, 1)):
@@ -48,8 +66,9 @@ class FrameBuilder:
         self.color_mapping = {int(k): tuple(v) for k, v in run_meta_data['color_mapping'].items()}
         self.expand_factor = expand_factor
         self.last_food = set()
+        self.last_handled_step = 0
         self.frameshape = ((self.height * self.expand_factor) + self.offset_y, (self.width * self.expand_factor) + self.offset_x, 3)
-        self.snake_reps = {}
+        self.snake_reps: Dict[int, SnakeRepresentation] = {}
         for snake_data in run_meta_data['snake_data']:
             snake_id = snake_data['snake_id']
             head_color = tuple(snake_data['head_color'])
@@ -76,6 +95,9 @@ class FrameBuilder:
 
 
     def step_to_pixel_changes(self, step_data):
+        if step_data['step'] != self.last_handled_step + 1:
+            raise OutOfSyncError(f"Step nr '{step_data['step']}' is not the next step in the sequence. Last handled step was '{self.last_handled_step}'")
+        self.last_handled_step = step_data['step']
         changes = []
         current_food = set([tuple(x) for x in step_data['food']])
         new_food = current_food - self.last_food
@@ -105,6 +127,32 @@ class FrameBuilder:
             changes.append(list(set(sub_changes)))
             sub_changes = []
         return changes
+
+    def full_step_to_pixel_data(self, step_data):
+        self.last_handled_step = step_data['step']
+        self.set_base_frame()
+        snake_data = step_data['snakes']
+        food_data = step_data['food']
+        food_color = self.color_mapping[self.food_value]
+        coord_colors = {}
+        for food in food_data:
+            expanded_c = coord_op(food, (self.expand_factor, self.expand_factor), '*')
+            x, y = coord_op(expanded_c, self.offset, '+')
+            self.last_frame[y, x] = food_color
+            coord_colors[(x, y)] = food_color
+        for snake in snake_data:
+            snake_coords = snake['body']
+            snake_rep = self.snake_reps[snake['snake_id']]
+            snake_rep.set_full_body(snake_coords)
+            body_color = snake_rep.body_color
+            head_color = snake_rep.head_color
+            put_snake_in_frame(self.last_frame, snake_coords, body_color, h_color=head_color, expand_factor=self.expand_factor, offset=self.offset)
+            coord_colors[coord_op(snake_rep.body[0], self.offset, '+')] = head_color
+            for coord in snake_rep.body[1:]:
+                x, y = coord_op(coord, self.offset, '+')
+                coord_colors[(x, y)] = body_color
+        return [(k, v) for k, v in coord_colors.items()]
+
 
 
     def step_to_frames(self, step_data):
@@ -136,18 +184,21 @@ def pixel_changes_from_runfile(filepath, expand_factor=2, offset=(1, 1)):
     return pixel_changes
 
 
-def put_snake_in_frame(frame, snake_coords, color, expand_factor=2, offset=(0, 0)):
+def put_snake_in_frame(frame, snake_coords, b_color, h_color=None, expand_factor=2, offset=(0, 0)):
     for i, coord in enumerate(snake_coords):
         s_dirs = []
         if i > 0:
             s_dirs.append(coord_op(snake_coords[i-1], coord, '-'))
-        elif i < len(snake_coords) - 1:
+        if i < len(snake_coords) - 1:
             s_dirs.append(coord_op(snake_coords[i+1], coord, '-'))
         expanded = coord_op(coord, (expand_factor, expand_factor), '*')
         x, y = coord_op(expanded, offset, '+')
-        frame[y, x] = color
+        if i == 0 and h_color is not None:
+            frame[y, x] = h_color
+        else:
+            frame[y, x] = b_color
         for s_dir in s_dirs:
             for _ in range(math.ceil(expand_factor / 2) + 1):
                 con_x, con_y = coord_op((x, y), s_dir, '+')
-                frame[con_y, con_x] = color
+                frame[con_y, con_x] = b_color
     return frame
