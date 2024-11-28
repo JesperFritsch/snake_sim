@@ -510,8 +510,8 @@ class SnakeEnv:
                 self.snakes[snake.id] = snake
             else:
                 raise ValueError(f"Obj: {repr(snake)} has the same id as Obj: {repr(self.snakes[snake.id])}")
-            env_data = self._get_env_data(snake.id)
-            snake.init_env(env_data)
+            init_env_data = self._get_init_env_data(snake.id)
+            snake.init_env(init_env_data)
         else:
             raise ValueError(f"Obj: {repr(snake)} is not of type {Snake}")
 
@@ -527,15 +527,20 @@ class SnakeEnv:
 
     def _get_env_data(self, snake_id):
         return {
-            'width': self.width,
-            'height': self.height,
             'map': self.map.tobytes(),
             'food_locations': self.food.locations,
+        }
+    
+    def _get_init_env_data(self, snake_id):
+        return {
+            'width': self.width,
+            'height': self.height,
             'FOOD_TILE': self.FOOD_TILE,
             'FREE_TILE': self.FREE_TILE,
             'BLOCKED_TILE': self.BLOCKED_TILE,
+            'env_data': self._get_env_data(snake_id),
         }
-
+            
     def get_alive_snakes(self):
         return [s for h, s in self.snakes.items() if self.snakes_info[h]['alive']]
 

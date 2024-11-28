@@ -232,7 +232,3 @@ class RunUpdate(_message.Message):
     FINAL_STEP_FIELD_NUMBER: _ClassVar[int]
     final_step: int
     def __init__(self, final_step: _Optional[int] = ...) -> None: ...
-
-class Empty(_message.Message):
-    __slots__ = ()
-    def __init__(self) -> None: ...

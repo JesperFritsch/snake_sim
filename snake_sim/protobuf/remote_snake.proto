@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package remote_snake;
+
+message Empty {
+}
+
+message Position {
+    int32 x = 1;
+    int32 y = 2;
+}
+
+message SnakeAction {
+    Position action = 2;
+}
+
+message EnvData {
+    repeated int32 map = 1 [packed=true]; // size = width * height
+    repeated Position food = 2;
+}
+
+message InitEnvData {
+    int32 width = 1;
+    int32 height = 2;
+    int32 FOOD_TILE = 3;
+    int32 FREE_TILE = 4;
+    int32 BLOCKED_TILE = 5;
+    EnvData env_data = 6;
+}
+
+service RemoteSnakeService {
+    rpc setInitEnvData(InitEnvData) returns (Empty);
+    rpc update(EnvData) returns (SnakeAction);
+}

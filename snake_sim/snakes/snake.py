@@ -13,6 +13,9 @@ DIRS = (
 class ISnake:
     def __init__(self):
         pass
+    
+    def set_init_env_data(self, init_env_data: dict):
+        raise NotImplementedError
 
     def update(self, env_data: dict) -> tuple: # -> (int, int) as direction (1, 0) for right (-1, 0) for left
         raise NotImplementedError
@@ -29,10 +32,16 @@ class Snake(ISnake):
         self.coord = None
         self.map = None
         self.length = self.start_length
-        self.env_data = DotDict()
+        self.init_env_data = DotDict()
 
     def set_env_data(self, env_data: dict):
-        self.env_data.update(env_data)
+        self.init_env_data.env_data.update(env_data)
+    
+    def get_env_data(self):
+        return self.init_env_data.env_data
+        
+    def set_init_env_data(self, init_env_data: dict):
+        self.init_env_data.update(init_env_data)
 
     def reset(self):
         self.alive = True
@@ -42,9 +51,9 @@ class Snake(ISnake):
 
     def _init_after_bind(self):
         pass
-
-    def init_env(self, env_data):
-        self.set_env_data(env_data)
+    
+    def init_env(self, init_env_data):
+        self.set_init_env_data(init_env_data)
         self._init_after_bind()
 
     def in_sight(self, head_coord, coord, sight_len=2):
@@ -60,7 +69,7 @@ class Snake(ISnake):
     def set_new_head(self, coord):
         self.x, self.y = coord
         self.coord = coord
-        if self.map[self.y, self.x] == self.env_data.FOOD_TILE:
+        if self.map[self.y, self.x] == self.init_env_data.FOOD_TILE:
             self.length += 1
         self.update_body(self.coord, self.body_coords, self.length)
 
@@ -74,7 +83,7 @@ class Snake(ISnake):
                 dirs.append(m_coord)
             elif not self.is_inside(m_coord):
                 continue
-            elif s_map[y_move, x_move] not in (self.env_data.FREE_TILE, self.env_data.FOOD_TILE):
+            elif s_map[y_move, x_move] not in (self.init_env_data.FREE_TILE, self.init_env_data.FOOD_TILE):
                 continue
             dirs.append(m_coord)
         return dirs
@@ -87,7 +96,7 @@ class Snake(ISnake):
         return old_tail
 
     def update_map(self, map: bytes):
-        self.map = np.frombuffer(map, dtype=np.uint8).reshape(self.env_data.height, self.env_data.width)
+        self.map = np.frombuffer(map, dtype=np.uint8).reshape(self.init_env_data.height, self.init_env_data.width)
 
     def kill(self):
         self.alive = False
