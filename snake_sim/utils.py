@@ -33,6 +33,12 @@ class DotDict(dict):
             del self[attr]
         except KeyError:
             raise AttributeError
+        
+    def update(self, other_dict):
+        for k, v in other_dict.items():
+            if isinstance(v, dict):
+                v = DotDict(v)
+            self[k] = v
 
 
 def exec_time(func):
