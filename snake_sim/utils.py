@@ -6,9 +6,10 @@ import json
 import platform
 import math
 from time import time
-from collections.abc import Iterable
-
 from collections import deque
+
+from pathlib import Path
+from importlib import resources as pkg_resources
 
 class DotDict(dict):
     def __init__(self, other_dict={}):
@@ -75,6 +76,11 @@ def coord_op(coord_left, coord_right, op):
         return tuple(l * r for l, r in zip(coord_left, coord_right))
     else:
         raise ValueError("Unsupported operation")
+
+
+def get_map_files():
+    files = list(pkg_resources.files('snake_sim.maps.map_images').iterdir())
+    return {f.name: f for f in files if f.is_file()}
 
 
 def rand_str(n):
