@@ -168,7 +168,7 @@ class FrameBuilder:
     def frames_from_rundata(self, rundata):
         frames = []
         for body_coords in rundata:
-            frames.append(put_snake_in_frame(self.last_frame.copy(), body_coords, (255, 0, 0), self.expand_factor, self.offset))
+            frames.append(put_snake_in_frame(self.last_frame.copy(), body_coords, (255, 0, 0), (0, 0, 255), self.expand_factor, self.offset))
         return frames
 
 def pixel_changes_from_runfile(filepath, expand_factor=2, offset=(1, 1)):

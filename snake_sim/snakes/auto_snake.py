@@ -220,7 +220,7 @@ class AutoSnake(AutoSnakeBase):
             old_map_value = map_copy[y, x]
             old_tail = self.update_body(coord, body_coords_copy, self.length)
             self._update_snake_position(map_copy, body_coords_copy, old_tail)
-            area_checks = [self._area_check_wrapper(map_copy, body_coords_copy, tile, food_check=True) for tile in valids]
+            area_checks = [self._area_check_wrapper(map_copy, body_coords_copy, tile, food_check=False) for tile in valids]
             clear_checks = [a for a in area_checks if a['is_clear']]
             all_area_checks[coord] = area_checks
             if clear_checks:
@@ -260,7 +260,7 @@ class AutoSnake(AutoSnakeBase):
         valid_tiles = self._valid_tiles(self.map, self.coord)
         # print("Planned Route: ", planned_route)
         # print("Planned Tile: ", planned_tile)
-        if planned_tile and self.might_close_area(self.map, planned_tile, self.coord):
+        if planned_tile: # and self.might_close_area(self.map, planned_tile, self.coord):
             food_map = self._get_future_available_food_map()
         else:
             food_map = {k: 0 for k in valid_tiles}
