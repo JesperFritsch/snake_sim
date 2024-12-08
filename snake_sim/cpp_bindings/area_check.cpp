@@ -486,6 +486,7 @@ public:
             // std::cout << "\n####### ENTERING NODE #######" << std::endl;
             // std::cout << (forward ? "--> Forward" : "<-- Backward") << std::endl;
             // std::cout << "nr_visits: " << step_data->nr_visits << std::endl;
+            // std::cout << "max_index: " << step_data->node->max_index << std::endl;
             // std::cout << "Current node: " << current_node->id << std::endl;
             // std::cout << "start coord: (" << current_node->start_coord.x << ", " << current_node->start_coord.y << ")" << std::endl;
             // std::cout << "end coord: (" << current_node->end_coord.x << ", " << current_node->end_coord.y << ")" << std::endl;
@@ -516,6 +517,7 @@ public:
             // for(auto edge_node : step_data->node->edge_nodes){
             //     std::cout << "(" << edge_node.first->id << ", " << edge_node.second << "), ";
             // }
+            // std::cout << std::endl;
             // std::cout << "search stack: (";
             // for(auto node : search_stack){
             //     std::cout << node->node->id << ", ";
@@ -543,6 +545,7 @@ public:
 
             auto node_edge_pair = step_data->get_next_node_and_edge();
             if (node_edge_pair.first != nullptr){
+
                 forward = true;
                 auto next_node = node_edge_pair.first;
                 auto next_step_data = &search_nodes_data[next_node];
@@ -554,6 +557,7 @@ public:
                         continue;
                     }
                 }
+                // std::cout << "Next node: " << next_node->id << std::endl;
                 step_data->add_searched_edge(node_edge_pair.second);
                 step_data->add_used_edge(node_edge_pair.second);
                 search_stack.push_back(next_step_data);
@@ -603,7 +607,7 @@ public:
                     //     total_food_count_stack.push_back(total_food_count_here);
                     // }
                 }
-                if (current_node->tile_count > 1 && !is_corner){
+                else if (current_node->tile_count > 1 && !is_corner){
                     int curr_x = current_node->start_coord.x;
                     int curr_y = current_node->start_coord.y;
                     int next_x = next_node->start_coord.x;
@@ -619,12 +623,14 @@ public:
 
                 }
                 if (is_corner){
+                    // std::cout << "Corner" << std::endl;
                     int tiles_before_actually = (current_node->id == 0 ? 0 : tiles_before);
                     int food_before_actually = (current_node->id == 0 ? 0 : food_before);
                     total_tile_count_stack.push_back(tiles_before_actually + 1);
                     total_food_count_stack.push_back(food_before_actually + (corner_has_food ? 1 : 0));
                 }
                 else{
+                    // std::cout << "Not corner" << std::endl;
                     total_tile_count_stack.push_back(total_tile_count_here);
                     total_food_count_stack.push_back(total_food_count_here);
                 }
