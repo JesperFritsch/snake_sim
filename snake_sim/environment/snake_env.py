@@ -57,6 +57,7 @@ class SnakeEnv:
         if config.map:
             self.load_map(config.map)
         self.loop.set_food_handler(FoodHandler(self.width, self.height, config.food, config.food_decay))
+        self.loop.add_snake_handler(snake_handler)
 
     def run(self):
         self.loop.start()
