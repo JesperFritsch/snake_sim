@@ -8,6 +8,18 @@
     "verbose": false,
     "sound": false,
     "fps": 10,
+    "FOOD_TILE": 0,
+    "FREE_TILE": 1,
+    "BLOCKED_TILE": 2,
+    "NORM_HEAD": 3,
+    "NORM_BODY": 4,
+    "NORM_MAIN_HEAD": 5,
+    "NORM_MAIN_BODY": 6,
+    "COLOR_MAPPING": {
+        "0": [223,163,49],
+        "1": [0,0,0],
+        "2": [127,127,127]
+    },
     "snake_configs": [
         {
             "snake":{
