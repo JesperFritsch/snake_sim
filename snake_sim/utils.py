@@ -78,7 +78,7 @@ def coord_op(coord_left, coord_right, op):
         raise ValueError("Unsupported operation")
 
 
-def get_map_files():
+def get_map_files_mapping():
     files = list(pkg_resources.files('snake_sim.maps.map_images').iterdir())
     return {f.name: f for f in files if f.is_file()}
 

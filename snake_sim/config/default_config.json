@@ -15,6 +15,12 @@
     "NORM_BODY": 4,
     "NORM_MAIN_HEAD": 5,
     "NORM_MAIN_BODY": 6,
+    "DIRS": {
+        "UP": [0, -1],
+        "DOWN": [0, 1],
+        "LEFT": [-1, 0],
+        "RIGHT": [1, 0]
+    },
     "COLOR_MAPPING": {
         "0": [223,163,49],
         "1": [0,0,0],

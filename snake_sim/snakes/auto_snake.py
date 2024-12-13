@@ -64,7 +64,7 @@ class AutoSnake(AutoSnakeBase):
         self.area_checker = AreaChecker(
             self.env_data.FOOD_TILE,
             self.env_data.FREE_TILE,
-            self.body_value,
+            self.id + 1,
             self.env_data.width,
             self.env_data.height)
 

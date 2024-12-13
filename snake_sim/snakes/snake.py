@@ -11,7 +11,7 @@ DIRS = (
 
 
 class ISnake:
-    def __init__(self):
+    def __init__(self, id: int, start_length: int):
         pass
 
     def update(self, env_data: dict) -> tuple: # -> (int, int) as direction (1, 0) for right (-1, 0) for left
@@ -19,12 +19,12 @@ class ISnake:
 
 
 class Snake(ISnake):
-    def __init__(self, id: str, start_length: int):
-        self.id = id.upper()
+    def __init__(self, id: int, start_length: int):
+        self.id = id
         self.start_length = start_length
         self.alive = True
-        self.body_value = ord(self.id.lower())
-        self.head_value = ord(self.id)
+        self.body_value = self.id + 1
+        self.head_value = self.id
         self.body_coords = deque()
         self.coord = None
         self.map = None
