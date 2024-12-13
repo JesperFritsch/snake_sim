@@ -1,70 +1,117 @@
-from typing import Union
 import json
-from importlib import resources as pkg_resources
+import numpy as np
+from typing import Optional, Iterable, Dict
+from abc import ABC, abstractmethod
+from PIL import Image
+from pathlib import Path
+from importlib import resources
+from collections import deque
 
-from snake_sim.environment.main_loop import SimLoop, GameLoop, FoodHandler
-from snake_sim.environment.snake_handlers import SnakeHandler
-from snake_sim.controllers.keyboard_controller import ControllerCollection
-from snake_sim.environment.snake_factory import SnakeFactory
-from snake_sim.utils import get_map_files_mapping, DotDict
-from dataclasses import dataclass
+from snake_sim.utils import DotDict, coord_op
 
-with pkg_resources.open_text('snake_sim.config', 'default_config.json') as config_file:
-    default_config = DotDict(json.load(config_file))
-
-@dataclass
-class SimConfig:
-    map: str
-    food: int
-    food_decay: int
-    snake_count: int
-    calc_timeout: int
-    verbose: int
+with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
+    config = DotDict(json.load(config_file))
 
 
-@dataclass
-class GameConfig(SimConfig):
-    player_count: int
-    spm: int
+class SnakeRep:
+    def __init__(self, id: int):
+        self.move_count = 0
+        self.last_ate = 0
+        self.id = id
+        self.body = deque()
+
+    def set_body(self, body: Iterable[tuple]):
+        self.body = deque(body)
+
+    def move(self, direction: tuple, grow=False):
+        self.body.appendleft(coord_op(self.body[0], direction, '+'))
+        if not grow:
+            self.last_ate = self.move_count
+            self.body.pop()
+        self.move_count += 1
+
+    def get_head(self):
+        return self.body[0]
+
+    def get_tail(self):
+        return self.body[-1]
 
 
-class SnakeEnv:
+class ISnakeEnv(ABC):
+    @abstractmethod
+    def get_map(self, id: Optional[int]):
+        pass
+
+    @abstractmethod
+    def move_snake(self, id: int, direction: tuple):
+        pass
+
+    @abstractmethod
+    def load_map(self, map_img_path: str):
+        pass
+
+    @abstractmethod
+    def add_snake(self, id: int, snake_body: Iterable[tuple]):
+        pass
+
+
+class SnakeEnv(ISnakeEnv):
     def __init__(self, width, height):
-        self.width = width
-        self.height = height
-        self.loop = None
+        self._width = width
+        self._height = height
+        self._map = np.full((height, width), config.FREE_TILE, dtype=np.uint8)
+        self._snake_reps: Dict[int, SnakeRep] = {}
 
-    def init(self, config: Union[SimConfig, GameConfig]):
-        """Initializes the environment with the given configuration"""
-        snake_handler = SnakeHandler()
-        snake_factory = SnakeFactory()
-        if isinstance(config, GameConfig):
-            ctl_collection = ControllerCollection()
-            self.loop = GameLoop()
-            self.loop.set_steps_per_min(config.spm)
-            for snake_config in default_config.snake_configs[:config.player_count]:
-                man_snake = snake_factory.create_snake(**snake_config['snake'], help=1)
-                ctl_collection.bind_controller(man_snake)
-                snake_handler.add_snake(man_snake, **snake_config['env'])
-            for snake_config in default_config.snake_configs[config.player_count:config.snake_count]:
-                snake_handler.add_snake(snake_factory.create_snake(**snake_config['snake'], calc_timeout=config.calc_timeout), **snake_config['env'])
-            ctl_collection.handle_controllers()
-        else:
-            self.loop = SimLoop()
-            for snake_config in default_config.snake_configs[:config.snake_count]:
-                snake_handler.add_snake(snake_factory.create_snake(**snake_config['snake'], calc_timeout=config.calc_timeout), **snake_config['env'])
-        self.loop.init(self.width, self.height)
-        if config.map:
-            self.load_map(config.map)
-        self.loop.set_food_handler(FoodHandler(self.width, self.height, config.food, config.food_decay))
-        self.loop.add_snake_handler(snake_handler)
+    def add_snake(self, id: int, snake_body: Iterable[tuple]):
+        # snake_body is expected to be an iterable with tuples of coords like [(1,2), (1,3)]
+        snake = SnakeRep(id)
+        self._snake_reps[id] = snake
+        snake.set_body(snake_body)
+        self._place_snake_on_map(snake)
 
-    def run(self):
-        self.loop.start()
+    def _place_snake_on_map(self, snake_rep: SnakeRep):
+        for i, (x, y) in enumerate(snake_rep.body):
+            self._map[y, x] = self._snake_reps.id + 0 if i == 0 else 1
 
-    def load_map(self, map_name):
-        files_mapping = get_map_files_mapping()
-        if file_path := files_mapping.get(map_name):
-            self.loop.load_map(file_path)
-        else:
-            raise FileNotFoundError(f"Map {map_name} not found")
+    def _remove_snake_from_map(self, snake_rep: SnakeRep):
+        for x, y in snake_rep.body:
+            self._map[y, x] = config.FREE_TILE
+
+    def move_snake(self, id: int, direction: tuple):
+        snake_rep = self._snake_reps[id]
+        next_tile = coord_op(snake_rep.get_head(), direction, '+')
+        if direction not in config.DIRS.values() or not self.free_tile(next_tile):
+            return False
+        old_tail = snake_rep.body[-1]
+        snake_rep.move(direction)
+        new_tail = snake_rep.body[-1]
+        if old_tail != new_tail:
+            self._map[old_tail[1], old_tail[0]] = config.FREE_TILE
+
+    def free_tile(self, coord: tuple):
+        x, y = coord
+        return self._map[y, x] <= config.FREE_TILE
+
+    def fresh_map(self):
+        return np.copy(self._map)
+
+    def get_map(self, id: Optional[int] = None):
+        return self.fresh_map()
+
+    def load_map(self, map_img_path: str):
+        img_path = Path(map_img_path)
+        image = Image.open(img_path)
+        self.resize(*image.size)
+        image_matrix = np.array(image)
+        map_color_mapping = {
+            (0,0,0,0): config.FREE_TILE,
+            (255,0,0,255): config.FOOD_TILE,
+            (0,0,0,255): config.BLOCKED_TILE
+        }
+        for y in range(self._height):
+            for x in range(self._width):
+                color = tuple(image_matrix[y][x])
+                try:
+                    self._map[y, x] = map_color_mapping[color]
+                except KeyError:
+                    print(f"Color '{color}' at (x={x}, y={y}) from image not found in color mapping")
