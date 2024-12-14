@@ -65,7 +65,9 @@ class SimLoop(IMainLoop):
             update_ordered_ids = self._snake_handler.get_update_order()
             for id in update_ordered_ids:
                 decision = self._snake_handler.get_decision(id, self._env.get_env_data())
-                self._env.move_snake(id, decision)
+                alive = self._env.move_snake(id, decision)
+                if not alive:
+                    self._snake_handler.kill_snake(id)
                 for observer in self._observers:
                     observer.notify(id, decision)
             self._steps += 1
