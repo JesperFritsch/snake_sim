@@ -1,14 +1,40 @@
 import random
 import json
+from abc import ABC, abstractmethod
 from typing import Optional
 import importlib.resources as pkg_resources
-from snake_sim.utils import DotDict
+
+
+from snake_sim.utils import DotDict, Coord
 
 with pkg_resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     config = DotDict(json.load(config_file))
 
 
-class FoodHandler:
+class IFoodHandler(ABC):
+
+    @abstractmethod
+    def update(self, s_map):
+        pass
+
+    @abstractmethod
+    def resize(self, width, height):
+        pass
+
+    @abstractmethod
+    def clear(self):
+        pass
+
+    @abstractmethod
+    def remove(self, coord, s_map):
+        pass
+
+    @abstractmethod
+    def add_new(self, coord):
+        pass
+
+
+class FoodHandler(IFoodHandler):
 
     def __init__(self, width: int, height: int, max_food: int, decay_count: Optional[int] = None):
         self.width = width
@@ -19,7 +45,11 @@ class FoodHandler:
         self.decay_counters = {}
         self.newest_food = []
 
-    def generate_new(self, s_map):
+    def update(self, s_map):
+        self._remove_old(s_map)
+        self._generate_new(s_map)
+
+    def _generate_new(self, s_map):
         empty_tiles = []
         for y in range(self.height):
             for x in range(self.width):
@@ -29,12 +59,12 @@ class FoodHandler:
             if empty_tiles:
                 new_food = random.choice(empty_tiles)
                 empty_tiles.remove(new_food)
-                self.add_new(new_food)
+                self._add_new(new_food)
         for location in self.locations:
             x, y = location
             s_map[y, x] = config.FOOD_TILE
 
-    def remove_old(self, s_map):
+    def _remove_old(self, s_map):
         if self.decay_count is None:
             return
         for location in set(self.locations):
@@ -42,11 +72,11 @@ class FoodHandler:
             if self.decay_counters[location] <= 0:
                 self.remove(location, s_map)
 
-    def add_new(self, coord):
+    def add_new(self, coord: Coord):
         self.decay_counters[coord] = self.decay_count
         self.locations.add(coord)
 
-    def remove(self, coord, s_map):
+    def remove(self, coord: Coord, s_map):
         if coord in self.locations:
             x, y = coord
             s_map[y, x] = config.FREE_TILE

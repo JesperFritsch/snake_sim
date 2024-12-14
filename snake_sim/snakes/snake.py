@@ -1,6 +1,9 @@
 import numpy as np
+from abc import ABC, abstractmethod
 from collections import deque
-from snake_sim.utils import exec_time, coord_op, DotDict
+from snake_sim.utils import coord_op, DotDict
+from snake_sim.environment.snake_env import EnvData, EnvInitData
+from snake_sim.utils import Coord
 
 DIRS = (
     (0, -1),
@@ -10,12 +13,26 @@ DIRS = (
 )
 
 
-class ISnake:
+class ISnake(ABC):
+    @abstractmethod
     def __init__(self, id: int, start_length: int):
         pass
 
-    def update(self, env_data: dict) -> tuple: # -> (int, int) as direction (1, 0) for right (-1, 0) for left
-        raise NotImplementedError
+    @abstractmethod
+    def get_id(self) -> int:
+        pass
+
+    @abstractmethod
+    def get_length(self) -> int:
+        pass
+
+    @abstractmethod
+    def set_init_data(self, env_data: EnvInitData):
+        pass
+
+    @abstractmethod
+    def update(self, env_data: EnvData) -> Coord: # -> (int, int) as direction (1, 0) for right (-1, 0) for left
+        pass
 
 
 class Snake(ISnake):
@@ -34,6 +51,12 @@ class Snake(ISnake):
     def set_env_data(self, env_data: dict):
         self.env_data.update(env_data)
 
+    def get_id(self) -> int:
+        return self.id
+
+    def get_length(self) -> int:
+        return self.length
+
     def reset(self):
         self.alive = True
         self.body_coords = deque()
@@ -42,6 +65,9 @@ class Snake(ISnake):
 
     def _init_after_bind(self):
         pass
+
+    def update(self, env_data):
+        raise NotImplementedError()
 
     def init_env(self, env_data):
         self.set_env_data(env_data)

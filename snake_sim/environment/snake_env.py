@@ -1,49 +1,80 @@
 import json
 import numpy as np
-from typing import Optional, Iterable, Dict
+from typing import Optional, Iterable, Dict, Deque
 from abc import ABC, abstractmethod
 from PIL import Image
 from pathlib import Path
 from importlib import resources
 from collections import deque
 
-from snake_sim.utils import DotDict, coord_op
+from snake_sim.utils import DotDict, Coord
+from snake_sim.environment.food_handlers import IFoodHandler
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     config = DotDict(json.load(config_file))
 
 
 class SnakeRep:
-    def __init__(self, id: int):
+    def __init__(self, id: int, start_position: Coord, start_length: int=3):
         self.move_count = 0
         self.last_ate = 0
         self.id = id
-        self.body = deque()
+        self.body: Deque[Coord] = deque([start_position] * start_length)
+        self.is_alive = True
 
-    def set_body(self, body: Iterable[tuple]):
-        self.body = deque(body)
+    def kill(self):
+        self.is_alive = False
 
-    def move(self, direction: tuple, grow=False):
-        self.body.appendleft(coord_op(self.body[0], direction, '+'))
+    def move(self, direction: Coord, grow=False):
+        self.body.appendleft(self.body[0] + direction)
         if not grow:
             self.last_ate = self.move_count
             self.body.pop()
         self.move_count += 1
 
-    def get_head(self):
+    def get_head(self) -> Coord:
         return self.body[0]
 
-    def get_tail(self):
+    def get_tail(self) -> Coord:
         return self.body[-1]
+
+
+class EnvData:
+    def __init__(self, map: np.ndarray, snakes: Dict[int, SnakeRep]):
+        self.map = map.tobytes()
+        self.snakes = {id: {
+                                'head_value': id,
+                                'body_value': id + 1,
+                                'is_alive': snake_rep.is_alive,
+                                'length': len(snake_rep.body),
+                            } for id, snake_rep in snakes.items()}
+
+
+class EnvInitData:
+    def __init__(self,
+                height: int,
+                width: int,
+                free_value,
+                blocked_value,
+                food_value):
+        self.height = height
+        self.width = width
+        self.free_value = free_value
+        self.blocked_value = blocked_value
+        self.food_value = food_value
 
 
 class ISnakeEnv(ABC):
     @abstractmethod
-    def get_map(self, id: Optional[int]):
+    def get_env_data(self, id: Optional[int]) -> EnvData:
         pass
 
     @abstractmethod
-    def move_snake(self, id: int, direction: tuple):
+    def get_init_data(self) -> EnvInitData:
+        pass
+
+    @abstractmethod
+    def move_snake(self, id: int, direction: Coord):
         pass
 
     @abstractmethod
@@ -51,52 +82,99 @@ class ISnakeEnv(ABC):
         pass
 
     @abstractmethod
-    def add_snake(self, id: int, snake_body: Iterable[tuple]):
+    def add_snake(self, id: int, start_position: Optional[Coord]=None, start_length: int=3):
+        pass
+
+    @abstractmethod
+    def set_food_handler(self, food_handler: IFoodHandler):
+        pass
+
+    @abstractmethod
+    def resize(self, height: int, width: int):
+        pass
+
+    @abstractmethod
+    def update_food(self):
+        pass
+
+    @abstractmethod
+    def steps_since_any_ate(self):
         pass
 
 
 class SnakeEnv(ISnakeEnv):
-    def __init__(self, width, height):
+    def __init__(self, width, height, free_value, blocked_value, food_value):
         self._width = width
         self._height = height
-        self._map = np.full((height, width), config.FREE_TILE, dtype=np.uint8)
+        self._free_value = free_value
+        self._blocked_value = blocked_value
+        self._food_value = food_value
+        self._map = np.full((height, width), self._free_value, dtype=np.uint8)
         self._snake_reps: Dict[int, SnakeRep] = {}
 
-    def add_snake(self, id: int, snake_body: Iterable[tuple]):
+    def add_snake(self, id: int, start_position: Optional[Coord]=None, start_length: int=3):
         # snake_body is expected to be an iterable with tuples of coords like [(1,2), (1,3)]
-        snake = SnakeRep(id)
-        self._snake_reps[id] = snake
-        snake.set_body(snake_body)
-        self._place_snake_on_map(snake)
+        if start_position is None:
+            start_position = self._random_free_tile()
+        snake_rep = SnakeRep(id, start_position, start_length)
+        self._snake_reps[id] = snake_rep
+        self._place_snake_on_map(snake_rep)
+
+    def _random_free_tile(self) -> Coord:
+        while True:
+            rand_coord = Coord(np.random.randint(1, self._width - 1), np.random.randint(1, self._height - 1))
+            x, y = rand_coord
+            if self._map[y, x] == self._free_value:
+                return rand_coord
 
     def _place_snake_on_map(self, snake_rep: SnakeRep):
         for i, (x, y) in enumerate(snake_rep.body):
-            self._map[y, x] = self._snake_reps.id + 0 if i == 0 else 1
+            self._map[y, x] = self._snake_reps.id + (0 if i == 0 else 1)
 
     def _remove_snake_from_map(self, snake_rep: SnakeRep):
         for x, y in snake_rep.body:
-            self._map[y, x] = config.FREE_TILE
+            self._map[y, x] = self._free_value
 
-    def move_snake(self, id: int, direction: tuple):
+    def move_snake(self, id: int, direction: Coord):
+        # direction is expected to be a Coord like (1, 0) for right
+        # returns False if the move is invalid, otherwise True
         snake_rep = self._snake_reps[id]
-        next_tile = coord_op(snake_rep.get_head(), direction, '+')
-        if direction not in config.DIRS.values() or not self.free_tile(next_tile):
+        current_head = snake_rep.get_head()
+        next_tile = current_head + direction
+        if direction not in config.DIRS.values() or not self._free_tile(next_tile):
             return False
+
+        grow = False
+        if self._map[next_tile[1], next_tile[0]] == self._free_value:
+            self._food_handler.remove(next_tile)
+            grow = True
         old_tail = snake_rep.body[-1]
-        snake_rep.move(direction)
+        snake_rep.move(direction, grow)
         new_tail = snake_rep.body[-1]
+        self._map[next_tile[1], next_tile[0]] = id # set the tile to the snakes head value
+        self._map[current_head[1], current_head[0]] = id + 1 # set the old head tile to the snakes body value
         if old_tail != new_tail:
-            self._map[old_tail[1], old_tail[0]] = config.FREE_TILE
+            self._map[old_tail[1], old_tail[0]] = self._free_value
+        return True
 
-    def free_tile(self, coord: tuple):
+    def _free_tile(self, coord: Coord):
         x, y = coord
-        return self._map[y, x] <= config.FREE_TILE
+        return self._map[y, x] <= self._free_value
 
-    def fresh_map(self):
+    def _fresh_map(self):
         return np.copy(self._map)
 
-    def get_map(self, id: Optional[int] = None):
-        return self.fresh_map()
+    def get_env_data(self, id: Optional[int] = None):
+        return EnvData(self._fresh_map(), self._snake_reps)
+
+    def get_init_data(self):
+        return EnvInitData(self._height, self._width, self._free_value, self._blocked_value, self._food_value)
+
+    def resize(self, height, width):
+        self._height = height
+        self._width = width
+        self._map.resize((height, width))
+        self._food_handler.resize(height, width)
 
     def load_map(self, map_img_path: str):
         img_path = Path(map_img_path)
@@ -104,14 +182,29 @@ class SnakeEnv(ISnakeEnv):
         self.resize(*image.size)
         image_matrix = np.array(image)
         map_color_mapping = {
-            (0,0,0,0): config.FREE_TILE,
-            (255,0,0,255): config.FOOD_TILE,
-            (0,0,0,255): config.BLOCKED_TILE
+            (0,0,0,0): self._free_value,
+            (255,0,0,255): self._food_value,
+            (0,0,0,255): self._blocked_value
         }
         for y in range(self._height):
             for x in range(self._width):
                 color = tuple(image_matrix[y][x])
                 try:
-                    self._map[y, x] = map_color_mapping[color]
+                    value = map_color_mapping[color]
+                    self._map[y, x] = value
+                    if value == self._food_value:
+                        self._food_handler.add_new((x, y))
                 except KeyError:
                     print(f"Color '{color}' at (x={x}, y={y}) from image not found in color mapping")
+
+    def set_food_handler(self, food_handler: IFoodHandler):
+        if not isinstance(food_handler, IFoodHandler):
+            raise ValueError("food_handler must be an instance of IFoodHandler")
+        self._food_handler = food_handler
+        self._food_handler.resize(self._width, self._height)
+
+    def update_food(self):
+        self._food_handler.update(self._map)
+
+    def steps_since_any_ate(self):
+        return min(snake_rep.move_count - snake_rep.last_ate for snake_rep in self._snake_reps.values())

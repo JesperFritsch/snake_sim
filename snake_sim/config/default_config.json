@@ -11,6 +11,7 @@
     "FOOD_TILE": 0,
     "FREE_TILE": 1,
     "BLOCKED_TILE": 2,
+    "MAX_NO_FOOD_STEPS": 100,
     "NORM_HEAD": 3,
     "NORM_BODY": 4,
     "NORM_MAIN_HEAD": 5,
