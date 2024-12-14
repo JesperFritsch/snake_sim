@@ -36,6 +36,41 @@ class DotDict(dict):
             raise AttributeError
 
 
+class Coord(tuple):
+    def __new__(cls, x, y):
+        return super(Coord, cls).__new__(cls, (x, y))
+
+    def __add__(self, other):
+        return Coord(self[0] + other[0], self[1] + other[1])
+
+    def __sub__(self, other):
+        return Coord(self[0] - other[0], self[1] - other[1])
+
+    def __mul__(self, value):
+        return Coord(self[0] * value, self[1] * value)
+
+    def __eq__(self, value):
+        return (
+            len(self) == len(value) and
+            self[0] == value[0] and
+            self[1] == value[1]
+            )
+
+    @property
+    def x(self):
+        return self[0]
+
+    @property
+    def y(self):
+        return self[1]
+
+    def __repr__(self):
+        return f"Coord(x={self[0]}, y={self[1]})"
+
+    def __str__(self):
+        return repr(self)
+
+
 def exec_time(func):
     def wrapper(*args, **kwargs):
         start = time()
