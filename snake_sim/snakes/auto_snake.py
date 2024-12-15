@@ -11,9 +11,9 @@ from pprint import pprint
 
 from snake_sim.cpp_bindings.area_check import AreaChecker
 
-from ..utils import coord_op, distance, exec_time
+from snake_sim.utils import coord_op, distance, exec_time
 
-from .auto_snake_base import AutoSnakeBase
+from snake_sim.snakes.auto_snake_base import AutoSnakeBase
 
 class BFSFrame:
     def __init__(self,
@@ -62,9 +62,9 @@ class AutoSnake(AutoSnakeBase):
 
     def _init_after_bind(self):
         self.area_checker = AreaChecker(
-            self.env_data.FOOD_TILE,
-            self.env_data.FREE_TILE,
-            self.id + 1,
+            self.env_data.food_value,
+            self.env_data.free_value,
+            self.body_value,
             self.env_data.width,
             self.env_data.height)
 
@@ -142,8 +142,8 @@ class AutoSnake(AutoSnakeBase):
         checking if the head will close of any area.
         and checking if the head creates paths that are one tile wide.
         """
-        free_value = self.env_data.FREE_TILE
-        food_value = self.env_data.FOOD_TILE
+        free_value = self.env_data.free_value
+        food_value = self.env_data.food_value
         head_dir = (head_coord[0] - neck_coord[0], head_coord[1] - neck_coord[1])
         perp_axis = (head_dir[1], head_dir[0])
         coord_ahead = (head_coord[0] + head_dir[0], head_coord[1] + head_dir[1])

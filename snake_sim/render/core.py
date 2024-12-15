@@ -13,10 +13,8 @@ class OutOfSyncError(Exception):
 
 
 class SnakeRepresentation:
-    def __init__(self, snake_id, head_color, body_color, expand_factor):
+    def __init__(self, snake_id, expand_factor):
         self.snake_id = snake_id
-        self.head_color = head_color
-        self.body_color = body_color
         self.expand_factor = expand_factor
         self.last_head = None
         self.last_tail = None
@@ -69,11 +67,9 @@ class FrameBuilder:
         self.last_handled_step = 0
         self.frameshape = ((self.height * self.expand_factor) + self.offset_y, (self.width * self.expand_factor) + self.offset_x, 3)
         self.snake_reps: Dict[int, SnakeRepresentation] = {}
-        for snake_data in run_meta_data['snake_data']:
-            snake_id = snake_data['snake_id']
-            head_color = tuple(snake_data['head_color'])
-            body_color = tuple(snake_data['body_color'])
-            self.snake_reps[snake_id] = SnakeRepresentation(snake_id, head_color, body_color, expand_factor)
+        for snake_id in run_meta_data['snakes']:
+            snake_id = int(snake_id)
+            self.snake_reps[snake_id] = SnakeRepresentation(snake_id, expand_factor)
         self.set_base_frame()
 
     def set_base_frame(self):
@@ -121,8 +117,8 @@ class FrameBuilder:
                 head = tuple(snake_rep.body[0])
                 if last_tail is not None:
                     sub_changes.append((tuple(last_tail), self.color_mapping[self.free_value]))
-                sub_changes.append((tuple(snake_rep.body[1]), snake_rep.body_color))
-                sub_changes.append((head, snake_rep.head_color))
+                sub_changes.append((tuple(snake_rep.body[1]), self.color_mapping[snake_rep.snake_id + 1]))
+                sub_changes.append((head, self.color_mapping[snake_rep.snake_id]))
             sub_changes = [(coord_op(coord, self.offset, '+'), color) for coord, color in sub_changes]
             changes.append(list(set(sub_changes)))
             sub_changes = []
@@ -144,8 +140,8 @@ class FrameBuilder:
             snake_coords = snake['body']
             snake_rep = self.snake_reps[snake['snake_id']]
             snake_rep.set_full_body(snake_coords)
-            body_color = snake_rep.body_color
-            head_color = snake_rep.head_color
+            body_color = self.color_mapping[snake_rep.snake_id + 1]
+            head_color = self.color_mapping[snake_rep.snake_id]
             put_snake_in_frame(self.last_frame, snake_coords, body_color, h_color=head_color, expand_factor=self.expand_factor, offset=self.offset)
             coord_colors[coord_op(snake_rep.body[0], self.offset, '+')] = head_color
             for coord in snake_rep.body[1:]:

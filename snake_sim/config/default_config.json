@@ -8,285 +8,123 @@
     "verbose": false,
     "sound": false,
     "fps": 10,
-    "FOOD_TILE": 0,
-    "FREE_TILE": 1,
-    "BLOCKED_TILE": 2,
-    "MAX_NO_FOOD_STEPS": 100,
-    "NORM_HEAD": 3,
-    "NORM_BODY": 4,
-    "NORM_MAIN_HEAD": 5,
-    "NORM_MAIN_BODY": 6,
-    "DIRS": {
-        "UP": [0, -1],
-        "DOWN": [0, 1],
-        "LEFT": [-1, 0],
-        "RIGHT": [1, 0]
+    "map": null,
+    "spm": 180,
+    "food_tile": 0,
+    "free_tile": 1,
+    "blocked_tile": 2,
+    "max_no_food_steps": 100,
+    "norm_head": 3,
+    "norm_body": 4,
+    "norm_main_head": 5,
+    "norm_main_body": 6,
+    "dirs": {
+        "up": [0, -1],
+        "down": [0, 1],
+        "left": [-1, 0],
+        "right": [1, 0]
     },
-    "COLOR_MAPPING": {
-        "0": [223,163,49],
-        "1": [0,0,0],
-        "2": [127,127,127]
+    "color_mapping": {
+        "food_tile": [223,163,49],
+        "free_tile": [0,0,0],
+        "blocked_tile": [127,127,127]
     },
-    "snake_configs": [
+    "snake_colors": [
         {
-            "snake":{
-                "id": "A",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [252, 182, 50],
-                "b_color": [255, 153, 0]
-            }
+            "head_color": [252, 20, 5],
+            "body_color": [255, 30, 10]
         },
         {
-            "snake":{
-                "id": "B",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [19, 44, 209],
-                "b_color": [12, 26, 117]
-            }
+            "head_color": [19, 44, 209],
+            "body_color": [12, 26, 117]
         },
         {
-            "snake":{
-                "id": "C",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [19, 212, 77],
-                "b_color": [12, 117, 43]
-            }
+            "head_color": [19, 212, 77],
+            "body_color": [12, 117, 43]
         },
         {
-            "snake":{
-                "id": "D",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [199, 4, 173],
-                "b_color": [139, 2, 121]
-            }
+            "head_color": [199, 4, 173],
+            "body_color": [139, 2, 121]
         },
         {
-            "snake":{
-                "id": "E",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [0, 170, 255],
-                "b_color": [0, 119, 179]
-            }
+            "head_color": [0, 170, 255],
+            "body_color": [0, 119, 179]
         },
         {
-            "snake":{
-                "id": "F",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [255, 0, 0],
-                "b_color": [179, 0, 0]
-            }
+            "head_color": [255, 0, 0],
+            "body_color": [179, 0, 0]
         },
         {
-            "snake":{
-                "id": "G",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [255, 162, 0],
-                "b_color": [179, 114, 0]
-            }
+            "head_color": [255, 162, 0],
+            "body_color": [179, 114, 0]
         },
         {
-            "snake":{
-                "id": "H",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [176, 27, 16],
-                "b_color": [125, 19, 11]
-            }
+            "head_color": [176, 27, 16],
+            "body_color": [125, 19, 11]
         },
         {
-            "snake":{
-                "id": "I",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [19, 44, 209],
-                "b_color": [12, 26, 117]
-            }
+            "head_color": [19, 44, 209],
+            "body_color": [12, 26, 117]
         },
         {
-            "snake":{
-                "id": "J",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [19, 212, 77],
-                "b_color": [12, 117, 43]
-            }
+            "head_color": [19, 212, 77],
+            "body_color": [12, 117, 43]
         },
         {
-            "snake":{
-                "id": "K",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [199, 4, 173],
-                "b_color": [139, 2, 121]
-            }
+            "head_color": [199, 4, 173],
+            "body_color": [139, 2, 121]
         },
         {
-            "snake":{
-                "id": "L",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [0, 170, 255],
-                "b_color": [0, 119, 179]
-            }
+            "head_color": [0, 170, 255],
+            "body_color": [0, 119, 179]
         },
         {
-            "snake":{
-                "id": "M",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [255, 0, 0],
-                "b_color": [179, 0, 0]
-            }
+            "head_color": [255, 0, 0],
+            "body_color": [179, 0, 0]
         },
         {
-            "snake":{
-                "id": "N",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [255, 162, 0],
-                "b_color": [179, 114, 0]
-            }
+            "head_color": [255, 162, 0],
+            "body_color": [179, 114, 0]
         },
         {
-            "snake":{
-                "id": "O",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [176, 27, 16],
-                "b_color": [125, 19, 11]
-            }
+            "head_color": [176, 27, 16],
+            "body_color": [125, 19, 11]
         },
         {
-            "snake":{
-                "id": "P",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [19, 44, 209],
-                "b_color": [12, 26, 117]
-            }
+            "head_color": [19, 44, 209],
+            "body_color": [12, 26, 117]
         },
         {
-            "snake":{
-                "id": "Q",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [19, 212, 77],
-                "b_color": [12, 117, 43]
-            }
+            "head_color": [19, 212, 77],
+            "body_color": [12, 117, 43]
         },
         {
-            "snake":{
-                "id": "R",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [199, 4, 173],
-                "b_color": [139, 2, 121]
-            }
+            "head_color": [199, 4, 173],
+            "body_color": [139, 2, 121]
         },
         {
-            "snake":{
-                "id": "S",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [0, 170, 255],
-                "b_color": [0, 119, 179]
-            }
+            "head_color": [0, 170, 255],
+            "body_color": [0, 119, 179]
         },
         {
-            "snake":{
-                "id": "T",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [255, 0, 0],
-                "b_color": [179, 0, 0]
-            }
+            "head_color": [255, 0, 0],
+            "body_color": [179, 0, 0]
         },
         {
-            "snake":{
-                "id": "U",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [255, 162, 0],
-                "b_color": [179, 114, 0]
-            }
+            "head_color": [255, 162, 0],
+            "body_color": [179, 114, 0]
         },
         {
-            "snake":{
-                "id": "V",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [176, 27, 16],
-                "b_color": [125, 19, 11]
-            }
+            "head_color": [176, 27, 16],
+            "body_color": [125, 19, 11]
         },
         {
-            "snake":{
-                "id": "W",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [19, 44, 209],
-                "b_color": [12, 26, 117]
-            }
+            "head_color": [19, 44, 209],
+            "body_color": [12, 26, 117]
         },
         {
-            "snake":{
-                "id": "X",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [19, 212, 77],
-                "b_color": [12, 117, 43]
-            }
-        },
-        {
-            "snake":{
-                "id": "Y",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [199, 4, 173],
-                "b_color": [139, 2, 121]
-            }
-        },
-        {
-            "snake":{
-                "id": "Z",
-                "start_length": 5
-            },
-            "env":{
-                "h_color": [0, 170, 255],
-                "b_color": [0, 119, 179]
-            }
+            "head_color": [19, 212, 77],
+            "body_color": [12, 117, 43]
         }
     ]
 }
