@@ -1,7 +1,6 @@
 import json
 import numpy as np
-from typing import Optional, Iterable, Dict, Deque
-from abc import ABC, abstractmethod
+from typing import Optional, Dict, Deque
 from PIL import Image
 from pathlib import Path
 from importlib import resources
@@ -9,6 +8,7 @@ from collections import deque
 
 from snake_sim.utils import DotDict, Coord
 from snake_sim.environment.food_handlers import IFoodHandler
+from snake_sim.environment.interfaces.snake_env_interface import ISnakeEnv
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     config = DotDict(json.load(config_file))
@@ -43,8 +43,6 @@ class EnvData:
     def __init__(self, map: np.ndarray, snakes: Dict[int, SnakeRep]):
         self.map = map.tobytes()
         self.snakes = {id: {
-                                'head_value': id,
-                                'body_value': id + 1,
                                 'is_alive': snake_rep.is_alive,
                                 'length': len(snake_rep.body),
                             } for id, snake_rep in snakes.items()}
@@ -54,52 +52,22 @@ class EnvInitData:
     def __init__(self,
                 height: int,
                 width: int,
-                free_value,
-                blocked_value,
-                food_value):
+                free_value: int,
+                blocked_value: int,
+                food_value: int,
+                snakes: Dict[int, SnakeRep],
+                base_map: np.ndarray):
         self.height = height
         self.width = width
         self.free_value = free_value
         self.blocked_value = blocked_value
         self.food_value = food_value
-
-
-class ISnakeEnv(ABC):
-    @abstractmethod
-    def get_env_data(self, id: Optional[int]) -> EnvData:
-        pass
-
-    @abstractmethod
-    def get_init_data(self) -> EnvInitData:
-        pass
-
-    @abstractmethod
-    def move_snake(self, id: int, direction: Coord):
-        pass
-
-    @abstractmethod
-    def load_map(self, map_img_path: str):
-        pass
-
-    @abstractmethod
-    def add_snake(self, id: int, start_position: Optional[Coord]=None, start_length: int=3):
-        pass
-
-    @abstractmethod
-    def set_food_handler(self, food_handler: IFoodHandler):
-        pass
-
-    @abstractmethod
-    def resize(self, height: int, width: int):
-        pass
-
-    @abstractmethod
-    def update_food(self):
-        pass
-
-    @abstractmethod
-    def steps_since_any_ate(self):
-        pass
+        self.snake_values = {id: {
+            "head_value": id,
+            "body_value": id + 1,
+        } for id in snakes.keys()}
+        self.start_positions = {id: snake_rep.get_head() for id, snake_rep in snakes.items()}
+        self.base_map = list(base_map.tobytes())
 
 
 class SnakeEnv(ISnakeEnv):
@@ -110,10 +78,11 @@ class SnakeEnv(ISnakeEnv):
         self._blocked_value = blocked_value
         self._food_value = food_value
         self._map = np.full((height, width), self._free_value, dtype=np.uint8)
+        self._base_map = np.copy(self._map)
         self._snake_reps: Dict[int, SnakeRep] = {}
 
     def add_snake(self, id: int, start_position: Optional[Coord]=None, start_length: int=3):
-        # snake_body is expected to be an iterable with tuples of coords like [(1,2), (1,3)]
+        # snake_body is expected to be an iterable with Coord like [(1,2), (1,3)]
         if start_position is None:
             start_position = self._random_free_tile()
         snake_rep = SnakeRep(id, start_position, start_length)
@@ -142,7 +111,7 @@ class SnakeEnv(ISnakeEnv):
         current_head = snake_rep.get_head()
         next_tile = current_head + direction
         if direction not in config.DIRS.values() or not self._free_tile(next_tile):
-            return False
+            return False, False
 
         grow = False
         if self._map[next_tile[1], next_tile[0]] == self._free_value:
@@ -155,20 +124,34 @@ class SnakeEnv(ISnakeEnv):
         self._map[current_head[1], current_head[0]] = id + 1 # set the old head tile to the snakes body value
         if old_tail != new_tail:
             self._map[old_tail[1], old_tail[0]] = self._free_value
-        return True
+        return True, grow
 
     def _free_tile(self, coord: Coord):
         x, y = coord
         return self._map[y, x] <= self._free_value
 
-    def _fresh_map(self):
+    def get_map(self):
         return np.copy(self._map)
 
-    def get_env_data(self, id: Optional[int] = None):
-        return EnvData(self._fresh_map(), self._snake_reps)
+    def get_base_map(self):
+        return np.copy(self._base_map)
 
-    def get_init_data(self):
-        return EnvInitData(self._height, self._width, self._free_value, self._blocked_value, self._food_value)
+    def get_env_data(self, id: Optional[int] = None) -> EnvData:
+        # id is not used yet, but it is preparing for being able to send different data to different snakes
+        return EnvData(self.get_map(), self._snake_reps)
+
+    def get_food(self):
+        return self._food_handler.get_food()
+
+    def get_init_data(self) -> EnvInitData:
+        return EnvInitData(
+            self._height,
+            self._width,
+            self._free_value,
+            self._blocked_value,
+            self._food_value,
+            self._snake_reps,
+            self.get_base_map())
 
     def resize(self, height, width):
         self._height = height
@@ -191,11 +174,12 @@ class SnakeEnv(ISnakeEnv):
                 color = tuple(image_matrix[y][x])
                 try:
                     value = map_color_mapping[color]
-                    self._map[y, x] = value
+                    self._base_map[y, x] = value
                     if value == self._food_value:
                         self._food_handler.add_new((x, y))
                 except KeyError:
                     print(f"Color '{color}' at (x={x}, y={y}) from image not found in color mapping")
+        self._map = self.get_base_map()
 
     def set_food_handler(self, food_handler: IFoodHandler):
         if not isinstance(food_handler, IFoodHandler):

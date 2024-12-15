@@ -12,10 +12,18 @@ def positive_int(value):
         raise argparse.ArgumentTypeError(f"Invalid value: {value}. Must be a positive integer.")
     return ivalue
 
+class EnsureDirAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        path = Path(values)
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True)
+        setattr(namespace, self.dest, path)
 
 def add_common_arguments(parser):
     parser.add_argument('--sound', action='store_true', help='Play sound')
     parser.add_argument('--verbose', action='store_true', help='Print verbose output', default=False)
+    parser.add_argument('--no-record', action='store_true', help='Do not record the run', default=False)
+    parser.add_argument('--record-file', type=EnsureDirAction,  help='Path to resulting record file', default=Path(__file__).parent / 'runs')
 
 
 def add_run_config_arguments(parser):

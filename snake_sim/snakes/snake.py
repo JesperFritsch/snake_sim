@@ -1,9 +1,7 @@
 import numpy as np
-from abc import ABC, abstractmethod
 from collections import deque
 from snake_sim.utils import coord_op, DotDict
-from snake_sim.environment.snake_env import EnvData, EnvInitData
-from snake_sim.utils import Coord
+from snake_sim.environment.interfaces.snake_interface import ISnake
 
 DIRS = (
     (0, -1),
@@ -11,28 +9,6 @@ DIRS = (
     (0,  1),
     (-1, 0)
 )
-
-
-class ISnake(ABC):
-    @abstractmethod
-    def __init__(self, id: int, start_length: int):
-        pass
-
-    @abstractmethod
-    def get_id(self) -> int:
-        pass
-
-    @abstractmethod
-    def get_length(self) -> int:
-        pass
-
-    @abstractmethod
-    def set_init_data(self, env_data: EnvInitData):
-        pass
-
-    @abstractmethod
-    def update(self, env_data: EnvData) -> Coord: # -> (int, int) as direction (1, 0) for right (-1, 0) for left
-        pass
 
 
 class Snake(ISnake):
@@ -47,6 +23,9 @@ class Snake(ISnake):
         self.map = None
         self.length = self.start_length
         self.env_data = DotDict()
+
+    def set_init_data(self, env_data: dict):
+        self.env_data.update(env_data)
 
     def set_env_data(self, env_data: dict):
         self.env_data.update(env_data)
@@ -86,7 +65,7 @@ class Snake(ISnake):
     def set_new_head(self, coord):
         self.x, self.y = coord
         self.coord = coord
-        if self.map[self.y, self.x] == self.env_data.FOOD_TILE:
+        if self.map[self.y, self.x] == self.env_data.food_value:
             self.length += 1
         self.update_body(self.coord, self.body_coords, self.length)
 
@@ -100,7 +79,7 @@ class Snake(ISnake):
                 dirs.append(m_coord)
             elif not self.is_inside(m_coord):
                 continue
-            elif s_map[y_move, x_move] not in (self.env_data.FREE_TILE, self.env_data.FOOD_TILE):
+            elif s_map[y_move, x_move] not in (self.env_data.free_value, self.env_data.food_value):
                 continue
             dirs.append(m_coord)
         return dirs

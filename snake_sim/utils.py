@@ -1,14 +1,10 @@
 import random
 import string
 import os
-import shutil
-import json
 import platform
 import math
 from time import time
-from collections import deque
 
-from pathlib import Path
 from importlib import resources as pkg_resources
 
 class DotDict(dict):
@@ -18,16 +14,16 @@ class DotDict(dict):
                 v = DotDict(v)
             # elif isinstance(v, Iterable) and not isinstance(v, str):
             #     v = [DotDict(e) if isinstance(e, dict) else e for e in v]
-            self[k] = v
+            self[k.lower()] = v
 
     def __getattr__(self, attr):
         try:
-            return self[attr]
+            return self[attr.lower()]
         except KeyError:
             raise AttributeError
 
     def __setattr__(self, attr, value):
-        self[attr] = value
+        self[attr.lower()] = value
 
     def __delattr__(self, attr):
         try:
@@ -51,9 +47,9 @@ class Coord(tuple):
 
     def __eq__(self, value):
         return (
-            len(self) == len(value) and
-            self[0] == value[0] and
-            self[1] == value[1]
+                len(self) == len(value) and
+                self[0] == value[0] and
+                self[1] == value[1]
             )
 
     @property

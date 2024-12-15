@@ -1,37 +1,13 @@
 import random
 import json
-from abc import ABC, abstractmethod
 from typing import Optional
 import importlib.resources as pkg_resources
 
-
 from snake_sim.utils import DotDict, Coord
+from snake_sim.environment.interfaces.food_handler_interface import IFoodHandler
 
 with pkg_resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     config = DotDict(json.load(config_file))
-
-
-class IFoodHandler(ABC):
-
-    @abstractmethod
-    def update(self, s_map):
-        pass
-
-    @abstractmethod
-    def resize(self, width, height):
-        pass
-
-    @abstractmethod
-    def clear(self):
-        pass
-
-    @abstractmethod
-    def remove(self, coord, s_map):
-        pass
-
-    @abstractmethod
-    def add_new(self, coord):
-        pass
 
 
 class FoodHandler(IFoodHandler):
@@ -56,11 +32,13 @@ class FoodHandler(IFoodHandler):
                 if s_map[y, x] == config.FREE_TILE:
                     empty_tiles.append((x, y))
         for _ in range(self.max_food - len(self.locations)):
+            self.newest_food = []
             if empty_tiles:
                 new_food = random.choice(empty_tiles)
                 empty_tiles.remove(new_food)
-                self._add_new(new_food)
-        for location in self.locations:
+                self.add_new(new_food)
+                self.newest_food.append(new_food)
+        for location in self.newest_food:
             x, y = location
             s_map[y, x] = config.FOOD_TILE
 
@@ -90,3 +68,8 @@ class FoodHandler(IFoodHandler):
     def clear(self):
         self.locations.clear()
         self.decay_counters.clear()
+
+    def get_food(self, only_new=False):
+        if only_new:
+            return self.newest_food
+        return list(self.locations)

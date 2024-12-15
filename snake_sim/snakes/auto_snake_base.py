@@ -41,7 +41,7 @@ class AutoSnakeBase(Snake):
     def _update_snake_position(self, s_map, body_coords, old_tail):
         head = body_coords[0]
         if old_tail is not None:
-            s_map[old_tail[1], old_tail[0]] = self.env_data.FREE_TILE
+            s_map[old_tail[1], old_tail[0]] = self.env_data.free_value
         for i in range(2):
             x, y = body_coords[i]
             s_map[y, x] = self.head_value if body_coords[i] == head else self.body_value
@@ -93,11 +93,11 @@ class AutoSnakeBase(Snake):
         for row in s_map:
             print_row = []
             for c in row:
-                if c == self.env_data.FREE_TILE:
+                if c == self.env_data.free_value:
                     print_row.append(' . ')
-                elif c == self.env_data.FOOD_TILE:
+                elif c == self.env_data.food_value:
                     print_row.append(' F ')
-                elif c == self.env_data.BLOCKED_TILE:
+                elif c == self.env_data.blocked_value:
                     print_row.append(' # ')
                 else:
                     print_row.append(f' {chr(c)} ')

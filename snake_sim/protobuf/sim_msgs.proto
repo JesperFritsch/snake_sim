@@ -54,7 +54,7 @@ message RunMetaData {
     int32 free_value = 4;
     int32 blocked_value = 5;
     map<int32, RGB> color_mapping = 6;
-    repeated SnakeData snake_data = 7;
+    repeated int32 snakes = 7;
     repeated int32 base_map = 8;
 }
 
@@ -63,13 +63,6 @@ message RunData {
     RunMetaData run_meta_data = 1;
     // Steps: map each step number to a StepData message
     map<int32, StepData> steps = 2;
-}
-
-// Define SnakeData with color information for each snake
-message SnakeData {
-    string snake_id = 1;
-    RGB head_color = 2;
-    RGB body_color = 3;
 }
 
 enum MessageType {
