@@ -1,0 +1,4 @@
+recursive-include snake_sim/maps/map_images *
+recursive-include snake_sim/render/sounds *
+recursive-include snake_sim/config *
+recursive-include snake_sim/protobuf *

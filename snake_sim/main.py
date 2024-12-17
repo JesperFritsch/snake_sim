@@ -62,7 +62,7 @@ def setup_game_loop(config):
         snake_count=config.snake_count,
         calc_timeout=config.calc_timeout,
         verbose=config.verbose,
-        player_count=config.player_count,
+        player_count=config.num_players,
         spm=config.spm,
         start_length=config.start_length
     ))
@@ -83,8 +83,14 @@ def main():
 
     elif config.command == "compute":
         for _ in range(config.nr_runs):
-            env = setup_sim_loop(config)
-            env.run()
+            loop_control = setup_sim_loop(config)
+            run_data_loop_observer = RunDataLoopObserver()
+            adapter = RunDataAdapter(loop_control.get_init_data(), create_color_map(loop_control.get_snake_ids()))
+            run_data_loop_observer.set_adapter(adapter)
+            if not config.no_record:
+                recording_file = None if not config.record_file else config.record_file
+                run_data_loop_observer.add_observer(RecorderRunDataObserver(recording_dir=config.record_dir, recording_file=recording_file, as_proto=False))
+            loop_control.run()
 
     elif config.command == "stream":
         parent_conn, child_conn = Pipe()
@@ -106,17 +112,24 @@ def main():
         stop_event.set()
 
 
-    # elif config.command == "game":
-    #     parent_conn, child_conn = Pipe()
-    #     env_p = Process(target=start_game_run, args=(child_conn, config))
-    #     # since the FrameBuilder by default expands the frame by 2, each step is 2 frames,
-    #     # but this should not be hardcoded like this, but figure it out later...
-    #     fps = (config.spm * 2) / 60
-    #     render_p = Process(target=play_game, args=(parent_conn, fps, config.sound))
-    #     render_p.start()
-    #     env_p.start()
-    #     render_p.join()
-    #     parent_conn.send('stop')
+    elif config.command == "game":
+        parent_conn, child_conn = Pipe()
+        loop_control = setup_game_loop(config)
+        run_data_loop_observer = RunDataLoopObserver()
+        adapter = RunDataAdapter(loop_control.get_init_data(), create_color_map(loop_control.get_snake_ids()))
+        run_data_loop_observer.set_adapter(adapter)
+        if not config.no_record:
+            recording_file = None if not config.record_file else config.record_file
+            run_data_loop_observer.add_observer(RecorderRunDataObserver(recording_dir=config.record_dir, recording_file=recording_file, as_proto=False))
+        run_data_loop_observer.add_observer(PygameRunDataObserver(parent_conn))
+        loop_control.add_observer(run_data_loop_observer)
+        stop_event = Event()
+        loop_p = Process(target=loop_control.run, args=(stop_event,))
+        render_p = Process(target=play_stream, args=(child_conn, config.fps, config.sound))
+        render_p.start()
+        loop_p.start()
+        render_p.join()
+        stop_event.set()
 
 
 if __name__ == '__main__':

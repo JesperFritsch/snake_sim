@@ -27,7 +27,7 @@ class Snake(ISnake):
     def set_init_data(self, env_data: dict):
         self.env_data.update(env_data)
 
-    def set_env_data(self, env_data: dict):
+    def update_env_data(self, env_data: dict):
         self.env_data.update(env_data)
 
     def get_id(self) -> int:
@@ -42,20 +42,13 @@ class Snake(ISnake):
         self.coord = None
         self.length = self.start_length
 
-    def _init_after_bind(self):
-        pass
-
     def update(self, env_data):
-        raise NotImplementedError()
+        self.update_env_data(env_data)
+        self.update_map(self.env_data.map)
 
-    def init_env(self, env_data):
-        self.set_env_data(env_data)
-        self._init_after_bind()
-
-    def in_sight(self, head_coord, coord, sight_len=2):
-        h_x, h_y = head_coord
+    def is_inside(self, coord):
         x, y = coord
-        return (h_x - sight_len) <= x <= (h_x + sight_len) and (h_y - sight_len) <= y <= (h_y + sight_len)
+        return (0 <= x < self.env_data.width and 0 <= y < self.env_data.height)
 
     def set_start_position(self, coord: Coord):
         self.x, self.y = coord
@@ -93,9 +86,6 @@ class Snake(ISnake):
 
     def update_map(self, map: bytes):
         self.map = np.frombuffer(map, dtype=np.uint8).reshape(self.env_data.height, self.env_data.width)
-
-    def kill(self):
-        self.alive = False
 
     def __repr__(self) -> str:
         return f"(Class: {type(self)}, ID: {self.id}, Alive: {self.alive}, Coord: {self.coord}, Len: {self.length})"

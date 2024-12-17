@@ -68,10 +68,6 @@ class AutoSnake(AutoSnakeBase):
             self.env_data.width,
             self.env_data.height)
 
-    def is_inside(self, coord):
-        x, y = coord
-        return (0 <= x < self.env_data.width and 0 <= y < self.env_data.height)
-
     def _fix_route(self, route, s_coord=None, valid_tiles=None):
         valid_tiles = valid_tiles or self._valid_tiles(self.map, self.coord)
         s_coord = s_coord or self.coord
