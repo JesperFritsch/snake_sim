@@ -121,6 +121,7 @@ class SimLoop(IMainLoop):
 class GameLoop(SimLoop):
 
     def __init__(self):
+        super().__init__()
         self._steps_per_min = None
         self._last_update_time = None
 

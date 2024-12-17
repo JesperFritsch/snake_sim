@@ -5,7 +5,7 @@ import platform
 import math
 from time import time
 
-from importlib import resources as pkg_resources
+from importlib import resources
 
 class DotDict(dict):
     def __init__(self, other_dict={}):
@@ -117,8 +117,8 @@ def coord_op(coord_left, coord_right, op):
 
 
 def get_map_files_mapping():
-    files = list(pkg_resources.files('snake_sim.maps.map_images').iterdir())
-    return {f.name: f for f in files if f.is_file()}
+    files = list(resources.files('snake_sim.maps.map_images').iterdir())
+    return {f.name.split('.')[0]: f for f in files if f.is_file()}
 
 
 def rand_str(n):

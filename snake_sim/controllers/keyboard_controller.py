@@ -73,7 +73,7 @@ class ControllerCollection:
     def __init__(self) -> None:
         self.controllers: Set[SingleSnakeController] = set()
 
-    def bind_controller(self, snake, controller_type='implicit', key_mapping: Optional[dict]=None):
+    def bind_controller(self, snake, controller_type='explicit', key_mapping: Optional[dict]=None):
         if not key_mapping:
             controller_index = len(self.controllers)
             if controller_type == 'explicit':

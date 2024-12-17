@@ -55,6 +55,7 @@ class SnakeLoopControl:
 
         if config.map:
             map_files_mapping = get_map_files_mapping()
+            print(map_files_mapping)
             if config.map not in map_files_mapping:
                 raise ValueError(f'Map {config.map} not found')
             self._snake_enviroment.load_map(map_files_mapping[config.map])

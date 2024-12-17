@@ -29,9 +29,8 @@ class AutoSnakeBase(Snake):
         raise NotImplementedError
 
     def update(self, env_data: dict):
+        super().update(env_data)
         self.start_time = time()
-        self.set_env_data(env_data)
-        self.update_map(self.env_data.map)
         next_tile = self._pick_direction()
         if next_tile is None:
             next_tile = self.coord
