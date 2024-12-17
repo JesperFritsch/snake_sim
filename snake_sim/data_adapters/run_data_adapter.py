@@ -5,7 +5,7 @@ from importlib import resources
 from snake_sim.environment.snake_env import EnvInitData, SnakeRep
 from snake_sim.environment.main_loop import LoopStepData
 from snake_sim.run_data.run_data import RunData, StepData
-from snake_sim.utils import DotDict
+from snake_sim.utils import DotDict, Coord
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     config = DotDict(json.load(config_file))
@@ -19,11 +19,11 @@ class RunDataAdapter:
             height=self._env_init_data.height,
             width=self._env_init_data.width,
             color_mapping=color_mapping,
-            base_map=self._env_init_data.base_map.tobytes(),
+            base_map=self._env_init_data.base_map,
             food_value=self._env_init_data.food_value,
             free_value=self._env_init_data.free_value,
             blocked_value=self._env_init_data.blocked_value,
-            snakes=list(self._env_init_data.snake_values.values())
+            snakes=list(self._env_init_data.snake_values.keys())
         )
         self.snake_reps = {id: SnakeRep(id, start_pos) for id, start_pos in self._env_init_data.start_positions.items()}
 
@@ -44,7 +44,7 @@ class RunDataAdapter:
             snake_rep = self.snake_reps[snake_id]
             grow = len(snake_rep.body) < loop_step.lengths[snake_id]
             self.snake_reps[snake_id].move(decision, grow=grow)
-            step_data.add_snake_data(snake_id, snake_rep.body)
+            step_data.add_snake_data(snake_id, snake_rep.body, did_grow=grow)
             self._run_data.add_step(step_data)
         return step_data
 

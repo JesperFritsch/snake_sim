@@ -15,7 +15,7 @@ with resources.open_text('snake_sim.config', 'default_config.json') as config_fi
 
 
 class SnakeRep:
-    def __init__(self, id: int, start_position: Coord, start_length: int=3):
+    def __init__(self, id: int, start_position: Coord, start_length: int=1):
         self.move_count = 0
         self.last_ate = 0
         self.id = id
@@ -26,7 +26,7 @@ class SnakeRep:
         self.is_alive = False
 
     def move(self, direction: Coord, grow=False):
-        self.body.appendleft(self.body[0] + direction)
+        self.body.appendleft(self.get_head() + direction)
         if not grow:
             self.last_ate = self.move_count
             self.body.pop()
@@ -55,7 +55,7 @@ class EnvInitData:
                 free_value: int,
                 blocked_value: int,
                 food_value: int,
-                snakes: Dict[int, SnakeRep],
+                snake_reps: Dict[int, SnakeRep],
                 base_map: np.ndarray):
         self.height = height
         self.width = width
@@ -65,9 +65,9 @@ class EnvInitData:
         self.snake_values = {id: {
             "head_value": id,
             "body_value": id + 1,
-        } for id in snakes.keys()}
-        self.start_positions = {id: snake_rep.get_head() for id, snake_rep in snakes.items()}
-        self.base_map = list(base_map.tobytes())
+        } for id in snake_reps.keys()}
+        self.start_positions = {id: snake_rep.get_head() for id, snake_rep in snake_reps.items()}
+        self.base_map = base_map
 
 
 class SnakeEnv(ISnakeEnv):
@@ -81,13 +81,14 @@ class SnakeEnv(ISnakeEnv):
         self._base_map = np.copy(self._map)
         self._snake_reps: Dict[int, SnakeRep] = {}
 
-    def add_snake(self, id: int, start_position: Optional[Coord]=None, start_length: int=3):
+    def add_snake(self, id: int, start_position: Optional[Coord]=None, start_length: int=1) -> Coord:
         # snake_body is expected to be an iterable with Coord like [(1,2), (1,3)]
         if start_position is None:
             start_position = self._random_free_tile()
         snake_rep = SnakeRep(id, start_position, start_length)
         self._snake_reps[id] = snake_rep
         self._place_snake_on_map(snake_rep)
+        return start_position
 
     def _random_free_tile(self) -> Coord:
         while True:
@@ -98,7 +99,7 @@ class SnakeEnv(ISnakeEnv):
 
     def _place_snake_on_map(self, snake_rep: SnakeRep):
         for i, (x, y) in enumerate(snake_rep.body):
-            self._map[y, x] = self._snake_reps.id + (0 if i == 0 else 1)
+            self._map[y, x] = snake_rep.id + (0 if i == 0 else 1)
 
     def _remove_snake_from_map(self, snake_rep: SnakeRep):
         for x, y in snake_rep.body:
@@ -114,8 +115,8 @@ class SnakeEnv(ISnakeEnv):
             return False, False
 
         grow = False
-        if self._map[next_tile[1], next_tile[0]] == self._free_value:
-            self._food_handler.remove(next_tile)
+        if self._map[next_tile[1], next_tile[0]] == self._food_value:
+            self._food_handler.remove(next_tile, self._map)
             grow = True
         old_tail = snake_rep.body[-1]
         snake_rep.move(direction, grow)
@@ -128,7 +129,7 @@ class SnakeEnv(ISnakeEnv):
 
     def _free_tile(self, coord: Coord):
         x, y = coord
-        return self._map[y, x] <= self._free_value
+        return 0 <= x < self._width and 0 <= y < self._height and self._map[y, x] <= self._free_value
 
     def get_map(self):
         return np.copy(self._map)
@@ -192,3 +193,19 @@ class SnakeEnv(ISnakeEnv):
 
     def steps_since_any_ate(self):
         return min(snake_rep.move_count - snake_rep.last_ate for snake_rep in self._snake_reps.values())
+
+    def print_map(self):
+        for row in self._map:
+            print_row = []
+            for c in row:
+                if c == self._free_value:
+                    print_row.append(' . ')
+                elif c == self._food_value:
+                    print_row.append(' F ')
+                elif c == self._blocked_value:
+                    print_row.append(' # ')
+                elif c % 2 == 0:
+                    print_row.append(f' X ')
+                else:
+                    print_row.append(f' x ')
+            print(''.join(print_row))

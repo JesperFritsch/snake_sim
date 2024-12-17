@@ -27,12 +27,12 @@ class FoodHandler(IFoodHandler):
 
     def _generate_new(self, s_map):
         empty_tiles = []
+        self.newest_food = []
         for y in range(self.height):
             for x in range(self.width):
-                if s_map[y, x] == config.FREE_TILE:
+                if s_map[y, x] == config.free_value:
                     empty_tiles.append((x, y))
         for _ in range(self.max_food - len(self.locations)):
-            self.newest_food = []
             if empty_tiles:
                 new_food = random.choice(empty_tiles)
                 empty_tiles.remove(new_food)
@@ -40,7 +40,7 @@ class FoodHandler(IFoodHandler):
                 self.newest_food.append(new_food)
         for location in self.newest_food:
             x, y = location
-            s_map[y, x] = config.FOOD_TILE
+            s_map[y, x] = config.food_value
 
     def _remove_old(self, s_map):
         if self.decay_count is None:
@@ -57,7 +57,7 @@ class FoodHandler(IFoodHandler):
     def remove(self, coord: Coord, s_map):
         if coord in self.locations:
             x, y = coord
-            s_map[y, x] = config.FREE_TILE
+            s_map[y, x] = config.free_value
             del self.decay_counters[coord]
             self.locations.remove(coord)
 

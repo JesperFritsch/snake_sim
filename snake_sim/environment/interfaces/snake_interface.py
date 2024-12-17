@@ -17,6 +17,10 @@ class ISnake(ABC):
         pass
 
     @abstractmethod
+    def set_start_position(self, start_position: Coord):
+        pass
+
+    @abstractmethod
     def set_init_data(self, env_data: dict):
         pass
 

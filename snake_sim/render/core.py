@@ -31,10 +31,10 @@ class SnakeRepresentation:
         dir_mult = coord_op(head_dir, (expand_step, expand_step), '*')
         next_head = coord_op(self.prev_expand_head, dir_mult, '+')
         self.body.appendleft(next_head)
-        if tuple(step_snake_data['tail_dir']) != (0, 0):
-            self.last_tail = self.body.pop()
-        else:
+        if step_snake_data['did_grow']:
             self.last_tail = None
+        else:
+            self.last_tail = self.body.pop()
         if expand_step == self.expand_factor:
             self.last_head = step_snake_data['curr_head']
 
@@ -45,7 +45,6 @@ class SnakeRepresentation:
             snake_data = {}
             snake_data['prev_head'] = prev_coord
             snake_data['curr_head'] = curr_coord
-            snake_data['tail_dir'] = (0, 0)
             snake_data['head_dir'] = coord_op(curr_coord, prev_coord, '-')
             for n in range(1, self.expand_factor + 1):
                 self.update(snake_data, n)
@@ -64,7 +63,7 @@ class FrameBuilder:
         self.color_mapping = {int(k): tuple(v) for k, v in run_meta_data['color_mapping'].items()}
         self.expand_factor = expand_factor
         self.last_food = set()
-        self.last_handled_step = 0
+        self.last_handled_step = -1
         self.frameshape = ((self.height * self.expand_factor) + self.offset_y, (self.width * self.expand_factor) + self.offset_x, 3)
         self.snake_reps: Dict[int, SnakeRepresentation] = {}
         for snake_id in run_meta_data['snakes']:

@@ -1,5 +1,5 @@
 import random
-from typing import Dict
+from typing import Dict, List
 
 from snake_sim.snakes.snake import ISnake
 from snake_sim.environment.snake_env import EnvData
@@ -13,17 +13,19 @@ class SnakeHandler(ISnakeHandler):
         self._snakes: Dict[int, ISnake] = {}
         self._dead_snakes = set()
 
-    def get_snakes(self):
+    def get_snakes(self) -> List[ISnake]:
         return self._snakes.values()
 
     def kill_snake(self, id):
         return self._dead_snakes.add(id)
 
     def get_decision(self, id, env_data: EnvData) -> Coord:
-        return self._snakes[id].update(dict(env_data))
+        return Coord(*self._snakes[id].update(env_data.__dict__))
 
     def add_snake(self, snake: ISnake):
         self._snakes[snake.get_id()] = snake
 
     def get_update_order(self) -> list:
-        return random.shuffle([id for id in self._snakes.keys() if id not in self._dead_snakes])
+        ids = [id for id in self._snakes.keys() if id not in self._dead_snakes]
+        random.shuffle(ids)
+        return ids
