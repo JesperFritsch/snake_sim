@@ -12,13 +12,13 @@ class RunDataLoopObserver(ILoopObserver):
     for transferring the data to pygame for visualization. """
     def __init__(self):
         self._adapter = None
-        self._observers: Set[IRunDataObserver] = []
+        self._observers: Set[IRunDataObserver] = set()
 
     def notify_start(self):
         for observer in self._observers:
             observer.notify_start(self._adapter.get_metadata())
 
-    def nofify_step(self, loop_step: LoopStepData):
+    def notify_step(self, loop_step: LoopStepData):
         step_data = self._adapter.loop_step_data_to_step_data(loop_step)
         for observer in self._observers:
             observer.notify_step(step_data)

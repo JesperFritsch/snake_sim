@@ -1,6 +1,6 @@
 import numpy as np
 from collections import deque
-from snake_sim.utils import coord_op, DotDict
+from snake_sim.utils import coord_op, DotDict, Coord
 from snake_sim.environment.interfaces.snake_interface import ISnake
 
 DIRS = (
@@ -57,9 +57,9 @@ class Snake(ISnake):
         x, y = coord
         return (h_x - sight_len) <= x <= (h_x + sight_len) and (h_y - sight_len) <= y <= (h_y + sight_len)
 
-    def set_init_coord(self, coord):
+    def set_start_position(self, coord: Coord):
         self.x, self.y = coord
-        self.coord = coord
+        self.coord = tuple(coord)
         self.body_coords = deque([coord] * self.length)
 
     def set_new_head(self, coord):

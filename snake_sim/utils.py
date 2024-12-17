@@ -36,21 +36,28 @@ class Coord(tuple):
     def __new__(cls, x, y):
         return super(Coord, cls).__new__(cls, (x, y))
 
+    def __reduce__(self):
+        return (self.__class__, (self[0], self[1]))
+
     def __add__(self, other):
-        return Coord(self[0] + other[0], self[1] + other[1])
+        return Coord(self.x + other[0], self.y + other[1])
 
     def __sub__(self, other):
-        return Coord(self[0] - other[0], self[1] - other[1])
+        return Coord(self.x - other[0], self.y - other[1])
 
-    def __mul__(self, value):
-        return Coord(self[0] * value, self[1] * value)
+    def __mul__(self, other):
+        return Coord(self.x * other[0], self.y * other[1])
 
-    def __eq__(self, value):
+    def __eq__(self, other):
         return (
-                len(self) == len(value) and
-                self[0] == value[0] and
-                self[1] == value[1]
+                (isinstance(other, tuple) or isinstance(other, list)) and
+                len(self) == len(other) and
+                self.x == other[0] and
+                self.y == other[1]
             )
+
+    def __hash__(self):
+        return hash((self.x, self.y))
 
     @property
     def x(self):

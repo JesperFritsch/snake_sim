@@ -10,7 +10,8 @@ import time
 from pathlib import Path
 
 from snake_sim.render import core
-from snake_sim.snake_env import RunData, StepData
+# from snake_sim.snake_env import RunData, StepData
+from snake_sim.run_data.run_data import RunData, StepData
 
 STREAM_IS_LIVE = False
 
@@ -81,7 +82,11 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
     run_data.height = run_meta_data['height']
     run_data.width = run_meta_data['width']
     run_data.base_map = np.array(run_meta_data['base_map'], dtype=np.uint8)
-    run_data.snake_data = run_meta_data['snake_data']
+    run_data.snakes = run_meta_data['snakes']
+    run_data.food_value = run_meta_data['food_value']
+    run_data.free_value = run_meta_data['free_value']
+    run_data.blocked_value = run_meta_data['blocked_value']
+    run_data.color_mapping = {int(k): tuple(v) for k, v in run_meta_data['color_mapping'].items()}
 
     frame_builder = core.FrameBuilder(run_meta_data=run_meta_data)
 
@@ -94,8 +99,7 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
             break
         step_data_dict = payload
         step_data = StepData.from_dict(step_data_dict)
-        step_count = step_data.step
-        run_data.add_step(step_count, step_data)
+        run_data.add_step(step_data)
         new_frames = frame_builder.step_to_frames(step_data_dict)
         frame_buffer.extend(new_frames)
         for snake_data in step_data_dict["snakes"]:
@@ -189,7 +193,7 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
 def play_stream(stream_conn, fps=10, sound_on=True):
     sound_buffer = []
     frame_buffer = []
-    run_data = RunData(0, 0, [], np.array([])) # create this here so that the stream thread and the play thread can share the same object
+    run_data = RunData(0, 0, [], np.array([]), 0,0,0,{}) # create this here so that the stream thread and the play thread can share the same object
     stream_thread = threading.Thread(target=handle_stream, args=(stream_conn, frame_buffer, sound_buffer, run_data))
     stream_thread.daemon = True
     stream_thread.start()

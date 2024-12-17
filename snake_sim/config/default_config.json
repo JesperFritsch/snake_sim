@@ -10,9 +10,10 @@
     "fps": 10,
     "map": null,
     "spm": 180,
-    "food_tile": 0,
-    "free_tile": 1,
-    "blocked_tile": 2,
+    "start_length": 3,
+    "food_value": 0,
+    "free_value": 1,
+    "blocked_value": 2,
     "max_no_food_steps": 100,
     "norm_head": 3,
     "norm_body": 4,
@@ -25,9 +26,9 @@
         "right": [1, 0]
     },
     "color_mapping": {
-        "food_tile": [223,163,49],
-        "free_tile": [0,0,0],
-        "blocked_tile": [127,127,127]
+        "food_value": [223,163,49],
+        "free_value": [0,0,0],
+        "blocked_value": [127,127,127]
     },
     "snake_colors": [
         {

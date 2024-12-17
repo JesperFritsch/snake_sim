@@ -35,7 +35,9 @@ class AutoSnakeBase(Snake):
         next_tile = self._pick_direction()
         if next_tile is None:
             next_tile = self.coord
-        return coord_op(next_tile, self.coord, '-')
+        direction = coord_op(next_tile, self.coord, '-')
+        self.set_new_head(next_tile)
+        return direction
 
 
     def _update_snake_position(self, s_map, body_coords, old_tail):
@@ -99,8 +101,14 @@ class AutoSnakeBase(Snake):
                     print_row.append(' F ')
                 elif c == self.env_data.blocked_value:
                     print_row.append(' # ')
+                elif c == self.head_value:
+                    print_row.append(f' A ')
+                elif c == self.body_value:
+                    print_row.append(' a ')
+                elif c % 2 == 0:
+                    print_row.append(f' X ')
                 else:
-                    print_row.append(f' {chr(c)} ')
+                    print_row.append(f' x ')
             print(''.join(print_row))
 
 

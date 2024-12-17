@@ -7,10 +7,6 @@ from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserv
 class IMainLoop(ABC):
 
     @abstractmethod
-    def init(self, width, height):
-        pass
-
-    @abstractmethod
     def start(self):
         pass
 

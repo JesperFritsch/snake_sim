@@ -47,9 +47,11 @@ class SimLoop(IMainLoop):
             raise ValueError('Snake handler not set')
         if not self._env:
             raise ValueError('Environment not set')
-
+        self._notify_start()
         while self._is_running:
             update_ordered_ids = self._snake_handler.get_update_order()
+            if stop_event.is_set() or len(update_ordered_ids) == 0:
+                self.stop()
             self._pre_update()
             self._env.update_food()
             self._current_step_data.food = self._env.get_food()
@@ -69,8 +71,6 @@ class SimLoop(IMainLoop):
                     self._snake_handler.kill_snake(id)
             self._steps += 1
             self._post_update()
-            if stop_event.is_set():
-                self.stop()
 
     def stop(self):
         self._is_running = False
@@ -83,7 +83,7 @@ class SimLoop(IMainLoop):
     def _post_update(self):
         if self._max_no_food_steps and self._env.steps_since_any_ate() > self._max_no_food_steps:
             self._is_running = False
-        if self._max_steps and self._steps > self._max_steps:
+        if self._max_steps is not None and self._steps > self._max_steps:
             self._is_running = False
         total_time = time.time() - self._step_start_time
         self._current_step_data.lengths = {id: snake['length'] for id, snake in self._env.get_env_data().snakes.items()}
