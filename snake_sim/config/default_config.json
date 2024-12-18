@@ -32,7 +32,7 @@
     },
     "snake_colors": [
         {
-            "head_color": [252, 20, 5],
+            "head_color": [142, 15, 5],
             "body_color": [255, 30, 10]
         },
         {

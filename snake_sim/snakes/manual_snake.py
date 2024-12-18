@@ -19,7 +19,6 @@ class ManualSnake(Snake):
         new_direction = self.next_direction
         # print(f"Current direction: {current_direction}")
         # print(f"New direction: {new_direction}")
-        print(f"next_direction: {self.next_direction}")
         if self.help >= 1:
             next_tile = coord_op(self.coord, new_direction, "+")
             if not next_tile in self._valid_tiles(self.map, self.coord):
@@ -47,7 +46,6 @@ class ManualSnake(Snake):
                 self.next_direction = (1, 0)
         else:
             raise ValueError("Invalid direction choice")
-        print(f"next_direction: {self.next_direction}")
 
 
     def set_direction_implicit(self, direction: str):
