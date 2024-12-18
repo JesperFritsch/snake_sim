@@ -28,7 +28,9 @@ log.addHandler(s_handler)
 
 def create_color_map(snake_ids) -> Dict[int, Tuple[int, int, int]]:
     color_map = {default_config[key]: value for key, value in default_config.color_mapping.items()}
+    print(snake_ids)
     for i, id in enumerate(snake_ids):
+        print(id, i)
         color_map[id] = default_config.snake_colors[i]["head_color"]
         color_map[id+1] = default_config.snake_colors[i]["body_color"]
     print(color_map)
@@ -76,7 +78,6 @@ def main():
     with open(cfg_path) as config_file:
         config = DotDict(json.load(config_file))
     config = cli(argv, config)
-    print(config)
 
     if config.command == "play-file":
         play_runfile(filepath=Path(config.filepath), sound_on=config.sound, fps=config.fps)

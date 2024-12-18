@@ -23,7 +23,8 @@ class SnakeFactory:
         snakes = []
         snake_id = 10
         for snake_type, count in type_count.items():
-            for _ in range(count):
+            while count > 0:
+                count -= 1
                 snakes.append(self.create_snake(snake_type, id=snake_id, **kwargs))
-                snake_id += 1
+                snake_id += 2
         return snakes
