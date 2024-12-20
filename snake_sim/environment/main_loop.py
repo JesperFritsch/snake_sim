@@ -22,7 +22,7 @@ class LoopStepData:
     total_time: Optional[float] = field(default_factory=float)
     snake_times: Optional[Dict[int, float]] = field(default_factory=dict)
     desicions: Optional[Dict[int, Coord]] = field(default_factory=dict)
-    snake_ate: Optional[Dict[int, bool]] = field(default_factory=dict)
+    snake_grew: Optional[Dict[int, bool]] = field(default_factory=dict)
     lengths: Optional[Dict[int, int]] = field(default_factory=dict)
     food: Optional[List[Coord]] = field(default_factory=list)
 
@@ -64,9 +64,9 @@ class SimLoop(IMainLoop):
                 # Save the decision for the snake
                 self._current_step_data.desicions[id] = decision
                 # The move_snake method will return false if the snake died
-                alive, ate = self._env.move_snake(id, decision)
+                alive, grew = self._env.move_snake(id, decision)
                 # Save if the snake ate
-                self._current_step_data.snake_ate[id] = ate
+                self._current_step_data.snake_grew[id] = grew
                 if not alive:
                     self._snake_handler.kill_snake(id)
             self._steps += 1

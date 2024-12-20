@@ -23,9 +23,13 @@ class RunDataAdapter:
             food_value=self._env_init_data.food_value,
             free_value=self._env_init_data.free_value,
             blocked_value=self._env_init_data.blocked_value,
-            snakes=list(self._env_init_data.snake_values.keys())
+            snakes=list(self._env_init_data.snake_values.keys()),
+            snake_values=self._env_init_data.snake_values
         )
-        self.snake_reps = {id: SnakeRep(id, start_pos) for id, start_pos in self._env_init_data.start_positions.items()}
+        self.snake_reps = {}
+        for id, snake_data in self._env_init_data.snake_values.items():
+            start_pos = self._env_init_data.start_positions[id]
+            self.snake_reps[id] = SnakeRep(id, snake_data['head_value'], snake_data['body_value'], start_pos)
 
     def get_run_data(self):
         return self._run_data
