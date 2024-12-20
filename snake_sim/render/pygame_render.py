@@ -193,7 +193,7 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
 def play_stream(stream_conn, fps=10, sound_on=True):
     sound_buffer = []
     frame_buffer = []
-    run_data = RunData(0, 0, [], np.array([]), 0,0,0,{}) # create this here so that the stream thread and the play thread can share the same object
+    run_data = RunData(0, 0, [], np.array([]),0,0,0,{},{}) # create this here so that the stream thread and the play thread can share the same object
     stream_thread = threading.Thread(target=handle_stream, args=(stream_conn, frame_buffer, sound_buffer, run_data))
     stream_thread.daemon = True
     stream_thread.start()
@@ -227,7 +227,7 @@ def play_runfile(filepath=None, sound_on=True, fps=10):
 def play_game(conn, fps, sound_on=True):
     sound_buffer = []
     frame_buffer = []
-    run_data = RunData(0, 0, [], np.array([])) # create this here so that the stream thread and the play thread can share the same object
+    run_data = RunData(0, 0, [], np.array([]),0,0,0,{},{}) # create this here so that the stream thread and the play thread can share the same object
     stream_thread = threading.Thread(target=handle_stream, args=(conn, frame_buffer, sound_buffer, run_data))
     stream_thread.daemon = True
     stream_thread.start()
