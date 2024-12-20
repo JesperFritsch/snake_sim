@@ -16,8 +16,8 @@ class Snake(ISnake):
         self.id = id
         self.start_length = start_length
         self.alive = True
-        self.body_value = self.id + 1
-        self.head_value = self.id
+        self.body_value = None
+        self.head_value = None
         self.body_coords = deque()
         self.coord = None
         self.map = None
@@ -26,6 +26,8 @@ class Snake(ISnake):
 
     def set_init_data(self, env_data: dict):
         self.env_data.update(env_data)
+        self.head_value = self.env_data["snake_values"][self.id]['head_value']
+        self.body_value = self.env_data["snake_values"][self.id]['body_value']
 
     def update_env_data(self, env_data: dict):
         self.env_data.update(env_data)
