@@ -61,6 +61,10 @@ class FrameBuilder:
         self.food_value = run_meta_data['food_value']
         self.blocked_value = run_meta_data['blocked_value']
         self.color_mapping = {int(k): tuple(v) for k, v in run_meta_data['color_mapping'].items()}
+        print(self.color_mapping)
+        print(run_meta_data['snake_values'])
+        self.snake_values = {int(k): {"body_value": v["body_value"], "head_value": v["head_value"]} for k, v in run_meta_data['snake_values'].items()}
+        print(self.snake_values)
         self.expand_factor = expand_factor
         self.last_food = set()
         self.last_handled_step = -1
@@ -116,8 +120,8 @@ class FrameBuilder:
                 head = tuple(snake_rep.body[0])
                 if last_tail is not None:
                     sub_changes.append((tuple(last_tail), self.color_mapping[self.free_value]))
-                sub_changes.append((tuple(snake_rep.body[1]), self.color_mapping[snake_rep.snake_id + 1]))
-                sub_changes.append((head, self.color_mapping[snake_rep.snake_id]))
+                sub_changes.append((tuple(snake_rep.body[1]), self.color_mapping[self.snake_values[snake_id]["body_value"]]))
+                sub_changes.append((head, self.color_mapping[self.snake_values[snake_id]["head_value"]]))
             sub_changes = [(coord_op(coord, self.offset, '+'), color) for coord, color in sub_changes]
             changes.append(list(set(sub_changes)))
             sub_changes = []
@@ -139,8 +143,8 @@ class FrameBuilder:
             snake_coords = snake['body']
             snake_rep = self.snake_reps[snake['snake_id']]
             snake_rep.set_full_body(snake_coords)
-            body_color = self.color_mapping[snake_rep.snake_id + 1]
-            head_color = self.color_mapping[snake_rep.snake_id]
+            body_color = self.color_mapping[self.snake_values[snake_rep.snake_id]["body_value"]]
+            head_color = self.color_mapping[self.snake_values[snake_rep.snake_id]["head_value"]]
             put_snake_in_frame(self.last_frame, snake_coords, body_color, h_color=head_color, expand_factor=self.expand_factor, offset=self.offset)
             coord_colors[coord_op(snake_rep.body[0], self.offset, '+')] = head_color
             for coord in snake_rep.body[1:]:

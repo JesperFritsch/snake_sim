@@ -1,6 +1,6 @@
 import json
 import numpy as np
-from typing import Optional, Dict, Deque
+from typing import Optional, Dict, Deque, Tuple
 from PIL import Image
 from pathlib import Path
 from importlib import resources
@@ -15,10 +15,12 @@ with resources.open_text('snake_sim.config', 'default_config.json') as config_fi
 
 
 class SnakeRep:
-    def __init__(self, id: int, start_position: Coord, start_length: int=1):
+    def __init__(self, id: int, h_value: int, b_value: int, start_position: Coord, start_length: int=1):
         self.move_count = 0
         self.last_ate = 0
         self.id = id
+        self.head_value = h_value
+        self.body_value = b_value
         self.body: Deque[Coord] = deque([start_position] * start_length)
         self.is_alive = True
 
@@ -62,10 +64,10 @@ class EnvInitData:
         self.free_value = free_value
         self.blocked_value = blocked_value
         self.food_value = food_value
-        self.snake_values = {id: {
-            "head_value": id,
-            "body_value": id + 1,
-        } for id in snake_reps.keys()}
+        self.snake_values = {s_rep.id: {
+            "head_value": s_rep.head_value,
+            "body_value": s_rep.body_value,
+        } for s_rep in snake_reps.values()}
         self.start_positions = {id: snake_rep.get_head() for id, snake_rep in snake_reps.items()}
         self.base_map = base_map
 
@@ -80,15 +82,30 @@ class SnakeEnv(ISnakeEnv):
         self._map = np.full((height, width), self._free_value, dtype=np.uint8)
         self._base_map = np.copy(self._map)
         self._snake_reps: Dict[int, SnakeRep] = {}
+        self._used_map_values = set([self._free_value, self._blocked_value, self._food_value])
 
     def add_snake(self, id: int, start_position: Optional[Coord]=None, start_length: int=1) -> Coord:
         # snake_body is expected to be an iterable with Coord like [(1,2), (1,3)]
         if start_position is None:
             start_position = self._random_free_tile()
-        snake_rep = SnakeRep(id, start_position, start_length)
+        head_value, body_value = self._assign_map_values()
+        snake_rep = SnakeRep(id, head_value, body_value, start_position, start_length)
         self._snake_reps[id] = snake_rep
         self._place_snake_on_map(snake_rep)
         return start_position
+
+    def _assign_map_values(self) -> Tuple[int, int]: # returns head_value, body_value
+        head_value = self._find_unused_map_value()
+        self._used_map_values.add(head_value)
+        body_value = self._find_unused_map_value()
+        self._used_map_values.add(body_value)
+        return head_value, body_value
+
+    def _find_unused_map_value(self) -> int:
+        for i in range(0xff):
+            if i not in self._used_map_values:
+                return i
+        raise ValueError("No more map values available")
 
     def _random_free_tile(self) -> Coord:
         while True:
@@ -109,27 +126,44 @@ class SnakeEnv(ISnakeEnv):
         # direction is expected to be a Coord like (1, 0) for right
         # returns False if the move is invalid, otherwise True
         snake_rep = self._snake_reps[id]
-        current_head = snake_rep.get_head()
-        next_tile = current_head + direction
-        if direction not in config.DIRS.values() or not self._free_tile(next_tile):
+        if self._is_valid_move(id, direction):
+            current_head = snake_rep.get_head()
+            next_tile = current_head + direction
+            grow = False
+            if self._is_food_tile(next_tile):
+                self._food_handler.remove(next_tile, self._map)
+                grow = True
+            old_tail = snake_rep.get_tail()
+            snake_rep.move(direction, grow)
+            self._update_snake_on_map(id, old_tail)
+            return True, grow
+        else:
             return False, False
 
-        grow = False
-        if self._map[next_tile[1], next_tile[0]] == self._food_value:
-            self._food_handler.remove(next_tile, self._map)
-            grow = True
-        old_tail = snake_rep.body[-1]
-        snake_rep.move(direction, grow)
-        new_tail = snake_rep.body[-1]
-        self._map[next_tile[1], next_tile[0]] = id # set the tile to the snakes head value
-        self._map[current_head[1], current_head[0]] = id + 1 # set the old head tile to the snakes body value
+    def _update_snake_on_map(self, id, old_tail):
+        snake_rep = self._snake_reps[id]
+        new_head = snake_rep.get_head()
+        new_tail = snake_rep.get_tail()
+        self._map[new_head[1], new_head[0]] = snake_rep.head_value
+        self._map[new_tail[1], new_tail[0]] = snake_rep.body_value
         if old_tail != new_tail:
             self._map[old_tail[1], old_tail[0]] = self._free_value
-        return True, grow
 
-    def _free_tile(self, coord: Coord):
+    def _is_inside(self, coord: Coord):
         x, y = coord
-        return 0 <= x < self._width and 0 <= y < self._height and self._map[y, x] <= self._free_value
+        return 0 <= x < self._width and 0 <= y < self._height
+
+    def _is_free_tile(self, coord: Coord):
+        x, y = coord
+        return self._is_inside(coord) and self._map[y, x] <= self._free_value
+
+    def _is_food_tile(self, coord: Coord):
+        x, y = coord
+        return self._is_inside(coord) and self._map[y, x] == self._food_value
+
+    def _is_valid_move(self, id: int, direction: Coord):
+        next_tile = self._snake_reps[id].get_head() + direction
+        return self._is_free_tile(next_tile) and direction in config.DIRS.values()
 
     def get_map(self):
         return np.copy(self._map)

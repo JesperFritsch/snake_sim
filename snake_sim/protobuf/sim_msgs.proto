@@ -22,7 +22,10 @@ message RGB {
     int32 b = 3;
 }
 
-
+message SnakeValues {
+    int32 body_value = 1;
+    int32 head_value = 2;
+}
 // Messages for STREAMING ######################################
 
 // Message representing each snake's properties
@@ -56,6 +59,7 @@ message RunMetaData {
     map<int32, RGB> color_mapping = 6;
     repeated int32 snake_ids = 7;
     repeated int32 base_map = 8;
+    map<int32, SnakeValues> snake_values = 9;
 }
 
 // Main message for the game configuration and state
