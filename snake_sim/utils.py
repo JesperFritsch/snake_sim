@@ -1,14 +1,11 @@
 import random
 import string
 import os
-import shutil
-import json
 import platform
 import math
 from time import time
-from collections.abc import Iterable
 
-from collections import deque
+from importlib import resources
 
 class DotDict(dict):
     def __init__(self, other_dict={}):
@@ -17,22 +14,64 @@ class DotDict(dict):
                 v = DotDict(v)
             # elif isinstance(v, Iterable) and not isinstance(v, str):
             #     v = [DotDict(e) if isinstance(e, dict) else e for e in v]
-            self[k] = v
+            self[k.lower()] = v
 
     def __getattr__(self, attr):
         try:
-            return self[attr]
+            return self[attr.lower()]
         except KeyError:
             raise AttributeError
 
     def __setattr__(self, attr, value):
-        self[attr] = value
+        self[attr.lower()] = value
 
     def __delattr__(self, attr):
         try:
             del self[attr]
         except KeyError:
             raise AttributeError
+
+
+class Coord(tuple):
+    def __new__(cls, x, y):
+        return super(Coord, cls).__new__(cls, (x, y))
+
+    def __reduce__(self):
+        return (self.__class__, (self[0], self[1]))
+
+    def __add__(self, other):
+        return Coord(self.x + other[0], self.y + other[1])
+
+    def __sub__(self, other):
+        return Coord(self.x - other[0], self.y - other[1])
+
+    def __mul__(self, other):
+        return Coord(self.x * other[0], self.y * other[1])
+
+    def __eq__(self, other):
+        return (
+                (isinstance(other, tuple) or isinstance(other, list)) and
+                len(self) == len(other) and
+                self.x == other[0] and
+                self.y == other[1]
+            )
+
+    def __hash__(self):
+        return hash((self.x, self.y))
+
+    @property
+    def x(self):
+        return self[0]
+
+    @property
+    def y(self):
+        return self[1]
+
+    def __repr__(self):
+        return f"Coord(x={self[0]}, y={self[1]})"
+
+    def __str__(self):
+        return repr(self)
 
 
 def exec_time(func):
@@ -75,6 +114,11 @@ def coord_op(coord_left, coord_right, op):
         return tuple(l * r for l, r in zip(coord_left, coord_right))
     else:
         raise ValueError("Unsupported operation")
+
+
+def get_map_files_mapping():
+    files = list(resources.files('snake_sim.maps.map_images').iterdir())
+    return {f.name.split('.')[0]: f for f in files if f.is_file()}
 
 
 def rand_str(n):

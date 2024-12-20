@@ -102,7 +102,7 @@ if __name__ == '__main__':
     rundata = []
     # area_coord = (22,27)
     ac = AreaChecker(env.FOOD_TILE, env.FREE_TILE, snake.body_value, env.width, env.height)
-    snake.set_env_data(env._get_env_data(snake.id))
+    snake.update_env_data(env._get_env_data(snake.id))
     snake.update_map(snake.env_data.map)
 
     # time_e = time()

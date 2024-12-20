@@ -1,60 +1,74 @@
 import sys
 import json
-from multiprocessing import Pipe, Process
+import logging
+from multiprocessing import Pipe, Process, Event
 from pathlib import Path
+from importlib import resources
+from typing import Dict, Tuple
 
-from snake_sim.controllers.keyboard_controller import ControllerCollection
+
 from snake_sim.utils import DotDict
-from snake_sim.snake_env import SnakeEnv
-from snake_sim.snakes.auto_snake import AutoSnake
-from snake_sim.snakes.manual_snake import ManualSnake
 from snake_sim.render.pygame_render import play_runfile, play_stream, play_game
 from snake_sim.cli import cli
+from snake_sim.environment.snake_loop_control import SnakeLoopControl, SimConfig, GameConfig
+from snake_sim.loop_observers.pygame_run_data_observer import PygameRunDataObserver
+from snake_sim.loop_observers.recorder_run_data_observer import RecorderRunDataObserver
+from snake_sim.loop_observers.run_data_loop_observer import RunDataLoopObserver
+from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
 
-def setup_game(config):
-    env = SnakeEnv(config.grid_width, config.grid_height, config.food, config.food_decay)
-    if config.get('map'):
-        env.load_png_map(config.map)
-    count = config.num_players
+with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
+    default_config = DotDict(json.load(config_file))
 
-    ctl_collection = ControllerCollection()
-    for player in range(config.num_players):
-        snake_config = config.snake_configs[player]
-        man_snake = ManualSnake(**snake_config['snake'], help=1)
-        ctl_collection.bind_controller(man_snake)
-        env.add_snake(man_snake, **snake_config['env'])
-    ctl_collection.handle_controllers() # this reads the keyboard input in a separate thread
+log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+log = logging.getLogger()
+log.setLevel(logging.DEBUG)
+s_handler = logging.StreamHandler()
+s_handler.formatter = logging.Formatter(log_format)
+log.addHandler(s_handler)
 
-    for snake_config in config.snake_configs[config.num_players:]:
-        if count >= config.snake_count:
-            break
-        count += 1
-        env.add_snake(AutoSnake(**snake_config['snake'], calc_timeout=config.calc_timeout), **snake_config['env'])
-    return env
-
-
-def setup_env(config):
-    env = SnakeEnv(config.grid_width, config.grid_height, config.food, config.food_decay)
-    if config.get('map'):
-        env.load_png_map(config.map)
-    count = 0
-
-    for snake_config in config.snake_configs:
-        if count >= config.snake_count:
-            break
-        count += 1
-        env.add_snake(AutoSnake(**snake_config['snake'], calc_timeout=config.calc_timeout), **snake_config['env'])
-    return env
+def create_color_map(snake_ids) -> Dict[int, Tuple[int, int, int]]:
+    color_map = {default_config[key]: value for key, value in default_config.color_mapping.items()}
+    print(snake_ids)
+    for i, id in enumerate(snake_ids):
+        print(id, i)
+        color_map[id] = default_config.snake_colors[i]["head_color"]
+        color_map[id+1] = default_config.snake_colors[i]["body_color"]
+    print(color_map)
+    return color_map
 
 
-def start_game_run(conn, config):
-    env = setup_game(config)
-    env.game_run(conn, steps_per_min=config.spm, verbose=config.verbose)
+def setup_sim_loop(config):
+    loop_control = SnakeLoopControl()
+    loop_control.init(SimConfig(
+        map=config.map,
+        food=config.food,
+        height=config.grid_height,
+        width=config.grid_width,
+        food_decay=config.food_decay,
+        snake_count=config.snake_count,
+        calc_timeout=config.calc_timeout,
+        verbose=config.verbose,
+        start_length=config.start_length
+    ))
+    return loop_control
 
 
-def start_stream_run(conn, config):
-    env = setup_env(config)
-    env.stream_run(conn, verbose=config.verbose)
+def setup_game_loop(config):
+    loop_control = SnakeLoopControl()
+    loop_control.init(GameConfig(
+        map=config.map,
+        food=config.food,
+        height=config.grid_height,
+        width=config.grid_width,
+        food_decay=config.food_decay,
+        snake_count=config.snake_count,
+        calc_timeout=config.calc_timeout,
+        verbose=config.verbose,
+        player_count=config.num_players,
+        spm=config.spm,
+        start_length=config.start_length
+    ))
+    return loop_control
 
 
 def main():
@@ -69,34 +83,60 @@ def main():
         play_runfile(filepath=Path(config.filepath), sound_on=config.sound, fps=config.fps)
 
     elif config.command == "compute":
-        env = setup_env(config)
-        nr_runs = config.nr_runs or 1
-        for _ in range(nr_runs):
-            env.generate_run(verbose=config.verbose)
-            env.reset()
+        for _ in range(config.nr_runs):
+            loop_control = setup_sim_loop(config)
+            run_data_loop_observer = RunDataLoopObserver()
+            adapter = RunDataAdapter(loop_control.get_init_data(), create_color_map(loop_control.get_snake_ids()))
+            run_data_loop_observer.set_adapter(adapter)
+            if not config.no_record:
+                recording_file = None if not config.record_file else config.record_file
+                run_data_loop_observer.add_observer(RecorderRunDataObserver(recording_dir=config.record_dir, recording_file=recording_file, as_proto=False))
+            loop_control.run()
 
     elif config.command == "stream":
         parent_conn, child_conn = Pipe()
-        env_p = Process(target=start_stream_run, args=(child_conn, config))
-        render_p = Process(target=play_stream, args=(parent_conn, config.fps, config.sound))
+        loop_control = setup_sim_loop(config)
+        run_data_loop_observer = RunDataLoopObserver()
+        adapter = RunDataAdapter(loop_control.get_init_data(), create_color_map(loop_control.get_snake_ids()))
+        run_data_loop_observer.set_adapter(adapter)
+        if not config.no_record:
+            recording_file = None if not config.record_file else config.record_file
+            run_data_loop_observer.add_observer(RecorderRunDataObserver(recording_dir=config.record_dir, recording_file=recording_file, as_proto=False))
+        run_data_loop_observer.add_observer(PygameRunDataObserver(parent_conn))
+        loop_control.add_observer(run_data_loop_observer)
+        stop_event = Event()
+        loop_p = Process(target=loop_control.run, args=(stop_event,))
+        render_p = Process(target=play_stream, args=(child_conn, config.fps, config.sound))
         render_p.start()
-        env_p.start()
+        loop_p.start()
         render_p.join()
-        parent_conn.send('stop')
+        stop_event.set()
+
 
     elif config.command == "game":
         parent_conn, child_conn = Pipe()
-        env_p = Process(target=start_game_run, args=(child_conn, config))
-        # since the FrameBuilder by default expands the frame by 2, each step is 2 frames,
-        # but this should not be hardcoded like this, but figure it out later...
-        fps = (config.spm * 2) / 60
-        render_p = Process(target=play_game, args=(parent_conn, fps, config.sound))
+        loop_control = setup_game_loop(config)
+        run_data_loop_observer = RunDataLoopObserver()
+        adapter = RunDataAdapter(loop_control.get_init_data(), create_color_map(loop_control.get_snake_ids()))
+        run_data_loop_observer.set_adapter(adapter)
+        if not config.no_record:
+            recording_file = None if not config.record_file else config.record_file
+            run_data_loop_observer.add_observer(RecorderRunDataObserver(recording_dir=config.record_dir, recording_file=recording_file, as_proto=False))
+        run_data_loop_observer.add_observer(PygameRunDataObserver(parent_conn))
+        loop_control.add_observer(run_data_loop_observer)
+        stop_event = Event()
+        loop_p = Process(target=loop_control.run, args=(stop_event,))
+        render_p = Process(target=play_stream, args=(child_conn, config.fps, config.sound))
         render_p.start()
-        env_p.start()
+        loop_p.start()
         render_p.join()
-        parent_conn.send('stop')
+        stop_event.set()
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as e:
+        log.error(e)
+        log.debug("TRACE: ", exc_info=True)
 

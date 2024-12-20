@@ -29,19 +29,20 @@ class AutoSnakeBase(Snake):
         raise NotImplementedError
 
     def update(self, env_data: dict):
+        super().update(env_data)
         self.start_time = time()
-        self.set_env_data(env_data)
-        self.update_map(self.env_data.map)
         next_tile = self._pick_direction()
         if next_tile is None:
             next_tile = self.coord
-        return coord_op(next_tile, self.coord, '-')
+        direction = coord_op(next_tile, self.coord, '-')
+        self.set_new_head(next_tile)
+        return direction
 
 
     def _update_snake_position(self, s_map, body_coords, old_tail):
         head = body_coords[0]
         if old_tail is not None:
-            s_map[old_tail[1], old_tail[0]] = self.env_data.FREE_TILE
+            s_map[old_tail[1], old_tail[0]] = self.env_data.free_value
         for i in range(2):
             x, y = body_coords[i]
             s_map[y, x] = self.head_value if body_coords[i] == head else self.body_value
@@ -93,14 +94,20 @@ class AutoSnakeBase(Snake):
         for row in s_map:
             print_row = []
             for c in row:
-                if c == self.env_data.FREE_TILE:
+                if c == self.env_data.free_value:
                     print_row.append(' . ')
-                elif c == self.env_data.FOOD_TILE:
+                elif c == self.env_data.food_value:
                     print_row.append(' F ')
-                elif c == self.env_data.BLOCKED_TILE:
+                elif c == self.env_data.blocked_value:
                     print_row.append(' # ')
+                elif c == self.head_value:
+                    print_row.append(f' A ')
+                elif c == self.body_value:
+                    print_row.append(' a ')
+                elif c % 2 == 0:
+                    print_row.append(f' X ')
                 else:
-                    print_row.append(f' {chr(c)} ')
+                    print_row.append(f' x ')
             print(''.join(print_row))
 
 
