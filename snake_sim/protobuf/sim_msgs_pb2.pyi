@@ -56,26 +56,26 @@ class RGB(_message.Message):
     def __init__(self, r: _Optional[int] = ..., g: _Optional[int] = ..., b: _Optional[int] = ...) -> None: ...
 
 class SnakeStep(_message.Message):
-    __slots__ = ("snake_id", "curr_head", "prev_head", "curr_tail", "head_dir", "tail_dir", "did_eat", "did_turn", "body")
+    __slots__ = ("snake_id", "curr_head", "prev_head", "curr_tail", "head_dir", "did_eat", "did_turn", "body", "did_grow")
     SNAKE_ID_FIELD_NUMBER: _ClassVar[int]
     CURR_HEAD_FIELD_NUMBER: _ClassVar[int]
     PREV_HEAD_FIELD_NUMBER: _ClassVar[int]
     CURR_TAIL_FIELD_NUMBER: _ClassVar[int]
     HEAD_DIR_FIELD_NUMBER: _ClassVar[int]
-    TAIL_DIR_FIELD_NUMBER: _ClassVar[int]
     DID_EAT_FIELD_NUMBER: _ClassVar[int]
     DID_TURN_FIELD_NUMBER: _ClassVar[int]
     BODY_FIELD_NUMBER: _ClassVar[int]
+    DID_GROW_FIELD_NUMBER: _ClassVar[int]
     snake_id: str
     curr_head: Position
     prev_head: Position
     curr_tail: Position
     head_dir: Position
-    tail_dir: Position
     did_eat: bool
     did_turn: str
     body: _containers.RepeatedCompositeFieldContainer[Position]
-    def __init__(self, snake_id: _Optional[str] = ..., curr_head: _Optional[_Union[Position, _Mapping]] = ..., prev_head: _Optional[_Union[Position, _Mapping]] = ..., curr_tail: _Optional[_Union[Position, _Mapping]] = ..., head_dir: _Optional[_Union[Position, _Mapping]] = ..., tail_dir: _Optional[_Union[Position, _Mapping]] = ..., did_eat: bool = ..., did_turn: _Optional[str] = ..., body: _Optional[_Iterable[_Union[Position, _Mapping]]] = ...) -> None: ...
+    did_grow: bool
+    def __init__(self, snake_id: _Optional[str] = ..., curr_head: _Optional[_Union[Position, _Mapping]] = ..., prev_head: _Optional[_Union[Position, _Mapping]] = ..., curr_tail: _Optional[_Union[Position, _Mapping]] = ..., head_dir: _Optional[_Union[Position, _Mapping]] = ..., did_eat: bool = ..., did_turn: _Optional[str] = ..., body: _Optional[_Iterable[_Union[Position, _Mapping]]] = ..., did_grow: bool = ...) -> None: ...
 
 class StepData(_message.Message):
     __slots__ = ("snakes", "food", "step", "full_state")
@@ -90,7 +90,7 @@ class StepData(_message.Message):
     def __init__(self, snakes: _Optional[_Iterable[_Union[SnakeStep, _Mapping]]] = ..., food: _Optional[_Iterable[_Union[Position, _Mapping]]] = ..., step: _Optional[int] = ..., full_state: bool = ...) -> None: ...
 
 class RunMetaData(_message.Message):
-    __slots__ = ("width", "height", "food_value", "free_value", "blocked_value", "color_mapping", "snake_data", "base_map")
+    __slots__ = ("width", "height", "food_value", "free_value", "blocked_value", "color_mapping", "snake_ids", "base_map")
     class ColorMappingEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -104,7 +104,7 @@ class RunMetaData(_message.Message):
     FREE_VALUE_FIELD_NUMBER: _ClassVar[int]
     BLOCKED_VALUE_FIELD_NUMBER: _ClassVar[int]
     COLOR_MAPPING_FIELD_NUMBER: _ClassVar[int]
-    SNAKE_DATA_FIELD_NUMBER: _ClassVar[int]
+    SNAKE_IDS_FIELD_NUMBER: _ClassVar[int]
     BASE_MAP_FIELD_NUMBER: _ClassVar[int]
     width: int
     height: int
@@ -112,9 +112,9 @@ class RunMetaData(_message.Message):
     free_value: int
     blocked_value: int
     color_mapping: _containers.MessageMap[int, RGB]
-    snake_data: _containers.RepeatedCompositeFieldContainer[SnakeData]
+    snake_ids: _containers.RepeatedScalarFieldContainer[int]
     base_map: _containers.RepeatedScalarFieldContainer[int]
-    def __init__(self, width: _Optional[int] = ..., height: _Optional[int] = ..., food_value: _Optional[int] = ..., free_value: _Optional[int] = ..., blocked_value: _Optional[int] = ..., color_mapping: _Optional[_Mapping[int, RGB]] = ..., snake_data: _Optional[_Iterable[_Union[SnakeData, _Mapping]]] = ..., base_map: _Optional[_Iterable[int]] = ...) -> None: ...
+    def __init__(self, width: _Optional[int] = ..., height: _Optional[int] = ..., food_value: _Optional[int] = ..., free_value: _Optional[int] = ..., blocked_value: _Optional[int] = ..., color_mapping: _Optional[_Mapping[int, RGB]] = ..., snake_ids: _Optional[_Iterable[int]] = ..., base_map: _Optional[_Iterable[int]] = ...) -> None: ...
 
 class RunData(_message.Message):
     __slots__ = ("run_meta_data", "steps")
@@ -130,16 +130,6 @@ class RunData(_message.Message):
     run_meta_data: RunMetaData
     steps: _containers.MessageMap[int, StepData]
     def __init__(self, run_meta_data: _Optional[_Union[RunMetaData, _Mapping]] = ..., steps: _Optional[_Mapping[int, StepData]] = ...) -> None: ...
-
-class SnakeData(_message.Message):
-    __slots__ = ("snake_id", "head_color", "body_color")
-    SNAKE_ID_FIELD_NUMBER: _ClassVar[int]
-    HEAD_COLOR_FIELD_NUMBER: _ClassVar[int]
-    BODY_COLOR_FIELD_NUMBER: _ClassVar[int]
-    snake_id: str
-    head_color: RGB
-    body_color: RGB
-    def __init__(self, snake_id: _Optional[str] = ..., head_color: _Optional[_Union[RGB, _Mapping]] = ..., body_color: _Optional[_Union[RGB, _Mapping]] = ...) -> None: ...
 
 class MsgWrapper(_message.Message):
     __slots__ = ("type", "payload")

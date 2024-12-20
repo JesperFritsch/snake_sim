@@ -12,10 +12,19 @@ def positive_int(value):
         raise argparse.ArgumentTypeError(f"Invalid value: {value}. Must be a positive integer.")
     return ivalue
 
+class EnsureDirAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        path = Path(values)
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True)
+        setattr(namespace, self.dest, path)
 
 def add_common_arguments(parser):
     parser.add_argument('--sound', action='store_true', help='Play sound')
     parser.add_argument('--verbose', action='store_true', help='Print verbose output', default=False)
+    parser.add_argument('--no-record', action='store_true', help='Do not record the run', default=False)
+    parser.add_argument('--record-dir', type=Path, action=EnsureDirAction, help='where to put the recording file', default=Path(__file__).parent / 'runs')
+    parser.add_argument('--record-file', type=str, help='Name of the recording file', default="")
 
 
 def add_run_config_arguments(parser):
@@ -26,6 +35,7 @@ def add_run_config_arguments(parser):
     parser.add_argument('--food-decay', type=int, help='Number of steps before food decays, 0 for no decay')
     parser.add_argument('--calc-timeout', type=int, help='Timeout for calculation')
     parser.add_argument('--map', type=str, help='Path to map file')
+    parser.add_argument('--start-length', type=int, help='Starting length of the snakes')
 
 
 def add_playback_arguments(parser):
