@@ -19,7 +19,7 @@ from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
 
-log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+log_format = "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 s_handler = logging.StreamHandler()
@@ -29,7 +29,6 @@ log.addHandler(s_handler)
 
 def create_color_map(env_init_data) -> Dict[int, Tuple[int, int, int]]:
     snake_values = env_init_data.snake_values
-    print(snake_values)
     color_map = {default_config[key]: value for key, value in default_config.color_mapping.items()}
     for i, snake_value_dict in enumerate(snake_values.values()):
         color_map[snake_value_dict["head_value"]] = default_config.snake_colors[i]["head_color"]
@@ -65,7 +64,8 @@ def setup_loop(config, run_data_loop_observer: RunDataLoopObserver):
             start_length=config.start_length
         )
     loop_control.init(sim_config)
-    adapter = RunDataAdapter(loop_control.get_init_data(), create_color_map(loop_control.get_snake_ids()))
+    init_data = loop_control.get_init_data()
+    adapter = RunDataAdapter(init_data, create_color_map(init_data))
     run_data_loop_observer.set_adapter(adapter)
     if not config.no_record:
         recording_file = config.record_file if config.record_file else None
