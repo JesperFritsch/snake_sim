@@ -61,10 +61,7 @@ class FrameBuilder:
         self.food_value = run_meta_data['food_value']
         self.blocked_value = run_meta_data['blocked_value']
         self.color_mapping = {int(k): tuple(v) for k, v in run_meta_data['color_mapping'].items()}
-        print(self.color_mapping)
-        print(run_meta_data['snake_values'])
         self.snake_values = {int(k): {"body_value": v["body_value"], "head_value": v["head_value"]} for k, v in run_meta_data['snake_values'].items()}
-        print(self.snake_values)
         self.expand_factor = expand_factor
         self.last_food = set()
         self.last_handled_step = -1
