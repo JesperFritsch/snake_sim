@@ -158,6 +158,7 @@ class SnakeEnv(ISnakeEnv):
         self._height = height
         self._width = width
         self._map.resize((height, width))
+        self._base_map.resize((height, width))
         self._food_handler.resize(height, width)
 
     def load_map(self, map_img_path: str):
