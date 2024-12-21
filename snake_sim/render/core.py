@@ -91,8 +91,8 @@ class FrameBuilder:
 
 
     def step_to_pixel_changes(self, step_data):
-        if step_data['step'] != self.last_handled_step + 1:
-            raise OutOfSyncError(f"Step nr '{step_data['step']}' is not the next step in the sequence. Last handled step was '{self.last_handled_step}'")
+        # if step_data['step'] != self.last_handled_step + 1:
+        #     raise OutOfSyncError(f"Step nr '{step_data['step']}' is not the next step in the sequence. Last handled step was '{self.last_handled_step}'")
         self.last_handled_step = step_data['step']
         changes = []
         current_food = set([tuple(x) for x in step_data['food']])

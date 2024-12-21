@@ -15,16 +15,17 @@ class SnakeFactory:
             'auto': AutoSnake,
             'manual': ManualSnake
         }
+        self.used_ids = set()
 
     def create_snake(self, snake_type, **kwargs):
         return self.snake_types[snake_type](**kwargs)
 
     def create_snakes(self, type_count: Dict[str, int], **kwargs):
         snakes = []
-        snake_id = 10
+        snake_id = max(self.used_ids) + 1 if self.used_ids else 0
         for snake_type, count in type_count.items():
-            while count > 0:
-                count -= 1
+            for _ in range(count):
                 snakes.append(self.create_snake(snake_type, id=snake_id, **kwargs))
-                snake_id += 2
+                self.used_ids.add(snake_id)
+                snake_id += 1
         return snakes

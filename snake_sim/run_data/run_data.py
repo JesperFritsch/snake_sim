@@ -164,9 +164,9 @@ class RunData:
             color_mapping={int(k): v for k, v in run_dict['color_mapping'].items()},
             snake_values=run_dict['snake_values']
         )
-        for step_nr, step_dict in run_dict['steps'].items():
+        for step_dict in run_dict['steps'].values():
             step_data_obj = StepData.from_dict(step_dict)
-            run_data.add_step(int(step_nr), step_data_obj)
+            run_data.add_step(step_data_obj)
         return run_data
 
     @classmethod
