@@ -33,7 +33,7 @@ def frames_sound_from_run_data(run_data, expand_factor=2):
     sound_buffer = []
     frame_builder = core.FrameBuilder(run_data.to_dict(), expand_factor)
     nr_steps = len(run_data.steps)
-    for step_nr in range(1, nr_steps + 1):
+    for step_nr in range(nr_steps):
         step_data = run_data.steps[step_nr]
         new_frames = frame_builder.step_to_frames(step_data.to_dict())
         frames_buffer.extend(new_frames)
@@ -224,7 +224,8 @@ def play_runfile(filepath=None, sound_on=True, fps=10):
     play_run(frame_buffer, sound_buffer, run_data, grid_width, grid_height, sound_on=sound_on, fps_playback=fps)
 
 
-def play_game(conn, fps, sound_on=True):
+def play_game(conn, spm, sound_on=True):
+    fps = spm / 60 * 2
     sound_buffer = []
     frame_buffer = []
     run_data = RunData(0, 0, [], np.array([]),0,0,0,{},{}) # create this here so that the stream thread and the play thread can share the same object

@@ -7,9 +7,9 @@ from snake_sim.utils import coord_op
 
 
 class ManualSnake(Snake):
-    def __init__(self, id: str, start_length: int, help=0):
+    def __init__(self, id: str, start_length: int, help: int):
         super().__init__(id, start_length)
-        self.help = 0
+        self.help = help
         self.last_direction_coord = (0, 0)
         self.next_direction = (0, -1)
 
