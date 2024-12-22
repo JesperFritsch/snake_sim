@@ -1,13 +1,13 @@
 
 
-from multiprocessing.connection import PipeConnection
+from multiprocessing.connection import Connection
 
 from snake_sim.loop_observers.run_data_observer_interface import IRunDataObserver
 from snake_sim.run_data.run_data import StepData
 
 class PygameRunDataObserver(IRunDataObserver):
-    def __init__(self, pipe_conn: PipeConnection):
-        if not isinstance(pipe_conn, PipeConnection):
+    def __init__(self, pipe_conn: Connection):
+        if not isinstance(pipe_conn, Connection):
             raise ValueError('pipe_conn must be of type Connection but is {}'.format(type(pipe_conn)))
         self.pipe_conn = pipe_conn
         self.adapter = None
