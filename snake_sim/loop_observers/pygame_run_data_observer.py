@@ -3,7 +3,6 @@
 from multiprocessing.connection import Connection
 import logging
 from pathlib import Path
-
 from snake_sim.loop_observers.run_data_observer_interface import IRunDataObserver
 from snake_sim.run_data.run_data import StepData
 
