@@ -143,8 +143,10 @@ class SnakeEnv(ISnakeEnv):
     def _update_snake_on_map(self, id, old_tail):
         snake_rep = self._snake_reps[id]
         new_head = snake_rep.get_head()
+        old_head = snake_rep.body[1]
         new_tail = snake_rep.get_tail()
         self._map[new_head[1], new_head[0]] = snake_rep.head_value
+        self._map[old_head[1], old_head[0]] = snake_rep.body_value
         self._map[new_tail[1], new_tail[0]] = snake_rep.body_value
         if old_tail != new_tail:
             self._map[old_tail[1], old_tail[0]] = self._free_value
@@ -239,8 +241,6 @@ class SnakeEnv(ISnakeEnv):
                     print_row.append(' F ')
                 elif c == self._blocked_value:
                     print_row.append(' # ')
-                elif c % 2 == 0:
-                    print_row.append(f' X ')
                 else:
                     print_row.append(f' x ')
             print(''.join(print_row))
