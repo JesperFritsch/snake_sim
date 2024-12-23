@@ -55,6 +55,14 @@ class RGB(_message.Message):
     b: int
     def __init__(self, r: _Optional[int] = ..., g: _Optional[int] = ..., b: _Optional[int] = ...) -> None: ...
 
+class SnakeValues(_message.Message):
+    __slots__ = ("body_value", "head_value")
+    BODY_VALUE_FIELD_NUMBER: _ClassVar[int]
+    HEAD_VALUE_FIELD_NUMBER: _ClassVar[int]
+    body_value: int
+    head_value: int
+    def __init__(self, body_value: _Optional[int] = ..., head_value: _Optional[int] = ...) -> None: ...
+
 class SnakeStep(_message.Message):
     __slots__ = ("snake_id", "curr_head", "prev_head", "curr_tail", "head_dir", "did_eat", "did_turn", "body", "did_grow")
     SNAKE_ID_FIELD_NUMBER: _ClassVar[int]
@@ -90,7 +98,7 @@ class StepData(_message.Message):
     def __init__(self, snakes: _Optional[_Iterable[_Union[SnakeStep, _Mapping]]] = ..., food: _Optional[_Iterable[_Union[Position, _Mapping]]] = ..., step: _Optional[int] = ..., full_state: bool = ...) -> None: ...
 
 class RunMetaData(_message.Message):
-    __slots__ = ("width", "height", "food_value", "free_value", "blocked_value", "color_mapping", "snake_ids", "base_map")
+    __slots__ = ("width", "height", "food_value", "free_value", "blocked_value", "color_mapping", "snake_ids", "base_map", "snake_values")
     class ColorMappingEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -98,6 +106,13 @@ class RunMetaData(_message.Message):
         key: int
         value: RGB
         def __init__(self, key: _Optional[int] = ..., value: _Optional[_Union[RGB, _Mapping]] = ...) -> None: ...
+    class SnakeValuesEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: int
+        value: SnakeValues
+        def __init__(self, key: _Optional[int] = ..., value: _Optional[_Union[SnakeValues, _Mapping]] = ...) -> None: ...
     WIDTH_FIELD_NUMBER: _ClassVar[int]
     HEIGHT_FIELD_NUMBER: _ClassVar[int]
     FOOD_VALUE_FIELD_NUMBER: _ClassVar[int]
@@ -106,6 +121,7 @@ class RunMetaData(_message.Message):
     COLOR_MAPPING_FIELD_NUMBER: _ClassVar[int]
     SNAKE_IDS_FIELD_NUMBER: _ClassVar[int]
     BASE_MAP_FIELD_NUMBER: _ClassVar[int]
+    SNAKE_VALUES_FIELD_NUMBER: _ClassVar[int]
     width: int
     height: int
     food_value: int
@@ -114,7 +130,8 @@ class RunMetaData(_message.Message):
     color_mapping: _containers.MessageMap[int, RGB]
     snake_ids: _containers.RepeatedScalarFieldContainer[int]
     base_map: _containers.RepeatedScalarFieldContainer[int]
-    def __init__(self, width: _Optional[int] = ..., height: _Optional[int] = ..., food_value: _Optional[int] = ..., free_value: _Optional[int] = ..., blocked_value: _Optional[int] = ..., color_mapping: _Optional[_Mapping[int, RGB]] = ..., snake_ids: _Optional[_Iterable[int]] = ..., base_map: _Optional[_Iterable[int]] = ...) -> None: ...
+    snake_values: _containers.MessageMap[int, SnakeValues]
+    def __init__(self, width: _Optional[int] = ..., height: _Optional[int] = ..., food_value: _Optional[int] = ..., free_value: _Optional[int] = ..., blocked_value: _Optional[int] = ..., color_mapping: _Optional[_Mapping[int, RGB]] = ..., snake_ids: _Optional[_Iterable[int]] = ..., base_map: _Optional[_Iterable[int]] = ..., snake_values: _Optional[_Mapping[int, SnakeValues]] = ...) -> None: ...
 
 class RunData(_message.Message):
     __slots__ = ("run_meta_data", "steps")
