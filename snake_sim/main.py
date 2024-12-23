@@ -19,55 +19,58 @@ from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
 
-log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+log_format = "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 s_handler = logging.StreamHandler()
 s_handler.formatter = logging.Formatter(log_format)
 log.addHandler(s_handler)
 
-def create_color_map(snake_ids) -> Dict[int, Tuple[int, int, int]]:
+
+def create_color_map(env_init_data) -> Dict[int, Tuple[int, int, int]]:
+    snake_values = env_init_data.snake_values
     color_map = {default_config[key]: value for key, value in default_config.color_mapping.items()}
-    print(snake_ids)
-    for i, id in enumerate(snake_ids):
-        print(id, i)
-        color_map[id] = default_config.snake_colors[i]["head_color"]
-        color_map[id+1] = default_config.snake_colors[i]["body_color"]
-    print(color_map)
+    for i, snake_value_dict in enumerate(snake_values.values()):
+        color_map[snake_value_dict["head_value"]] = default_config.snake_colors[i]["head_color"]
+        color_map[snake_value_dict["body_value"]] = default_config.snake_colors[i]["body_color"]
     return color_map
 
-
-def setup_sim_loop(config):
+def setup_loop(config, run_data_loop_observer: RunDataLoopObserver):
     loop_control = SnakeLoopControl()
-    loop_control.init(SimConfig(
-        map=config.map,
-        food=config.food,
-        height=config.grid_height,
-        width=config.grid_width,
-        food_decay=config.food_decay,
-        snake_count=config.snake_count,
-        calc_timeout=config.calc_timeout,
-        verbose=config.verbose,
-        start_length=config.start_length
-    ))
-    return loop_control
-
-
-def setup_game_loop(config):
-    loop_control = SnakeLoopControl()
-    loop_control.init(GameConfig(
-        map=config.map,
-        food=config.food,
-        height=config.grid_height,
-        width=config.grid_width,
-        food_decay=config.food_decay,
-        snake_count=config.snake_count,
-        calc_timeout=config.calc_timeout,
-        verbose=config.verbose,
-        player_count=config.num_players,
-        spm=config.spm,
-        start_length=config.start_length
-    ))
+    if config.command == "stream" or config.command == "compute":
+        sim_config = SimConfig(
+            map=config.map,
+            food=config.food,
+            height=config.grid_height,
+            width=config.grid_width,
+            food_decay=config.food_decay,
+            snake_count=config.snake_count,
+            calc_timeout=config.calc_timeout,
+            verbose=config.verbose,
+            start_length=config.start_length
+        )
+    elif config.command == "game":
+        sim_config = GameConfig(
+            map=config.map,
+            food=config.food,
+            height=config.grid_height,
+            width=config.grid_width,
+            food_decay=config.food_decay,
+            snake_count=config.snake_count,
+            calc_timeout=config.calc_timeout,
+            verbose=config.verbose,
+            player_count=config.num_players,
+            spm=config.spm,
+            start_length=config.start_length
+        )
+    loop_control.init(sim_config)
+    init_data = loop_control.get_init_data()
+    adapter = RunDataAdapter(init_data, create_color_map(init_data))
+    run_data_loop_observer.set_adapter(adapter)
+    if not config.no_record:
+        recording_file = config.record_file if config.record_file else None
+        run_data_loop_observer.add_observer(RecorderRunDataObserver(recording_dir=config.record_dir, recording_file=recording_file, as_proto=False))
+    loop_control.add_observer(run_data_loop_observer)
     return loop_control
 
 
@@ -84,26 +87,15 @@ def main():
 
     elif config.command == "compute":
         for _ in range(config.nr_runs):
-            loop_control = setup_sim_loop(config)
             run_data_loop_observer = RunDataLoopObserver()
-            adapter = RunDataAdapter(loop_control.get_init_data(), create_color_map(loop_control.get_snake_ids()))
-            run_data_loop_observer.set_adapter(adapter)
-            if not config.no_record:
-                recording_file = None if not config.record_file else config.record_file
-                run_data_loop_observer.add_observer(RecorderRunDataObserver(recording_dir=config.record_dir, recording_file=recording_file, as_proto=False))
+            loop_control = setup_loop(config, run_data_loop_observer)
             loop_control.run()
 
-    elif config.command == "stream":
+    elif config.command == "stream" or config.command == "game":
         parent_conn, child_conn = Pipe()
-        loop_control = setup_sim_loop(config)
         run_data_loop_observer = RunDataLoopObserver()
-        adapter = RunDataAdapter(loop_control.get_init_data(), create_color_map(loop_control.get_snake_ids()))
-        run_data_loop_observer.set_adapter(adapter)
-        if not config.no_record:
-            recording_file = None if not config.record_file else config.record_file
-            run_data_loop_observer.add_observer(RecorderRunDataObserver(recording_dir=config.record_dir, recording_file=recording_file, as_proto=False))
+        loop_control = setup_loop(config, run_data_loop_observer)
         run_data_loop_observer.add_observer(PygameRunDataObserver(parent_conn))
-        loop_control.add_observer(run_data_loop_observer)
         stop_event = Event()
         loop_p = Process(target=loop_control.run, args=(stop_event,))
         render_p = Process(target=play_stream, args=(child_conn, config.fps, config.sound))
@@ -111,27 +103,6 @@ def main():
         loop_p.start()
         render_p.join()
         stop_event.set()
-
-
-    elif config.command == "game":
-        parent_conn, child_conn = Pipe()
-        loop_control = setup_game_loop(config)
-        run_data_loop_observer = RunDataLoopObserver()
-        adapter = RunDataAdapter(loop_control.get_init_data(), create_color_map(loop_control.get_snake_ids()))
-        run_data_loop_observer.set_adapter(adapter)
-        if not config.no_record:
-            recording_file = None if not config.record_file else config.record_file
-            run_data_loop_observer.add_observer(RecorderRunDataObserver(recording_dir=config.record_dir, recording_file=recording_file, as_proto=False))
-        run_data_loop_observer.add_observer(PygameRunDataObserver(parent_conn))
-        loop_control.add_observer(run_data_loop_observer)
-        stop_event = Event()
-        loop_p = Process(target=loop_control.run, args=(stop_event,))
-        render_p = Process(target=play_stream, args=(child_conn, config.fps, config.sound))
-        render_p.start()
-        loop_p.start()
-        render_p.join()
-        stop_event.set()
-
 
 if __name__ == '__main__':
     try:

@@ -134,7 +134,7 @@ class RunData:
                 free_value: int,
                 blocked_value: int,
                 color_mapping: dict,
-                record_file: str = None):  # New parameter added
+                snake_values: dict):  # New parameter added
         self.width = width
         self.height = height
         self.snakes = snakes
@@ -143,8 +143,8 @@ class RunData:
         self.free_value = free_value
         self.blocked_value = blocked_value
         self.color_mapping = color_mapping
+        self.snake_values = snake_values
         self.steps: Dict[int, StepData] = {}
-        self.record_file = record_file  # New attribute added
 
     def get_metadata(self):
         metadata = self.to_dict()
@@ -158,16 +158,15 @@ class RunData:
             height=run_dict['height'],
             snakes=run_dict['snakes'],
             base_map=np.array(run_dict['base_map'], dtype=np.uint8),
+            food_value = run_dict['food_value'],
+            free_value = run_dict['free_value'],
+            blocked_value = run_dict['blocked_value'],
             color_mapping={int(k): v for k, v in run_dict['color_mapping'].items()},
-            record_file=run_dict.get('record_file')  # New field handled
+            snake_values=run_dict['snake_values']
         )
         for step_nr, step_dict in run_dict['steps'].items():
             step_data_obj = StepData.from_dict(step_dict)
             run_data.add_step(int(step_nr), step_data_obj)
-        run_data.food_value = run_dict['food_value']
-        run_data.free_value = run_dict['free_value']
-        run_data.blocked_value = run_dict['blocked_value']
-        run_data.color_mapping = {int(k): v for k, v in run_dict['color_mapping'].items()}
         return run_data
 
     @classmethod
@@ -182,7 +181,12 @@ class RunData:
             width=meta_data.width,
             height=meta_data.height,
             snakes=meta_data.snakes,
-            base_map=np.frombuffer(bytes(meta_data.base_map), dtype=np.uint8).reshape(meta_data.height, meta_data.width)
+            base_map=np.frombuffer(bytes(meta_data.base_map), dtype=np.uint8).reshape(meta_data.height, meta_data.width),
+            food_value=meta_data.food_value,
+            free_value=meta_data.free_value,
+            blocked_value=meta_data.blocked_value,
+            color_mapping={int(k): (v.r, v.g, v.b) for k, v in meta_data.color_mapping.items()},
+            snake_values={k: {'head_value': v.head_value, 'body_value': v.body_value} for k, v in meta_data.snake_values.items()},
         )
         run.color_mapping.update({int(k): (v.r, v.g, v.b) for k, v in meta_data.color_mapping.items()})
         for step_nr, step in run_data.steps.items():
@@ -259,7 +263,7 @@ class RunData:
             'snakes': self.snakes,
             'base_map': self.base_map.tolist(),
             'steps': {k: v.to_dict() for k, v in self.steps.items()},
-            'record_file': self.record_file  # New field added
+            'snake_values': self.snake_values
         }
 
     def to_protobuf(self, full_state=False):
@@ -280,5 +284,8 @@ class RunData:
             step_data = step_data.to_protobuf(full_state)
             run_data.steps[step_nr].CopyFrom(step_data)
         metadata.base_map.extend(self.base_map.ravel().tolist())
-        metadata.record_file = self.record_file  # New field added
+        for snake_id, snake_data in self.snake_values.items():
+            snake = metadata.snake_values[snake_id]
+            snake.head_value = snake_data['head_value']
+            snake.body_value = snake_data['body_value']
         return run_data
