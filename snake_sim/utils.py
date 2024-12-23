@@ -72,6 +72,9 @@ class Coord(tuple):
 
     def __str__(self):
         return repr(self)
+    
+    def __format__(self, format_spec):
+        return str(self).__format__(format_spec)
 
 
 def exec_time(func):
