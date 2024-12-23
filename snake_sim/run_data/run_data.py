@@ -204,30 +204,21 @@ class RunData:
     def add_step(self, step: StepData):
         self.steps[step.step] = step
 
-    def get_coord_mapping(self, step_nr):
-        steps = self.steps
-        final_step = len(steps)
-        current = 1
-        coords_map = {}
-        last_step: StepData = steps[current]
-        current_step: StepData = None
-        while current <= step_nr < final_step:
-            current_step = steps[current]
-            snakes = current_step.snakes
-            for snake in snakes:
-                body = coords_map.setdefault(snake['snake_id'], deque([snake['prev_head']]))
-                curr_head = snake['curr_head']
-                body.appendleft(curr_head)
-                if last_step is not None:
-                    last_snake_step = list(filter(lambda x: x['snake_id'] == snake['snake_id'], last_step.snakes))[0]
-                    if not coord_cmp(last_snake_step['curr_tail'], snake['curr_tail']):
-                        body.pop()
-            current += 1
-            last_step = current_step
-        if current_step is not None:
-            coords_map['food'] = current_step.food
-            return coords_map
-        return None
+    def get_state_dict(self, step_nr):
+        step = self.steps[step_nr]
+        metadata = self.get_metadata()
+        snake_bodies = {}
+        for i in range(step_nr):
+            step = self.steps[i]
+            for snake_data in step.snakes:
+                body: deque = snake_bodies.setdefault(snake_data['snake_id'], deque((snake_data['prev_head'],)))
+                body.appendleft(snake_data['curr_head'])
+                if Coord(*body[-1]) != Coord(*snake_data['curr_tail']):
+                    body.pop()
+        snake_bodies = {id: list(body) for id, body in snake_bodies.items()}
+        metadata['snakes'] = snake_bodies
+        metadata['food'] = step.food
+        return metadata
 
     def write_to_file(self, output_dir, aborted=False, ml=False, filename=None, as_proto=False):
         runs_dir = Path(output_dir)

@@ -9,6 +9,7 @@ import threading
 import time
 from pathlib import Path
 
+import snake_sim
 from snake_sim.render import core
 # from snake_sim.snake_env import RunData, StepData
 from snake_sim.run_data.run_data import RunData, StepData
@@ -87,6 +88,7 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
     run_data.free_value = run_meta_data['free_value']
     run_data.blocked_value = run_meta_data['blocked_value']
     run_data.color_mapping = {int(k): tuple(v) for k, v in run_meta_data['color_mapping'].items()}
+    run_data.snake_values = run_meta_data["snake_values"]
 
     frame_builder = core.FrameBuilder(run_meta_data=run_meta_data)
 
@@ -154,7 +156,12 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
                 elif event.key == pygame.K_RIGHT:
                     new_frame = True
                 elif event.key == pygame.K_RETURN:
-                    print(run_data.get_coord_mapping(sim_step))
+                    p_root = Path(snake_sim.__file__).parent.parent
+                    test_bench = p_root / "test_bench" / "state_files"
+                    state_file = test_bench / f"state_{sim_step}.json" 
+                    with open(state_file, 'w') as f:
+                        f.write(json.dumps(run_data.get_state_dict(sim_step)))
+                    print(f"State saved to {state_file}")
         if keys[pygame.K_LCTRL]:
             if keys[pygame.K_LEFT]:
                 play_direction = -1
