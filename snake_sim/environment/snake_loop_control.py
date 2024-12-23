@@ -4,7 +4,7 @@ from typing import Union, List
 from importlib import resources as pkg_resources
 
 from snake_sim.environment.interfaces.main_loop_interface import ILoopObserver
-
+from snake_sim.snakes.manual_snake import ManualSnake
 from snake_sim.environment.main_loop import SimLoop, GameLoop
 from snake_sim.environment.snake_handlers import SnakeHandler
 from snake_sim.controllers.keyboard_controller import ControllerCollection
@@ -62,16 +62,13 @@ class SnakeLoopControl:
 
         if isinstance(config, GameConfig):
             # Initialize game loop add keyboard controllers
-            ctl_collection = ControllerCollection()
             self._loop = GameLoop()
             self._loop.set_steps_per_min(config.spm)
             for man_snake in snake_factory.create_snakes({'manual': config.player_count}, start_length=config.start_length, help=1):
-                ctl_collection.bind_controller(man_snake)
                 self._snake_handler.add_snake(man_snake)
 
             for auto_snake in snake_factory.create_snakes({'auto': config.snake_count - config.player_count}, start_length=config.start_length):
                 self._snake_handler.add_snake(auto_snake)
-            ctl_collection.handle_controllers()
 
         else:
             # Initialize simulation loop
@@ -109,11 +106,20 @@ class SnakeLoopControl:
             raise ValueError('Loop not initialized')
         return self._snake_enviroment.get_init_data()
 
+    def _initialize_controllers(self):
+        """Initializes the controllers"""
+        ctl_collection = ControllerCollection()
+        for snake in self._snake_handler.get_snakes():
+            if isinstance(snake, ManualSnake):
+                ctl_collection.bind_controller(snake)
+        ctl_collection.handle_controllers()
+
     def run(self, stop_event):
         """Starts the loop
         Args:
             stop_event: Event object to stop the loop
         """
+        self._initialize_controllers()
         try:
             if not self._loop:
                 raise ValueError('Loop not initialized')

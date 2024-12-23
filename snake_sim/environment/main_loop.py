@@ -59,15 +59,16 @@ class SimLoop(IMainLoop):
                 time_start = time.time()
                 decision = self._snake_handler.get_decision(id, self._env.get_env_data())
                 time_spent = time.time() - time_start
-                # Add execution time to time_spent for each snake
-                self._current_step_data.snake_times[id] = time_spent
-                # Save the decision for the snake
-                self._current_step_data.desicions[id] = decision
-                # The move_snake method will return false if the snake died
                 alive, grew = self._env.move_snake(id, decision)
-                # Save if the snake ate
-                self._current_step_data.snake_grew[id] = grew
-                if not alive:
+                if alive:
+                    # Add execution time to time_spent for each snake
+                    self._current_step_data.snake_times[id] = time_spent
+                    # Save the decision for the snake
+                    self._current_step_data.desicions[id] = decision
+                    # The move_snake method will return false if the snake died
+                    # Save if the snake ate
+                    self._current_step_data.snake_grew[id] = grew
+                else:
                     self._snake_handler.kill_snake(id)
             self._steps += 1
             self._post_update()
