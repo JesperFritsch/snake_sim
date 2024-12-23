@@ -60,6 +60,8 @@ class Snake(ISnake):
     def set_new_head(self, coord):
         self.x, self.y = coord
         self.coord = coord
+        if not self.is_inside(coord):
+            return
         if self.map[self.y, self.x] == self.env_data.food_value:
             self.length += 1
         self.update_body(self.coord, self.body_coords, self.length)

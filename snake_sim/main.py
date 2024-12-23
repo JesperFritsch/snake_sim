@@ -98,7 +98,10 @@ def main():
         run_data_loop_observer.add_observer(PygameRunDataObserver(parent_conn))
         stop_event = Event()
         loop_p = Process(target=loop_control.run, args=(stop_event,))
-        render_p = Process(target=play_stream, args=(child_conn, config.fps, config.sound))
+        if config.command == "game":
+            render_p = Process(target=play_game, args=(child_conn, config.spm, config.sound))
+        else:
+            render_p = Process(target=play_stream, args=(child_conn, config.fps, config.sound))
         render_p.start()
         loop_p.start()
         render_p.join()
