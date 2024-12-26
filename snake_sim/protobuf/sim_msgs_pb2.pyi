@@ -64,7 +64,7 @@ class SnakeValues(_message.Message):
     def __init__(self, body_value: _Optional[int] = ..., head_value: _Optional[int] = ...) -> None: ...
 
 class SnakeStep(_message.Message):
-    __slots__ = ("snake_id", "curr_head", "prev_head", "curr_tail", "head_dir", "did_eat", "did_turn", "body", "did_grow")
+    __slots__ = ("snake_id", "curr_head", "prev_head", "curr_tail", "head_dir", "did_eat", "did_turn", "body")
     SNAKE_ID_FIELD_NUMBER: _ClassVar[int]
     CURR_HEAD_FIELD_NUMBER: _ClassVar[int]
     PREV_HEAD_FIELD_NUMBER: _ClassVar[int]
@@ -73,7 +73,6 @@ class SnakeStep(_message.Message):
     DID_EAT_FIELD_NUMBER: _ClassVar[int]
     DID_TURN_FIELD_NUMBER: _ClassVar[int]
     BODY_FIELD_NUMBER: _ClassVar[int]
-    DID_GROW_FIELD_NUMBER: _ClassVar[int]
     snake_id: int
     curr_head: Position
     prev_head: Position
@@ -82,8 +81,7 @@ class SnakeStep(_message.Message):
     did_eat: bool
     did_turn: str
     body: _containers.RepeatedCompositeFieldContainer[Position]
-    did_grow: bool
-    def __init__(self, snake_id: _Optional[int] = ..., curr_head: _Optional[_Union[Position, _Mapping]] = ..., prev_head: _Optional[_Union[Position, _Mapping]] = ..., curr_tail: _Optional[_Union[Position, _Mapping]] = ..., head_dir: _Optional[_Union[Position, _Mapping]] = ..., did_eat: bool = ..., did_turn: _Optional[str] = ..., body: _Optional[_Iterable[_Union[Position, _Mapping]]] = ..., did_grow: bool = ...) -> None: ...
+    def __init__(self, snake_id: _Optional[int] = ..., curr_head: _Optional[_Union[Position, _Mapping]] = ..., prev_head: _Optional[_Union[Position, _Mapping]] = ..., curr_tail: _Optional[_Union[Position, _Mapping]] = ..., head_dir: _Optional[_Union[Position, _Mapping]] = ..., did_eat: bool = ..., did_turn: _Optional[str] = ..., body: _Optional[_Iterable[_Union[Position, _Mapping]]] = ...) -> None: ...
 
 class StepData(_message.Message):
     __slots__ = ("snakes", "food", "step", "full_state")

@@ -35,7 +35,6 @@ class StepData:
                 'head_dir': (snake.head_dir.x, snake.head_dir.y),
                 'did_eat': snake.did_eat,
                 'did_turn': snake.did_turn,
-                'did_grow': snake.did_grow,
                 'body': []
             }
             if snake.body:
@@ -45,7 +44,7 @@ class StepData:
             step.snakes.append(snake_data)
         return step
 
-    def add_snake_data(self, snake_id: int, snake_coords: List[Coord], did_grow: bool = False):
+    def add_snake_data(self, snake_id: int, snake_coords: List[Coord]):
         head_dir = snake_coords[0] - snake_coords[1]
         did_eat = False
         turn = None
@@ -82,7 +81,6 @@ class StepData:
             'head_dir': head_dir,
             'did_eat': did_eat,
             'did_turn': turn,
-            'did_grow': did_grow,
             'body': snake_coords
         }
         self.snakes.append(base_snake_data)
@@ -111,7 +109,6 @@ class StepData:
             snake.curr_tail.x, snake.curr_tail.y = snake_data['curr_tail']
             snake.head_dir.x, snake.head_dir.y = snake_data['head_dir']
             snake.did_eat = snake_data['did_eat']
-            snake.did_grow = snake_data['did_grow']
             if snake_data['did_turn']:
                 snake.did_turn = snake_data['did_turn']
             if full_state:
