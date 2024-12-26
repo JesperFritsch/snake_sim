@@ -23,7 +23,7 @@ class RunDataAdapter:
             food_value=self._env_init_data.food_value,
             free_value=self._env_init_data.free_value,
             blocked_value=self._env_init_data.blocked_value,
-            snakes=list(self._env_init_data.snake_values.keys()),
+            snake_ids=list(self._env_init_data.snake_values.keys()),
             snake_values=self._env_init_data.snake_values
         )
         self.snake_reps = {}

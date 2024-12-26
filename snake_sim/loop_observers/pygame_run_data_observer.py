@@ -1,6 +1,6 @@
 
 
-from multiprocessing.connection import Connection
+from multiprocessing.connection import PipeConnection
 import logging
 from pathlib import Path
 from snake_sim.loop_observers.run_data_observer_interface import IRunDataObserver
@@ -18,9 +18,9 @@ def handle_broken_pipe(func):
     return wrapper
 
 class PygameRunDataObserver(IRunDataObserver):
-    def __init__(self, pipe_conn: Connection):
-        if not isinstance(pipe_conn, Connection):
-            raise ValueError('pipe_conn must be of type Connection but is {}'.format(type(pipe_conn)))
+    def __init__(self, pipe_conn: PipeConnection):
+        if not isinstance(pipe_conn, PipeConnection):
+            raise ValueError('pipe_conn must be of type PipeConnection but is {}'.format(type(pipe_conn)))
         self.pipe_conn = pipe_conn
         self.adapter = None
 

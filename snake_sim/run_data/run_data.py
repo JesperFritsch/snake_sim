@@ -128,7 +128,7 @@ class RunData:
     def __init__(self,
                 width: int,
                 height: int,
-                snakes: list,
+                snake_ids: list,
                 base_map: np.array,
                 food_value: int,
                 free_value: int,
@@ -137,7 +137,7 @@ class RunData:
                 snake_values: dict):  # New parameter added
         self.width = width
         self.height = height
-        self.snakes = snakes
+        self.snake_ids = snake_ids
         self.base_map = base_map
         self.food_value = food_value
         self.free_value = free_value
@@ -156,7 +156,7 @@ class RunData:
         run_data = cls(
             width=run_dict['width'],
             height=run_dict['height'],
-            snakes=run_dict['snakes'],
+            snakes_ids=run_dict['snakes_ids'],
             base_map=np.array(run_dict['base_map'], dtype=np.uint8),
             food_value = run_dict['food_value'],
             free_value = run_dict['free_value'],
@@ -180,7 +180,7 @@ class RunData:
         run = cls(
             width=meta_data.width,
             height=meta_data.height,
-            snakes=meta_data.snakes,
+            snake_ids=list(meta_data.snake_ids),
             base_map=np.frombuffer(bytes(meta_data.base_map), dtype=np.uint8).reshape(meta_data.height, meta_data.width),
             food_value=meta_data.food_value,
             free_value=meta_data.free_value,
@@ -191,7 +191,7 @@ class RunData:
         run.color_mapping.update({int(k): (v.r, v.g, v.b) for k, v in meta_data.color_mapping.items()})
         for step_nr, step in run_data.steps.items():
             step_data = StepData.from_protobuf(step)
-            run.add_step(step_nr, step_data)
+            run.add_step(step_data)
         return run
 
     @classmethod
@@ -227,7 +227,7 @@ class RunData:
             os.makedirs(run_dir, exist_ok=True)
             aborted_str = '_ABORTED' if aborted else ''
             grid_str = f'{self.width}x{self.height}'
-            nr_snakes = f'{len(self.snakes)}'
+            nr_snakes = f'{len(self.snake_ids)}'
             rand_str = rand_str_generator(6)
             file_type = "pb" if as_proto else "json"
             filename = f'{nr_snakes}_snakes_{grid_str}_{rand_str}_{len(self.steps)}{"_ml_" if ml else ""}{aborted_str}.{file_type}'
@@ -251,7 +251,7 @@ class RunData:
             'free_value': self.free_value,
             'blocked_value': self.blocked_value,
             'color_mapping': self.color_mapping,
-            'snakes': self.snakes,
+            'snake_ids': self.snake_ids,
             'base_map': self.base_map.tolist(),
             'steps': {k: v.to_dict() for k, v in self.steps.items()},
             'snake_values': self.snake_values
@@ -269,8 +269,8 @@ class RunData:
             metadata.color_mapping[key].r = value[0]
             metadata.color_mapping[key].g = value[1]
             metadata.color_mapping[key].b = value[2]
-        for snake_id in self.snakes:
-            metadata.snake_ids.add(snake_id)
+        for snake_id in self.snake_ids:
+            metadata.snake_ids.append(snake_id)
         for step_nr, step_data in self.steps.items():
             step_data = step_data.to_protobuf(full_state)
             run_data.steps[step_nr].CopyFrom(step_data)

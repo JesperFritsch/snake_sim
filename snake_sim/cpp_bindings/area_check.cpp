@@ -471,7 +471,7 @@ public:
             }
 
             if (food_check){
-                if (current_result.margin >= current_result.food_count && (current_result.food_count >= best_result.food_count)){
+                if (current_result.margin > current_result.food_count && (current_result.food_count >= best_result.food_count)){
                     best_result = current_result;
                 }
             }
@@ -479,7 +479,7 @@ public:
                 if (current_result.margin > best_result.margin){
                     best_result = current_result;
                 }
-                if ((best_result.margin >= target_margin && best_result.margin >= best_result.food_count) && !exhaustive && current_result.margin_over_tiles >= safe_margin_factor){
+                if ((best_result.margin >= target_margin && best_result.margin > best_result.food_count) && !exhaustive && current_result.margin_over_tiles > safe_margin_factor){
                     break;
                 }
             }
@@ -1056,17 +1056,18 @@ public:
                 }
             }
             int calc_target_margin = std::max(std::max(target_margin, food_count + total_food_count), 1);
-            int total_steps = tile_count - food_count;
+            int total_steps = tile_count - (food_count + total_food_count);
             int needed_steps = (max_index > 0) ? snake_length - max_index : snake_length + 1;
             int margin = total_steps - needed_steps;
             double margin_over_tiles = (float)margin / (float)tile_count;
-            if (early_exit && margin_over_tiles > (safe_margin_factor * 2) && margin > calc_target_margin) {
+            if (early_exit && margin_over_tiles > (safe_margin_factor * 2) && margin > calc_target_margin * 2) {
                 // std::cout << "Early exit" << std::endl;
                 // std::cout << "Margin over tiles: " << margin_over_tiles << std::endl;
                 // std::cout << "Margin: " << margin << std::endl;
                 // std::cout << "Target margin: " << calc_target_margin << std::endl;
                 // std::cout << "Tile count: " << tile_count << std::endl;
                 // std::cout << "Food count: " << food_count << std::endl;
+                // std::cout << "prev_food count: " << total_food_count << std::endl;
 
                 did_early_exit = true;
                 break;
