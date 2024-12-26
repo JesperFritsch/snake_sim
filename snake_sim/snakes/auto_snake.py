@@ -51,7 +51,7 @@ class BFSFrame:
 class AutoSnake(AutoSnakeBase):
     TIME_LIMIT = True
     MAX_RISK_CALC_DEPTH = 3
-    SAFE_MARGIN_FACTOR = 0.06
+    SAFE_MARGIN_FACTOR = 0.12
 
     def __init__(self, id: str, start_length: int, calc_timeout=1000):
         super().__init__(id, start_length)
@@ -220,15 +220,15 @@ class AutoSnake(AutoSnakeBase):
             old_map_value = map_copy[y, x]
             old_tail = self.update_body(coord, body_coords_copy, self.length)
             self._update_snake_position(map_copy, body_coords_copy, old_tail)
-            area_checks = [self._area_check_wrapper(map_copy, body_coords_copy, tile, food_check=False) for tile in valids]
+            area_checks = [self._area_check_wrapper(map_copy, body_coords_copy, tile, food_check=True) for tile in valids]
             clear_checks = [a for a in area_checks if a['is_clear']]
             all_area_checks[coord] = area_checks
             if clear_checks:
                 all_clear_checks[coord] = clear_checks
             additonal_food[coord] = old_map_value == self.env_data.food_value
         all_checks = [a for check in all_area_checks.values() for a in check]
-        # combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
-        combine_food = False
+        combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
+        # combine_food = False
         if all_checks:
             combined_food = max([a['food_count'] for a in all_checks])
         else:
@@ -372,10 +372,13 @@ class AutoSnake(AutoSnakeBase):
 
                 if len(search_stack) > len(body_coords) + 1 or frame.has_tail:
                     return True
+                next_tile = frame.get_next_tile()
             else:
-                return False
+                if exhaustive:
+                    next_tile = None
+                else:
+                    return False
 
-            next_tile = frame.get_next_tile()
             if next_tile is None:
                 if (len(frame.visited_tiles) + len(frame.tiles_to_visit)) == 1:
                     min_margin += 1
@@ -387,127 +390,14 @@ class AutoSnake(AutoSnakeBase):
                 else:
                     search_stack.pop()
             else:
-                next_frame = self._create_bfs_frame(next_tile,
-                                                    s_map,
-                                                    body_coords,
-                                                    min_margin,
-                                                    safe_margin_factor=safe_margin_factor,
-                                                    safe_food_margin=max_food)
+                next_frame = self._create_bfs_frame(
+                    next_tile,
+                    s_map,
+                    body_coords,
+                    min_margin,
+                    safe_margin_factor=safe_margin_factor,
+                    safe_food_margin=max_food)
                 search_stack.append(next_frame)
 
         return False
 
-
-    def _deep_look_ahead(self, s_map, new_coord, body_coords, length,
-                        start_time=None,
-                        depth=1,
-                        best_results=None,
-                        current_results=None,
-                        rundata=None,
-                        timeout_ms=None,
-                        branch_common=None):
-        safety_buffer = 3
-        if branch_common is None:
-            branch_common = {}
-            branch_common['min_margin'] = 0
-        if timeout_ms is None:
-            timeout_ms = self.calc_timeout
-        if start_time is None:
-            start_time = time()
-        if current_results is None:
-            current_results = {}
-            current_results['timeout'] = False
-            current_results['free_path'] = False
-            current_results['apple_time'] = []
-            current_results['len_gain'] = 0
-            current_results['route'] = deque()
-            current_results['margin'] = -length
-        if best_results is None:
-            best_results = {}
-        if s_map[new_coord[1], new_coord[0]] == self.env_data.food_value:
-            length += 1
-            current_results['apple_time'] = current_results['apple_time'] + [depth]
-            current_results['len_gain'] = length - self.length
-        current_results['body_coords'] = body_coords
-        current_results['depth'] = depth
-        current_results['route'] = current_results['route'].copy()
-        current_results['route'].appendleft(new_coord)
-
-        best_results['depth'] = max(best_results.get('depth', 0), current_results['depth'])
-        best_results['len_gain'] = max(best_results.get('len_gain', 0), current_results['len_gain'])
-        best_results['margin'] = max(best_results.get('margin', -length), current_results['margin'])
-        best_results['apple_time'] = []
-        best_results['timeout'] = False
-        best_results['free_path'] = False
-        best_results['body_coords'] = max(best_results.get('body_coords', deque()), current_results['body_coords'].copy(), key=lambda o: len(o))
-        best_results['route'] = max(best_results.get('route', deque()), current_results['route'], key=lambda o: len(o))
-        old_tail = self.update_body(new_coord, body_coords, length)
-        s_map = self._update_snake_position(s_map, body_coords, old_tail)
-        valid_tiles = self._valid_tiles(s_map, new_coord)
-
-        #rundata is just for when i want to generate frames of how the algorithm searches in test/tests/autosnake2_test.py
-        if rundata is not None:
-            rundata.append(body_coords.copy())
-
-        if ((time() - start_time) * 1000 > timeout_ms) and self.TIME_LIMIT:
-            best_results['timeout'] = True
-            return best_results
-
-        if current_results['depth'] >= length + safety_buffer:
-            current_results['free_path'] = True
-            return current_results
-
-        area_checks = {}
-
-        if valid_tiles:
-            best_margin = -length
-            target_tile = None
-            for tile in valid_tiles:
-                area_check = area_checks.get(tile, None)
-                if area_check is None:
-                    area_check = self._area_check_wrapper(s_map, body_coords, tile, target_margin=branch_common['min_margin'])
-                    area_checks[tile] = area_check
-                if area_check['margin'] > best_margin:
-                    best_margin = area_check['margin']
-                    best_results['margin'] = max(best_results['margin'], best_margin)
-                    target_tile = tile
-            if target_tile is None:
-                target_tile = self._target_tile(body_coords)
-            valid_tiles.sort(key=lambda x: 0 if x == target_tile else 1)
-
-            for tile in valid_tiles:
-                if branch_common.get('min_margin', 0) > best_margin:
-                    continue
-                area_check = area_checks[tile].copy()
-
-                if area_check['has_tail']:
-                    current_results['free_path'] = True
-                    current_results['len_gain'] = area_check['food_count']
-                    current_results['depth'] = length
-                    current_results['margin'] = area_check['margin']
-                    return current_results
-
-                if not area_check['is_clear']:
-                    best_results['depth'] = max(best_results['depth'], area_check['tile_count'])
-                    best_results['margin'] = max(best_results['margin'], current_results['margin'])
-                    continue
-                current_results['margin'] = area_check['margin']
-
-                check_result = self._deep_look_ahead(
-                    s_map.copy(),
-                    tile,
-                    body_coords.copy(),
-                    length,
-                    depth=depth+1,
-                    best_results=best_results,
-                    current_results=current_results.copy(),
-                    start_time=start_time,
-                    rundata=rundata,
-                    branch_common=branch_common)
-
-                if check_result['free_path'] or check_result['timeout']:
-                    return check_result
-
-                if len(valid_tiles) == 1:
-                    branch_common['min_margin'] += 1
-        return best_results
