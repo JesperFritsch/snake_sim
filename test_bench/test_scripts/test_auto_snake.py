@@ -8,7 +8,7 @@ from snake_sim.utils import Coord
 from snake_sim.environment.snake_env import EnvData
 
 STATE_FILE_DIR = Path(__file__).parent.parent / 'state_files'
-STATE_FILE_NAME = 'state_1539.json'
+STATE_FILE_NAME = 'state_902.json'
 STATE_FILE_PATH = STATE_FILE_DIR / STATE_FILE_NAME
 
 
@@ -21,14 +21,20 @@ def test_make_choice(snake: AutoSnake, s_map):
     choice = snake.update(env_data.__dict__)
     print(f"Choice: {choice}")
 
+def test_area_check_direction(snake: AutoSnake, s_map, direction):
+    tile = Coord(*snake.coord) + direction
+    area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile, safe_margin_factor=snake.SAFE_MARGIN_FACTOR)
+    print(f"Direction: {direction}, Area check: {area_check}")
+
 def test_area_check(snake: AutoSnake, s_map):
     for tile in snake._valid_tiles(s_map, snake.body_coords[0]):
-        area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile)
+        area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile, safe_margin_factor=snake.SAFE_MARGIN_FACTOR)
         print(f"Tile: {tile}, Area check: {area_check}")
 
 def run_tests(snake: AutoSnake, s_map):
     test_make_choice(snake, s_map)
     test_area_check(snake, s_map)
+    test_area_check_direction(snake, s_map, Coord(1, 0))
 
 def create_test_snake(id, state_dict):
     snake = AutoSnake(id, 1, calc_timeout=1500)
@@ -69,7 +75,7 @@ def create_map(state_dict):
 with open(STATE_FILE_PATH) as state_file:
     state_dict = json.load(state_file)
 
-snake_id = 0
+snake_id = 18
 
 if snake_id is None:
     snake_items = sorted(state_dict['snakes'].items(), key=lambda x: x[1][0])

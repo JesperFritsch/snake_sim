@@ -967,7 +967,8 @@ public:
         bool early_exit,
         int snake_length,
         float safe_margin_factor,
-        int target_margin
+        int target_margin,
+        int total_food_count
     ){
         int tile_count = 0;
         int food_count = 0;
@@ -1054,7 +1055,7 @@ public:
                     }
                 }
             }
-            int calc_target_margin = std::max(std::max(target_margin, food_count), 1);
+            int calc_target_margin = std::max(std::max(target_margin, food_count + total_food_count), 1);
             int total_steps = tile_count - food_count;
             int needed_steps = (max_index > 0) ? snake_length - max_index : snake_length + 1;
             int margin = total_steps - needed_steps;
@@ -1094,6 +1095,7 @@ public:
         areas_to_explore.reserve(300);
         areas_to_explore.push_back(ExploreData(start_coord, graph.next_id++, prev_node));
         // in the while loop we will explore the area and add new nodes to the graph
+        int total_food_count = 0;
         while(!areas_to_explore.empty()){
             auto current_area_data = areas_to_explore.back();
             areas_to_explore.pop_back();
@@ -1110,8 +1112,10 @@ public:
                 !(food_check || exhaustive),
                 body_coords.size(),
                 safe_margin_factor,
-                target_margin
+                target_margin,
+                total_food_count
             );
+            total_food_count += result.food_count;
             // std::cout << "Explored area: " << current_id << std::endl;
             // std::cout << "Current coord: (" << current_coord.x << ", " << current_coord.y << ")" << std::endl;
             // std::cout << "Prev node: " << (prev_node == nullptr ? -1 : prev_node->id) << std::endl;

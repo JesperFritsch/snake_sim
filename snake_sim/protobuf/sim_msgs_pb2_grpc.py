@@ -5,7 +5,7 @@ import warnings
 
 from snake_sim.protobuf import sim_msgs_pb2 as snake__sim_dot_protobuf_dot_sim__msgs__pb2
 
-GRPC_GENERATED_VERSION = '1.68.0'
+GRPC_GENERATED_VERSION = '1.68.1'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
