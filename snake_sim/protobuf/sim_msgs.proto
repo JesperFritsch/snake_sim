@@ -30,7 +30,7 @@ message SnakeValues {
 
 // Message representing each snake's properties
 message SnakeStep {
-    string snake_id = 1;
+    int32 snake_id = 1;
     Position curr_head = 2;
     Position prev_head = 3;
     Position curr_tail = 4;

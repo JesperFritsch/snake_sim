@@ -83,7 +83,7 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
     run_data.height = run_meta_data['height']
     run_data.width = run_meta_data['width']
     run_data.base_map = np.array(run_meta_data['base_map'], dtype=np.uint8)
-    run_data.snakes = run_meta_data['snakes']
+    run_data.snake_ids = run_meta_data['snake_ids']
     run_data.food_value = run_meta_data['food_value']
     run_data.free_value = run_meta_data['free_value']
     run_data.blocked_value = run_meta_data['blocked_value']
@@ -158,7 +158,9 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
                 elif event.key == pygame.K_RETURN:
                     p_root = Path(snake_sim.__file__).parent.parent
                     test_bench = p_root / "test_bench" / "state_files"
-                    state_file = test_bench / f"state_{sim_step}.json" 
+                    state_file = test_bench / f"state_{sim_step}.json"
+                    if not state_file.parent.exists():
+                        state_file.parent.mkdir(parents=True)
                     with open(state_file, 'w') as f:
                         f.write(json.dumps(run_data.get_state_dict(sim_step)))
                     print(f"State saved to {state_file}")
@@ -212,7 +214,7 @@ def play_stream(stream_conn, fps=10, sound_on=True):
 
 def play_frame_buffer(frame_buffer, grid_width, grid_height, fps=10):
     sound_buffer = [[None]] * len(frame_buffer)
-    run_data = RunData(grid_width, grid_height, [], np.array([]))
+    run_data = RunData(grid_width, grid_height, [], np.array([]),0,0,0,{},{})
     run_data.steps = {i: StepData([], i) for i in range(1, int(len(frame_buffer) / 2) + 1)}
     play_run(frame_buffer, sound_buffer, run_data, grid_width, grid_height, fps_playback=fps)
 

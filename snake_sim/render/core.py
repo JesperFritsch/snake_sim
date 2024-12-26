@@ -67,7 +67,7 @@ class FrameBuilder:
         self.last_handled_step = -1
         self.frameshape = ((self.height * self.expand_factor) + self.offset_y, (self.width * self.expand_factor) + self.offset_x, 3)
         self.snake_reps: Dict[int, SnakeRepresentation] = {}
-        for snake_id in run_meta_data['snakes']:
+        for snake_id in run_meta_data['snake_ids']:
             snake_id = int(snake_id)
             self.snake_reps[snake_id] = SnakeRepresentation(snake_id, expand_factor)
         self.set_base_frame()

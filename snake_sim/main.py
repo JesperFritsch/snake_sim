@@ -69,7 +69,7 @@ def setup_loop(config, run_data_loop_observer: RunDataLoopObserver):
     run_data_loop_observer.set_adapter(adapter)
     if not config.no_record:
         recording_file = config.record_file if config.record_file else None
-        run_data_loop_observer.add_observer(RecorderRunDataObserver(recording_dir=config.record_dir, recording_file=recording_file, as_proto=False))
+        run_data_loop_observer.add_observer(RecorderRunDataObserver(recording_dir=config.record_dir, recording_file=recording_file, as_proto=True))
     loop_control.add_observer(run_data_loop_observer)
     return loop_control
 
