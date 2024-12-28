@@ -1,4 +1,4 @@
-from typing import Set
+from typing import Set, Optional
 
 from snake_sim.utils import is_headless
 
@@ -73,15 +73,17 @@ class ControllerCollection:
     def __init__(self) -> None:
         self.controllers: Set[SingleSnakeController] = set()
 
-    def bind_controller(self, snake, controller_type='implicit'):
-        controller_index = len(self.controllers)
-        if controller_type == 'explicit':
-            DEFAULT_KEYS = DEFAULT_KEYS_EXPLICIT
-        elif controller_type == 'implicit':
-            DEFAULT_KEYS = DEFAULT_KEYS_IMPLICIT
-        else:
-            raise ValueError(f"Invalid controller type: {controller_type}")
-        controller = SingleSnakeController(snake, DEFAULT_KEYS[controller_index])
+    def bind_controller(self, snake, controller_type='explicit', key_mapping: Optional[dict]=None):
+        if not key_mapping:
+            controller_index = len(self.controllers)
+            if controller_type == 'explicit':
+                DEFAULT_KEYS = DEFAULT_KEYS_EXPLICIT
+            elif controller_type == 'implicit':
+                DEFAULT_KEYS = DEFAULT_KEYS_IMPLICIT
+            else:
+                raise ValueError(f"Invalid controller type: {controller_type}")
+            key_mapping = DEFAULT_KEYS[controller_index]
+        controller = SingleSnakeController(snake, key_mapping)
         self.controllers.add(controller)
 
     def on_press(self, key):

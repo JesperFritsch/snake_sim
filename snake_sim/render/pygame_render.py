@@ -9,8 +9,10 @@ import threading
 import time
 from pathlib import Path
 
+import snake_sim
 from snake_sim.render import core
-from snake_sim.snake_env import RunData, StepData
+# from snake_sim.snake_env import RunData, StepData
+from snake_sim.run_data.run_data import RunData, StepData
 
 STREAM_IS_LIVE = False
 
@@ -32,7 +34,7 @@ def frames_sound_from_run_data(run_data, expand_factor=2):
     sound_buffer = []
     frame_builder = core.FrameBuilder(run_data.to_dict(), expand_factor)
     nr_steps = len(run_data.steps)
-    for step_nr in range(1, nr_steps + 1):
+    for step_nr in range(nr_steps):
         step_data = run_data.steps[step_nr]
         new_frames = frame_builder.step_to_frames(step_data.to_dict())
         frames_buffer.extend(new_frames)
@@ -81,7 +83,12 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
     run_data.height = run_meta_data['height']
     run_data.width = run_meta_data['width']
     run_data.base_map = np.array(run_meta_data['base_map'], dtype=np.uint8)
-    run_data.snake_data = run_meta_data['snake_data']
+    run_data.snake_ids = run_meta_data['snake_ids']
+    run_data.food_value = run_meta_data['food_value']
+    run_data.free_value = run_meta_data['free_value']
+    run_data.blocked_value = run_meta_data['blocked_value']
+    run_data.color_mapping = {int(k): tuple(v) for k, v in run_meta_data['color_mapping'].items()}
+    run_data.snake_values = run_meta_data["snake_values"]
 
     frame_builder = core.FrameBuilder(run_meta_data=run_meta_data)
 
@@ -94,8 +101,7 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
             break
         step_data_dict = payload
         step_data = StepData.from_dict(step_data_dict)
-        step_count = step_data.step
-        run_data.add_step(step_count, step_data)
+        run_data.add_step(step_data)
         new_frames = frame_builder.step_to_frames(step_data_dict)
         frame_buffer.extend(new_frames)
         for snake_data in step_data_dict["snakes"]:
@@ -150,7 +156,14 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
                 elif event.key == pygame.K_RIGHT:
                     new_frame = True
                 elif event.key == pygame.K_RETURN:
-                    print(run_data.get_coord_mapping(sim_step))
+                    p_root = Path(snake_sim.__file__).parent.parent
+                    test_bench = p_root / "test_bench" / "state_files"
+                    state_file = test_bench / f"state_{sim_step}.json"
+                    if not state_file.parent.exists():
+                        state_file.parent.mkdir(parents=True)
+                    with open(state_file, 'w') as f:
+                        f.write(json.dumps(run_data.get_state_dict(sim_step)))
+                    print(f"State saved to {state_file}")
         if keys[pygame.K_LCTRL]:
             if keys[pygame.K_LEFT]:
                 play_direction = -1
@@ -189,7 +202,7 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
 def play_stream(stream_conn, fps=10, sound_on=True):
     sound_buffer = []
     frame_buffer = []
-    run_data = RunData(0, 0, [], np.array([])) # create this here so that the stream thread and the play thread can share the same object
+    run_data = RunData(0, 0, [], np.array([]),0,0,0,{},{}) # create this here so that the stream thread and the play thread can share the same object
     stream_thread = threading.Thread(target=handle_stream, args=(stream_conn, frame_buffer, sound_buffer, run_data))
     stream_thread.daemon = True
     stream_thread.start()
@@ -201,7 +214,7 @@ def play_stream(stream_conn, fps=10, sound_on=True):
 
 def play_frame_buffer(frame_buffer, grid_width, grid_height, fps=10):
     sound_buffer = [[None]] * len(frame_buffer)
-    run_data = RunData(grid_width, grid_height, [], np.array([]))
+    run_data = RunData(grid_width, grid_height, [], np.array([]),0,0,0,{},{})
     run_data.steps = {i: StepData([], i) for i in range(1, int(len(frame_buffer) / 2) + 1)}
     play_run(frame_buffer, sound_buffer, run_data, grid_width, grid_height, fps_playback=fps)
 
@@ -220,10 +233,11 @@ def play_runfile(filepath=None, sound_on=True, fps=10):
     play_run(frame_buffer, sound_buffer, run_data, grid_width, grid_height, sound_on=sound_on, fps_playback=fps)
 
 
-def play_game(conn, fps, sound_on=True):
+def play_game(conn, spm, sound_on=True):
+    fps = spm / 60 * 2
     sound_buffer = []
     frame_buffer = []
-    run_data = RunData(0, 0, [], np.array([])) # create this here so that the stream thread and the play thread can share the same object
+    run_data = RunData(0, 0, [], np.array([]),0,0,0,{},{}) # create this here so that the stream thread and the play thread can share the same object
     stream_thread = threading.Thread(target=handle_stream, args=(conn, frame_buffer, sound_buffer, run_data))
     stream_thread.daemon = True
     stream_thread.start()
