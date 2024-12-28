@@ -19,13 +19,13 @@ class get_pybind_include(object):
 extra_compile_args = []
 extra_link_args = []
 
-if os.name == 'nt' and False:
+if os.name == 'nt':
     extra_compile_args.extend(['/Od', '/Zi', '/DDEBUG', '/DPYBIND11_DETAILED_ERROR_MESSAGES'])
     extra_link_args.extend(['/DEBUG'])
 else:
     extra_compile_args.extend(['-O0', '-g', '-DDEBUG', '-DPYBIND11_DETAILED_ERROR_MESSAGES'])
 
-if sys.platform == 'win32' or True:
+if sys.platform == 'win32':
     extra_compile_args.append('/std:c++17')
 else:
     extra_compile_args.append('-std=c++11')

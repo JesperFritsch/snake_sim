@@ -13,17 +13,18 @@ class OutOfSyncError(Exception):
 
 
 class SnakeRepresentation:
-    def __init__(self, snake_id, head_color, body_color, expand_factor):
+    def __init__(self, snake_id, expand_factor):
         self.snake_id = snake_id
-        self.head_color = head_color
-        self.body_color = body_color
         self.expand_factor = expand_factor
         self.last_head = None
         self.last_tail = None
+        self.current_tail = None
+        self.removed_tail = None
         self.prev_expand_head = None
         self.body = deque()
 
     def update(self, step_snake_data, expand_step):
+        self.tail_moved = False
         head_dir = step_snake_data['head_dir']
         if step_snake_data['curr_head'] == self.last_head:
             return
@@ -33,10 +34,12 @@ class SnakeRepresentation:
         dir_mult = coord_op(head_dir, (expand_step, expand_step), '*')
         next_head = coord_op(self.prev_expand_head, dir_mult, '+')
         self.body.appendleft(next_head)
-        if tuple(step_snake_data['tail_dir']) != (0, 0):
-            self.last_tail = self.body.pop()
-        else:
-            self.last_tail = None
+        self.current_tail = tuple(step_snake_data['curr_tail'])
+        if self.last_tail is not None and self.last_tail != self.current_tail:
+            self.tail_moved = True
+            self.removed_tail = self.body.pop()
+        if expand_step == self.expand_factor and self.current_tail is not None:
+            self.last_tail = tuple(self.current_tail)
         if expand_step == self.expand_factor:
             self.last_head = step_snake_data['curr_head']
 
@@ -47,7 +50,6 @@ class SnakeRepresentation:
             snake_data = {}
             snake_data['prev_head'] = prev_coord
             snake_data['curr_head'] = curr_coord
-            snake_data['tail_dir'] = (0, 0)
             snake_data['head_dir'] = coord_op(curr_coord, prev_coord, '-')
             for n in range(1, self.expand_factor + 1):
                 self.update(snake_data, n)
@@ -64,16 +66,15 @@ class FrameBuilder:
         self.food_value = run_meta_data['food_value']
         self.blocked_value = run_meta_data['blocked_value']
         self.color_mapping = {int(k): tuple(v) for k, v in run_meta_data['color_mapping'].items()}
+        self.snake_values = {int(k): {"body_value": v["body_value"], "head_value": v["head_value"]} for k, v in run_meta_data['snake_values'].items()}
         self.expand_factor = expand_factor
         self.last_food = set()
-        self.last_handled_step = 0
+        self.last_handled_step = -1
         self.frameshape = ((self.height * self.expand_factor) + self.offset_y, (self.width * self.expand_factor) + self.offset_x, 3)
         self.snake_reps: Dict[int, SnakeRepresentation] = {}
-        for snake_data in run_meta_data['snake_data']:
-            snake_id = snake_data['snake_id']
-            head_color = tuple(snake_data['head_color'])
-            body_color = tuple(snake_data['body_color'])
-            self.snake_reps[snake_id] = SnakeRepresentation(snake_id, head_color, body_color, expand_factor)
+        for snake_id in run_meta_data['snake_ids']:
+            snake_id = int(snake_id)
+            self.snake_reps[snake_id] = SnakeRepresentation(snake_id, expand_factor)
         self.set_base_frame()
 
     def set_base_frame(self):
@@ -95,8 +96,8 @@ class FrameBuilder:
 
 
     def step_to_pixel_changes(self, step_data):
-        if step_data['step'] != self.last_handled_step + 1:
-            raise OutOfSyncError(f"Step nr '{step_data['step']}' is not the next step in the sequence. Last handled step was '{self.last_handled_step}'")
+        # if step_data['step'] != self.last_handled_step + 1:
+        #     raise OutOfSyncError(f"Step nr '{step_data['step']}' is not the next step in the sequence. Last handled step was '{self.last_handled_step}'")
         self.last_handled_step = step_data['step']
         changes = []
         current_food = set([tuple(x) for x in step_data['food']])
@@ -117,12 +118,11 @@ class FrameBuilder:
                 self.snake_reps[snake_id].update(snake_data, s)
             for snake_id in self.snake_reps:
                 snake_rep = self.snake_reps[snake_id]
-                last_tail = snake_rep.last_tail
                 head = tuple(snake_rep.body[0])
-                if last_tail is not None:
-                    sub_changes.append((tuple(last_tail), self.color_mapping[self.free_value]))
-                sub_changes.append((tuple(snake_rep.body[1]), snake_rep.body_color))
-                sub_changes.append((head, snake_rep.head_color))
+                if snake_rep.tail_moved:
+                    sub_changes.append((tuple(snake_rep.removed_tail), self.color_mapping[self.free_value]))
+                sub_changes.append((tuple(snake_rep.body[1]), self.color_mapping[self.snake_values[snake_id]["body_value"]]))
+                sub_changes.append((head, self.color_mapping[self.snake_values[snake_id]["head_value"]]))
             sub_changes = [(coord_op(coord, self.offset, '+'), color) for coord, color in sub_changes]
             changes.append(list(set(sub_changes)))
             sub_changes = []
@@ -144,8 +144,8 @@ class FrameBuilder:
             snake_coords = snake['body']
             snake_rep = self.snake_reps[snake['snake_id']]
             snake_rep.set_full_body(snake_coords)
-            body_color = snake_rep.body_color
-            head_color = snake_rep.head_color
+            body_color = self.color_mapping[self.snake_values[snake_rep.snake_id]["body_value"]]
+            head_color = self.color_mapping[self.snake_values[snake_rep.snake_id]["head_value"]]
             put_snake_in_frame(self.last_frame, snake_coords, body_color, h_color=head_color, expand_factor=self.expand_factor, offset=self.offset)
             coord_colors[coord_op(snake_rep.body[0], self.offset, '+')] = head_color
             for coord in snake_rep.body[1:]:
@@ -168,7 +168,7 @@ class FrameBuilder:
     def frames_from_rundata(self, rundata):
         frames = []
         for body_coords in rundata:
-            frames.append(put_snake_in_frame(self.last_frame.copy(), body_coords, (255, 0, 0), self.expand_factor, self.offset))
+            frames.append(put_snake_in_frame(self.last_frame.copy(), body_coords, (255, 0, 0), (0, 0, 255), self.expand_factor, self.offset))
         return frames
 
 def pixel_changes_from_runfile(filepath, expand_factor=2, offset=(1, 1)):
