@@ -31,5 +31,9 @@ class IMainLoop(ABC):
         pass
 
     @abstractmethod
+    def get_observers(self) -> ILoopObserver:
+        pass
+
+    @abstractmethod
     def set_environment(self, env: ISnakeEnv):
         pass

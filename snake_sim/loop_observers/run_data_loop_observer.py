@@ -37,6 +37,9 @@ class RunDataLoopObserver(ILoopObserver):
             raise ValueError('observer must be of type IRunDataObserver')
         self._observers.add(observer)
 
+    def get_observers(self):
+        return list(self._observers)
+
     def remove_observer(self, observer: IRunDataObserver):
         if not isinstance(observer, IRunDataObserver):
             raise ValueError('observer must be of type IRunDataObserver')
