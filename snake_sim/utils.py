@@ -3,9 +3,15 @@ import string
 import os
 import platform
 import math
+import json
+from importlib import resources
 from time import time
+from typing import Dict, Tuple
 
 from importlib import resources
+
+with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
+    default_config = json.load(config_file)
 
 class DotDict(dict):
     def __init__(self, other_dict={}):
@@ -72,7 +78,7 @@ class Coord(tuple):
 
     def __str__(self):
         return repr(self)
-    
+
     def __format__(self, format_spec):
         return str(self).__format__(format_spec)
 
@@ -126,3 +132,13 @@ def get_map_files_mapping():
 
 def rand_str(n):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
+
+
+def create_color_map(snake_values: dict) -> Dict[int, Tuple[int, int, int]]:
+    """ snake_values is a dictionary with snake id as key and a dictionary with 'head_value' and 'body_value' as value """
+    config = DotDict(default_config)
+    color_map = {config[key]: value for key, value in config.color_mapping.items()}
+    for i, snake_value_dict in enumerate(snake_values.values()):
+        color_map[snake_value_dict["head_value"]] = config.snake_colors[i]["head_color"]
+        color_map[snake_value_dict["body_value"]] = config.snake_colors[i]["body_color"]
+    return color_map

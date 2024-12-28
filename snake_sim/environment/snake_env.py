@@ -21,18 +21,31 @@ class SnakeRep:
         self.id = id
         self.head_value = h_value
         self.body_value = b_value
-        self.body: Deque[Coord] = deque([start_position] * start_length)
+        self._length = start_length
+        self.body: Deque[Coord] = deque([start_position])
         self.is_alive = True
 
     def kill(self):
         self.is_alive = False
 
-    def move(self, direction: Coord, grow=False):
-        self.body.appendleft(self.get_head() + direction)
-        if not grow:
-            self.last_ate = self.move_count
-            self.body.pop()
+    def grow(self):
+        self._length += 1
+
+    def eat(self):
+        self.last_ate = self.move_count
+        self.grow()
+
+    def move(self, direction: Coord):
+        """ Moves the snake in the given direction. returns True if the snake grew, otherwise False """
+        prev_len = len(self.body)
+        self._move(direction)
+        return prev_len < len(self.body)
+
+    def _move(self, direction: Coord):
         self.move_count += 1
+        self.body.appendleft(self.get_head() + direction)
+        while len(self.body) > self._length:
+            self.body.pop()
 
     def get_head(self) -> Coord:
         return self.body[0]
@@ -129,12 +142,11 @@ class SnakeEnv(ISnakeEnv):
         if self._is_valid_move(id, direction):
             current_head = snake_rep.get_head()
             next_tile = current_head + direction
-            grow = False
             if self._is_food_tile(next_tile):
                 self._food_handler.remove(next_tile, self._map)
-                grow = True
+                snake_rep.eat()
             old_tail = snake_rep.get_tail()
-            snake_rep.move(direction, grow)
+            grow = snake_rep.move(direction)
             self._update_snake_on_map(id, old_tail)
             return True, grow
         else:

@@ -1,6 +1,7 @@
 import json
 
 from importlib import resources
+from typing import Dict
 
 from snake_sim.environment.snake_env import EnvInitData, SnakeRep
 from snake_sim.environment.main_loop import LoopStepData
@@ -26,7 +27,7 @@ class RunDataAdapter:
             snake_ids=list(self._env_init_data.snake_values.keys()),
             snake_values=self._env_init_data.snake_values
         )
-        self.snake_reps = {}
+        self.snake_reps: Dict[int, SnakeRep] = {}
         for id, snake_data in self._env_init_data.snake_values.items():
             start_pos = self._env_init_data.start_positions[id]
             self.snake_reps[id] = SnakeRep(id, snake_data['head_value'], snake_data['body_value'], start_pos)
@@ -46,9 +47,11 @@ class RunDataAdapter:
         )
         for snake_id, decision in loop_step.desicions.items():
             snake_rep = self.snake_reps[snake_id]
-            grow = len(snake_rep.body) < loop_step.lengths[snake_id]
-            self.snake_reps[snake_id].move(decision, grow=grow)
-            step_data.add_snake_data(snake_id, snake_rep.body, did_grow=grow)
+            # Grow has to be called before move
+            if loop_step.snake_grew.get(snake_id, False):
+                snake_rep.grow()
+            self.snake_reps[snake_id].move(decision)
+            step_data.add_snake_data(snake_id, snake_rep.body)
             self._run_data.add_step(step_data)
         return step_data
 

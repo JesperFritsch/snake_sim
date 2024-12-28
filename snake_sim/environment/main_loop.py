@@ -61,12 +61,8 @@ class SimLoop(IMainLoop):
                 time_spent = time.time() - time_start
                 alive, grew = self._env.move_snake(id, decision)
                 if alive:
-                    # Add execution time to time_spent for each snake
                     self._current_step_data.snake_times[id] = time_spent
-                    # Save the decision for the snake
                     self._current_step_data.desicions[id] = decision
-                    # The move_snake method will return false if the snake died
-                    # Save if the snake ate
                     self._current_step_data.snake_grew[id] = grew
                 else:
                     self._snake_handler.kill_snake(id)
@@ -82,10 +78,11 @@ class SimLoop(IMainLoop):
         self._step_start_time = time.time()
 
     def _post_update(self):
+        print(self._env.steps_since_any_ate(), self._max_no_food_steps)
         if self._max_no_food_steps and self._env.steps_since_any_ate() > self._max_no_food_steps:
-            self._is_running = False
+            self.stop()
         if self._max_steps is not None and self._steps > self._max_steps:
-            self._is_running = False
+            self.stop()
         total_time = time.time() - self._step_start_time
         self._current_step_data.lengths = {id: snake['length'] for id, snake in self._env.get_env_data().snakes.items()}
         self._current_step_data.total_time = total_time
@@ -114,6 +111,9 @@ class SimLoop(IMainLoop):
 
     def add_observer(self, observer: ILoopObserver):
         self._observers.append(observer)
+
+    def get_observers(self) -> List[ILoopObserver]:
+        return self._observers
 
     def set_environment(self, env: ISnakeEnv):
         self._env = env

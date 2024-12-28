@@ -38,7 +38,6 @@ message SnakeStep {
     bool did_eat = 6;
     string did_turn = 7; // Can be empty string if null
     repeated Position body = 8;
-    bool did_grow = 9;
 }
 
 // Message representing the state at a particular game step

@@ -18,10 +18,13 @@ class SnakeRepresentation:
         self.expand_factor = expand_factor
         self.last_head = None
         self.last_tail = None
+        self.current_tail = None
+        self.removed_tail = None
         self.prev_expand_head = None
         self.body = deque()
 
     def update(self, step_snake_data, expand_step):
+        self.tail_moved = False
         head_dir = step_snake_data['head_dir']
         if step_snake_data['curr_head'] == self.last_head:
             return
@@ -31,10 +34,12 @@ class SnakeRepresentation:
         dir_mult = coord_op(head_dir, (expand_step, expand_step), '*')
         next_head = coord_op(self.prev_expand_head, dir_mult, '+')
         self.body.appendleft(next_head)
-        if step_snake_data['did_grow']:
-            self.last_tail = None
-        else:
-            self.last_tail = self.body.pop()
+        self.current_tail = tuple(step_snake_data['curr_tail'])
+        if self.last_tail is not None and self.last_tail != self.current_tail:
+            self.tail_moved = True
+            self.removed_tail = self.body.pop()
+        if expand_step == self.expand_factor and self.current_tail is not None:
+            self.last_tail = tuple(self.current_tail)
         if expand_step == self.expand_factor:
             self.last_head = step_snake_data['curr_head']
 
@@ -113,10 +118,9 @@ class FrameBuilder:
                 self.snake_reps[snake_id].update(snake_data, s)
             for snake_id in self.snake_reps:
                 snake_rep = self.snake_reps[snake_id]
-                last_tail = snake_rep.last_tail
                 head = tuple(snake_rep.body[0])
-                if last_tail is not None:
-                    sub_changes.append((tuple(last_tail), self.color_mapping[self.free_value]))
+                if snake_rep.tail_moved:
+                    sub_changes.append((tuple(snake_rep.removed_tail), self.color_mapping[self.free_value]))
                 sub_changes.append((tuple(snake_rep.body[1]), self.color_mapping[self.snake_values[snake_id]["body_value"]]))
                 sub_changes.append((head, self.color_mapping[self.snake_values[snake_id]["head_value"]]))
             sub_changes = [(coord_op(coord, self.offset, '+'), color) for coord, color in sub_changes]
