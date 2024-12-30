@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package snake_sim;
+
+message Coord {
+    int32 x = 1;
+    int32 y = 2;
+}
+
+message SnakeId {
+    int32 id = 1;
+}
+
+message SnakeLength {
+    int32 length = 1;
+}
+
+message StartPosition {
+    Coord start_position = 1;
+}
+
+message EnvData {
+    string data = 1;
+}
+
+message UpdateResponse {
+    Coord direction = 1;
+}
+
+message Empty {} // Custom Empty message
+
+service RemoteSnake {
+    rpc GetId(Empty) returns (SnakeId);
+    rpc SetId(SnakeId) returns (Empty);
+    rpc GetLength(SnakeId) returns (SnakeLength);
+    rpc SetLength(SnakeLength) returns (Empty); // Added SetLength RPC
+    rpc SetStartPosition(StartPosition) returns (Empty);
+    rpc SetInitData(EnvData) returns (Empty);
+    rpc Update(stream EnvData) returns (stream UpdateResponse);
+}
