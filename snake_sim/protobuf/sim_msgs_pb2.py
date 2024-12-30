@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n!snake_sim/protobuf/sim_msgs.proto\x12\x08snakesim\" \n\x08Position\x12\t\n\x01x\x18\x01 \x01(\x05\x12\t\n\x01y\x18\x02 \x01(\x05\"&\n\x03RGB\x12\t\n\x01r\x18\x01 \x01(\x05\x12\t\n\x01g\x18\x02 \x01(\x05\x12\t\n\x01\x62\x18\x03 \x01(\x05\"5\n\x0bSnakeValues\x12\x12\n\nbody_value\x18\x01 \x01(\x05\x12\x12\n\nhead_value\x18\x02 \x01(\x05\"\xfd\x01\n\tSnakeStep\x12\x10\n\x08snake_id\x18\x01 \x01(\x05\x12%\n\tcurr_head\x18\x02 \x01(\x0b\x32\x12.snakesim.Position\x12%\n\tprev_head\x18\x03 \x01(\x0b\x32\x12.snakesim.Position\x12%\n\tcurr_tail\x18\x04 \x01(\x0b\x32\x12.snakesim.Position\x12$\n\x08head_dir\x18\x05 \x01(\x0b\x32\x12.snakesim.Position\x12\x0f\n\x07\x64id_eat\x18\x06 \x01(\x08\x12\x10\n\x08\x64id_turn\x18\x07 \x01(\t\x12 \n\x04\x62ody\x18\x08 \x03(\x0b\x32\x12.snakesim.Position\"s\n\x08StepData\x12#\n\x06snakes\x18\x01 \x03(\x0b\x32\x13.snakesim.SnakeStep\x12 \n\x04\x66ood\x18\x02 \x03(\x0b\x32\x12.snakesim.Position\x12\x0c\n\x04step\x18\x03 \x01(\r\x12\x12\n\nfull_state\x18\x04 \x01(\x08\"\x9d\x03\n\x0bRunMetaData\x12\r\n\x05width\x18\x01 \x01(\x05\x12\x0e\n\x06height\x18\x02 \x01(\x05\x12\x12\n\nfood_value\x18\x03 \x01(\x05\x12\x12\n\nfree_value\x18\x04 \x01(\x05\x12\x15\n\rblocked_value\x18\x05 \x01(\x05\x12>\n\rcolor_mapping\x18\x06 \x03(\x0b\x32\'.snakesim.RunMetaData.ColorMappingEntry\x12\x11\n\tsnake_ids\x18\x07 \x03(\x05\x12\x10\n\x08\x62\x61se_map\x18\x08 \x03(\x05\x12<\n\x0csnake_values\x18\t \x03(\x0b\x32&.snakesim.RunMetaData.SnakeValuesEntry\x1a\x42\n\x11\x43olorMappingEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\x1c\n\x05value\x18\x02 \x01(\x0b\x32\r.snakesim.RGB:\x02\x38\x01\x1aI\n\x10SnakeValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12$\n\x05value\x18\x02 \x01(\x0b\x32\x15.snakesim.SnakeValues:\x02\x38\x01\"\xa6\x01\n\x07RunData\x12,\n\rrun_meta_data\x18\x01 \x01(\x0b\x32\x15.snakesim.RunMetaData\x12+\n\x05steps\x18\x02 \x03(\x0b\x32\x1c.snakesim.RunData.StepsEntry\x1a@\n\nStepsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12!\n\x05value\x18\x02 \x01(\x0b\x32\x12.snakesim.StepData:\x02\x38\x01\"B\n\nMsgWrapper\x12#\n\x04type\x18\x01 \x01(\x0e\x32\x15.snakesim.MessageType\x12\x0f\n\x07payload\x18\x02 \x01(\x0c\"G\n\x0cPixelChanges\x12#\n\x06pixels\x18\x01 \x03(\x0b\x32\x13.snakesim.PixelData\x12\x12\n\nfull_state\x18\x02 \x01(\x08\"L\n\tPixelData\x12!\n\x05\x63oord\x18\x01 \x01(\x0b\x32\x12.snakesim.Position\x12\x1c\n\x05\x63olor\x18\x02 \x01(\x0b\x32\r.snakesim.RGB\"\x96\x01\n\x07\x45nvData\x12\r\n\x05width\x18\x01 \x01(\x05\x12\x0e\n\x06height\x18\x02 \x01(\x05\x12\x0b\n\x03map\x18\x03 \x01(\x0c\x12 \n\x04\x66ood\x18\x04 \x03(\x0b\x32\x12.snakesim.Position\x12\x12\n\nFOOD_VALUE\x18\x05 \x01(\x05\x12\x12\n\nFREE_VALUE\x18\x06 \x01(\x05\x12\x15\n\rBLOCKED_VALUE\x18\x07 \x01(\x05\"1\n\x0bSnakeAction\x12\"\n\x06\x61\x63tion\x18\x02 \x01(\x0b\x32\x12.snakesim.Position\"?\n\x07Request\x12#\n\x04type\x18\x01 \x01(\x0e\x32\x15.snakesim.RequestType\x12\x0f\n\x07payload\x18\x02 \x01(\x0c\";\n\x13PixelChangesRequest\x12\x12\n\nstart_step\x18\x01 \x01(\x05\x12\x10\n\x08\x65nd_step\x18\x02 \x01(\x05\"K\n\x0fStepDataRequest\x12\x12\n\nstart_step\x18\x01 \x01(\x05\x12\x10\n\x08\x65nd_step\x18\x02 \x01(\x05\x12\x12\n\nfull_state\x18\x03 \x01(\x08\"\x14\n\x12RunMetaDataRequest\"B\n\nRequestAck\x12#\n\x04type\x18\x01 \x01(\x0e\x32\x15.snakesim.RequestType\x12\x0f\n\x07payload\x18\x02 \x01(\x0c\"\x1f\n\tRunUpdate\x12\x12\n\nfinal_step\x18\x01 \x01(\x05\"\x07\n\x05\x45mpty*2\n\tDirection\x12\x06\n\x02UP\x10\x00\x12\x08\n\x04\x44OWN\x10\x01\x12\x08\n\x04LEFT\x10\x02\x12\t\n\x05RIGHT\x10\x03*P\n\x0bMessageType\x12\x0c\n\x08RUN_DATA\x10\x00\x12\r\n\tSTEP_DATA\x10\x01\x12\x11\n\rRUN_META_DATA\x10\x02\x12\x11\n\rPIXEL_CHANGES\x10\x03*N\n\x0bRequestType\x12\x15\n\x11PIXEL_CHANGES_REQ\x10\x00\x12\x11\n\rSTEP_DATA_REQ\x10\x01\x12\x15\n\x11RUN_META_DATA_REQ\x10\x02\x32\x83\x01\n\x12RemoteSnakeService\x12\x33\n\x0binitEnvData\x12\x0f.snakesim.Empty\x1a\x11.snakesim.EnvData\"\x00\x12\x38\n\x06update\x12\x15.snakesim.SnakeAction\x1a\x11.snakesim.EnvData\"\x00(\x01\x30\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n!snake_sim/protobuf/sim_msgs.proto\x12\x08snakesim\" \n\x08Position\x12\t\n\x01x\x18\x01 \x01(\x05\x12\t\n\x01y\x18\x02 \x01(\x05\"&\n\x03RGB\x12\t\n\x01r\x18\x01 \x01(\x05\x12\t\n\x01g\x18\x02 \x01(\x05\x12\t\n\x01\x62\x18\x03 \x01(\x05\"5\n\x0bSnakeValues\x12\x12\n\nbody_value\x18\x01 \x01(\x05\x12\x12\n\nhead_value\x18\x02 \x01(\x05\"\xfd\x01\n\tSnakeStep\x12\x10\n\x08snake_id\x18\x01 \x01(\x05\x12%\n\tcurr_head\x18\x02 \x01(\x0b\x32\x12.snakesim.Position\x12%\n\tprev_head\x18\x03 \x01(\x0b\x32\x12.snakesim.Position\x12%\n\tcurr_tail\x18\x04 \x01(\x0b\x32\x12.snakesim.Position\x12$\n\x08head_dir\x18\x05 \x01(\x0b\x32\x12.snakesim.Position\x12\x0f\n\x07\x64id_eat\x18\x06 \x01(\x08\x12\x10\n\x08\x64id_turn\x18\x07 \x01(\t\x12 \n\x04\x62ody\x18\x08 \x03(\x0b\x32\x12.snakesim.Position\"s\n\x08StepData\x12#\n\x06snakes\x18\x01 \x03(\x0b\x32\x13.snakesim.SnakeStep\x12 \n\x04\x66ood\x18\x02 \x03(\x0b\x32\x12.snakesim.Position\x12\x0c\n\x04step\x18\x03 \x01(\r\x12\x12\n\nfull_state\x18\x04 \x01(\x08\"\x9d\x03\n\x0bRunMetaData\x12\r\n\x05width\x18\x01 \x01(\x05\x12\x0e\n\x06height\x18\x02 \x01(\x05\x12\x12\n\nfood_value\x18\x03 \x01(\x05\x12\x12\n\nfree_value\x18\x04 \x01(\x05\x12\x15\n\rblocked_value\x18\x05 \x01(\x05\x12>\n\rcolor_mapping\x18\x06 \x03(\x0b\x32\'.snakesim.RunMetaData.ColorMappingEntry\x12\x11\n\tsnake_ids\x18\x07 \x03(\x05\x12\x10\n\x08\x62\x61se_map\x18\x08 \x03(\x05\x12<\n\x0csnake_values\x18\t \x03(\x0b\x32&.snakesim.RunMetaData.SnakeValuesEntry\x1a\x42\n\x11\x43olorMappingEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\x1c\n\x05value\x18\x02 \x01(\x0b\x32\r.snakesim.RGB:\x02\x38\x01\x1aI\n\x10SnakeValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12$\n\x05value\x18\x02 \x01(\x0b\x32\x15.snakesim.SnakeValues:\x02\x38\x01\"\xa6\x01\n\x07RunData\x12,\n\rrun_meta_data\x18\x01 \x01(\x0b\x32\x15.snakesim.RunMetaData\x12+\n\x05steps\x18\x02 \x03(\x0b\x32\x1c.snakesim.RunData.StepsEntry\x1a@\n\nStepsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12!\n\x05value\x18\x02 \x01(\x0b\x32\x12.snakesim.StepData:\x02\x38\x01\"B\n\nMsgWrapper\x12#\n\x04type\x18\x01 \x01(\x0e\x32\x15.snakesim.MessageType\x12\x0f\n\x07payload\x18\x02 \x01(\x0c\"G\n\x0cPixelChanges\x12#\n\x06pixels\x18\x01 \x03(\x0b\x32\x13.snakesim.PixelData\x12\x12\n\nfull_state\x18\x02 \x01(\x08\"L\n\tPixelData\x12!\n\x05\x63oord\x18\x01 \x01(\x0b\x32\x12.snakesim.Position\x12\x1c\n\x05\x63olor\x18\x02 \x01(\x0b\x32\r.snakesim.RGB\"\x96\x01\n\x07\x45nvData\x12\r\n\x05width\x18\x01 \x01(\x05\x12\x0e\n\x06height\x18\x02 \x01(\x05\x12\x0b\n\x03map\x18\x03 \x01(\x0c\x12 \n\x04\x66ood\x18\x04 \x03(\x0b\x32\x12.snakesim.Position\x12\x12\n\nFOOD_VALUE\x18\x05 \x01(\x05\x12\x12\n\nFREE_VALUE\x18\x06 \x01(\x05\x12\x15\n\rBLOCKED_VALUE\x18\x07 \x01(\x05\"1\n\x0bSnakeAction\x12\"\n\x06\x61\x63tion\x18\x02 \x01(\x0b\x32\x12.snakesim.Position\"?\n\x07Request\x12#\n\x04type\x18\x01 \x01(\x0e\x32\x15.snakesim.RequestType\x12\x0f\n\x07payload\x18\x02 \x01(\x0c\"7\n\x0fPixelChangesReq\x12\x12\n\nstart_step\x18\x01 \x01(\x05\x12\x10\n\x08\x65nd_step\x18\x02 \x01(\x05\"#\n\x13\x46ullPixelChangesReq\x12\x0c\n\x04step\x18\x01 \x01(\x05\"3\n\x0bStepDataReq\x12\x12\n\nstart_step\x18\x01 \x01(\x05\x12\x10\n\x08\x65nd_step\x18\x02 \x01(\x05\"\x1f\n\x0f\x46ullStepDataReq\x12\x0c\n\x04step\x18\x01 \x01(\x05\"\x14\n\x12RunMetaDataRequest\"@\n\nBadRequest\x12#\n\x04type\x18\x01 \x01(\x0e\x32\x15.snakesim.RequestType\x12\r\n\x05\x65rror\x18\x02 \x01(\t\"\x1f\n\tRunUpdate\x12\x12\n\nfinal_step\x18\x01 \x01(\x05\"\x07\n\x05\x45mpty*2\n\tDirection\x12\x06\n\x02UP\x10\x00\x12\x08\n\x04\x44OWN\x10\x01\x12\x08\n\x04LEFT\x10\x02\x12\t\n\x05RIGHT\x10\x03*q\n\x0bMessageType\x12\x0c\n\x08RUN_DATA\x10\x00\x12\r\n\tSTEP_DATA\x10\x01\x12\x11\n\rRUN_META_DATA\x10\x02\x12\x11\n\rPIXEL_CHANGES\x10\x03\x12\x0e\n\nRUN_UPDATE\x10\x04\x12\x0f\n\x0b\x42\x41\x44_REQUEST\x10\x05*\x82\x01\n\x0bRequestType\x12\x15\n\x11PIXEL_CHANGES_REQ\x10\x00\x12\x1a\n\x16\x46ULL_PIXEL_CHANGES_REQ\x10\x01\x12\x11\n\rSTEP_DATA_REQ\x10\x02\x12\x16\n\x12\x46ULL_STEP_DATA_REQ\x10\x03\x12\x15\n\x11RUN_META_DATA_REQ\x10\x04\x32\x83\x01\n\x12RemoteSnakeService\x12\x33\n\x0binitEnvData\x12\x0f.snakesim.Empty\x1a\x11.snakesim.EnvData\"\x00\x12\x38\n\x06update\x12\x15.snakesim.SnakeAction\x1a\x11.snakesim.EnvData\"\x00(\x01\x30\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -37,12 +37,12 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_RUNMETADATA_SNAKEVALUESENTRY']._serialized_options = b'8\001'
   _globals['_RUNDATA_STEPSENTRY']._loaded_options = None
   _globals['_RUNDATA_STEPSENTRY']._serialized_options = b'8\001'
-  _globals['_DIRECTION']._serialized_start=1892
-  _globals['_DIRECTION']._serialized_end=1942
-  _globals['_MESSAGETYPE']._serialized_start=1944
-  _globals['_MESSAGETYPE']._serialized_end=2024
-  _globals['_REQUESTTYPE']._serialized_start=2026
-  _globals['_REQUESTTYPE']._serialized_end=2104
+  _globals['_DIRECTION']._serialized_start=1932
+  _globals['_DIRECTION']._serialized_end=1982
+  _globals['_MESSAGETYPE']._serialized_start=1984
+  _globals['_MESSAGETYPE']._serialized_end=2097
+  _globals['_REQUESTTYPE']._serialized_start=2100
+  _globals['_REQUESTTYPE']._serialized_end=2230
   _globals['_POSITION']._serialized_start=47
   _globals['_POSITION']._serialized_end=79
   _globals['_RGB']._serialized_start=81
@@ -75,18 +75,22 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_SNAKEACTION']._serialized_end=1555
   _globals['_REQUEST']._serialized_start=1557
   _globals['_REQUEST']._serialized_end=1620
-  _globals['_PIXELCHANGESREQUEST']._serialized_start=1622
-  _globals['_PIXELCHANGESREQUEST']._serialized_end=1681
-  _globals['_STEPDATAREQUEST']._serialized_start=1683
-  _globals['_STEPDATAREQUEST']._serialized_end=1758
-  _globals['_RUNMETADATAREQUEST']._serialized_start=1760
-  _globals['_RUNMETADATAREQUEST']._serialized_end=1780
-  _globals['_REQUESTACK']._serialized_start=1782
-  _globals['_REQUESTACK']._serialized_end=1848
-  _globals['_RUNUPDATE']._serialized_start=1850
-  _globals['_RUNUPDATE']._serialized_end=1881
-  _globals['_EMPTY']._serialized_start=1883
-  _globals['_EMPTY']._serialized_end=1890
-  _globals['_REMOTESNAKESERVICE']._serialized_start=2107
-  _globals['_REMOTESNAKESERVICE']._serialized_end=2238
+  _globals['_PIXELCHANGESREQ']._serialized_start=1622
+  _globals['_PIXELCHANGESREQ']._serialized_end=1677
+  _globals['_FULLPIXELCHANGESREQ']._serialized_start=1679
+  _globals['_FULLPIXELCHANGESREQ']._serialized_end=1714
+  _globals['_STEPDATAREQ']._serialized_start=1716
+  _globals['_STEPDATAREQ']._serialized_end=1767
+  _globals['_FULLSTEPDATAREQ']._serialized_start=1769
+  _globals['_FULLSTEPDATAREQ']._serialized_end=1800
+  _globals['_RUNMETADATAREQUEST']._serialized_start=1802
+  _globals['_RUNMETADATAREQUEST']._serialized_end=1822
+  _globals['_BADREQUEST']._serialized_start=1824
+  _globals['_BADREQUEST']._serialized_end=1888
+  _globals['_RUNUPDATE']._serialized_start=1890
+  _globals['_RUNUPDATE']._serialized_end=1921
+  _globals['_EMPTY']._serialized_start=1923
+  _globals['_EMPTY']._serialized_end=1930
+  _globals['_REMOTESNAKESERVICE']._serialized_start=2233
+  _globals['_REMOTESNAKESERVICE']._serialized_end=2364
 # @@protoc_insertion_point(module_scope)

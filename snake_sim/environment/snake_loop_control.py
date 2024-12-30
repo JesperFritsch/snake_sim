@@ -165,7 +165,7 @@ class SnakeLoopControl:
         self._loop.stop()
 
 
-def setup_loop(config):
+def setup_loop(config) -> SnakeLoopControl:
     loop_control = SnakeLoopControl()
     if config.command == "stream" or config.command == "compute":
         sim_config = SimConfig(
@@ -200,7 +200,6 @@ def setup_loop(config):
             RecorderRunDataObserver(
                 recording_dir=config.record_dir,
                 recording_file=recording_file,
-                as_proto=True
             )
         )
     return loop_control

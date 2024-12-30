@@ -73,6 +73,8 @@ enum MessageType {
     STEP_DATA = 1;
     RUN_META_DATA = 2;
     PIXEL_CHANGES = 3;
+    RUN_UPDATE = 4;
+    BAD_REQUEST = 5;
 }
 
 message MsgWrapper {
@@ -110,8 +112,10 @@ message SnakeAction {
 
 enum RequestType {
     PIXEL_CHANGES_REQ = 0;
-    STEP_DATA_REQ = 1;
-    RUN_META_DATA_REQ = 2;
+    FULL_PIXEL_CHANGES_REQ = 1;
+    STEP_DATA_REQ = 2;
+    FULL_STEP_DATA_REQ = 3;
+    RUN_META_DATA_REQ = 4;
 }
 
 message Request{
@@ -119,27 +123,34 @@ message Request{
     bytes payload = 2;
 }
 
-message PixelChangesRequest {
+message PixelChangesReq {
     // The step number for which the pixel changes are requested, end_step should be treated as inclusive
     int32 start_step = 1;
     int32 end_step = 2;
 }
 
-message StepDataRequest {
+message FullPixelChangesReq {
+    int32 step = 1;
+}
+
+message StepDataReq {
     // The step number for which the step data is requested, end_step should be treated as inclusive
     int32 start_step = 1;
     int32 end_step = 2;
-    bool full_state = 3;
 }
 
-message RunMetaDataRequest {
+message FullStepDataReq {
+    int32 step = 1;
 }
+
+message RunMetaDataRequest {}
 
 // server -> client messages ######################################
+// These messages can be sent in response to the requests
 
-message RequestAck {
+message BadRequest {
     RequestType type = 1;
-    bytes payload = 2;
+    string error = 2;
 }
 
 message RunUpdate {
