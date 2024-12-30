@@ -150,6 +150,7 @@ class SnakeEnv(ISnakeEnv):
             self._update_snake_on_map(id, old_tail)
             return True, grow
         else:
+            snake_rep.kill()
             return False, False
 
     def _update_snake_on_map(self, id, old_tail):
@@ -241,7 +242,10 @@ class SnakeEnv(ISnakeEnv):
         self._food_handler.update(self._map)
 
     def steps_since_any_ate(self):
-        return min(snake_rep.move_count - snake_rep.last_ate for snake_rep in self._snake_reps.values())
+        if any(snake_rep.is_alive for snake_rep in self._snake_reps.values()):
+            return min(snake_rep.move_count - snake_rep.last_ate for snake_rep in self._snake_reps.values() if snake_rep.is_alive)
+        else:
+            return 0
 
     def print_map(self):
         for row in self._map:

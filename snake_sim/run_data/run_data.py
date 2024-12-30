@@ -153,13 +153,13 @@ class RunData:
         run_data = cls(
             width=run_dict['width'],
             height=run_dict['height'],
-            snakes_ids=run_dict['snakes_ids'],
+            snake_ids=run_dict['snake_ids'],
             base_map=np.array(run_dict['base_map'], dtype=np.uint8),
             food_value = run_dict['food_value'],
             free_value = run_dict['free_value'],
             blocked_value = run_dict['blocked_value'],
             color_mapping={int(k): v for k, v in run_dict['color_mapping'].items()},
-            snake_values=run_dict['snake_values']
+            snake_values={int(k): v for k, v in run_dict['snake_values'].items()}
         )
         for step_dict in run_dict['steps'].values():
             step_data_obj = StepData.from_dict(step_dict)
@@ -168,7 +168,7 @@ class RunData:
 
     @classmethod
     def from_json_file(cls, filepath):
-        with open(filepath) as file:
+        with open(filepath, 'r') as file:
             return cls.from_dict(json.load(file))
 
     @classmethod
@@ -183,7 +183,7 @@ class RunData:
             free_value=meta_data.free_value,
             blocked_value=meta_data.blocked_value,
             color_mapping={int(k): (v.r, v.g, v.b) for k, v in meta_data.color_mapping.items()},
-            snake_values={k: {'head_value': v.head_value, 'body_value': v.body_value} for k, v in meta_data.snake_values.items()},
+            snake_values={int(k): {'head_value': v.head_value, 'body_value': v.body_value} for k, v in meta_data.snake_values.items()},
         )
         run.color_mapping.update({int(k): (v.r, v.g, v.b) for k, v in meta_data.color_mapping.items()})
         for step_nr, step in run_data.steps.items():
