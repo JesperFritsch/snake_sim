@@ -217,26 +217,26 @@ class RunData:
         metadata['food'] = step.food
         return metadata
 
-    def write_to_file(self, output_dir, aborted=False, ml=False, filename=None, as_proto=False):
-        runs_dir = Path(output_dir)
-        run_dir = os.path.join(runs_dir, f'grid_{self.width}x{self.height}')
+    def write_to_file(self, output_dir, aborted=False, ml=False, filename=None, file_type='.pb'):
+        run_dir = Path(output_dir)
+        os.makedirs(run_dir, exist_ok=True)
+        if filename:
+            file_type = Path(filename).suffix
         if filename is None:
-            os.makedirs(run_dir, exist_ok=True)
+            file_ending = file_type.lstrip('.')
             aborted_str = '_ABORTED' if aborted else ''
             grid_str = f'{self.width}x{self.height}'
             nr_snakes = f'{len(self.snake_ids)}'
             rand_str = rand_str_generator(6)
-            file_type = "pb" if as_proto else "json"
-            filename = f'{nr_snakes}_snakes_{grid_str}_{rand_str}_{len(self.steps)}{"_ml_" if ml else ""}{aborted_str}.{file_type}'
+            filename = f'{nr_snakes}_snakes_{grid_str}_{rand_str}_{len(self.steps)}{"_ml_" if ml else ""}{aborted_str}.{file_ending}'
         filepath = Path(os.path.join(run_dir, filename))
-        as_proto = as_proto or filepath.suffix == '.pb'
 
         print(f"saving run data to '{filepath}'")
-        if as_proto:
+        if file_type == '.pb':
             run_data = self.to_protobuf()
             with open(filepath, 'wb') as file:
                 file.write(run_data.SerializeToString())
-        else:
+        elif file_type == '.json':
             with open(filepath, 'w') as file:
                 json.dump(self.to_dict(), file)
 
