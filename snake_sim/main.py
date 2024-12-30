@@ -9,7 +9,7 @@ from snake_sim.utils import DotDict
 from snake_sim.render.pygame_render import play_runfile, play_stream, play_game
 from snake_sim.cli import cli
 from snake_sim.environment.snake_loop_control import setup_loop
-from snake_sim.loop_observers.pygame_run_data_observer import PygameRunDataObserver
+from snake_sim.loop_observers.ipc_run_data_observer import IPCRunDataObserver
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
@@ -41,7 +41,7 @@ def main():
         parent_conn, child_conn = Pipe()
         loop_control = setup_loop()
         stop_event = Event()
-        loop_p = Process(target=loop_control.run, args=(stop_event,config,PygameRunDataObserver(parent_conn)))
+        loop_p = Process(target=loop_control.run, args=(stop_event,config,IPCRunDataObserver(parent_conn)))
         if config.command == "game":
             render_p = Process(target=play_game, args=(child_conn, config.spm, config.sound))
         else:

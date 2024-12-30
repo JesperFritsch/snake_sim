@@ -113,6 +113,7 @@ class SnakeLoopControl:
             raise ValueError('Observer must be an instance of ILoopObserver')
         self._loop.add_observer(observer)
 
+    @init_check
     def add_run_data_observer(self, observer: IRunDataObserver):
         """Adds a an observer to a RunDataLoopObserver"""
         if not isinstance(observer, IRunDataObserver):
@@ -165,7 +166,7 @@ class SnakeLoopControl:
             calc_timeout=config.calc_timeout,
             verbose=config.verbose,
             start_length=config.start_length
-            )
+        )
         elif config.command == "game":
             sim_config = GameConfig(
             map=config.map,
@@ -187,7 +188,6 @@ class SnakeLoopControl:
             RecorderRunDataObserver(
                 recording_dir=config.record_dir,
                 recording_file=recording_file,
-                as_proto=True
             )
             )
         self.add_run_data_observer(*observers)
@@ -207,3 +207,4 @@ loop_control = SnakeLoopControl()
  
 def setup_loop():
     return loop_control
+
