@@ -121,7 +121,6 @@ class SnakeLoopControl:
         try:
             run_data_observer = next(o for o in observers if isinstance(o, RunDataLoopObserver))
         except StopIteration:
-            print("No RunDataLoopObserver found")
             # if no RunDataLoopObserver exists, create one and add the observer to it
             init_data = self._snake_enviroment.get_init_data()
             run_data_observer = RunDataLoopObserver()
