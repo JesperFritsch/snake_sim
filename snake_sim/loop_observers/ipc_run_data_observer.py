@@ -11,7 +11,7 @@ from snake_sim.run_data.run_data import StepData
 log = logging.getLogger(Path(__file__).stem)
 
 
-class PygameRunDataObserver(IRunDataObserver):
+class IPCRunDataObserver(IRunDataObserver):
     def __init__(self, pipe_conn: PipeConnection):
         if not isinstance(pipe_conn, PipeConnection):
             raise ValueError('pipe_conn must be of type PipeConnection but is {}'.format(type(pipe_conn)))

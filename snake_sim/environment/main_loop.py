@@ -78,7 +78,6 @@ class SimLoop(IMainLoop):
         self._step_start_time = time.time()
 
     def _post_update(self):
-        print(self._env.steps_since_any_ate(), self._max_no_food_steps)
         if self._max_no_food_steps and self._env.steps_since_any_ate() > self._max_no_food_steps:
             self.stop()
         if self._max_steps is not None and self._steps > self._max_steps:

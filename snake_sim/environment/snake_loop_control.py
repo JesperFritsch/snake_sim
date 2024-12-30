@@ -121,6 +121,7 @@ class SnakeLoopControl:
         try:
             run_data_observer = next(o for o in observers if isinstance(o, RunDataLoopObserver))
         except StopIteration:
+            print("No RunDataLoopObserver found")
             # if no RunDataLoopObserver exists, create one and add the observer to it
             init_data = self._snake_enviroment.get_init_data()
             run_data_observer = RunDataLoopObserver()
@@ -165,7 +166,7 @@ class SnakeLoopControl:
         self._loop.stop()
 
 
-def setup_loop(config):
+def setup_loop(config) -> SnakeLoopControl:
     loop_control = SnakeLoopControl()
     if config.command == "stream" or config.command == "compute":
         sim_config = SimConfig(
@@ -200,7 +201,6 @@ def setup_loop(config):
             RecorderRunDataObserver(
                 recording_dir=config.record_dir,
                 recording_file=recording_file,
-                as_proto=True
             )
         )
     return loop_control
