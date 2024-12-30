@@ -153,13 +153,13 @@ class RunData:
         run_data = cls(
             width=run_dict['width'],
             height=run_dict['height'],
-            snakes_ids=run_dict['snakes_ids'],
+            snake_ids=run_dict['snake_ids'],
             base_map=np.array(run_dict['base_map'], dtype=np.uint8),
             food_value = run_dict['food_value'],
             free_value = run_dict['free_value'],
             blocked_value = run_dict['blocked_value'],
             color_mapping={int(k): v for k, v in run_dict['color_mapping'].items()},
-            snake_values=run_dict['snake_values']
+            snake_values={int(k): v for k, v in run_dict['snake_values'].items()}
         )
         for step_dict in run_dict['steps'].values():
             step_data_obj = StepData.from_dict(step_dict)
@@ -168,7 +168,7 @@ class RunData:
 
     @classmethod
     def from_json_file(cls, filepath):
-        with open(filepath) as file:
+        with open(filepath, 'r') as file:
             return cls.from_dict(json.load(file))
 
     @classmethod
@@ -183,7 +183,7 @@ class RunData:
             free_value=meta_data.free_value,
             blocked_value=meta_data.blocked_value,
             color_mapping={int(k): (v.r, v.g, v.b) for k, v in meta_data.color_mapping.items()},
-            snake_values={k: {'head_value': v.head_value, 'body_value': v.body_value} for k, v in meta_data.snake_values.items()},
+            snake_values={int(k): {'head_value': v.head_value, 'body_value': v.body_value} for k, v in meta_data.snake_values.items()},
         )
         run.color_mapping.update({int(k): (v.r, v.g, v.b) for k, v in meta_data.color_mapping.items()})
         for step_nr, step in run_data.steps.items():
@@ -217,26 +217,26 @@ class RunData:
         metadata['food'] = step.food
         return metadata
 
-    def write_to_file(self, output_dir, aborted=False, ml=False, filename=None, as_proto=False):
-        runs_dir = Path(output_dir)
-        run_dir = os.path.join(runs_dir, f'grid_{self.width}x{self.height}')
+    def write_to_file(self, output_dir, aborted=False, ml=False, filename=None, file_type='.pb'):
+        run_dir = Path(output_dir)
+        os.makedirs(run_dir, exist_ok=True)
+        if filename:
+            file_type = Path(filename).suffix
         if filename is None:
-            os.makedirs(run_dir, exist_ok=True)
+            file_ending = file_type.lstrip('.')
             aborted_str = '_ABORTED' if aborted else ''
             grid_str = f'{self.width}x{self.height}'
             nr_snakes = f'{len(self.snake_ids)}'
             rand_str = rand_str_generator(6)
-            file_type = "pb" if as_proto else "json"
-            filename = f'{nr_snakes}_snakes_{grid_str}_{rand_str}_{len(self.steps)}{"_ml_" if ml else ""}{aborted_str}.{file_type}'
+            filename = f'{nr_snakes}_snakes_{grid_str}_{rand_str}_{len(self.steps)}{"_ml_" if ml else ""}{aborted_str}.{file_ending}'
         filepath = Path(os.path.join(run_dir, filename))
-        as_proto = as_proto or filepath.suffix == '.pb'
 
         print(f"saving run data to '{filepath}'")
-        if as_proto:
+        if file_type == '.pb':
             run_data = self.to_protobuf()
             with open(filepath, 'wb') as file:
                 file.write(run_data.SerializeToString())
-        else:
+        elif file_type == '.json':
             with open(filepath, 'w') as file:
                 json.dump(self.to_dict(), file)
 

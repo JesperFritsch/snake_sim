@@ -19,11 +19,15 @@ class MessageType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     STEP_DATA: _ClassVar[MessageType]
     RUN_META_DATA: _ClassVar[MessageType]
     PIXEL_CHANGES: _ClassVar[MessageType]
+    RUN_UPDATE: _ClassVar[MessageType]
+    BAD_REQUEST: _ClassVar[MessageType]
 
 class RequestType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     PIXEL_CHANGES_REQ: _ClassVar[RequestType]
+    FULL_PIXEL_CHANGES_REQ: _ClassVar[RequestType]
     STEP_DATA_REQ: _ClassVar[RequestType]
+    FULL_STEP_DATA_REQ: _ClassVar[RequestType]
     RUN_META_DATA_REQ: _ClassVar[RequestType]
 UP: Direction
 DOWN: Direction
@@ -33,8 +37,12 @@ RUN_DATA: MessageType
 STEP_DATA: MessageType
 RUN_META_DATA: MessageType
 PIXEL_CHANGES: MessageType
+RUN_UPDATE: MessageType
+BAD_REQUEST: MessageType
 PIXEL_CHANGES_REQ: RequestType
+FULL_PIXEL_CHANGES_REQ: RequestType
 STEP_DATA_REQ: RequestType
+FULL_STEP_DATA_REQ: RequestType
 RUN_META_DATA_REQ: RequestType
 
 class Position(_message.Message):
@@ -202,7 +210,7 @@ class Request(_message.Message):
     payload: bytes
     def __init__(self, type: _Optional[_Union[RequestType, str]] = ..., payload: _Optional[bytes] = ...) -> None: ...
 
-class PixelChangesRequest(_message.Message):
+class PixelChangesReq(_message.Message):
     __slots__ = ("start_step", "end_step")
     START_STEP_FIELD_NUMBER: _ClassVar[int]
     END_STEP_FIELD_NUMBER: _ClassVar[int]
@@ -210,27 +218,37 @@ class PixelChangesRequest(_message.Message):
     end_step: int
     def __init__(self, start_step: _Optional[int] = ..., end_step: _Optional[int] = ...) -> None: ...
 
-class StepDataRequest(_message.Message):
-    __slots__ = ("start_step", "end_step", "full_state")
+class FullPixelChangesReq(_message.Message):
+    __slots__ = ("step",)
+    STEP_FIELD_NUMBER: _ClassVar[int]
+    step: int
+    def __init__(self, step: _Optional[int] = ...) -> None: ...
+
+class StepDataReq(_message.Message):
+    __slots__ = ("start_step", "end_step")
     START_STEP_FIELD_NUMBER: _ClassVar[int]
     END_STEP_FIELD_NUMBER: _ClassVar[int]
-    FULL_STATE_FIELD_NUMBER: _ClassVar[int]
     start_step: int
     end_step: int
-    full_state: bool
-    def __init__(self, start_step: _Optional[int] = ..., end_step: _Optional[int] = ..., full_state: bool = ...) -> None: ...
+    def __init__(self, start_step: _Optional[int] = ..., end_step: _Optional[int] = ...) -> None: ...
+
+class FullStepDataReq(_message.Message):
+    __slots__ = ("step",)
+    STEP_FIELD_NUMBER: _ClassVar[int]
+    step: int
+    def __init__(self, step: _Optional[int] = ...) -> None: ...
 
 class RunMetaDataRequest(_message.Message):
     __slots__ = ()
     def __init__(self) -> None: ...
 
-class RequestAck(_message.Message):
-    __slots__ = ("type", "payload")
+class BadRequest(_message.Message):
+    __slots__ = ("type", "error")
     TYPE_FIELD_NUMBER: _ClassVar[int]
-    PAYLOAD_FIELD_NUMBER: _ClassVar[int]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
     type: RequestType
-    payload: bytes
-    def __init__(self, type: _Optional[_Union[RequestType, str]] = ..., payload: _Optional[bytes] = ...) -> None: ...
+    error: str
+    def __init__(self, type: _Optional[_Union[RequestType, str]] = ..., error: _Optional[str] = ...) -> None: ...
 
 class RunUpdate(_message.Message):
     __slots__ = ("final_step",)
