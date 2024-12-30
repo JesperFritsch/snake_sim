@@ -11,6 +11,7 @@ from snake_sim.loop_observers.run_data_loop_observer import RunDataLoopObserver
 from snake_sim.loop_observers.recorder_run_data_observer import RecorderRunDataObserver
 from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
 from snake_sim.snakes.manual_snake import ManualSnake
+from snake_sim.snakes.remote_snake import RemoteSnake
 from snake_sim.environment.main_loop import SimLoop, GameLoop
 from snake_sim.environment.snake_handlers import SnakeHandler
 from snake_sim.controllers.keyboard_controller import ControllerCollection
@@ -86,13 +87,15 @@ class SnakeLoopControl:
         else:
             # Initialize simulation loop
             self._loop = SimLoop()
-            for auto_snake in snake_factory.create_snakes({'auto': config.snake_count}, start_length=config.start_length):
+            remote_snake = snake_factory.create_snake('remote', id=config.snake_count, start_length=config.start_length, target='localhost:50051')
+            self._snake_handler.add_snake(remote_snake)
+            for auto_snake in snake_factory.create_snakes({'auto': config.snake_count - 1}, start_length=config.start_length):
                 self._snake_handler.add_snake(auto_snake)
 
         for snake in self._snake_handler.get_snakes():
             start_pos = self._snake_enviroment.add_snake(snake.get_id(), start_length=snake.get_length())
             snake.set_init_data(self._snake_enviroment.get_init_data().__dict__)
-            snake.set_start_position(tuple(start_pos))
+            snake.set_start_position(start_pos)
 
         self._loop.set_snake_handler(self._snake_handler)
         self._loop.set_environment(self._snake_enviroment)
@@ -110,7 +113,6 @@ class SnakeLoopControl:
             raise ValueError('Observer must be an instance of ILoopObserver')
         self._loop.add_observer(observer)
 
-    @init_check
     def add_run_data_observer(self, observer: IRunDataObserver):
         """Adds a an observer to a RunDataLoopObserver"""
         if not isinstance(observer, IRunDataObserver):
@@ -146,12 +148,49 @@ class SnakeLoopControl:
                 ctl_collection.bind_controller(snake)
         ctl_collection.handle_controllers()
 
-    @init_check
-    def run(self, stop_event):
+    def run(self, stop_event,config, *observers):
         """Starts the loop
         Args:
             stop_event: Event object to stop the loop
         """
+        sim_config = None
+        if config.command == "stream" or config.command == "compute":
+            sim_config = SimConfig(
+            map=config.map,
+            food=config.food,
+            height=config.grid_height,
+            width=config.grid_width,
+            food_decay=config.food_decay,
+            snake_count=config.snake_count,
+            calc_timeout=config.calc_timeout,
+            verbose=config.verbose,
+            start_length=config.start_length
+            )
+        elif config.command == "game":
+            sim_config = GameConfig(
+            map=config.map,
+            food=config.food,
+            height=config.grid_height,
+            width=config.grid_width,
+            food_decay=config.food_decay,
+            snake_count=config.snake_count,
+            calc_timeout=config.calc_timeout,
+            verbose=config.verbose,
+            player_count=config.num_players,
+            spm=config.spm,
+            start_length=config.start_length
+            )
+        self.init(sim_config)
+        if not config.no_record:
+            recording_file = config.record_file if config.record_file else None
+            self.add_run_data_observer(
+            RecorderRunDataObserver(
+                recording_dir=config.record_dir,
+                recording_file=recording_file,
+                as_proto=True
+            )
+            )
+        self.add_run_data_observer(*observers)
         self._initialize_controllers()
         try:
             self._loop.start(stop_event)
@@ -164,43 +203,7 @@ class SnakeLoopControl:
         """Stops the loop"""
         self._loop.stop()
 
-
-def setup_loop(config):
-    loop_control = SnakeLoopControl()
-    if config.command == "stream" or config.command == "compute":
-        sim_config = SimConfig(
-            map=config.map,
-            food=config.food,
-            height=config.grid_height,
-            width=config.grid_width,
-            food_decay=config.food_decay,
-            snake_count=config.snake_count,
-            calc_timeout=config.calc_timeout,
-            verbose=config.verbose,
-            start_length=config.start_length
-        )
-    elif config.command == "game":
-        sim_config = GameConfig(
-            map=config.map,
-            food=config.food,
-            height=config.grid_height,
-            width=config.grid_width,
-            food_decay=config.food_decay,
-            snake_count=config.snake_count,
-            calc_timeout=config.calc_timeout,
-            verbose=config.verbose,
-            player_count=config.num_players,
-            spm=config.spm,
-            start_length=config.start_length
-        )
-    loop_control.init(sim_config)
-    if not config.no_record:
-        recording_file = config.record_file if config.record_file else None
-        loop_control.add_run_data_observer(
-            RecorderRunDataObserver(
-                recording_dir=config.record_dir,
-                recording_file=recording_file,
-                as_proto=True
-            )
-        )
+loop_control = SnakeLoopControl()
+ 
+def setup_loop():
     return loop_control

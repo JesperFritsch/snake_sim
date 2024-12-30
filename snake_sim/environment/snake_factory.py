@@ -5,6 +5,7 @@ from importlib import resources
 from snake_sim.utils import DotDict
 from snake_sim.snakes.auto_snake import AutoSnake
 from snake_sim.snakes.manual_snake import ManualSnake
+from snake_sim.snakes.remote_snake import RemoteSnake
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
@@ -13,7 +14,8 @@ class SnakeFactory:
     def __init__(self):
         self.snake_types = {
             'auto': AutoSnake,
-            'manual': ManualSnake
+            'manual': ManualSnake,
+            'remote': RemoteSnake  # Added RemoteSnake
         }
         self.used_ids = set()
 
