@@ -56,7 +56,6 @@ class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
                 "map": env_data.map,
                 "snakes": {k: {"is_alive": v.is_alive, "length": v.length} for k, v in env_data.snakes.items()}
             }
-            print(f"Update called. Set env_data to: {self.env_data}")
             direction = Coord(x=1, y=0)  # Example logic to determine direction
             print(f"Update called. Returning direction: {direction}")
             yield remote_snake_pb2.UpdateResponse(direction=remote_snake_pb2.Coord(x=direction.x, y=direction.y))
