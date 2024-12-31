@@ -94,7 +94,7 @@ class SnakeLoopControl:
 
         for snake in self._snake_handler.get_snakes():
             start_pos = self._snake_enviroment.add_snake(snake.get_id(), start_length=snake.get_length())
-            snake.set_init_data(self._snake_enviroment.get_init_data().__dict__)
+            snake.set_init_data(self._snake_enviroment.get_init_data())
             snake.set_start_position(start_pos)
 
         self._loop.set_snake_handler(self._snake_handler)
