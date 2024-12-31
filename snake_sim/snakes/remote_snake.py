@@ -9,6 +9,7 @@ class RemoteSnake(ISnake):
     def __init__(self, id: int, start_length: int, target: str):
         self.id = id
         self.start_length = start_length
+        self.target = target
         self.channel = grpc.insecure_channel(target)
         self.stub = remote_snake_pb2_grpc.RemoteSnakeStub(self.channel)
         self.set_id(id)
@@ -56,3 +57,6 @@ class RemoteSnake(ISnake):
         response_iterator = self.stub.Update(iter([env_data_proto]))
         for response in response_iterator:
             return Coord(x=response.direction.x, y=response.direction.y)
+
+    def __reduce__(self):
+        return (self.__class__, (self.id, self.start_length, self.target))

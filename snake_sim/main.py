@@ -39,9 +39,10 @@ def main():
 
     elif config.command == "stream" or config.command == "game":
         parent_conn, child_conn = Pipe()
-        loop_control = setup_loop()
+        loop_control = setup_loop(config)
+        loop_control.add_run_data_observer(IPCRunDataObserver(parent_conn))
         stop_event = Event()
-        loop_p = Process(target=loop_control.run, args=(stop_event,config,IPCRunDataObserver(parent_conn)))
+        loop_p = Process(target=loop_control.run, args=(stop_event,))
         if config.command == "game":
             render_p = Process(target=play_game, args=(child_conn, config.spm, config.sound))
         else:
