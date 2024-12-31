@@ -36,14 +36,26 @@ class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
         return remote_snake_pb2.Empty()
 
     def SetInitData(self, request, context):
-        self.env_data = request.data
+        self.env_data = {
+            "height": request.height,
+            "width": request.width,
+            "free_value": request.free_value,
+            "blocked_value": request.blocked_value,
+            "food_value": request.food_value,
+            "snake_values": {k: {"head_value": v.head_value, "body_value": v.body_value} for k, v in request.snake_values.items()},
+            "start_positions": {k: Coord(x=v.x, y=v.y) for k, v in request.start_positions.items()},
+            "base_map": request.base_map
+        }
         print(f"SetInitData called. Set env_data to: {self.env_data}")
         return remote_snake_pb2.Empty()
 
     def Update(self, request_iterator, context):
         directions = [Coord(x=1, y=0), Coord(x=-1, y=0), Coord(x=0, y=1), Coord(x=0, y=-1)]
         for env_data in request_iterator:
-            self.env_data = env_data.data
+            self.env_data = {
+                "map": env_data.map,
+                "snakes": {k: {"is_alive": v.is_alive, "length": v.length} for k, v in env_data.snakes.items()}
+            }
             print(f"Update called. Set env_data to: {self.env_data}")
             direction = Coord(x=1, y=0)  # Example logic to determine direction
             print(f"Update called. Returning direction: {direction}")

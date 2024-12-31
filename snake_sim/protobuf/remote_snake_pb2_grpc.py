@@ -61,7 +61,7 @@ class RemoteSnakeStub(object):
                 _registered_method=True)
         self.SetInitData = channel.unary_unary(
                 '/snake_sim.RemoteSnake/SetInitData',
-                request_serializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.EnvData.SerializeToString,
+                request_serializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.EnvInitData.SerializeToString,
                 response_deserializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.Empty.FromString,
                 _registered_method=True)
         self.Update = channel.stream_stream(
@@ -93,8 +93,7 @@ class RemoteSnakeServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def SetLength(self, request, context):
-        """Added SetLength RPC
-        """
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -106,13 +105,15 @@ class RemoteSnakeServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def SetInitData(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Updated SetInitData RPC
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Update(self, request_iterator, context):
-        """Missing associated documentation comment in .proto file."""
+        """Updated Update RPC
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -147,7 +148,7 @@ def add_RemoteSnakeServicer_to_server(servicer, server):
             ),
             'SetInitData': grpc.unary_unary_rpc_method_handler(
                     servicer.SetInitData,
-                    request_deserializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.EnvData.FromString,
+                    request_deserializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.EnvInitData.FromString,
                     response_serializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.Empty.SerializeToString,
             ),
             'Update': grpc.stream_stream_rpc_method_handler(
@@ -316,7 +317,7 @@ class RemoteSnake(object):
             request,
             target,
             '/snake_sim.RemoteSnake/SetInitData',
-            snake__sim_dot_protobuf_dot_remote__snake__pb2.EnvData.SerializeToString,
+            snake__sim_dot_protobuf_dot_remote__snake__pb2.EnvInitData.SerializeToString,
             snake__sim_dot_protobuf_dot_remote__snake__pb2.Empty.FromString,
             options,
             channel_credentials,
