@@ -87,9 +87,7 @@ class SnakeLoopControl:
         else:
             # Initialize simulation loop
             self._loop = SimLoop()
-            remote_snake = snake_factory.create_snake('remote', id=config.snake_count, start_length=config.start_length, target='localhost:50051')
-            self._snake_handler.add_snake(remote_snake)
-            for auto_snake in snake_factory.create_snakes({'auto': config.snake_count - 1}, start_length=config.start_length):
+            for auto_snake in snake_factory.create_snakes({'auto': config.snake_count}, start_length=config.start_length):
                 self._snake_handler.add_snake(auto_snake)
 
         for snake in self._snake_handler.get_snakes():
