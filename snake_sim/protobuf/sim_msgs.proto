@@ -156,13 +156,3 @@ message BadRequest {
 message RunUpdate {
     int32 final_step = 1;
 }
-
-// ############################################################
-
-message Empty {
-}
-
-service RemoteSnakeService {
-    rpc initEnvData(Empty) returns (EnvData) {}
-    rpc update(stream SnakeAction) returns (stream EnvData) {}
-}

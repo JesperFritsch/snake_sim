@@ -1,6 +1,7 @@
 
 from abc import ABC, abstractmethod
 from snake_sim.utils import Coord
+from snake_sim.environment.snake_env import EnvInitData, EnvData
 
 
 class ISnake(ABC):
@@ -21,9 +22,9 @@ class ISnake(ABC):
         pass
 
     @abstractmethod
-    def set_init_data(self, env_data: dict):
+    def set_init_data(self, env_data: EnvInitData):
         pass
 
     @abstractmethod
-    def update(self, env_data: dict) -> Coord: # -> (int, int) as direction (1, 0) for right (-1, 0) for left
+    def update(self, env_data: EnvData) -> Coord: # -> (int, int) as direction (1, 0) for right (-1, 0) for left
         pass

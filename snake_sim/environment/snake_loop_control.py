@@ -11,6 +11,7 @@ from snake_sim.loop_observers.run_data_loop_observer import RunDataLoopObserver
 from snake_sim.loop_observers.recorder_run_data_observer import RecorderRunDataObserver
 from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
 from snake_sim.snakes.manual_snake import ManualSnake
+from snake_sim.snakes.remote_snake import RemoteSnake
 from snake_sim.environment.main_loop import SimLoop, GameLoop
 from snake_sim.environment.snake_handlers import SnakeHandler
 from snake_sim.controllers.keyboard_controller import ControllerCollection
@@ -91,8 +92,8 @@ class SnakeLoopControl:
 
         for snake in self._snake_handler.get_snakes():
             start_pos = self._snake_enviroment.add_snake(snake.get_id(), start_length=snake.get_length())
-            snake.set_init_data(self._snake_enviroment.get_init_data().__dict__)
-            snake.set_start_position(tuple(start_pos))
+            snake.set_init_data(self._snake_enviroment.get_init_data())
+            snake.set_start_position(start_pos)
 
         self._loop.set_snake_handler(self._snake_handler)
         self._loop.set_environment(self._snake_enviroment)
