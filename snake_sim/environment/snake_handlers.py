@@ -20,7 +20,7 @@ class SnakeHandler(ISnakeHandler):
         return self._dead_snakes.add(id)
 
     def get_decision(self, id, env_data: EnvData) -> Coord:
-        return Coord(*self._snakes[id].update(env_data.__dict__))
+        return Coord(*self._snakes[id].update(env_data))
 
     def add_snake(self, snake: ISnake):
         self._snakes[snake.get_id()] = snake

@@ -24,7 +24,8 @@ class Snake(ISnake):
         self.length = self.start_length
         self.env_data = DotDict()
 
-    def set_init_data(self, env_data: dict):
+    def set_init_data(self, env_data):
+        env_data = env_data.__dict__  
         self.env_data.update(env_data)
         self.head_value = self.env_data["snake_values"][self.id]['head_value']
         self.body_value = self.env_data["snake_values"][self.id]['body_value']
@@ -45,6 +46,7 @@ class Snake(ISnake):
         self.length = self.start_length
 
     def update(self, env_data):
+        env_data = env_data.__dict__
         self.update_env_data(env_data)
         self.update_map(self.env_data.map)
 
