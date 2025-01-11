@@ -72,39 +72,39 @@ struct AreaCheckResult {
     int tile_count;
     int total_steps;
     int food_count;
+    int edge_tile_count;
     bool has_tail;
     int margin;
     int needed_steps;
-    bool has_opening;
-    float margin_over_tiles;
+    float margin_over_edge;
     AreaCheckResult() :
         is_clear(false),
         tile_count(0),
         total_steps(0),
+        edge_tile_count(0),
         food_count(0),
         has_tail(false),
         margin(INT_MIN),
         needed_steps(0),
-        has_opening(false),
-        margin_over_tiles(0) {}
+        margin_over_edge(0) {}
     AreaCheckResult(bool is_clear,
                     int tile_count,
                     int total_steps,
                     int food_count,
+                    int edge_tile_count,
                     bool has_tail,
                     int margin,
                     int needed_steps,
-                    bool has_opening,
-                    float margin_over_tiles) :
+                    float margin_over_edge) :
         is_clear(is_clear),
         tile_count(tile_count),
         total_steps(total_steps),
         food_count(food_count),
+        edge_tile_count(edge_tile_count),
         has_tail(has_tail),
         margin(margin),
         needed_steps(needed_steps),
-        has_opening(has_opening),
-        margin_over_tiles(margin_over_tiles) {}
+        margin_over_edge(margin_over_edge) {}
 };
 
 class AreaNode{
@@ -115,6 +115,7 @@ public:
     int max_index = 0;
     int tile_count = 0;
     int food_count = 0;
+    int edge_tile_count = 0;
 
     // one_dim is true if the area is a line that the snake can not turn around in.
     bool is_one_dim = false;
@@ -186,6 +187,7 @@ struct ExploreData{
 struct ExploreResults{
     int tile_count = 0;
     int food_count = 0;
+    int edge_tile_count = 0;
     int max_index = 0;
     bool has_tail = false;
     bool early_exit = false;
@@ -200,6 +202,7 @@ struct ExploreResults{
     ExploreResults(
         int tile_count,
         int food_count,
+        int edge_tile_count,
         int max_index,
         bool has_tail,
         bool early_exit,
@@ -207,10 +210,27 @@ struct ExploreResults{
         std::vector<Coord> to_explore) :
             tile_count(tile_count),
             food_count(food_count),
+            edge_tile_count(edge_tile_count),
             max_index(max_index),
             has_tail(has_tail),
             connected_areas(connected_areas),
             to_explore(to_explore) {}
+};
+
+struct Additionals{
+    int tile_count;
+    int food_count;
+    int edge_tile_count;
+
+    Additionals() :
+        tile_count(0),
+        food_count(0),
+        edge_tile_count(0) {}
+
+    Additionals(int tile_count, int food_count, int edge_tile_count) :
+        tile_count(tile_count),
+        food_count(food_count),
+        edge_tile_count(edge_tile_count) {}
 };
 
 struct SearchNode{
@@ -218,6 +238,7 @@ struct SearchNode{
     int nr_visits = 0;
     int tiles_until_here = 0;
     int food_until_here = 0;
+    int edge_tiles_until_here = 0;
 
     std::vector<std::vector<unsigned int>> searched_edges;
     std::vector<unsigned int> used_edges;
@@ -255,7 +276,7 @@ struct SearchNode{
         used_edges.push_back(edge);
     }
 
-    void enter_from(AreaNode* node, int tiles, int food){
+    void enter_from(AreaNode* node, int tiles, int food, int edge_tiles){
         auto edge = this->node->get_edge(node);
         if (edge != 0){
             add_used_edge(edge);
@@ -264,6 +285,7 @@ struct SearchNode{
         if (first_visit()){
             tiles_until_here = tiles;
             food_until_here = food;
+            edge_tiles_until_here = edge_tiles;
         }
         searched_edges.resize(nr_visits);
     }
@@ -294,17 +316,20 @@ struct SearchNode{
         used_edges.clear();
     }
 
-    std::pair<int, int> additional_tiles(){
+    Additionals additional_tiles(){
         int tiles;
         int food;
+        int edge_tiles;
         if (first_visit()){
             tiles = node->tile_count;
             food = node->food_count;
+            edge_tiles = node->edge_tile_count;
         } else {
             tiles = 0;
             food = 0;
+            edge_tiles = 0;
         }
-        return std::make_pair(tiles, food);
+        return Additionals(tiles, food, edge_tiles);
     }
 
 };
@@ -390,8 +415,10 @@ public:
         std::vector<SearchNode*> search_stack;
         std::vector<int> total_tile_count_stack;
         std::vector<int> total_food_count_stack;
+        std::vector<int> total_edge_tile_count_stack;
         total_food_count_stack.reserve(100);
         total_tile_count_stack.reserve(100);
+        total_edge_tile_count_stack.reserve(100);
         search_stack.reserve(100);
         search_stack.push_back(&search_nodes_data[root]);
         AreaCheckResult best_result;
@@ -404,9 +431,10 @@ public:
             current_node = step_data->node;
             int tiles_before = total_food_count_stack.empty() ? 0 : total_tile_count_stack.back();
             int food_before = total_food_count_stack.empty() ? 0 : total_food_count_stack.back();
+            int edge_tiles_before = total_edge_tile_count_stack.empty() ? 0 : total_edge_tile_count_stack.back();
             if (forward){
                 if (!skipped_one){
-                    step_data->enter_from(prev_node, tiles_before, food_before);
+                    step_data->enter_from(prev_node, tiles_before, food_before, edge_tiles_before);
                 }
                 skipped_one = false;
             }
@@ -416,16 +444,20 @@ public:
 
             // if this is not the first visit to this node, then countable tiles are 0
             auto current_additional = step_data->additional_tiles();
-            int current_countable_tiles = current_additional.first;
-            int current_countable_food = current_additional.second;
+            int current_countable_tiles = current_additional.tile_count;
+            int current_countable_food = current_additional.food_count;
+            int current_edge_tile_count = current_additional.edge_tile_count;
 
             int total_tile_count_here = current_countable_tiles + tiles_before;
             int total_food_count_here = current_countable_food + food_before;
+            int total_edge_tile_count_here = current_edge_tile_count + edge_tiles_before;
+            int edge_tiles_here;
             int tiles_here;
             int needed_steps;
             int margin;
             int total_steps;
             int calc_tiles;
+            int calc_edge_tiles;
             int calc_food;
             if (step_data->node->has_tail && !food_check){
                 best_result.has_tail = true;
@@ -433,22 +465,26 @@ public:
                 best_result.is_clear = true;
                 best_result.tile_count = total_tile_count_here;
                 best_result.food_count = total_food_count_here;
-                best_result.margin_over_tiles = 1;
+                best_result.edge_tile_count = total_edge_tile_count_here;
+                best_result.margin_over_edge = 1;
                 break;
             }
 
             // this is how loops in the graph are handled
             if (step_data->first_visit()){
                 tiles_here = current_node->tile_count;
+                edge_tiles_here = current_node->edge_tile_count;
             }
             else{
                 // tiles_until_here and food_until_here are only set at the first visit
                 tiles_here = total_tile_count_here - step_data->tiles_until_here;
+                edge_tiles_here = total_edge_tile_count_here - step_data->edge_tiles_until_here;
             }
 
             if (step_data->node->max_index > 0){
                 calc_tiles = total_tile_count_here;
                 calc_food = total_food_count_here;
+                calc_edge_tiles = total_edge_tile_count_here;
                 total_steps = calc_tiles - calc_food;
                 needed_steps = snake_length - step_data->node->max_index;
                 margin = total_steps - needed_steps;
@@ -456,6 +492,7 @@ public:
             else{
                 calc_tiles = tiles_here;
                 calc_food = total_food_count_here;
+                calc_edge_tiles = edge_tiles_here;
                 total_steps = calc_tiles - calc_food;
                 needed_steps = snake_length + 1;
                 margin = total_steps - needed_steps;
@@ -464,25 +501,13 @@ public:
             current_result.total_steps = total_steps;
             current_result.tile_count = calc_tiles;
             current_result.food_count = calc_food;
+            current_result.edge_tile_count = calc_edge_tiles;
             current_result.needed_steps = needed_steps;
-            current_result.margin_over_tiles = (float)margin / (float)calc_tiles;
+            current_result.margin_over_edge = (float)margin / (float)calc_edge_tiles;
             if(current_result.margin >= 0){
                 current_result.is_clear = true;
             }
 
-            if (food_check){
-                if (current_result.margin > current_result.food_count && (current_result.food_count >= best_result.food_count)){
-                    best_result = current_result;
-                }
-            }
-            else{
-                if (current_result.margin > best_result.margin){
-                    best_result = current_result;
-                }
-                if ((best_result.margin >= target_margin && best_result.margin > best_result.food_count) && !exhaustive && current_result.margin_over_tiles > safe_margin_factor){
-                    break;
-                }
-            }
             // std::cout << "\n####### ENTERING NODE #######" << std::endl;
             // std::cout << (forward ? "--> Forward" : "<-- Backward") << std::endl;
             // std::cout << "nr_visits: " << step_data->nr_visits << std::endl;
@@ -492,14 +517,17 @@ public:
             // std::cout << "end coord: (" << current_node->end_coord.x << ", " << current_node->end_coord.y << ")" << std::endl;
             // std::cout << "node tile count: " << current_node->tile_count << std::endl;
             // std::cout << "node food count: " << current_node->food_count << std::endl;
+            // std::cout << "edge tile count: " << current_node->edge_tile_count << std::endl;
             // std::cout << "is one dim: " << current_node->is_one_dim << std::endl;
             // std::cout << "has tail: " << current_node->has_tail << std::endl;
             // std::cout << "Tiles before: " << tiles_before << std::endl;
             // std::cout << "Food before: " << food_before << std::endl;
+            // std::cout << "Edge tiles before: " << edge_tiles_before << std::endl;
             // std::cout << "current node tile count: " << current_countable_tiles << std::endl;
             // std::cout << "current node food count: " << current_countable_food << std::endl;
             // std::cout << "tiles until here: " << step_data->tiles_until_here << std::endl;
             // std::cout << "food until here: " << step_data->food_until_here << std::endl;
+            // std::cout << "edge tiles until here: " << step_data->edge_tiles_until_here << std::endl;
             // std::cout << "needed steps: " << needed_steps << std::endl;
             // std::cout << "total steps: " << total_steps << std::endl;
             // std::cout << "margin: " << margin << std::endl;
@@ -529,19 +557,33 @@ public:
             // std::cout << "  tile count: " << current_result.tile_count << std::endl;
             // std::cout << "  food count: " << current_result.food_count << std::endl;
             // std::cout << "  needed steps: " << current_result.needed_steps << std::endl;
-            // std::cout << "  has opening: " << current_result.has_opening << std::endl;
             // std::cout << "  margin: " << current_result.margin << std::endl;
             // std::cout << "  total steps: " << current_result.total_steps << std::endl;
+            // std::cout << "  edge tile count: " << current_result.edge_tile_count << std::endl;
             // std::cout << "  has tail: " << current_result.has_tail << std::endl;
             // std::cout << "best result: \n";
             // std::cout << "  is clear: " << best_result.is_clear << std::endl;
             // std::cout << "  tile count: " << best_result.tile_count << std::endl;
             // std::cout << "  food count: " << best_result.food_count << std::endl;
             // std::cout << "  needed steps: " << best_result.needed_steps << std::endl;
-            // std::cout << "  has opening: " << best_result.has_opening << std::endl;
             // std::cout << "  margin: " << best_result.margin << std::endl;
             // std::cout << "  total steps: " << best_result.total_steps << std::endl;
+            // std::cout << "  edge tile count: " << best_result.edge_tile_count << std::endl;
             // std::cout << "  has tail: " << best_result.has_tail << std::endl;
+
+            if (food_check){
+                if (current_result.margin > current_result.food_count && (current_result.food_count >= best_result.food_count)){
+                    best_result = current_result;
+                }
+            }
+            else{
+                if (current_result.margin > best_result.margin){
+                    best_result = current_result;
+                }
+                if ((best_result.margin >= target_margin && best_result.margin > best_result.food_count) && !exhaustive && current_result.margin_over_edge > safe_margin_factor){
+                    break;
+                }
+            }
 
             auto node_edge_pair = step_data->get_next_node_and_edge();
             if (node_edge_pair.first != nullptr){
@@ -628,11 +670,13 @@ public:
                     int food_before_actually = (current_node->id == 0 ? 0 : food_before);
                     total_tile_count_stack.push_back(tiles_before_actually + 1);
                     total_food_count_stack.push_back(food_before_actually + (corner_has_food ? 1 : 0));
+                    total_edge_tile_count_stack.push_back(edge_tiles_before + 1);
                 }
                 else{
                     // std::cout << "Not corner" << std::endl;
                     total_tile_count_stack.push_back(total_tile_count_here);
                     total_food_count_stack.push_back(total_food_count_here);
+                    total_edge_tile_count_stack.push_back(total_edge_tile_count_here);
                 }
             }
             else{
@@ -640,6 +684,7 @@ public:
                 search_stack.pop_back();
                 total_food_count_stack.pop_back();
                 total_tile_count_stack.pop_back();
+                total_edge_tile_count_stack.pop_back();
                 if (search_stack.empty()){
                     break;
                 }
@@ -730,10 +775,11 @@ public:
 class AreaChecker {
 public:
     // Constructor to initialize food_value, free_value, and body_value
-    AreaChecker(uint8_t food_value, uint8_t free_value, uint8_t body_value, int width, int height) :
+    AreaChecker(uint8_t food_value, uint8_t free_value, uint8_t body_value, uint8_t head_value, int width, int height) :
         food_value(food_value),
         free_value(free_value),
         body_value(body_value),
+        head_value(head_value),
         width(width),
         height(height) {}
 
@@ -785,102 +831,101 @@ public:
         // . . .
         // . . x
         // or flipped
-        int cols = this->width;
-        int c_x = coord.x;
-        int c_y = coord.y;
-        int ch_x = check_coord.x;
-        int ch_y = check_coord.y;
-        uint8_t offmap_value = 3;
+        const int cols = this->width;
+        const int c_x = coord.x;
+        const int c_y = coord.y;
+        const int ch_x = check_coord.x;
+        const int ch_y = check_coord.y;
+        static constexpr int offmap_value = -1;
 
-        int delta_y = ch_y - c_y;
-        int delta_x = ch_x - c_x;
+        const int delta_y = ch_y - c_y;
+        const int delta_x = ch_x - c_x;
         int value;
 
-        std::array<Coord, 8> neighbours = {
-            Coord(c_x - 1, c_y - 1),
-            Coord(c_x, c_y - 1),
-            Coord(c_x + 1, c_y - 1),
-            Coord(c_x + 1, c_y),
-            Coord(c_x + 1, c_y + 1),
-            Coord(c_x, c_y + 1),
-            Coord(c_x - 1, c_y + 1),
-            Coord(c_x - 1, c_y)
-        };
-
-        std::array<Coord, 8> ch_neighbours = {
+        const std::array<Coord, 8> ch_neighbours = {
             Coord(ch_x - 1, ch_y - 1),
-            Coord(ch_x, ch_y - 1),
+            Coord(ch_x    , ch_y - 1),
             Coord(ch_x + 1, ch_y - 1),
-            Coord(ch_x + 1, ch_y),
+            Coord(ch_x + 1, ch_y    ),
             Coord(ch_x + 1, ch_y + 1),
-            Coord(ch_x, ch_y + 1),
+            Coord(ch_x    , ch_y + 1),
             Coord(ch_x - 1, ch_y + 1),
-            Coord(ch_x - 1, ch_y)
+            Coord(ch_x - 1, ch_y    )
+        };
+        {
+            bool all_free = true;
+            for (const auto& c : ch_neighbours) {
+                if (!this->is_inside(c.x, c.y) ||
+                    s_map[c.y * cols + c.x] > this->free_value) {
+                    all_free = false;
+                    break;
+                }
+            }
+            if (all_free) {
+                return 0;
+            }
+        }
+
+        // 2) Prepare neighbours
+        const std::array<Coord, 8> neighbours = {
+            Coord(c_x - 1, c_y - 1),
+            Coord(c_x    , c_y - 1),
+            Coord(c_x + 1, c_y - 1),
+            Coord(c_x + 1, c_y    ),
+            Coord(c_x + 1, c_y + 1),
+            Coord(c_x    , c_y + 1),
+            Coord(c_x - 1, c_y + 1),
+            Coord(c_x - 1, c_y    )
         };
 
-        std::array<uint8_t, 4> corner_values;
-        std::array<uint8_t, 4> neighbour_values;
+        // 3) Fill corner_values & neighbour_values in fewer branches
+        std::array<int, 4> corner_values{};
+        std::array<int, 4> neighbour_values{};
 
-        if(std::all_of(ch_neighbours.begin(), ch_neighbours.end(), [this, &s_map, cols](const Coord& c) {
-            return this->is_inside(c.x, c.y) && s_map[c.y * cols + c.x] <= this->free_value;
-        })){
-            return 0;
-        }
-
-        for(unsigned int i = 0; i < neighbours.size(); i++){
-            Coord c = neighbours[i];
-            if (i % 2 == 0){
-                if (this->is_inside(c.x, c.y)){
-                    corner_values[i/2] = s_map[c.y * cols + c.x];
-                }
-                else{
-                    corner_values[i/2] = offmap_value; // arbitrary value, just not free_value or food_value
-                }
-            }
-            else{
-                if (this->is_inside(c.x, c.y)){
-                    neighbour_values[i/2] = s_map[c.y * cols + c.x];
-                }
-                else{
-                    neighbour_values[i/2] = offmap_value; // arbitrary value, just not free_value or food_value
-                }
-            }
-
-        }
-        if (corner_values[0] > this->free_value && corner_values[0] != offmap_value){
-            if (corner_values[2] > this->free_value && corner_values[2] != offmap_value){
-                bool is_diagonal = true;
-                for(unsigned int i = 0; i < neighbour_values.size(); i++){
-                    if (neighbour_values[i] > this->free_value){
-                        is_diagonal = false;
-                        break;
-                    }
-                    if (i != 0 && i != 2 && corner_values[i] > this->free_value){
-                        is_diagonal = false;
-                        break;
-                    }
-                }
-                if (is_diagonal){
-                    return 2;
-                }
+        for (unsigned int i = 0; i < 8; i++) {
+            const Coord& nc = neighbours[i];
+            const bool inside = this->is_inside(nc.x, nc.y);
+            if (i % 2 == 0) {
+                corner_values[i / 2] =
+                    inside ? s_map[nc.y * cols + nc.x] : offmap_value;
+            } else {
+                neighbour_values[i / 2] =
+                    inside ? s_map[nc.y * cols + nc.x] : offmap_value;
             }
         }
-        if (corner_values[1] > this->free_value && corner_values[1] != offmap_value){
-            if (corner_values[3] > this->free_value && corner_values[3] != offmap_value){
-                bool is_diagonal = true;
-                for(unsigned int i = 0; i < neighbour_values.size(); i++){
-                    if (neighbour_values[i] > this->free_value){
-                        is_diagonal = false;
-                        break;
-                    }
-                    if (i != 1 && i != 3 && corner_values[i] > this->free_value){
-                        is_diagonal = false;
-                        break;
-                    }
+
+        if (corner_values[0] > this->free_value && corner_values[0] != offmap_value &&
+            corner_values[2] > this->free_value && corner_values[2] != offmap_value){
+            bool is_diagonal = true;
+            for(unsigned int i = 0; i < neighbour_values.size(); i++){
+                if (neighbour_values[i] > this->free_value){
+                    is_diagonal = false;
+                    break;
                 }
-                if (is_diagonal){
-                    return 2;
+                if (i != 0 && i != 2 && corner_values[i] > this->free_value){
+                    is_diagonal = false;
+                    break;
                 }
+            }
+            if (is_diagonal){
+                return 2;
+            }
+        }
+        if (corner_values[1] > this->free_value && corner_values[1] != offmap_value &&
+            corner_values[3] > this->free_value && corner_values[3] != offmap_value){
+            bool is_diagonal = true;
+            for(unsigned int i = 0; i < neighbour_values.size(); i++){
+                if (neighbour_values[i] > this->free_value){
+                    is_diagonal = false;
+                    break;
+                }
+                if (i != 1 && i != 3 && corner_values[i] > this->free_value){
+                    is_diagonal = false;
+                    break;
+                }
+            }
+            if (is_diagonal){
+                return 2;
             }
         }
 
@@ -954,7 +999,8 @@ public:
                 py::arg("food_count") = result.food_count,
                 py::arg("has_tail") = result.has_tail,
                 py::arg("margin") = result.margin,
-                py::arg("margin_over_tiles") = result.margin_over_tiles
+                py::arg("margin_over_edge") = result.margin_over_edge,
+                py::arg("edge_tile_count") = result.edge_tile_count
             );
         }
 
@@ -972,6 +1018,7 @@ public:
     ){
         int tile_count = 0;
         int food_count = 0;
+        int edge_tile_count = 0;
         int max_index = 0;
         bool has_tail = false;
         bool did_early_exit = false;
@@ -981,7 +1028,7 @@ public:
         connected_areas.reserve(10);
         int checked_value = checked[start_coord.y * width + start_coord.x];
         if(checked_value != unexplored_area_id && checked_value != area_id){
-            return ExploreResults(tile_count, food_count, max_index, has_tail, did_early_exit, connected_areas, to_explore);
+            return ExploreResults(tile_count, food_count, edge_tile_count, max_index, has_tail, did_early_exit, connected_areas, to_explore);
         }
         tile_count += 1;
         size_t body_len = body_coords.size();
@@ -993,6 +1040,7 @@ public:
         while (!current_coords.empty()) {
             auto curr_coord = current_coords.front();
             current_coords.pop_front();
+            bool is_edge = false;
             int c_x, c_y;
             c_x = curr_coord.x;
             c_y = curr_coord.y;
@@ -1014,6 +1062,7 @@ public:
                 n_x = n_coord.x;
                 n_y = n_coord.y;
                 if (!this->is_inside(n_x, n_y)) {
+                    is_edge = true;
                     continue;
                 }
                 int checked_val = checked[n_y * width + n_x];
@@ -1028,12 +1077,14 @@ public:
                 int coord_val = s_map[n_y * width + n_x];
                 if (coord_val == free_value || coord_val == food_value) {
                     int entrance_code = _is_single_entrance(s_map, curr_coord, n_coord);
+                    // int entrance_code = 0;
                     if (entrance_code == 0) {
                         checked[n_y * width + n_x] = area_id; // this used to be above this if statement, dont know if this will cause a bug, but i think it should be fine.
                         tile_count += 1;
                         current_coords.push_back(n_coord);
                     }
                     else{
+                        is_edge = true;
                         if (std::find(to_explore.begin(), to_explore.end(), n_coord) == to_explore.end()) {
                             to_explore.push_back(n_coord);
                         }
@@ -1041,7 +1092,7 @@ public:
                             break;
                         }
                     }
-                } else if (coord_val == body_value) {
+                } else if (coord_val == body_value && !(curr_coord == start_coord && area_id == 0)) {
                     auto it = std::find(body_coords.begin(), body_coords.end(), n_coord);
                     if (it != body_coords.end()) {
                         int body_index = static_cast<int>(std::distance(body_coords.begin(), it));  // Cast to int
@@ -1053,16 +1104,23 @@ public:
                         max_index = body_len - 1;
                         has_tail = true;
                     }
+                    is_edge = true;
                 }
+                else {
+                    is_edge = true;
+                }
+            }
+            if (is_edge) {
+                edge_tile_count += 1;
             }
             int calc_target_margin = std::max(std::max(target_margin, food_count + total_food_count), 1);
             int total_steps = tile_count - (food_count + total_food_count);
             int needed_steps = (max_index > 0) ? snake_length - max_index : snake_length + 1;
             int margin = total_steps - needed_steps;
-            double margin_over_tiles = (float)margin / (float)tile_count;
-            if (early_exit && margin_over_tiles > (safe_margin_factor * 2) && margin > calc_target_margin * 2) {
+            double margin_over_edge = (float)margin / (float)edge_tile_count;
+            if (early_exit && margin_over_edge > (safe_margin_factor * 2) && margin > calc_target_margin * 2) {
                 // std::cout << "Early exit" << std::endl;
-                // std::cout << "Margin over tiles: " << margin_over_tiles << std::endl;
+                // std::cout << "Margin over tiles: " << margin_over_edge << std::endl;
                 // std::cout << "Margin: " << margin << std::endl;
                 // std::cout << "Target margin: " << calc_target_margin << std::endl;
                 // std::cout << "Tile count: " << tile_count << std::endl;
@@ -1073,7 +1131,7 @@ public:
                 break;
             }
         }
-        return ExploreResults(tile_count, food_count, max_index, has_tail, did_early_exit, connected_areas, to_explore);
+        return ExploreResults(tile_count, food_count, edge_tile_count, max_index, has_tail, did_early_exit, connected_areas, to_explore);
     }
 
     AreaCheckResult _area_check2(
@@ -1103,7 +1161,6 @@ public:
             Coord current_coord = current_area_data.start_coord;
             int current_id = current_area_data.area_id;
             prev_node = current_area_data.prev_node;
-            // std::cout << "Exploring area start: (" << current_coord.x << ", " << current_coord.y << ") " << current_id << std::endl;
             auto result = explore_area(
                 s_map,
                 body_coords,
@@ -1117,11 +1174,14 @@ public:
                 total_food_count
             );
             total_food_count += result.food_count;
+
+            // std::cout << std::endl;
             // std::cout << "Explored area: " << current_id << std::endl;
             // std::cout << "Current coord: (" << current_coord.x << ", " << current_coord.y << ")" << std::endl;
             // std::cout << "Prev node: " << (prev_node == nullptr ? -1 : prev_node->id) << std::endl;
             // std::cout << "Tile count: " << result.tile_count << std::endl;
             // std::cout << "Food count: " << result.food_count << std::endl;
+            // std::cout << "Edge tile count: " << result.edge_tile_count << std::endl;
             // std::cout << "Max index: " << result.max_index << std::endl;
             // std::cout << "Has tail: " << result.has_tail << std::endl;
             // std::cout << "prev is one dim: " << (prev_node == nullptr ? false : prev_node->is_one_dim) << std::endl;
@@ -1131,6 +1191,7 @@ public:
             // for (auto& coord : result.to_explore){
             //     std::cout << "To explore: (" << coord.x << ", " << coord.y << ")" << std::endl;
             // }
+
             if (result.tile_count == 0){
                 continue;
             }
@@ -1140,6 +1201,7 @@ public:
                 current_node = prev_node;
                 current_node->tile_count += result.tile_count;
                 current_node->food_count += result.food_count;
+                current_node->edge_tile_count += result.edge_tile_count;
                 current_node->max_index = result.max_index;
                 current_node->has_tail = result.has_tail;
                 current_node->end_coord = current_coord;
@@ -1149,6 +1211,7 @@ public:
                 current_node = graph.add_node_with_id(prev_node, current_coord, current_id);
                 current_node->tile_count = result.tile_count;
                 current_node->food_count = result.food_count;
+                current_node->edge_tile_count = result.edge_tile_count;
                 current_node->max_index = result.max_index;
                 current_node->has_tail = result.has_tail;
                 if (current_node->tile_count == 1 && (result.connected_areas.size() + result.to_explore.size() == 2) && current_node->max_index == 0){ // a node cant really have 2 or 3 tiles, next step after 1 is 4, but anyways...
@@ -1173,6 +1236,7 @@ private:
     uint8_t food_value;
     uint8_t free_value;
     uint8_t body_value;
+    uint8_t head_value;
     int width;
     int height;
     Coord print_mark;
@@ -1182,7 +1246,7 @@ private:
 
 PYBIND11_MODULE(area_check, m) {
     py::class_<AreaChecker>(m, "AreaChecker")
-        .def(py::init<int, int, int, int, int>())
+        .def(py::init<int, int, int, int, int, int>())
         .def("is_single_entrance", &AreaChecker::is_single_entrance)
         .def("area_check", &AreaChecker::area_check,
             py::arg("s_map"),

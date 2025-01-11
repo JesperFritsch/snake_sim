@@ -6,6 +6,7 @@ snake_venv*
 *.weights.h5
 *egg*
 logs/
+*.pyd
 build/
 dist/
 *.so

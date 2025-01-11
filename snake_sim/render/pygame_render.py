@@ -95,6 +95,8 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
     while STREAM_IS_LIVE:
         turn_sounds = []
         eat_sounds = []
+        while not stream_conn.poll(0.05):
+            time.sleep(0.05)
         payload = stream_conn.recv()
         if payload == 'stopped':
             STREAM_IS_LIVE = False

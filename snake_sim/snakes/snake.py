@@ -25,7 +25,7 @@ class Snake(ISnake):
         self.env_data = DotDict()
 
     def set_init_data(self, env_data):
-        env_data = env_data.__dict__  
+        env_data = env_data.__dict__
         self.env_data.update(env_data)
         self.head_value = self.env_data["snake_values"][self.id]['head_value']
         self.body_value = self.env_data["snake_values"][self.id]['body_value']
