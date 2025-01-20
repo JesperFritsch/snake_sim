@@ -162,6 +162,14 @@ class MsgWrapper(_message.Message):
     payload: bytes
     def __init__(self, type: _Optional[_Union[MessageType, str]] = ..., payload: _Optional[bytes] = ...) -> None: ...
 
+class StepPixelChanges(_message.Message):
+    __slots__ = ("step", "changes")
+    STEP_FIELD_NUMBER: _ClassVar[int]
+    CHANGES_FIELD_NUMBER: _ClassVar[int]
+    step: int
+    changes: _containers.RepeatedCompositeFieldContainer[PixelChanges]
+    def __init__(self, step: _Optional[int] = ..., changes: _Optional[_Iterable[_Union[PixelChanges, _Mapping]]] = ...) -> None: ...
+
 class PixelChanges(_message.Message):
     __slots__ = ("pixels", "full_state")
     PIXELS_FIELD_NUMBER: _ClassVar[int]
