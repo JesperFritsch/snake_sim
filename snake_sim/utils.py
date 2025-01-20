@@ -127,7 +127,9 @@ def coord_op(coord_left, coord_right, op):
 
 def get_map_files_mapping():
     files = list(resources.files('snake_sim.maps.map_images').iterdir())
-    return {f.name.split('.')[0]: f for f in files if f.is_file()}
+    mapping = {f.name.split('.')[0]: f for f in files if f.is_file()}
+    mapping.pop('__init__')
+    return mapping
 
 
 def rand_str(n):
