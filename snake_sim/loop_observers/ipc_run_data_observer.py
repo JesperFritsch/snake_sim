@@ -2,7 +2,6 @@
 
 import logging
 import functools
-from multiprocessing.connection import PipeConnection
 from pathlib import Path
 
 from snake_sim.loop_observers.run_data_observer_interface import IRunDataObserver
@@ -12,9 +11,9 @@ log = logging.getLogger(Path(__file__).stem)
 
 
 class IPCRunDataObserver(IRunDataObserver):
-    def __init__(self, pipe_conn: PipeConnection):
-        if not isinstance(pipe_conn, PipeConnection):
-            raise ValueError('pipe_conn must be of type PipeConnection but is {}'.format(type(pipe_conn)))
+    def __init__(self, pipe_conn):
+        if not pipe_conn.__class__.__name__ in ['Connection', 'PipeConnection']:
+            raise ValueError('pipe_conn must be a Connection or PipeConnection object')
         self.pipe_conn = pipe_conn
         self.adapter = None
 
