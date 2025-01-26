@@ -36,6 +36,7 @@ def add_run_config_arguments(parser):
     parser.add_argument('--calc-timeout', type=int, help='Timeout for calculation')
     parser.add_argument('--map', type=str, help='Path to map file')
     parser.add_argument('--start-length', type=int, help='Starting length of the snakes')
+    parser.add_argument('--external-snake-targets', type=str, nargs='+', help='External snake targets')
 
 
 def add_playback_arguments(parser):

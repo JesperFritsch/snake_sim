@@ -22,8 +22,8 @@ class IPCRunDataObserver(IRunDataObserver):
         def wrapper(self, *args, **kwargs):
             try:
                 return func(self, *args, **kwargs)
-            except (BrokenPipeError, EOFError, OSError):
-                log.error('Pipe broken')
+            except (BrokenPipeError, EOFError, OSError) as e:
+                log.debug('Pipe broken: %s', e)
                 self.pipe_conn.close()
         return wrapper
 

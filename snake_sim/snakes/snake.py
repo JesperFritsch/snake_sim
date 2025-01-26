@@ -12,9 +12,9 @@ DIRS = (
 
 
 class Snake(ISnake):
-    def __init__(self, id: int, start_length: int):
-        self.id = id
-        self.start_length = start_length
+    def __init__(self):
+        self.id = None
+        self.start_length = None
         self.alive = True
         self.body_value = None
         self.head_value = None
@@ -24,6 +24,12 @@ class Snake(ISnake):
         self.length = self.start_length
         self.env_data = DotDict()
 
+    def set_id(self, id: int):
+        self.id = id
+
+    def set_start_length(self, start_length: int):
+        self.start_length = start_length
+
     def set_init_data(self, env_data):
         env_data = env_data.__dict__
         self.env_data.update(env_data)
@@ -32,12 +38,6 @@ class Snake(ISnake):
 
     def update_env_data(self, env_data: dict):
         self.env_data.update(env_data)
-
-    def get_id(self) -> int:
-        return self.id
-
-    def get_length(self) -> int:
-        return self.length
 
     def reset(self):
         self.alive = True

@@ -1,71 +1,86 @@
-from concurrent import futures
 import grpc
-import random
-import json
+import argparse
+import sys
+from pathlib import Path
+from concurrent import futures
 from snake_sim.protobuf import remote_snake_pb2, remote_snake_pb2_grpc
 from snake_sim.utils import Coord
+from snake_sim.snakes.snake import ISnake
+from snake_sim.environment.snake_env import EnvInitData, EnvData
 
 class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
-    def __init__(self):
-        self.snake_id = 0
-        self.snake_length = 0
-        self.start_position = None
-        self.env_data = {}
-
-    def GetId(self, request, context):
-        print(f"GetId called. Returning snake_id: {self.snake_id}")
-        return remote_snake_pb2.SnakeId(id=self.snake_id)
+    def __init__(self, snake_instance: ISnake):
+        self._snake_instance = snake_instance
 
     def SetId(self, request, context):
-        self.snake_id = request.id
-        print(f"SetId called. Set snake_id to: {self.snake_id}")
+        self._snake_instance.set_id(request.id)
         return remote_snake_pb2.Empty()
 
-    def GetLength(self, request, context):
-        print(f"GetLength called. Returning snake_length: {self.snake_length}")
-        return remote_snake_pb2.SnakeLength(length=self.snake_length)
+    def SetStartLength(self, request, context):
+        self._snake_instance.set_start_length(request.length)
 
-    def SetLength(self, request, context):
-        self.snake_length = request.length
-        print(f"SetLength called. Set snake_length to: {self.snake_length}")
         return remote_snake_pb2.Empty()
 
     def SetStartPosition(self, request, context):
-        self.start_position = Coord(x=request.start_position.x, y=request.start_position.y)
-        print(f"SetStartPosition called. Set start_position to: {self.start_position}")
+        start_coord = Coord(x=request.start_position.x, y=request.start_position.y)
+        self._snake_instance.set_start_position(start_coord)
         return remote_snake_pb2.Empty()
 
     def SetInitData(self, request, context):
-        self.env_data = {
-            "height": request.height,
-            "width": request.width,
-            "free_value": request.free_value,
-            "blocked_value": request.blocked_value,
-            "food_value": request.food_value,
-            "snake_values": {k: {"head_value": v.head_value, "body_value": v.body_value} for k, v in request.snake_values.items()},
-            "start_positions": {k: Coord(x=v.x, y=v.y) for k, v in request.start_positions.items()},
-            "base_map": request.base_map
-        }
-        print(f"SetInitData called. Set env_data to: {self.env_data}")
+        init_data = EnvInitData(
+            request.height,
+            request.width,
+            request.free_value,
+            request.blocked_value,
+            request.food_value,
+            {int(k): {"head_value": v.head_value, "body_value": v.body_value} for k, v in request.snake_values.items()},
+            {int(k): Coord(x=v.x, y=v.y) for k, v in request.start_positions.items()},
+            request.base_map
+        )
+        self._snake_instance.set_init_data(init_data)
         return remote_snake_pb2.Empty()
 
     def Update(self, request_iterator, context):
-        directions = [Coord(x=1, y=0), Coord(x=-1, y=0), Coord(x=0, y=1), Coord(x=0, y=-1)]
-        for env_data in request_iterator:
-            self.env_data = {
-                "map": env_data.map,
-                "snakes": {k: {"is_alive": v.is_alive, "length": v.length} for k, v in env_data.snakes.items()}
-            }
-            direction = Coord(x=1, y=0)  # Example logic to determine direction
-            print(f"Update called. Returning direction: {direction}")
+        for env_data_proto in request_iterator:
+            env_data = EnvData(
+                map=env_data_proto.map,
+                snakes={k: {"is_alive": v.is_alive, "length": v.length} for k, v in env_data_proto.snakes.items()}
+            )
+            direction = self._snake_instance.update(env_data)
             yield remote_snake_pb2.UpdateResponse(direction=remote_snake_pb2.Coord(x=direction.x, y=direction.y))
 
-def serve():
+
+def import_snake_module(snake_module_file):
+    if snake_module_file:
+        snake_file_path = Path(snake_module_file)
+        sys.path.append(str(snake_file_path.parent))
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("snake_module", snake_module_file)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    return None
+
+
+def cli(argv):
+    parser = argparse.ArgumentParser("Remote Snake Server")
+    parser.add_argument('-t', '--target', type=str, required=True, help='Server address or socket path to bind to')
+    parser.add_argument('-m', '--snake_module_file', type=str, required=True, default=None, help='Path to snake module for importing snake class')
+    args = parser.parse_args(argv)
+    return args
+
+
+def serve(target, snake_module_file):
+    snake_module = import_snake_module(snake_module_file)
+    snake_instance = snake_module.AutoSnake()
+    snake_servicer = RemoteSnakeServicer(snake_instance)
+
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    remote_snake_pb2_grpc.add_RemoteSnakeServicer_to_server(RemoteSnakeServicer(), server)
-    server.add_insecure_port('[::]:50051')
+    remote_snake_pb2_grpc.add_RemoteSnakeServicer_to_server(snake_servicer, server)
+    server.add_insecure_port(target)
     server.start()
     server.wait_for_termination()
 
 if __name__ == '__main__':
-    serve()
+    args = cli(sys.argv[1:])
+    serve(args.target, args.snake_module_file)

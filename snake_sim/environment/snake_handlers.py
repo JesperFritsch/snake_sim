@@ -13,8 +13,8 @@ class SnakeHandler(ISnakeHandler):
         self._snakes: Dict[int, ISnake] = {}
         self._dead_snakes = set()
 
-    def get_snakes(self) -> List[ISnake]:
-        return self._snakes.values()
+    def get_snakes(self) -> Dict[int, ISnake]:
+        return self._snakes.copy()
 
     def kill_snake(self, id):
         return self._dead_snakes.add(id)
@@ -22,8 +22,8 @@ class SnakeHandler(ISnakeHandler):
     def get_decision(self, id, env_data: EnvData) -> Coord:
         return Coord(*self._snakes[id].update(env_data))
 
-    def add_snake(self, snake: ISnake):
-        self._snakes[snake.get_id()] = snake
+    def add_snake(self, id, snake: ISnake):
+        self._snakes[id] = snake
 
     def get_update_order(self) -> list:
         ids = [id for id in self._snakes.keys() if id not in self._dead_snakes]

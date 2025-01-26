@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Dict
 
 from snake_sim.environment.snake_env import EnvData
 from snake_sim.utils import Coord
@@ -23,5 +24,5 @@ class ISnakeHandler(ABC):
         pass
 
     @abstractmethod
-    def get_snakes(self):
+    def get_snakes(self) -> Dict[int, ISnake]:
         pass
