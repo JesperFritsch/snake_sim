@@ -5,7 +5,7 @@ import warnings
 
 from snake_sim.protobuf import remote_snake_pb2 as snake__sim_dot_protobuf_dot_remote__snake__pb2
 
-GRPC_GENERATED_VERSION = '1.69.0'
+GRPC_GENERATED_VERSION = '1.70.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -34,24 +34,14 @@ class RemoteSnakeStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.GetId = channel.unary_unary(
-                '/snake_sim.RemoteSnake/GetId',
-                request_serializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.Empty.SerializeToString,
-                response_deserializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.SnakeId.FromString,
-                _registered_method=True)
         self.SetId = channel.unary_unary(
                 '/snake_sim.RemoteSnake/SetId',
                 request_serializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.SnakeId.SerializeToString,
                 response_deserializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.Empty.FromString,
                 _registered_method=True)
-        self.GetLength = channel.unary_unary(
-                '/snake_sim.RemoteSnake/GetLength',
-                request_serializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.SnakeId.SerializeToString,
-                response_deserializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.SnakeLength.FromString,
-                _registered_method=True)
-        self.SetLength = channel.unary_unary(
-                '/snake_sim.RemoteSnake/SetLength',
-                request_serializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.SnakeLength.SerializeToString,
+        self.SetStartLength = channel.unary_unary(
+                '/snake_sim.RemoteSnake/SetStartLength',
+                request_serializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.StartLength.SerializeToString,
                 response_deserializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.Empty.FromString,
                 _registered_method=True)
         self.SetStartPosition = channel.unary_unary(
@@ -74,25 +64,13 @@ class RemoteSnakeStub(object):
 class RemoteSnakeServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def GetId(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
     def SetId(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetLength(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def SetLength(self, request, context):
+    def SetStartLength(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -121,24 +99,14 @@ class RemoteSnakeServicer(object):
 
 def add_RemoteSnakeServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'GetId': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetId,
-                    request_deserializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.Empty.FromString,
-                    response_serializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.SnakeId.SerializeToString,
-            ),
             'SetId': grpc.unary_unary_rpc_method_handler(
                     servicer.SetId,
                     request_deserializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.SnakeId.FromString,
                     response_serializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.Empty.SerializeToString,
             ),
-            'GetLength': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetLength,
-                    request_deserializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.SnakeId.FromString,
-                    response_serializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.SnakeLength.SerializeToString,
-            ),
-            'SetLength': grpc.unary_unary_rpc_method_handler(
-                    servicer.SetLength,
-                    request_deserializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.SnakeLength.FromString,
+            'SetStartLength': grpc.unary_unary_rpc_method_handler(
+                    servicer.SetStartLength,
+                    request_deserializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.StartLength.FromString,
                     response_serializer=snake__sim_dot_protobuf_dot_remote__snake__pb2.Empty.SerializeToString,
             ),
             'SetStartPosition': grpc.unary_unary_rpc_method_handler(
@@ -168,33 +136,6 @@ class RemoteSnake(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def GetId(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/snake_sim.RemoteSnake/GetId',
-            snake__sim_dot_protobuf_dot_remote__snake__pb2.Empty.SerializeToString,
-            snake__sim_dot_protobuf_dot_remote__snake__pb2.SnakeId.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
     def SetId(request,
             target,
             options=(),
@@ -222,7 +163,7 @@ class RemoteSnake(object):
             _registered_method=True)
 
     @staticmethod
-    def GetLength(request,
+    def SetStartLength(request,
             target,
             options=(),
             channel_credentials=None,
@@ -235,35 +176,8 @@ class RemoteSnake(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/snake_sim.RemoteSnake/GetLength',
-            snake__sim_dot_protobuf_dot_remote__snake__pb2.SnakeId.SerializeToString,
-            snake__sim_dot_protobuf_dot_remote__snake__pb2.SnakeLength.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def SetLength(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/snake_sim.RemoteSnake/SetLength',
-            snake__sim_dot_protobuf_dot_remote__snake__pb2.SnakeLength.SerializeToString,
+            '/snake_sim.RemoteSnake/SetStartLength',
+            snake__sim_dot_protobuf_dot_remote__snake__pb2.StartLength.SerializeToString,
             snake__sim_dot_protobuf_dot_remote__snake__pb2.Empty.FromString,
             options,
             channel_credentials,

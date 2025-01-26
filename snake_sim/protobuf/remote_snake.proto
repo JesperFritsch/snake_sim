@@ -11,7 +11,7 @@ message SnakeId {
     int32 id = 1;
 }
 
-message SnakeLength {
+message StartLength {
     int32 length = 1;
 }
 
@@ -52,10 +52,8 @@ message UpdateResponse {
 message Empty {} // Custom Empty message
 
 service RemoteSnake {
-    rpc GetId(Empty) returns (SnakeId);
     rpc SetId(SnakeId) returns (Empty);
-    rpc GetLength(SnakeId) returns (SnakeLength);
-    rpc SetLength(SnakeLength) returns (Empty);
+    rpc SetStartLength(StartLength) returns (Empty);
     rpc SetStartPosition(StartPosition) returns (Empty);
     rpc SetInitData(EnvInitData) returns (Empty); // Updated SetInitData RPC
     rpc Update(stream EnvData) returns (stream UpdateResponse); // Updated Update RPC

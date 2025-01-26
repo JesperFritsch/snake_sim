@@ -13,6 +13,7 @@
     "start_length": 3,
     "food_value": 0,
     "free_value": 1,
+    "external_snake_targets": [],
     "command": "compute",
     "no_record": true,
     "record_file": "snake_run.json",

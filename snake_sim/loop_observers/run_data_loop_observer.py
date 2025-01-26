@@ -15,6 +15,8 @@ class RunDataLoopObserver(ILoopObserver):
         self._observers: Set[IRunDataObserver] = set()
 
     def notify_start(self):
+        if not isinstance(self._adapter, RunDataAdapter):
+            raise ValueError('Adapter not set')
         for observer in self._observers:
             observer.notify_start(self._adapter.get_metadata())
 

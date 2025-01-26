@@ -30,8 +30,8 @@ def agent2(width, height):
 
 
 class DqnSnake(AutoSnakeBase):
-    def __init__(self, id: str, start_length: int, height: int, width: int, training: bool = False):
-        super().__init__(id, start_length)
+    def __init__(self, height: int, width: int, training: bool = False):
+        super().__init__()
         self.in_height = height
         self.in_width = width
         self.state_stack = deque(maxlen=4)

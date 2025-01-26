@@ -40,7 +40,7 @@ class SimLoop(IMainLoop):
         self._step_start_time = None
         self._is_running = False
 
-    def start(self, stop_event):
+    def start(self, stop_event=None):
         # stop_event is a multiprocessing.Event object
         self._is_running = True
         if not self._snake_handler:
@@ -50,7 +50,7 @@ class SimLoop(IMainLoop):
         self._notify_start()
         while self._is_running:
             update_ordered_ids = self._snake_handler.get_update_order()
-            if stop_event.is_set() or len(update_ordered_ids) == 0:
+            if (stop_event and stop_event.is_set()) or len(update_ordered_ids) == 0:
                 self.stop()
             self._pre_update()
             self._env.update_food()
@@ -134,7 +134,7 @@ class GameLoop(SimLoop):
         if sleep_time > 0:
             time.sleep(sleep_time)
 
-    def start(self, stop_event):
+    def start(self, stop_event=None):
         if not self._steps_per_min:
             raise ValueError('Steps per minute not set')
         super().start(stop_event)
