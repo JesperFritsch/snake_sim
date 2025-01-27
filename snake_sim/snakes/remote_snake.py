@@ -5,22 +5,36 @@ from snake_sim.environment.interfaces.snake_interface import ISnake
 from snake_sim.utils import Coord
 from snake_sim.environment.snake_env import EnvInitData, EnvData
 
+
+def handle_connection_loss(func):
+    def wrapper(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except grpc.RpcError as e:
+            print(f"Connection lost: {e}")
+    return wrapper
+
+
 class RemoteSnake(ISnake):
     def __init__(self, target: str):
         self.target = target
         self.channel = grpc.insecure_channel(target)
         self.stub = remote_snake_pb2_grpc.RemoteSnakeStub(self.channel)
 
+    @handle_connection_loss
     def set_id(self, id: int):
         self.stub.SetId(remote_snake_pb2.SnakeId(id=id))
 
+    @handle_connection_loss
     def set_start_length(self, start_length: int):
         self.stub.SetStartLength(remote_snake_pb2.StartLength(length=start_length))
 
+    @handle_connection_loss
     def set_start_position(self, start_position: Coord):
         start_pos = remote_snake_pb2.StartPosition(start_position=remote_snake_pb2.Coord(x=start_position.x, y=start_position.y))
         self.stub.SetStartPosition(start_pos)
 
+    @handle_connection_loss
     def set_init_data(self, env_init_data: EnvInitData):
         env_init_data_proto = remote_snake_pb2.EnvInitData(
             height=env_init_data.height,
@@ -34,6 +48,7 @@ class RemoteSnake(ISnake):
         )
         self.stub.SetInitData(env_init_data_proto)
 
+    @handle_connection_loss
     def update(self, env_data: EnvData) -> Coord:
         env_data_proto = remote_snake_pb2.EnvData(
             map=env_data.map,
