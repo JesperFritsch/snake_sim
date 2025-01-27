@@ -199,9 +199,9 @@ class SnakeLoopControl:
         Args:
             stop_event: Event object to stop the loop
         """
-        # self._spawn_snake_processes()
-        # self._initialize_remotes()
-        self._initialize_inproc_snakes()
+        self._spawn_snake_processes()
+        self._initialize_remotes()
+        # self._initialize_inproc_snakes()
         if isinstance(self._config, GameConfig):
             self._initialize_manual_snakes()
         self._finalize_snakes()
