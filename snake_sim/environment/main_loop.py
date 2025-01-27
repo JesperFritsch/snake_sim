@@ -8,7 +8,7 @@ from multiprocessing import Event
 
 from snake_sim.environment.interfaces.main_loop_interface import IMainLoop
 from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver
-from snake_sim.utils import DotDict, Coord
+from snake_sim.utils import DotDict, Coord, profile
 from snake_sim.environment.snake_handlers import ISnakeHandler
 from snake_sim.environment.interfaces.snake_env_interface import ISnakeEnv
 
@@ -39,15 +39,12 @@ class SimLoop(IMainLoop):
         self._current_step_data: LoopStepData = None
         self._step_start_time = None
         self._is_running = False
+        self._did_notify_start = False
+        self._did_notify_end = False
 
-    def start(self, stop_event=None):
+    # @profile()
+    def _loop(self, stop_event=None):
         # stop_event is a multiprocessing.Event object
-        self._is_running = True
-        if not self._snake_handler:
-            raise ValueError('Snake handler not set')
-        if not self._env:
-            raise ValueError('Environment not set')
-        self._notify_start()
         while self._is_running:
             update_ordered_ids = self._snake_handler.get_update_order()
             if (stop_event and stop_event.is_set()) or len(update_ordered_ids) == 0:
@@ -58,20 +55,37 @@ class SimLoop(IMainLoop):
             for id in update_ordered_ids:
                 time_start = time.time()
                 decision = self._snake_handler.get_decision(id, self._env.get_env_data())
-                time_spent = time.time() - time_start
-                alive, grew = self._env.move_snake(id, decision)
-                if alive:
-                    self._current_step_data.snake_times[id] = time_spent
-                    self._current_step_data.desicions[id] = decision
-                    self._current_step_data.snake_grew[id] = grew
-                else:
+                if decision is None:
                     self._snake_handler.kill_snake(id)
+                else:
+                    time_spent = time.time() - time_start
+                    alive, grew = self._env.move_snake(id, decision)
+                    if alive:
+                        self._current_step_data.snake_times[id] = time_spent
+                        self._current_step_data.desicions[id] = decision
+                        self._current_step_data.snake_grew[id] = grew
+                    else:
+                        self._snake_handler.kill_snake(id)
             self._steps += 1
             self._post_update()
 
+    def start(self, stop_event=None):
+        # stop_event is a multiprocessing.Event object
+        self._did_notify_start = False
+        self._did_notify_end = False
+        self._is_running = True
+        if not self._snake_handler:
+            raise ValueError('Snake handler not set')
+        if not self._env:
+            raise ValueError('Environment not set')
+        try:
+            self._notify_start()
+            self._loop(stop_event)
+        finally:
+            self._notify_end()
+
     def stop(self):
         self._is_running = False
-        self._notify_end()
 
     def _pre_update(self):
         self._current_step_data = LoopStepData(self._steps)
@@ -88,16 +102,20 @@ class SimLoop(IMainLoop):
         self._notify_step()
 
     def _notify_start(self):
+        if self._did_notify_start: return
         for observer in self._observers:
             observer.notify_start()
+        self._did_notify_start = True
 
     def _notify_step(self):
         for observer in self._observers:
             observer.notify_step(self._current_step_data)
 
     def _notify_end(self):
+        if self._did_notify_end: return
         for observer in self._observers:
             observer.notify_end()
+        self._did_notify_end = True
 
     def set_snake_handler(self, snake_handler: ISnakeHandler):
         self._snake_handler = snake_handler

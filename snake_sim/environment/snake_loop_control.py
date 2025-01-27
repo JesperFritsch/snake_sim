@@ -10,8 +10,6 @@ from snake_sim.loop_observers.run_data_observer_interface import IRunDataObserve
 from snake_sim.loop_observers.run_data_loop_observer import RunDataLoopObserver
 from snake_sim.loop_observers.recorder_run_data_observer import RecorderRunDataObserver
 from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
-from snake_sim.snakes.manual_snake import ManualSnake
-from snake_sim.snakes.remote_snake import RemoteSnake
 from snake_sim.environment.main_loop import SimLoop, GameLoop
 from snake_sim.environment.snake_handlers import SnakeHandler
 from snake_sim.controllers.keyboard_controller import ControllerCollection
@@ -112,6 +110,14 @@ class SnakeLoopControl:
             snake.set_init_data(self._snake_enviroment.get_init_data())
 
     @_loop_check
+    def _initialize_inproc_snakes(self):
+        """ Initialize in-process snakes """
+        snake_factory = SnakeFactory()
+        auto_snakes = snake_factory.create_snakes({'auto': self._config.snake_count})
+        for id, snake in auto_snakes.items():
+            self._snake_handler.add_snake(id, snake)
+
+    @_loop_check
     def _initialize_remotes(self):
         """ Initialize remote snakes """
         snake_factory = SnakeFactory()
@@ -193,8 +199,9 @@ class SnakeLoopControl:
         Args:
             stop_event: Event object to stop the loop
         """
-        self._spawn_snake_processes()
-        self._initialize_remotes()
+        # self._spawn_snake_processes()
+        # self._initialize_remotes()
+        self._initialize_inproc_snakes()
         if isinstance(self._config, GameConfig):
             self._initialize_manual_snakes()
         self._finalize_snakes()
@@ -202,13 +209,14 @@ class SnakeLoopControl:
         try:
             self._loop.start(stop_event)
         except Exception as e:
-            self.stop()
-            log.error("ITS A TRAP!")
             log.exception(e)
+        finally:
+            self.stop()
 
     @_loop_check
     def stop(self):
         """Stops the loop"""
+        log.debug("Stopping loop")
         if self.process_pool:
             self.process_pool.shutdown()
         self._loop.stop()
