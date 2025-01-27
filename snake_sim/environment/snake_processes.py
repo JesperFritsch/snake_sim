@@ -51,7 +51,7 @@ class SnakeProcessPool():
         if platform.system() == "Windows":
             return f"localhost:{50000 + id}"
         else:
-            return f"/tmp/snake_process_{id}.sock"
+            return f"unix:/tmp/snake_process_{id}.sock"
 
     def start(self, id) -> Future:
         target = self._generate_target(id)
