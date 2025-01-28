@@ -14,12 +14,13 @@ from snake_sim.loop_observers.ipc_run_data_observer import IPCRunDataObserver
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
 
-log_format = "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
 log = logging.getLogger()
-log.setLevel(logging.DEBUG)
-s_handler = logging.StreamHandler()
-s_handler.formatter = logging.Formatter(log_format)
-log.addHandler(s_handler)
+
+def setup_logging(log_level):
+    handler = logging.StreamHandler()
+    handler.setLevel(log_level)
+    handler.setFormatter(logging.Formatter("%(asctime)s:%(name)s:%(levelname)s:%(message)s"))
+    log.addHandler(handler)
 
 
 def main():
@@ -28,6 +29,7 @@ def main():
     with open(cfg_path) as config_file:
         config = DotDict(json.load(config_file))
     config = cli(argv, config)
+    setup_logging(config.log_level)
 
     if config.command == "play-file":
         play_runfile(filepath=Path(config.filepath), sound_on=config.sound, fps=config.fps)

@@ -53,6 +53,10 @@ class DotDict(dict):
 
 
 class Coord(tuple):
+
+    def distance(self, other):
+        return math.sqrt(math.pow(self.x - other[0], 2) + math.pow(self.y - other[1], 2))
+
     def __new__(cls, x, y):
         return super(Coord, cls).__new__(cls, (x, y))
 

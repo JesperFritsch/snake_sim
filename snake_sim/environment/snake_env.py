@@ -184,6 +184,9 @@ class SnakeEnv(ISnakeEnv):
     def get_food(self):
         return self._food_handler.get_food()
 
+    def get_head_positions(self) -> Dict[int, Coord]:
+        return {id: snake_rep.get_head() for id, snake_rep in self._snake_reps.items()}
+
     def get_env_data(self, for_id: Optional[int] = None) -> EnvData:
         # id is not used yet, but it is preparing for being able to send different data to different snakes
         return EnvData(
