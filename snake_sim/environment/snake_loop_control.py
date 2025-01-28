@@ -24,7 +24,11 @@ with pkg_resources.open_text('snake_sim.config', 'default_config.json') as confi
     default_config = DotDict(json.load(config_file))
 
 log = logging.getLogger("main_loop")
-log.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
+handler.setFormatter(logging.Formatter("%(asctime)s:%(name)s:%(levelname)s:%(message)s"))
+log.addHandler(handler)
+
 
 @dataclass
 class SimConfig:
@@ -199,9 +203,9 @@ class SnakeLoopControl:
         Args:
             stop_event: Event object to stop the loop
         """
-        # self._spawn_snake_processes()
-        # self._initialize_remotes()
-        self._initialize_inproc_snakes()
+        self._spawn_snake_processes()
+        self._initialize_remotes()
+        # self._initialize_inproc_snakes()
         if isinstance(self._config, GameConfig):
             self._initialize_manual_snakes()
         self._finalize_snakes()

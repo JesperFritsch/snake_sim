@@ -10,6 +10,7 @@
     "fps": 10,
     "map": null,
     "spm": 180,
+    "decision_timeout_ms": 5000,
     "start_length": 3,
     "food_value": 0,
     "free_value": 1,
@@ -25,6 +26,7 @@
     "norm_body": 4,
     "norm_main_head": 5,
     "norm_main_body": 6,
+    "log_level": "DEBUG",
     "dirs": {
         "up": [0, -1],
         "down": [0, 1],

@@ -42,30 +42,30 @@ class SimLoop(IMainLoop):
         self._did_notify_start = False
         self._did_notify_end = False
 
-    # @profile()
+    @profile("tottime")
     def _loop(self, stop_event=None):
         # stop_event is a multiprocessing.Event object
         while self._is_running:
-            update_ordered_ids = self._snake_handler.get_update_order()
-            if (stop_event and stop_event.is_set()) or len(update_ordered_ids) == 0:
+            snake_positions = self._env.get_head_positions()
+            update_batches = self._snake_handler.get_batch_order(snake_positions)
+            if (stop_event and stop_event.is_set()) or len(update_batches) == 0:
                 self.stop()
             self._pre_update()
             self._env.update_food()
             self._current_step_data.food = self._env.get_food()
-            for id in update_ordered_ids:
-                time_start = time.time()
-                decision = self._snake_handler.get_decision(id, self._env.get_env_data())
-                if decision is None:
-                    self._snake_handler.kill_snake(id)
-                else:
-                    time_spent = time.time() - time_start
-                    alive, grew = self._env.move_snake(id, decision)
-                    if alive:
-                        self._current_step_data.snake_times[id] = time_spent
-                        self._current_step_data.desicions[id] = decision
-                        self._current_step_data.snake_grew[id] = grew
-                    else:
+            for batch in update_batches:
+                decisions = self._snake_handler.get_decisions({id: self._env.get_env_data(id) for id in batch})
+                for id, decision in decisions.items():
+                    if decision is None:
                         self._snake_handler.kill_snake(id)
+                    else:
+                        alive, grew = self._env.move_snake(id, decision)
+                        if alive:
+                            self._current_step_data.snake_times[id] = 0 # TODO: Implement snake times
+                            self._current_step_data.desicions[id] = decision
+                            self._current_step_data.snake_grew[id] = grew
+                        else:
+                            self._snake_handler.kill_snake(id)
             self._steps += 1
             self._post_update()
 
