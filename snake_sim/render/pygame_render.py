@@ -16,6 +16,18 @@ from snake_sim.run_data.run_data import RunData, StepData
 
 STREAM_IS_LIVE = False
 
+
+def catch_exceptions(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            pygame.quit()
+    return wrapper
+
+
 def frames_from_runfile(filepath, expand_factor=2):
     frames = []
     with open(Path(filepath)) as run_file:
@@ -72,7 +84,7 @@ def handle_events():
             pygame.quit()
             raise KeyboardInterrupt
 
-
+@catch_exceptions
 def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data: RunData):
     global STREAM_IS_LIVE
     while not stream_conn.poll(0.05):
@@ -116,6 +128,7 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
         sound_buffer.extend([turn_sounds, eat_sounds])
 
 
+@catch_exceptions
 def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_height, fps_playback, sound_on=True, keep_up=False):
 
     clock = pygame.time.Clock()

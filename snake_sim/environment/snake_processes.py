@@ -1,6 +1,7 @@
 import os
 import platform
 import logging
+import socket
 
 from pathlib import Path
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ from concurrent.futures import ProcessPoolExecutor, Future
 from multiprocessing import Manager
 from threading import Event
 
+from snake_sim.utils import SingletonMeta
 from snake_sim.server.remote_snake_server import serve
 from snake_sim.snakes import auto_snake
 
@@ -24,21 +26,20 @@ class SnakeProcess:
         self.future = future
         self.stop_event = stop_event
 
-    def cancel(self):
+    def kill(self):
         log.info(f"Stopping process with id {self.id}")
         if self.stop_event:
             self.stop_event.set()
         self.check_result()
-        # self.future.cancel() # this does not affect a process that is already running
 
     def check_result(self):
         try:
             self.future.result()
         except Exception as e:
-            log.error(f"Error in process with id {self.id}: {e}", exc_info=True)
+            print(f"Error in process with id {self.id}: {e}", exc_info=True)
 
 
-class SnakeProcessPool():
+class SnakeProcessPool(metaclass=SingletonMeta):
     def __init__(self):
         self._executor = ProcessPoolExecutor(max_workers=50)
         self._processes: List[SnakeProcess] = []
@@ -47,11 +48,26 @@ class SnakeProcessPool():
     def get_running_processes(self) -> List[SnakeProcess]:
         return self._processes
 
+    def _find_free_port(self) -> int:
+        """Find an available port without binding to it."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("", 0))  # Bind to a random available port
+            socket_address = s.getsockname()[1]
+            s.close()
+            return socket_address  # Return the assigned port
+
     def _generate_target(self, id: int) -> str:
         if platform.system() == "Windows":
-            return f"localhost:{50000 + id}"
+            port = self._find_free_port()
+            return f"localhost:{port}"
         else:
             return f"unix:/tmp/snake_process_{id}.sock"
+
+    def kill_snake_process(self, id: int):
+        for process in self._processes:
+            if process.id == id:
+                process.kill()
+                self._processes.remove(process)
 
     def start(self, id) -> Future:
         target = self._generate_target(id)
@@ -63,7 +79,7 @@ class SnakeProcessPool():
     def shutdown(self):
         log.debug("Shutting down processes")
         for process in self._processes:
-            process.cancel()
+            process.kill()
         self._executor.shutdown()
         if platform.system() != "Windows":
             for process in self._processes:
