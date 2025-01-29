@@ -31,7 +31,7 @@ class SnakeHandler(ISnakeHandler):
     def _init_executor(self):
         nr_snakes = len(self._snakes)
         # max workers is the number of remote snakes, because a batch will never be bigger than the number of remote snakes
-        self._executor = ThreadPoolExecutor(max_workers=300)
+        self._executor = ThreadPoolExecutor(max_workers=nr_snakes * 2)
 
     def get_snakes(self) -> Dict[int, ISnake]:
         return self._snakes.copy()
