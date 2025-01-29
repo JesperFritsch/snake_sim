@@ -1,6 +1,8 @@
 import json
 import logging
+import sys
 import functools
+
 from typing import Union, List
 from importlib import resources as pkg_resources
 
@@ -24,7 +26,7 @@ with pkg_resources.open_text('snake_sim.config', 'default_config.json') as confi
     default_config = DotDict(json.load(config_file))
 
 log = logging.getLogger("main_loop")
-handler = logging.StreamHandler()
+handler = logging.StreamHandler(sys.stdout)
 handler.setLevel(logging.DEBUG)
 handler.setFormatter(logging.Formatter("%(asctime)s:%(name)s:%(levelname)s:%(message)s"))
 log.addHandler(handler)
@@ -108,10 +110,14 @@ class SnakeLoopControl:
         """ Finalize snakes """
         for id, snake in self._snake_handler.get_snakes().items():
             start_pos = self._snake_enviroment.add_snake(id, start_length=self._config.start_length)
-            snake.set_id(id)
-            snake.set_start_length(self._config.start_length)
-            snake.set_start_position(start_pos)
-            snake.set_init_data(self._snake_enviroment.get_init_data())
+            try:
+                snake.set_id(id)
+                snake.set_start_length(self._config.start_length)
+                snake.set_start_position(start_pos)
+                snake.set_init_data(self._snake_enviroment.get_init_data())
+            except Exception as e:
+                log.exception(e)
+                self._snake_handler.kill_snake(id)
 
     @_loop_check
     def _initialize_inproc_snakes(self):
@@ -128,7 +134,6 @@ class SnakeLoopControl:
         snake_processes = self.process_pool.get_running_processes()
         remote_snakes = [(snake_factory.get_next_id(), t) for t in self._config.external_snake_targets]
         remote_snakes.extend([(p.id, p.target) for p in snake_processes])
-        print(remote_snakes)
         for id, target in remote_snakes:
             id, snake = snake_factory.create_snake('remote', id=id, target=target)
             self._snake_handler.add_snake(id, snake)
@@ -212,6 +217,8 @@ class SnakeLoopControl:
         self._initialize_run_data_loop_observers() # This needs to be called after the snakes are added to the environment
         try:
             self._loop.start(stop_event)
+        except KeyboardInterrupt:
+            log.info("Keyboard interrupt")
         except Exception as e:
             log.exception(e)
         finally:

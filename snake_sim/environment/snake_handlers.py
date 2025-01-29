@@ -6,9 +6,10 @@ import time
 
 from typing import Dict, List
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait, as_completed
 from importlib import resources
 
+from snake_sim.environment.snake_processes import SnakeProcessPool
 from snake_sim.environment.interfaces.snake_handler_interface import ISnakeHandler
 from snake_sim.snakes.snake import ISnake
 from snake_sim.snakes.remote_snake import RemoteSnake
@@ -30,33 +31,45 @@ class SnakeHandler(ISnakeHandler):
     def _init_executor(self):
         nr_snakes = len(self._snakes)
         # max workers is the number of remote snakes, because a batch will never be bigger than the number of remote snakes
-        self._executor = ThreadPoolExecutor(max_workers=nr_snakes)
+        self._executor = ThreadPoolExecutor(max_workers=300)
 
     def get_snakes(self) -> Dict[int, ISnake]:
         return self._snakes.copy()
 
     def kill_snake(self, id):
+        SnakeProcessPool().kill_snake_process(id)
         return self._dead_snakes.add(id)
 
-    def _process_batch(self, batch_data: Dict[int, EnvData]) -> Dict[int, Coord]:
+    def _process_batch_sync(self, batch_data: Dict[int, EnvData]) -> Dict[int, Coord]:
+        decisions = {}
+        for id, env_data in batch_data.items():
+            decisions[id] = self.get_decision(id, env_data)
+        return decisions
+
+    def _process_batch_concurrent(self, batch_data: Dict[int, EnvData]) -> Dict[int, Coord]:
+        if not self._executor:
+            self._init_executor()
+        # print("Processing batch: ", list(batch_data.keys()))
         futures = {self._executor.submit(self.get_decision, id, env_data): id for id, env_data in batch_data.items()}
         decisions = {}
-        for future in futures:
+        for future in as_completed(futures, timeout=default_config["decision_timeout_ms"] / 1000):
             id = futures[future]
             try:
-                decisions[id] = future.result(timeout=default_config["decision_timeout_ms"] / 1000)
+                decisions[id] = future.result()
             except TimeoutError:
                 print(f"Snake {id} timed out")
-                # decisions[id] = None
+                self.kill_snake(id)
+                decisions[id] = None
             except Exception as e:
                 print(f"Error in snake {id}", exc_info=True)
-                # decisions[id] = None
+                self.kill_snake(id)
+                decisions[id] = None
         return decisions
 
     def get_decisions(self, batch_data: Dict[int, EnvData]) -> Dict[int, Coord]:
-        if not self._executor:
-            self._init_executor()
-        return self._process_batch(batch_data)
+        if any(isinstance(self._snakes[snake_id], RemoteSnake) for snake_id in batch_data.keys()):
+            return self._process_batch_concurrent(batch_data)
+        return self._process_batch_sync(batch_data)
 
     def get_decision(self, id, env_data: EnvData) -> Coord:
         snake = self._snakes[id]
@@ -85,9 +98,6 @@ class SnakeHandler(ISnakeHandler):
                     return False
             return True
         alive_snakes = [id for id in self._snakes.keys() if id not in self._dead_snakes]
-        # only put the remote snakes in batches, the inproc snakes will be processed in the main thread and wont benefit from running in the executor
-        # ids_to_batch = list(snake for snake in alive_snakes if isinstance(snake, RemoteSnake))
-        # but for now we will just put all snakes in batches
         ids_to_batch = list(alive_snakes)
         batches: List[List[int]] = []
         while ids_to_batch:

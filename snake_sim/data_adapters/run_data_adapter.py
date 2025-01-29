@@ -50,7 +50,7 @@ class RunDataAdapter:
             step=loop_step.step,
             food=loop_step.food
         )
-        for snake_id, decision in loop_step.desicions.items():
+        for snake_id, decision in loop_step.decisions.items():
             snake_rep = self.snake_reps[snake_id]
             # Grow has to be called before move
             if loop_step.snake_grew.get(snake_id, False):

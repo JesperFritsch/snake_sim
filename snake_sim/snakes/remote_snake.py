@@ -12,6 +12,7 @@ def handle_connection_loss(func):
             return func(self, *args, **kwargs)
         except grpc.RpcError as e:
             print(f"Connection lost: {e}")
+            raise ConnectionError
     return wrapper
 
 
@@ -20,6 +21,11 @@ class RemoteSnake(ISnake):
         self.target = target
         self.channel = grpc.insecure_channel(target)
         self.stub = remote_snake_pb2_grpc.RemoteSnakeStub(self.channel)
+
+    @handle_connection_loss
+    def kill(self):
+        self.stub.Kill(remote_snake_pb2.Empty())
+        self.channel.close()
 
     @handle_connection_loss
     def set_id(self, id: int):
@@ -49,7 +55,8 @@ class RemoteSnake(ISnake):
         self.stub.SetInitData(env_init_data_proto)
 
     @handle_connection_loss
-    def update(self, env_data: EnvData) -> Coord:
+    def update(self, env_data: EnvData):
+        # print(f"{self.target}: Updating")
         env_data_proto = remote_snake_pb2.EnvData(
             map=env_data.map,
             snakes={k: remote_snake_pb2.SnakeRep(is_alive=v["is_alive"], length=v["length"]) for k, v in env_data.snakes.items()}
@@ -57,6 +64,7 @@ class RemoteSnake(ISnake):
         response_iterator = self.stub.Update(iter([env_data_proto]))
         for response in response_iterator:
             return Coord(x=response.direction.x, y=response.direction.y)
+
 
     def __reduce__(self):
         return (self.__class__, (self.target))

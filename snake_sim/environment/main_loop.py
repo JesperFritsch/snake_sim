@@ -21,7 +21,7 @@ class LoopStepData:
     step: int
     total_time: Optional[float] = field(default_factory=float)
     snake_times: Optional[Dict[int, float]] = field(default_factory=dict)
-    desicions: Optional[Dict[int, Coord]] = field(default_factory=dict)
+    decisions: Optional[Dict[int, Coord]] = field(default_factory=dict)
     snake_grew: Optional[Dict[int, bool]] = field(default_factory=dict)
     lengths: Optional[Dict[int, int]] = field(default_factory=dict)
     food: Optional[List[Coord]] = field(default_factory=list)
@@ -42,7 +42,7 @@ class SimLoop(IMainLoop):
         self._did_notify_start = False
         self._did_notify_end = False
 
-    @profile("tottime")
+    # @profile()
     def _loop(self, stop_event=None):
         # stop_event is a multiprocessing.Event object
         while self._is_running:
@@ -62,7 +62,7 @@ class SimLoop(IMainLoop):
                         alive, grew = self._env.move_snake(id, decision)
                         if alive:
                             self._current_step_data.snake_times[id] = 0 # TODO: Implement snake times
-                            self._current_step_data.desicions[id] = decision
+                            self._current_step_data.decisions[id] = decision
                             self._current_step_data.snake_grew[id] = grew
                         else:
                             self._snake_handler.kill_snake(id)
@@ -85,6 +85,7 @@ class SimLoop(IMainLoop):
             self._notify_end()
 
     def stop(self):
+        self._notify_end()
         self._is_running = False
 
     def _pre_update(self):

@@ -116,7 +116,8 @@ class FrameBuilder:
             for snake_data in step_data['snakes']:
                 snake_id = snake_data['snake_id']
                 self.snake_reps[snake_id].update(snake_data, s)
-            for snake_id in self.snake_reps:
+            for snake_data in step_data['snakes']:
+                snake_id = snake_data['snake_id']
                 snake_rep = self.snake_reps[snake_id]
                 head = tuple(snake_rep.body[0])
                 if snake_rep.tail_moved:

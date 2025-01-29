@@ -86,21 +86,26 @@ def cli(argv):
 
 
 def serve(target, snake_module_file, stop_event: Optional[Event] = None, log_level="DEBUG"):
-    setup_logging(log_level)
-    print(f"Serving remote snake on '{target}'")
-    snake_module = import_snake_module(snake_module_file)
-    snake_instance = snake_module.AutoSnake()
-    snake_servicer = RemoteSnakeServicer(snake_instance)
+    try:
+        setup_logging(log_level)
+        print(f"Serving remote snake on '{target}'")
+        snake_module = import_snake_module(snake_module_file)
+        snake_instance = snake_module.AutoSnake()
+        snake_servicer = RemoteSnakeServicer(snake_instance)
 
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    remote_snake_pb2_grpc.add_RemoteSnakeServicer_to_server(snake_servicer, server)
-    server.add_insecure_port(target)
-    server.start()
-    if stop_event:
-        stop_event.wait()
-    else:
-        server.wait_for_termination()
-    print(f"Server for remote snake on '{target}' stopped")
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+        remote_snake_pb2_grpc.add_RemoteSnakeServicer_to_server(snake_servicer, server)
+        server.add_insecure_port(target)
+        server.start()
+        if stop_event:
+            stop_event.wait()
+        else:
+            server.wait_for_termination()
+        print(f"Server for remote snake on '{target}' stopped")
+    except KeyboardInterrupt:
+        print("Server stopped by user")
+    except Exception as e:
+        print(f"Error in server: {e}")
 
 
 if __name__ == '__main__':
