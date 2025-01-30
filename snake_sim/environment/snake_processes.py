@@ -31,10 +31,12 @@ class SnakeProcess:
         if self.stop_event:
             self.stop_event.set()
         self.check_result()
-        try:
-            os.remove(self.target)
-        except OSError:
-            pass
+        if platform.system() != "Windows":
+            try:
+                os.remove(self.target.split(':')[1])
+            except OSError as e:
+                log.error(f"Could not remove socket file {self.target}: {e}")
+                pass
 
     def check_result(self):
         try:
