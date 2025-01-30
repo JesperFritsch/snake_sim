@@ -31,6 +31,10 @@ class SnakeProcess:
         if self.stop_event:
             self.stop_event.set()
         self.check_result()
+        try:
+            os.remove(self.target)
+        except OSError:
+            pass
 
     def check_result(self):
         try:
@@ -81,9 +85,3 @@ class ProcessPool(metaclass=SingletonMeta):
         for process in self._processes:
             process.kill()
         self._executor.shutdown()
-        if platform.system() != "Windows":
-            for process in self._processes:
-                try:
-                    os.remove(process.target)
-                except OSError:
-                    pass
