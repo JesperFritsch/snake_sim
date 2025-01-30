@@ -39,7 +39,7 @@ class SnakeProcess:
             print(f"Error in process with id {self.id}: {e}", exc_info=True)
 
 
-class SnakeProcessPool(metaclass=SingletonMeta):
+class ProcessPool(metaclass=SingletonMeta):
     def __init__(self):
         self._executor = ProcessPoolExecutor(max_workers=50)
         self._processes: List[SnakeProcess] = []

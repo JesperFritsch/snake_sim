@@ -9,7 +9,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, wait, as_completed
 from importlib import resources
 
-from snake_sim.environment.snake_processes import SnakeProcessPool
+from snake_sim.environment.snake_processes import ProcessPool
 from snake_sim.environment.interfaces.snake_handler_interface import ISnakeHandler
 from snake_sim.snakes.snake import ISnake
 from snake_sim.snakes.remote_snake import RemoteSnake
@@ -37,7 +37,7 @@ class SnakeHandler(ISnakeHandler):
         return self._snakes.copy()
 
     def kill_snake(self, id):
-        SnakeProcessPool().kill_snake_process(id)
+        ProcessPool().kill_snake_process(id)
         return self._dead_snakes.add(id)
 
     def _process_batch_sync(self, batch_data: Dict[int, EnvData]) -> Dict[int, Coord]:

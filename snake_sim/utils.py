@@ -26,6 +26,10 @@ class SingletonMeta(type):
             cls._instances[cls] = instance
         return cls._instances[cls]
 
+    @classmethod
+    def reset(cls):
+        cls._instances.clear()
+
 
 class DotDict(dict):
     def __init__(self, other_dict={}):

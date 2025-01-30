@@ -18,7 +18,7 @@ from snake_sim.controllers.keyboard_controller import ControllerCollection
 from snake_sim.environment.snake_factory import SnakeFactory
 from snake_sim.environment.snake_env import SnakeEnv, EnvInitData
 from snake_sim.environment.food_handlers import FoodHandler
-from snake_sim.environment.snake_processes import SnakeProcessPool
+from snake_sim.environment.snake_processes import ProcessPool
 from snake_sim.utils import get_map_files_mapping, DotDict, create_color_map
 from dataclasses import dataclass
 
@@ -153,7 +153,7 @@ class SnakeLoopControl:
     def _spawn_snake_processes(self):
         """ Spawn the snake processes created internally """
         config = self._config
-        self.process_pool = SnakeProcessPool()
+        self.process_pool = ProcessPool()
         snake_factory = SnakeFactory()
         for _ in range(config.snake_count):
             self.process_pool.start(snake_factory.get_next_id())
