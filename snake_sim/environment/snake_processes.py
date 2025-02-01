@@ -3,7 +3,7 @@ import platform
 import logging
 import socket
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 from multiprocessing import Process, Manager
 
 from snake_sim.utils import SingletonMeta, rand_str
@@ -20,8 +20,8 @@ class SnakeProcess:
         self.process = process
 
     def kill(self):
-        log.info(f"Stopping process with id {self.id}")
         if self.process.is_alive():
+            log.info(f"Stopping process with id {self.id}")
             self.process.terminate()
             self.process.join()
         if platform.system() != "Windows":
@@ -35,11 +35,11 @@ class SnakeProcess:
 
 class ProcessPool(metaclass=SingletonMeta):
     def __init__(self):
-        self._processes: List[SnakeProcess] = []
+        self._processes: Dict[int, SnakeProcess] = {}
         self._manager = Manager()
 
     def get_running_processes(self) -> List[SnakeProcess]:
-        return self._processes
+        return self._processes.values()
 
     def _find_free_port(self) -> int:
         """Find an available port without binding to it."""
@@ -59,22 +59,24 @@ class ProcessPool(metaclass=SingletonMeta):
                 sock_file = f"/tmp/snake_process_{rand_str(8)}.sock"
             return f"unix:{sock_file}"
 
+    def is_running(self, id: int) -> bool:
+        return id in self._processes and self._processes[id].process.is_alive()
+
     def kill_snake_process(self, id: int):
-        for process in self._processes:
-            if process.id == id:
-                process.kill()
-                self._processes.remove(process)
+        if id in self._processes:
+            self._processes[id].kill()
+            del self._processes[id]
 
     def start(self, id):
         target = self._generate_target()
         module_path = auto_snake.__file__
         process = Process(target=serve, args=(target, module_path))
         process.start()
-        self._processes.append(SnakeProcess(id, target, module_path, process))
+        self._processes[id] = SnakeProcess(id, target, module_path, process)
 
     def shutdown(self):
         log.debug("Shutting down processes")
-        for process in self._processes:
+        for process in self._processes.values():
             process.kill()
-        for process in self._processes:
+        for process in self._processes.values():
             process.process.join()

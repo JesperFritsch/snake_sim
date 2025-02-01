@@ -1,37 +1,34 @@
 import json
 import logging
-import sys
 import functools
 import signal
 import threading
 
+from pathlib import Path
 from typing import Union, List
 from importlib import resources as pkg_resources
 
 from snake_sim.environment.interfaces.main_loop_interface import ILoopObserver
 from snake_sim.loop_observers.run_data_observer_interface import IRunDataObserver
 
-from snake_sim.loop_observers.run_data_loop_observer import RunDataLoopObserver
+from snake_sim.loop_observers.run_data_loop_source import RunDataSource
 from snake_sim.loop_observers.recorder_run_data_observer import RecorderRunDataObserver
 from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
 from snake_sim.environment.main_loop import SimLoop, GameLoop
 from snake_sim.environment.snake_handlers import SnakeHandler
-from snake_sim.controllers.keyboard_controller import ControllerCollection
 from snake_sim.environment.snake_factory import SnakeFactory
 from snake_sim.environment.snake_env import SnakeEnv, EnvInitData
 from snake_sim.environment.food_handlers import FoodHandler
 from snake_sim.environment.snake_processes import ProcessPool
+from snake_sim.controllers.keyboard_controller import ControllerCollection
 from snake_sim.utils import get_map_files_mapping, DotDict, create_color_map
 from dataclasses import dataclass
 
 with pkg_resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
 
-log = logging.getLogger("main_loop")
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
-handler.setFormatter(logging.Formatter("%(asctime)s:%(name)s:%(levelname)s:%(message)s"))
-log.addHandler(handler)
+
+log = logging.getLogger(Path(__file__).stem)
 
 
 @dataclass
@@ -175,28 +172,28 @@ class SnakeLoopControl:
 
     @_loop_check
     def add_run_data_observer(self, observer: IRunDataObserver):
-        """Adds a an observer to a RunDataLoopObserver"""
+        """Adds a an observer to a RunDataSource"""
         if not isinstance(observer, IRunDataObserver):
             raise ValueError('Observer must be an instance of IRunDataObserver')
 
         observers = self._loop.get_observers()
-        # if a RunDataLoopObserver already exists, add the observer to it
+        # if a RunDataSource already exists, add the observer to it
         try:
-            run_data_observer = next(o for o in observers if isinstance(o, RunDataLoopObserver))
+            run_data_observer = next(o for o in observers if isinstance(o, RunDataSource))
         except StopIteration:
-            # if no RunDataLoopObserver exists, create one and add the observer to it
-            run_data_observer = RunDataLoopObserver()
+            # if no RunDataSource exists, create one and add the observer to it
+            run_data_observer = RunDataSource()
             self._loop.add_observer(run_data_observer)
         run_data_observer.add_observer(observer)
 
     @_loop_check
     def _initialize_run_data_loop_observers(self):
         """Initializes the run data loop observers
-        This is used to initialize the DataAdapters for the RunDataLoopObservers
+        This is used to initialize the DataAdapters for the RunDataSources
         It needs to happend after the snakes are added to the environment"""
         observers = self._loop.get_observers()
         for observer in observers:
-            if isinstance(observer, RunDataLoopObserver):
+            if isinstance(observer, RunDataSource):
                 init_data = self._snake_enviroment.get_init_data()
                 observer.set_adapter(
                     RunDataAdapter(

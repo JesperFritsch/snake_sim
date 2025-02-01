@@ -56,14 +56,13 @@ class SnakeHandler(ISnakeHandler):
             id = futures[future]
             try:
                 decisions[id] = future.result()
+                continue
             except TimeoutError:
                 log.debug(f"Snake {id} timed out")
-                self.kill_snake(id)
-                decisions[id] = None
             except Exception as e:
                 log.debug(f"Error in snake {id}", exc_info=True)
-                self.kill_snake(id)
-                decisions[id] = None
+            self.kill_snake(id)
+            decisions[id] = None
         return decisions
 
     def get_decisions(self, batch_data: Dict[int, EnvData]) -> Dict[int, Coord]:
@@ -73,6 +72,9 @@ class SnakeHandler(ISnakeHandler):
 
     def get_decision(self, id, env_data: EnvData) -> Coord:
         snake = self._snakes[id]
+        if not ProcessPool().is_running(id):
+            self.kill_snake(id)
+            return
         decision = snake.update(env_data)
         try:
             decision_coord = Coord(*decision)

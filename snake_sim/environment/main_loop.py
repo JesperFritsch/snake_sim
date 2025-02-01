@@ -1,8 +1,9 @@
 import time
 import json
+import logging
 from dataclasses import dataclass, field
 from importlib import resources
-
+from pathlib import Path
 from typing import Optional, List, Dict
 from multiprocessing import Event
 
@@ -15,6 +16,7 @@ from snake_sim.environment.interfaces.snake_env_interface import ISnakeEnv
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     config = DotDict(json.load(config_file))
 
+log = logging.getLogger(Path(__file__).stem)
 
 @dataclass
 class LoopStepData:
