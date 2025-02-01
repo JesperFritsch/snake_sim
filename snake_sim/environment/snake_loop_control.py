@@ -3,6 +3,7 @@ import logging
 import sys
 import functools
 import signal
+import threading
 
 from typing import Union, List
 from importlib import resources as pkg_resources
@@ -54,7 +55,10 @@ class GameConfig(SimConfig):
 
 
 class SnakeLoopControl:
+
     def __init__(self, config: Union[SimConfig, GameConfig]):
+        if not threading.current_thread() is threading.main_thread():
+            raise RuntimeError('SnakeLoopControl can only be initialized in the main thread')
         if not isinstance(config, (SimConfig, GameConfig)):
             raise ValueError('Invalid configuration')
         self._loop = None
@@ -78,12 +82,14 @@ class SnakeLoopControl:
             if config.map not in map_files_mapping:
                 raise ValueError(f'Map {config.map} not found')
             self._snake_enviroment.load_map(map_files_mapping[config.map])
+        signal.signal(signal.SIGINT, self.stop)
+        signal.signal(signal.SIGTERM, self.stop)
 
     def _loop_check(func):
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             if not self._loop:
-                raise ValueError('Loop not initialized')
+                raise ValueError('Loop not initialized, call init_loop() first')
             return func(self, *args, **kwargs)
         return wrapper
 
@@ -209,7 +215,6 @@ class SnakeLoopControl:
         Args:
             stop_event: Event object to stop the loop
         """
-        register_signal_handlers() # add signal handlers to stop the process pool
         self._spawn_snake_processes()
         self._initialize_remotes()
         # self._initialize_inproc_snakes()
@@ -233,13 +238,6 @@ class SnakeLoopControl:
         if self.process_pool:
             self.process_pool.shutdown()
         self._loop.stop()
-
-
-def register_signal_handlers():
-    def signal_handler(sig, frame):
-        ProcessPool().shutdown()
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
 
 
 def setup_loop(config) -> SnakeLoopControl:
