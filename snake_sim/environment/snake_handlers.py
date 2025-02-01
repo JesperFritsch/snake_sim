@@ -59,7 +59,7 @@ class SnakeHandler(ISnakeHandler):
                 continue
             except TimeoutError:
                 log.debug(f"Snake {id} timed out")
-            except Exception as e:
+            except ConnectionError:
                 log.debug(f"Error in snake {id}", exc_info=True)
             self.kill_snake(id)
             decisions[id] = None

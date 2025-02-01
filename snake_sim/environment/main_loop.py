@@ -71,8 +71,6 @@ class SimLoop(IMainLoop):
             self._post_update()
 
     def start(self):
-        self._did_notify_start = False
-        self._did_notify_end = False
         self._is_running = True
         if not self._snake_handler:
             raise ValueError('Snake handler not set')
@@ -104,6 +102,7 @@ class SimLoop(IMainLoop):
 
     def _notify_start(self):
         if self._did_notify_start: return
+        log.debug('Loop started')
         for observer in self._observers:
             observer.notify_start()
         self._did_notify_start = True
@@ -114,6 +113,7 @@ class SimLoop(IMainLoop):
 
     def _notify_end(self):
         if self._did_notify_end: return
+        log.debug('Loop ended')
         for observer in self._observers:
             observer.notify_end()
         self._did_notify_end = True
