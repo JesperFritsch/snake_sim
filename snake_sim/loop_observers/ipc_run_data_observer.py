@@ -49,4 +49,5 @@ class IPCRunDataObserver(IRunDataObserver):
     @check_disabled
     @handle_broken_pipe
     def notify_end(self, run_data):
+        log.debug('Sending stopped signal')
         self._pipe_conn.send('stopped')
