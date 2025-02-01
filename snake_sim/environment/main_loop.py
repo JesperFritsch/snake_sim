@@ -43,12 +43,11 @@ class SimLoop(IMainLoop):
         self._did_notify_end = False
 
     # @profile()
-    def _loop(self, stop_event=None):
-        # stop_event is a multiprocessing.Event object
+    def _loop(self):
         while self._is_running:
             snake_positions = self._env.get_head_positions()
             update_batches = self._snake_handler.get_batch_order(snake_positions)
-            if (stop_event and stop_event.is_set()) or len(update_batches) == 0:
+            if len(update_batches) == 0:
                 self.stop()
             self._pre_update()
             self._env.update_food()
@@ -69,8 +68,7 @@ class SimLoop(IMainLoop):
             self._steps += 1
             self._post_update()
 
-    def start(self, stop_event=None):
-        # stop_event is a multiprocessing.Event object
+    def start(self):
         self._did_notify_start = False
         self._did_notify_end = False
         self._is_running = True
@@ -80,7 +78,7 @@ class SimLoop(IMainLoop):
             raise ValueError('Environment not set')
         try:
             self._notify_start()
-            self._loop(stop_event)
+            self._loop()
         finally:
             self._notify_end()
 
@@ -153,10 +151,10 @@ class GameLoop(SimLoop):
         if sleep_time > 0:
             time.sleep(sleep_time)
 
-    def start(self, stop_event=None):
+    def start(self):
         if not self._steps_per_min:
             raise ValueError('Steps per minute not set')
-        super().start(stop_event)
+        super().start()
 
     def set_steps_per_min(self, spm):
         self._steps_per_min = spm

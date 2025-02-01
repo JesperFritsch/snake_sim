@@ -2,35 +2,28 @@ import os
 import platform
 import logging
 import socket
-
 from pathlib import Path
-from dataclasses import dataclass
-from typing import Optional, Dict, List
-from concurrent.futures import ProcessPoolExecutor, Future
-from multiprocessing import Manager
-from threading import Event
+from typing import List
+from multiprocessing import Process, Manager
 
 from snake_sim.utils import SingletonMeta, rand_str
 from snake_sim.server.remote_snake_server import serve
 from snake_sim.snakes import auto_snake
 
-
 log = logging.getLogger(Path(__file__).stem)
 
 class SnakeProcess:
-    def __init__(self, id: int, target: str, module_path: str, future: Future, stop_event: Event = None):
-        # stop_event is an event proxy from the multiprocessing.Manager, but i guess it implements the same interface as threading.Event
+    def __init__(self, id: int, target: str, module_path: str, process: Process):
         self.id = id
         self.target = target
         self.module_path = module_path
-        self.future = future
-        self.stop_event = stop_event
+        self.process = process
 
     def kill(self):
         log.info(f"Stopping process with id {self.id}")
-        if self.stop_event:
-            self.stop_event.set()
-        self.check_result()
+        if self.process.is_alive():
+            self.process.terminate()
+            self.process.join()
         if platform.system() != "Windows":
             filename = self.target.split(':')[1]
             try:
@@ -38,18 +31,10 @@ class SnakeProcess:
                     os.remove(filename)
             except OSError as e:
                 log.error(f"Could not remove socket file {self.target}: {e}")
-                pass
-
-    def check_result(self):
-        try:
-            self.future.result()
-        except Exception as e:
-            print(f"Error in process with id {self.id}: {e}", exc_info=True)
 
 
 class ProcessPool(metaclass=SingletonMeta):
-    def __init__(self, nr_workers=None):
-        self._executor = ProcessPoolExecutor(max_workers=nr_workers)
+    def __init__(self):
         self._processes: List[SnakeProcess] = []
         self._manager = Manager()
 
@@ -80,15 +65,16 @@ class ProcessPool(metaclass=SingletonMeta):
                 process.kill()
                 self._processes.remove(process)
 
-    def start(self, id) -> Future:
+    def start(self, id):
         target = self._generate_target()
         module_path = auto_snake.__file__
-        stop_event = self._manager.Event()
-        future = self._executor.submit(serve, target=target, snake_module_file=module_path, stop_event=stop_event)
-        self._processes.append(SnakeProcess(id, target, module_path, future, stop_event))
+        process = Process(target=serve, args=(target, module_path))
+        process.start()
+        self._processes.append(SnakeProcess(id, target, module_path, process))
 
     def shutdown(self):
         log.debug("Shutting down processes")
         for process in self._processes:
             process.kill()
-        self._executor.shutdown()
+        for process in self._processes:
+            process.process.join()

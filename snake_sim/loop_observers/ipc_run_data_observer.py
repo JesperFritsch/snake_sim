@@ -25,6 +25,7 @@ class IPCRunDataObserver(IRunDataObserver):
             except (BrokenPipeError, EOFError, OSError) as e:
                 log.debug('Pipe broken: %s', e)
                 self._pipe_conn.close()
+                self._disabled = True
         return wrapper
 
     def check_disabled(func):

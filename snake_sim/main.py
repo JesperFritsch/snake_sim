@@ -45,8 +45,7 @@ def main():
             parent_conn, child_conn = Pipe()
             loop_control = setup_loop(config)
             loop_control.add_run_data_observer(IPCRunDataObserver(parent_conn))
-            stop_event = Event()
-            loop_p = Process(target=loop_control.run, args=(stop_event,))
+            loop_p = Process(target=loop_control.run)
             if config.command == "game":
                 render_p = Process(target=play_game, args=(child_conn, config.spm, config.sound))
             else:
@@ -54,7 +53,8 @@ def main():
             render_p.start()
             loop_p.start()
             render_p.join()
-            stop_event.set()
+            loop_p.terminate()
+            loop_p.join()
 
     except KeyboardInterrupt:
         log.info("Keyboard interrupt")

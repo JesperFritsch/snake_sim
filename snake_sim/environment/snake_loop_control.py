@@ -82,8 +82,9 @@ class SnakeLoopControl:
             if config.map not in map_files_mapping:
                 raise ValueError(f'Map {config.map} not found')
             self._snake_enviroment.load_map(map_files_mapping[config.map])
-        signal.signal(signal.SIGINT, self.stop)
-        signal.signal(signal.SIGTERM, self.stop)
+        signal.signal(signal.SIGINT, (lambda s, h: self.stop()))
+        signal.signal(signal.SIGTERM, (lambda s, h: self.stop()))
+
 
     def _loop_check(func):
         @functools.wraps(func)
@@ -160,7 +161,7 @@ class SnakeLoopControl:
     def _spawn_snake_processes(self):
         """ Spawn the snake processes created internally """
         config = self._config
-        self.process_pool = ProcessPool(nr_workers=config.snake_count)
+        self.process_pool = ProcessPool()
         snake_factory = SnakeFactory()
         for _ in range(config.snake_count):
             self.process_pool.start(snake_factory.get_next_id())
@@ -210,11 +211,8 @@ class SnakeLoopControl:
         return self._snake_enviroment.get_init_data()
 
     @_loop_check
-    def run(self, stop_event=None):
-        """Starts the loop
-        Args:
-            stop_event: Event object to stop the loop
-        """
+    def run(self):
+        """ Starts the loop """
         self._spawn_snake_processes()
         self._initialize_remotes()
         # self._initialize_inproc_snakes()
@@ -223,7 +221,7 @@ class SnakeLoopControl:
         self._finalize_snakes()
         self._initialize_run_data_loop_observers() # This needs to be called after the snakes are added to the environment
         try:
-            self._loop.start(stop_event)
+            self._loop.start()
         except KeyboardInterrupt:
             pass
         except Exception as e:
