@@ -153,7 +153,7 @@ class SnakeLoopControl:
     def _spawn_snake_processes(self):
         """ Spawn the snake processes created internally """
         config = self._config
-        self.process_pool = ProcessPool()
+        self.process_pool = ProcessPool(nr_workers=config.snake_count)
         snake_factory = SnakeFactory()
         for _ in range(config.snake_count):
             self.process_pool.start(snake_factory.get_next_id())
