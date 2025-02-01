@@ -1,7 +1,7 @@
 import grpc
+import signal
 import argparse
 import sys
-import logging
 
 from pathlib import Path
 from concurrent import futures
@@ -12,8 +12,6 @@ from snake_sim.protobuf import remote_snake_pb2, remote_snake_pb2_grpc
 from snake_sim.utils import Coord
 from snake_sim.snakes.snake import ISnake
 from snake_sim.environment.snake_env import EnvInitData, EnvData
-
-log = logging.getLogger(Path(__file__).stem)
 
 class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
     def __init__(self, snake_instance: ISnake):
@@ -57,13 +55,6 @@ class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
             yield remote_snake_pb2.UpdateResponse(direction=remote_snake_pb2.Coord(x=direction.x, y=direction.y))
 
 
-def setup_logging(log_level):
-    handler = logging.StreamHandler()
-    handler.setLevel(log_level)
-    handler.setFormatter(logging.Formatter("%(asctime)s:%(name)s:%(levelname)s:%(message)s"))
-    log.addHandler(handler)
-
-
 def import_snake_module(snake_module_file):
     if snake_module_file:
         snake_file_path = Path(snake_module_file)
@@ -80,14 +71,18 @@ def cli(argv):
     parser = argparse.ArgumentParser("Remote Snake Server")
     parser.add_argument('-t', '--target', type=str, required=True, help='Server address or socket path to bind to')
     parser.add_argument('-m', '--snake_module_file', type=str, required=True, default=None, help='Path to snake module for importing snake class')
-    parser.add_argument('-l', '--log_level', type=str, default="INFO", help='Log level')
     args = parser.parse_args(argv)
     return args
 
 
-def serve(target, snake_module_file, stop_event: Optional[Event] = None, log_level="DEBUG"):
+def serve(target, snake_module_file, stop_event: Optional[Event] = None):
+    if not stop_event:
+        stop_event = Event()
+    def handle_term(signum, frame):
+        stop_event.set()
+    signal.signal(signal.SIGTERM, handle_term)
+    signal.signal(signal.SIGINT, handle_term)
     try:
-        setup_logging(log_level)
         snake_module = import_snake_module(snake_module_file)
         snake_instance = snake_module.AutoSnake()
         snake_servicer = RemoteSnakeServicer(snake_instance)

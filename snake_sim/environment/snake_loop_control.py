@@ -1,5 +1,6 @@
 import json
 import logging
+import sys
 import functools
 import signal
 import threading
@@ -79,8 +80,6 @@ class SnakeLoopControl:
             if config.map not in map_files_mapping:
                 raise ValueError(f'Map {config.map} not found')
             self._snake_enviroment.load_map(map_files_mapping[config.map])
-        signal.signal(signal.SIGINT, (lambda s, h: self.stop()))
-        signal.signal(signal.SIGTERM, (lambda s, h: self.stop()))
 
 
     def _loop_check(func):
@@ -210,6 +209,11 @@ class SnakeLoopControl:
     @_loop_check
     def run(self):
         """ Starts the loop """
+        def handle_termination(s, h):
+            self.shutdown()
+            sys.exit(0)
+        signal.signal(signal.SIGINT, handle_termination)
+        signal.signal(signal.SIGTERM, handle_termination)
         self._spawn_snake_processes()
         self._initialize_remotes()
         # self._initialize_inproc_snakes()
@@ -224,15 +228,14 @@ class SnakeLoopControl:
         except Exception as e:
             log.exception(e)
         finally:
-            self.stop()
+            self.shutdown()
 
     @_loop_check
-    def stop(self):
-        """Stops the loop"""
-        log.debug("Stopping loop")
+    def shutdown(self):
+        """Shuts down the loop"""
+        self._loop.stop()
         if self.process_pool:
             self.process_pool.shutdown()
-        self._loop.stop()
 
 
 def setup_loop(config) -> SnakeLoopControl:
