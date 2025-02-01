@@ -2,6 +2,7 @@ import json
 import logging
 import sys
 import functools
+import signal
 
 from typing import Union, List
 from importlib import resources as pkg_resources
@@ -208,6 +209,7 @@ class SnakeLoopControl:
         Args:
             stop_event: Event object to stop the loop
         """
+        register_signal_handlers() # add signal handlers to stop the process pool
         self._spawn_snake_processes()
         self._initialize_remotes()
         # self._initialize_inproc_snakes()
@@ -218,7 +220,7 @@ class SnakeLoopControl:
         try:
             self._loop.start(stop_event)
         except KeyboardInterrupt:
-            log.info("Keyboard interrupt")
+            pass
         except Exception as e:
             log.exception(e)
         finally:
@@ -231,6 +233,13 @@ class SnakeLoopControl:
         if self.process_pool:
             self.process_pool.shutdown()
         self._loop.stop()
+
+
+def register_signal_handlers():
+    def signal_handler(sig, frame):
+        ProcessPool().shutdown()
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
 
 def setup_loop(config) -> SnakeLoopControl:
