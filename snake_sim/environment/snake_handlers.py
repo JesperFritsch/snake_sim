@@ -57,11 +57,11 @@ class SnakeHandler(ISnakeHandler):
             try:
                 decisions[id] = future.result()
             except TimeoutError:
-                print(f"Snake {id} timed out")
+                log.debug(f"Snake {id} timed out")
                 self.kill_snake(id)
                 decisions[id] = None
             except Exception as e:
-                print(f"Error in snake {id}", exc_info=True)
+                log.debug(f"Error in snake {id}", exc_info=True)
                 self.kill_snake(id)
                 decisions[id] = None
         return decisions

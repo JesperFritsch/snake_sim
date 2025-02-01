@@ -11,7 +11,6 @@ def handle_connection_loss(func):
         try:
             return func(self, *args, **kwargs)
         except grpc.RpcError as e:
-            print(f"Connection lost: {e}")
             raise ConnectionError
     return wrapper
 
