@@ -48,8 +48,8 @@ class SnakeProcess:
 
 
 class ProcessPool(metaclass=SingletonMeta):
-    def __init__(self):
-        self._executor = ProcessPoolExecutor(max_workers=50)
+    def __init__(self, nr_workers=None):
+        self._executor = ProcessPoolExecutor(max_workers=nr_workers)
         self._processes: List[SnakeProcess] = []
         self._manager = Manager()
 
