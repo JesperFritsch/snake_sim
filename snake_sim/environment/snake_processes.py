@@ -10,7 +10,7 @@ from concurrent.futures import ProcessPoolExecutor, Future
 from multiprocessing import Manager
 from threading import Event
 
-from snake_sim.utils import SingletonMeta
+from snake_sim.utils import SingletonMeta, rand_str
 from snake_sim.server.remote_snake_server import serve
 from snake_sim.snakes import auto_snake
 
@@ -64,12 +64,15 @@ class ProcessPool(metaclass=SingletonMeta):
             s.close()
             return socket_address  # Return the assigned port
 
-    def _generate_target(self, id: int) -> str:
+    def _generate_target(self) -> str:
         if platform.system() == "Windows":
             port = self._find_free_port()
             return f"localhost:{port}"
         else:
-            return f"unix:/tmp/snake_process_{id}.sock"
+            sock_file = f"/tmp/snake_process_{rand_str(8)}.sock"
+            while Path(sock_file).exists():
+                sock_file = f"/tmp/snake_process_{rand_str(8)}.sock"
+            return f"unix:{sock_file}"
 
     def kill_snake_process(self, id: int):
         for process in self._processes:
@@ -78,7 +81,7 @@ class ProcessPool(metaclass=SingletonMeta):
                 self._processes.remove(process)
 
     def start(self, id) -> Future:
-        target = self._generate_target(id)
+        target = self._generate_target()
         module_path = auto_snake.__file__
         stop_event = self._manager.Event()
         future = self._executor.submit(serve, target=target, snake_module_file=module_path, stop_event=stop_event)
