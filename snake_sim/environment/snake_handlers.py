@@ -55,8 +55,9 @@ class SnakeHandler(ISnakeHandler):
         for future in as_completed(futures, timeout=default_config["decision_timeout_ms"] / 1000):
             id = futures[future]
             try:
-                decisions[id] = future.result()
-                continue
+                if ProcessPool().is_running(id):
+                    decisions[id] = future.result()
+                    continue
             except TimeoutError:
                 log.debug(f"Snake {id} timed out")
             except ConnectionError:

@@ -1,7 +1,8 @@
 import sys
 import json
 import logging
-from multiprocessing import Pipe, Process
+import signal
+from multiprocessing import Pipe, Process, Manager
 from pathlib import Path
 from importlib import resources
 
@@ -20,9 +21,13 @@ with resources.open_text('snake_sim.config', 'default_config.json') as config_fi
 log = logging.getLogger(Path(__file__).stem)
 
 
-def start_snakes(loop_control, log_level):
+def start_snakes(loop_control, log_level, stop_event):
+    # set up logging
+    # define signal handlers if the process needs to be killed on a linux system
+    signal.signal(signal.SIGINT, lambda s, h: stop_event.set())
+    signal.signal(signal.SIGTERM, lambda s, h: stop_event.set())
     setup_logging(log_level)
-    loop_control.run()
+    loop_control.run(stop_event)
 
 
 def main():
@@ -45,7 +50,8 @@ def main():
             parent_conn, child_conn = Pipe()
             loop_control = setup_loop(config)
             loop_control.add_run_data_observer(IPCRunDataObserver(parent_conn))
-            loop_p = Process(target=start_snakes, args=(loop_control, config.log_level))
+            stop_event = Manager().Event()
+            loop_p = Process(target=start_snakes, args=(loop_control, config.log_level, stop_event))
             if config.command == "game":
                 render_p = Process(target=play_game, args=(child_conn, config.spm, config.sound))
             else:
@@ -53,7 +59,7 @@ def main():
             render_p.start()
             loop_p.start()
             render_p.join()
-            loop_p.terminate()
+            stop_event.set()
             loop_p.join()
 
     except KeyboardInterrupt:

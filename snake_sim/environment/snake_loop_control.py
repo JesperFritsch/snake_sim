@@ -1,12 +1,11 @@
 import json
 import logging
-import sys
+import atexit
 import functools
-import signal
 import threading
 
 from pathlib import Path
-from typing import Union, List
+from typing import Union, List, Optional
 from importlib import resources as pkg_resources
 
 from snake_sim.environment.interfaces.main_loop_interface import ILoopObserver
@@ -55,8 +54,6 @@ class GameConfig(SimConfig):
 class SnakeLoopControl:
 
     def __init__(self, config: Union[SimConfig, GameConfig]):
-        if not threading.current_thread() is threading.main_thread():
-            raise RuntimeError('SnakeLoopControl can only be initialized in the main thread')
         if not isinstance(config, (SimConfig, GameConfig)):
             raise ValueError('Invalid configuration')
         self._loop = None
@@ -80,7 +77,8 @@ class SnakeLoopControl:
             if config.map not in map_files_mapping:
                 raise ValueError(f'Map {config.map} not found')
             self._snake_enviroment.load_map(map_files_mapping[config.map])
-
+        self._is_shutdown = False
+        atexit.register(self.shutdown)
 
     def _loop_check(func):
         @functools.wraps(func)
@@ -207,13 +205,15 @@ class SnakeLoopControl:
         return self._snake_enviroment.get_init_data()
 
     @_loop_check
-    def run(self):
+    def run(self, stop_event: Optional[threading.Event] = None):
         """ Starts the loop """
-        def handle_termination(s, h):
-            self.shutdown()
-            sys.exit(0)
-        signal.signal(signal.SIGINT, handle_termination)
-        signal.signal(signal.SIGTERM, handle_termination)
+        # If a stop event is provided, start a thread that waits for the event to be set
+        if stop_event:
+            def wait_stop_event(stop_event):
+                stop_event.wait()
+                self.shutdown()
+            threading.Thread(target=wait_stop_event, args=(stop_event,), daemon=True).start()
+
         self._spawn_snake_processes()
         self._initialize_remotes()
         # self._initialize_inproc_snakes()
@@ -232,7 +232,10 @@ class SnakeLoopControl:
 
     @_loop_check
     def shutdown(self):
+        if self._is_shutdown:
+            return
         """Shuts down the loop"""
+        self._is_shutdown = True
         self._loop.stop()
         if self.process_pool:
             self.process_pool.shutdown()
