@@ -32,6 +32,7 @@ class SnakeProcess:
             else:
                 if self.stop_event:
                     self.stop_event.set()
+                    self.process.join()
                 else:
                     log.warning("No stop event found for process, killing process with SIGKILL")
                     self.process.kill()
