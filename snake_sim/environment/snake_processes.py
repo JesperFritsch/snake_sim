@@ -13,20 +13,31 @@ from snake_sim.snakes import auto_snake
 log = logging.getLogger(Path(__file__).stem)
 
 class SnakeProcess:
-    def __init__(self, id: int, target: str, module_path: str, process: Process):
+    def __init__(self, id: int, target: str, module_path: str, process: Process, stop_event=None):
         self.id = id
         self.target = target
         self.module_path = module_path
         self.process = process
+        self.stop_event = stop_event
+
+    def is_running(self) -> bool:
+        return self.process.is_alive()
 
     def kill(self):
         if self.process.is_alive():
             log.info(f"Stopping process with id {self.id}")
-            self.process.terminate()
-            self.process.join()
-        if platform.system() != "Windows":
-            filename = self.target.split(':')[1]
+            if platform.system() == "Windows":
+                self.process.terminate()
+                self.process.join()
+            else:
+                if self.stop_event:
+                    self.stop_event.set()
+                else:
+                    log.warning("No stop event found for process, killing process with SIGKILL")
+                    self.process.terminate()
+        if self.target.startswith("unix:"):
             try:
+                filename = self.target.split(':')[1]
                 if Path(filename).exists():
                     os.remove(filename)
             except OSError as e:
@@ -60,7 +71,7 @@ class ProcessPool(metaclass=SingletonMeta):
             return f"unix:{sock_file}"
 
     def is_running(self, id: int) -> bool:
-        return id in self._processes and self._processes[id].process.is_alive()
+        return id in self._processes and self._processes[id].is_running()
 
     def kill_snake_process(self, id: int):
         if id in self._processes:
@@ -70,13 +81,15 @@ class ProcessPool(metaclass=SingletonMeta):
     def start(self, id):
         target = self._generate_target()
         module_path = auto_snake.__file__
-        process = Process(target=serve, args=(target, module_path))
+        stop_event = self._manager.Event()
+        process = Process(target=serve, args=(target, module_path, stop_event))
         process.start()
-        self._processes[id] = SnakeProcess(id, target, module_path, process)
+        self._processes[id] = SnakeProcess(id, target, module_path, process, stop_event)
 
     def shutdown(self):
         log.debug("Shutting down processes")
-        for process in self._processes.values():
-            process.kill()
+        processes = self._processes.copy()
+        for process in processes.keys():
+            self.kill_snake_process(process)
         for process in self._processes.values():
             process.process.join()
