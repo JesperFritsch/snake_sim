@@ -423,7 +423,7 @@ class AutoSnake(AutoSnakeBase):
                     min_margin,
                     safe_margin_factor=safe_margin_factor,
                     safe_food_margin=max_food,
-                    exhaustive=True)
+                    exhaustive=False)
                 # print("next_frame: ", next_frame.try_coord)
                 search_stack.append(next_frame)
             # print("#####################")
