@@ -34,7 +34,7 @@ class SnakeProcess:
                     self.stop_event.set()
                 else:
                     log.warning("No stop event found for process, killing process with SIGKILL")
-                    self.process.terminate()
+                    self.process.kill()
         if self.target.startswith("unix:"):
             try:
                 filename = self.target.split(':')[1]
@@ -91,5 +91,5 @@ class ProcessPool(metaclass=SingletonMeta):
         processes = self._processes.copy()
         for process in processes.keys():
             self.kill_snake_process(process)
-        for process in self._processes.values():
+        for process in processes.values():
             process.process.join()
