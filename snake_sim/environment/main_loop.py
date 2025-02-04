@@ -7,9 +7,10 @@ from pathlib import Path
 from typing import Optional, List, Dict
 from multiprocessing import Event
 
+from snake_sim.utils import DotDict, Coord, profile
+from snake_sim.environment.snake_env import EnvData
 from snake_sim.environment.interfaces.main_loop_interface import IMainLoop
 from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver
-from snake_sim.utils import DotDict, Coord, profile
 from snake_sim.environment.snake_handlers import ISnakeHandler
 from snake_sim.environment.interfaces.snake_env_interface import ISnakeEnv
 
@@ -52,23 +53,31 @@ class SimLoop(IMainLoop):
             if len(update_batches) == 0:
                 self.stop()
             self._pre_update()
-            self._env.update_food()
-            self._current_step_data.food = self._env.get_food()
             for batch in update_batches:
-                decisions = self._snake_handler.get_decisions({id: self._env.get_env_data(id) for id in batch})
-                for id, decision in decisions.items():
-                    if decision is None:
-                        self._snake_handler.kill_snake(id)
-                    else:
-                        alive, grew = self._env.move_snake(id, decision)
-                        if alive:
-                            self._current_step_data.snake_times[id] = 0 # TODO: Implement snake times
-                            self._current_step_data.decisions[id] = decision
-                            self._current_step_data.snake_grew[id] = grew
-                        else:
-                            self._snake_handler.kill_snake(id)
+                self._update_batch(batch)
             self._steps += 1
             self._post_update()
+
+    def _prepare_batch(self, batch: List[int]) -> Dict[int, EnvData]:
+        return {id: self._env.get_env_data(id) for id in batch}
+
+    def _update_batch(self, batch: List[int]):
+        batch_data = self._prepare_batch(batch)
+        decisions = self._snake_handler.get_decisions(batch_data)
+        self._apply_decisions(decisions)
+
+    def _apply_decisions(self, decisions: Dict[int, Coord]):
+        for id, decision in decisions.items():
+            if decision is None:
+                self._snake_handler.kill_snake(id)
+            else:
+                alive, grew = self._env.move_snake(id, decision)
+                if alive:
+                    self._current_step_data.snake_times[id] = 0 # TODO: Implement snake times
+                    self._current_step_data.decisions[id] = decision
+                    self._current_step_data.snake_grew[id] = grew
+                else:
+                    self._snake_handler.kill_snake(id)
 
     def start(self):
         self._is_running = True
@@ -87,7 +96,9 @@ class SimLoop(IMainLoop):
         self._is_running = False
 
     def _pre_update(self):
+        self._env.update_food()
         self._current_step_data = LoopStepData(self._steps)
+        self._current_step_data.food = self._env.get_food()
         self._step_start_time = time.time()
 
     def _post_update(self):
