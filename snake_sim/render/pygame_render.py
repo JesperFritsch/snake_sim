@@ -1,4 +1,3 @@
-
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 1000
 
@@ -15,6 +14,18 @@ from snake_sim.render import core
 from snake_sim.run_data.run_data import RunData, StepData
 
 STREAM_IS_LIVE = False
+
+
+def catch_exceptions(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            pygame.quit()
+    return wrapper
+
 
 def frames_from_runfile(filepath, expand_factor=2):
     frames = []
@@ -72,7 +83,7 @@ def handle_events():
             pygame.quit()
             raise KeyboardInterrupt
 
-
+@catch_exceptions
 def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data: RunData):
     global STREAM_IS_LIVE
     while not stream_conn.poll(0.05):
@@ -95,11 +106,11 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
     while STREAM_IS_LIVE:
         turn_sounds = []
         eat_sounds = []
-        while not stream_conn.poll(0.05):
-            time.sleep(0.05)
-        payload = stream_conn.recv()
+        try:
+            payload = stream_conn.recv()
+        except EOFError:
+            break
         if payload == 'stopped':
-            STREAM_IS_LIVE = False
             break
         step_data_dict = payload
         step_data = StepData.from_dict(step_data_dict)
@@ -114,11 +125,10 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
             elif snake_data["did_turn"] == 'right':
                 turn_sounds.append('right')
         sound_buffer.extend([turn_sounds, eat_sounds])
+    STREAM_IS_LIVE = False
 
-
+@catch_exceptions
 def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_height, fps_playback, sound_on=True, keep_up=False):
-
-    clock = pygame.time.Clock()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
     surface = pygame.Surface(screen.get_size())
     surface = surface.convert()
@@ -139,6 +149,7 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
     play_direction = 1
     pause = False
     last_frame = None
+    time_start = time.time()
     while running:
         sim_step = (frame_counter // 2) + 1
         fps = fps_playback
@@ -197,7 +208,12 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
                 time.sleep(0.05)
             if keep_up and frame_counter < len(frame_buffer) - 2:
                 fps = fps_playback * 10
-        clock.tick(fps)
+        time_end = time.time()
+        time_elapsed = time_end - time_start
+        sleep_time = (1 / fps) - time_elapsed
+        if sleep_time > 0:
+            time.sleep(sleep_time)
+        time_start = time.time()
     pygame.quit()
 
 

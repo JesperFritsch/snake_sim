@@ -1,31 +1,35 @@
 import json
 import logging
+import atexit
 import functools
-from typing import Union
+import threading
+
+from pathlib import Path
+from typing import Union, List, Optional
 from importlib import resources as pkg_resources
 
 from snake_sim.environment.interfaces.main_loop_interface import ILoopObserver
 from snake_sim.loop_observers.run_data_observer_interface import IRunDataObserver
 
-from snake_sim.loop_observers.run_data_loop_observer import RunDataLoopObserver
+from snake_sim.loop_observers.run_data_loop_source import RunDataSource
 from snake_sim.loop_observers.recorder_run_data_observer import RecorderRunDataObserver
 from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
-from snake_sim.snakes.manual_snake import ManualSnake
-from snake_sim.snakes.remote_snake import RemoteSnake
 from snake_sim.environment.main_loop import SimLoop, GameLoop
 from snake_sim.environment.snake_handlers import SnakeHandler
-from snake_sim.controllers.keyboard_controller import ControllerCollection
 from snake_sim.environment.snake_factory import SnakeFactory
 from snake_sim.environment.snake_env import SnakeEnv, EnvInitData
 from snake_sim.environment.food_handlers import FoodHandler
+from snake_sim.environment.snake_processes import ProcessPool
+from snake_sim.controllers.keyboard_controller import ControllerCollection
 from snake_sim.utils import get_map_files_mapping, DotDict, create_color_map
 from dataclasses import dataclass
 
 with pkg_resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
 
-log = logging.getLogger("main_loop")
-log.setLevel(logging.DEBUG)
+
+log = logging.getLogger(Path(__file__).stem)
+
 
 @dataclass
 class SimConfig:
@@ -38,6 +42,7 @@ class SimConfig:
     calc_timeout: int
     verbose: bool
     start_length: int
+    external_snake_targets: List[str]
 
 
 @dataclass
@@ -47,54 +52,52 @@ class GameConfig(SimConfig):
 
 
 class SnakeLoopControl:
-    def __init__(self):
-        self._loop = None
 
-    def init_check(func):
-        @functools.wraps(func)
-        def wrapper(self, *args, **kwargs):
-            if not self._loop:
-                raise ValueError('Loop not initialized')
-            return func(self, *args, **kwargs)
-        return wrapper
-
-    def init(self, config: Union[SimConfig, GameConfig]):
-        """Initializes the environment with the given configuration"""
+    def __init__(self, config: Union[SimConfig, GameConfig]):
         if not isinstance(config, (SimConfig, GameConfig)):
             raise ValueError('Invalid configuration')
+        self._loop = None
+        self._config = config
+        self.process_pool = None
         self._snake_handler = SnakeHandler()
-        snake_factory = SnakeFactory()
-        self._snake_enviroment = SnakeEnv(config.width, config.height, default_config.free_value, default_config.blocked_value, default_config.food_value)
-        self._food_handler = FoodHandler(config.width, config.height, config.food, config.food_decay)
+        self._snake_enviroment = SnakeEnv(
+            config.width,
+            config.height,
+            default_config.free_value,
+            default_config.blocked_value,
+            default_config.food_value)
+        self._food_handler = FoodHandler(
+            config.width,
+            config.height,
+            config.food,
+            config.food_decay)
         self._snake_enviroment.set_food_handler(self._food_handler)
-
         if config.map:
             map_files_mapping = get_map_files_mapping()
             if config.map not in map_files_mapping:
                 raise ValueError(f'Map {config.map} not found')
             self._snake_enviroment.load_map(map_files_mapping[config.map])
+        self._is_shutdown = False
+        atexit.register(self.shutdown)
 
-        if isinstance(config, GameConfig):
+    def _loop_check(func):
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            if not self._loop:
+                raise ValueError('Loop not initialized, call init_loop() first')
+            return func(self, *args, **kwargs)
+        return wrapper
+
+    def init_loop(self):
+        """Initializes the loop"""
+        if isinstance(self._config, GameConfig):
             # Initialize game loop add keyboard controllers
             self._loop = GameLoop()
-            self._loop.set_steps_per_min(config.spm)
-            for man_snake in snake_factory.create_snakes({'manual': config.player_count}, start_length=config.start_length, help=1):
-                self._snake_handler.add_snake(man_snake)
-
-            for auto_snake in snake_factory.create_snakes({'auto': config.snake_count - config.player_count}, start_length=config.start_length):
-                self._snake_handler.add_snake(auto_snake)
+            self._loop.set_steps_per_min(self._config.spm)
 
         else:
             # Initialize simulation loop
             self._loop = SimLoop()
-            for auto_snake in snake_factory.create_snakes({'auto': config.snake_count}, start_length=config.start_length):
-                self._snake_handler.add_snake(auto_snake)
-
-        for snake in self._snake_handler.get_snakes():
-            start_pos = self._snake_enviroment.add_snake(snake.get_id(), start_length=snake.get_length())
-            snake.set_init_data(self._snake_enviroment.get_init_data())
-            snake.set_start_position(start_pos)
-
         self._loop.set_snake_handler(self._snake_handler)
         self._loop.set_environment(self._snake_enviroment)
         if default_config.max_steps is not None:
@@ -104,70 +107,141 @@ class SnakeLoopControl:
         else:
             self._loop.set_max_no_food_steps((self._snake_enviroment.get_init_data().height * self._snake_enviroment.get_init_data().width) // 2)
 
-    @init_check
+    @_loop_check
+    def _finalize_snakes(self):
+        """ Finalize snakes """
+        for id, snake in self._snake_handler.get_snakes().items():
+            start_pos = self._snake_enviroment.add_snake(id, start_length=self._config.start_length)
+            try:
+                snake.set_id(id)
+                snake.set_start_length(self._config.start_length)
+                snake.set_start_position(start_pos)
+                snake.set_init_data(self._snake_enviroment.get_init_data())
+            except Exception as e:
+                log.exception(e)
+                self._snake_handler.kill_snake(id)
+
+    @_loop_check
+    def _initialize_inproc_snakes(self):
+        """ Initialize in-process snakes """
+        snake_factory = SnakeFactory()
+        auto_snakes = snake_factory.create_snakes({'auto': self._config.snake_count})
+        for id, snake in auto_snakes.items():
+            self._snake_handler.add_snake(id, snake)
+
+    @_loop_check
+    def _initialize_remotes(self):
+        """ Initialize remote snakes """
+        snake_factory = SnakeFactory()
+        snake_processes = self.process_pool.get_running_processes()
+        remote_snakes = [(snake_factory.get_next_id(), t) for t in self._config.external_snake_targets]
+        remote_snakes.extend([(p.id, p.target) for p in snake_processes])
+        for id, target in remote_snakes:
+            id, snake = snake_factory.create_snake('remote', id=id, target=target)
+            self._snake_handler.add_snake(id, snake)
+
+    @_loop_check
+    def _initialize_manual_snakes(self):
+        """ Initialize manual snakes """
+        snake_factory = SnakeFactory()
+        ctl_collection = ControllerCollection()
+        manual_snakes = snake_factory.create_snakes({'manual': self._config.player_count}, help=1)
+        for id, snake in manual_snakes.items():
+            self._snake_handler.add_snake(id, snake)
+            ctl_collection.bind_controller(snake)
+        ctl_collection.handle_controllers()
+
+    @_loop_check
+    def _spawn_snake_processes(self):
+        """ Spawn the snake processes created internally """
+        config = self._config
+        self.process_pool = ProcessPool()
+        snake_factory = SnakeFactory()
+        for _ in range(config.snake_count):
+            self.process_pool.start(snake_factory.get_next_id())
+
+    @_loop_check
     def add_observer(self, observer: ILoopObserver):
         """Adds an observer to the loop"""
         if not isinstance(observer, ILoopObserver):
             raise ValueError('Observer must be an instance of ILoopObserver')
         self._loop.add_observer(observer)
 
-    @init_check
+    @_loop_check
     def add_run_data_observer(self, observer: IRunDataObserver):
-        """Adds a an observer to a RunDataLoopObserver"""
+        """Adds a an observer to a RunDataSource"""
         if not isinstance(observer, IRunDataObserver):
             raise ValueError('Observer must be an instance of IRunDataObserver')
 
         observers = self._loop.get_observers()
-        # if a RunDataLoopObserver already exists, add the observer to it
+        # if a RunDataSource already exists, add the observer to it
         try:
-            run_data_observer = next(o for o in observers if isinstance(o, RunDataLoopObserver))
+            run_data_observer = next(o for o in observers if isinstance(o, RunDataSource))
         except StopIteration:
-            # if no RunDataLoopObserver exists, create one and add the observer to it
-            init_data = self._snake_enviroment.get_init_data()
-            run_data_observer = RunDataLoopObserver()
-            run_data_observer.set_adapter(
-                RunDataAdapter(
-                    init_data,
-                    create_color_map(init_data.snake_values)
-                )
-            )
+            # if no RunDataSource exists, create one and add the observer to it
+            run_data_observer = RunDataSource()
             self._loop.add_observer(run_data_observer)
         run_data_observer.add_observer(observer)
 
-    @init_check
+    @_loop_check
+    def _initialize_run_data_loop_observers(self):
+        """Initializes the run data loop observers
+        This is used to initialize the DataAdapters for the RunDataSources
+        It needs to happend after the snakes are added to the environment"""
+        observers = self._loop.get_observers()
+        for observer in observers:
+            if isinstance(observer, RunDataSource):
+                init_data = self._snake_enviroment.get_init_data()
+                observer.set_adapter(
+                    RunDataAdapter(
+                        init_data,
+                        create_color_map(init_data.snake_values)
+                    )
+                )
+
+    @_loop_check
     def get_init_data(self) -> EnvInitData:
         """Returns the initial data of the environment"""
         return self._snake_enviroment.get_init_data()
 
-    def _initialize_controllers(self):
-        """Initializes the controllers"""
-        ctl_collection = ControllerCollection()
-        for snake in self._snake_handler.get_snakes():
-            if isinstance(snake, ManualSnake):
-                ctl_collection.bind_controller(snake)
-        ctl_collection.handle_controllers()
+    @_loop_check
+    def run(self, stop_event: Optional[threading.Event] = None):
+        """ Starts the loop """
+        # If a stop event is provided, start a thread that waits for the event to be set
+        if stop_event:
+            def wait_stop_event(stop_event):
+                stop_event.wait()
+                self.shutdown()
+            threading.Thread(target=wait_stop_event, args=(stop_event,), daemon=True).start()
 
-    @init_check
-    def run(self, stop_event):
-        """Starts the loop
-        Args:
-            stop_event: Event object to stop the loop
-        """
-        self._initialize_controllers()
+        self._spawn_snake_processes()
+        self._initialize_remotes()
+        # self._initialize_inproc_snakes()
+        if isinstance(self._config, GameConfig):
+            self._initialize_manual_snakes()
+        self._finalize_snakes()
+        self._initialize_run_data_loop_observers() # This needs to be called after the snakes are added to the environment
         try:
-            self._loop.start(stop_event)
+            self._loop.start()
+        except KeyboardInterrupt:
+            pass
         except Exception as e:
-            self._loop.stop()
             log.exception(e)
+        finally:
+            self.shutdown()
 
-    @init_check
-    def stop(self):
-        """Stops the loop"""
+    @_loop_check
+    def shutdown(self):
+        if self._is_shutdown:
+            return
+        """Shuts down the loop"""
+        self._is_shutdown = True
         self._loop.stop()
+        if self.process_pool:
+            self.process_pool.shutdown()
 
 
 def setup_loop(config) -> SnakeLoopControl:
-    loop_control = SnakeLoopControl()
     if config.command == "stream" or config.command == "compute":
         sim_config = SimConfig(
             map=config.map,
@@ -178,7 +252,8 @@ def setup_loop(config) -> SnakeLoopControl:
             snake_count=config.snake_count,
             calc_timeout=config.calc_timeout,
             verbose=config.verbose,
-            start_length=config.start_length
+            start_length=config.start_length,
+            external_snake_targets=config.external_snake_targets
         )
     elif config.command == "game":
         sim_config = GameConfig(
@@ -192,9 +267,11 @@ def setup_loop(config) -> SnakeLoopControl:
             verbose=config.verbose,
             player_count=config.num_players,
             spm=config.spm,
-            start_length=config.start_length
+            start_length=config.start_length,
+            external_snake_targets=config.external_snake_targets
         )
-    loop_control.init(sim_config)
+    loop_control = SnakeLoopControl(sim_config)
+    loop_control.init_loop()
     if not config.no_record:
         recording_file = config.record_file if config.record_file else None
         loop_control.add_run_data_observer(

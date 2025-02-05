@@ -7,6 +7,7 @@ from pathlib import Path
 
 from snake_sim.protobuf import sim_msgs_pb2
 from snake_sim.utils import coord_cmp, rand_str as rand_str_generator, Coord
+from snake_sim.environment.snake_env import EnvInitData
 
 class StepData:
     def __init__(self, food: list, step: int) -> None:

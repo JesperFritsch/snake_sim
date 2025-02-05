@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from snake_sim.run_data.run_data import StepData
+from snake_sim.run_data.run_data import StepData, RunData
 
 class IRunDataObserver(ABC):
 
@@ -13,5 +13,5 @@ class IRunDataObserver(ABC):
         pass
 
     @abstractmethod
-    def notify_end(self):
+    def notify_end(self, run_data: RunData):
         pass

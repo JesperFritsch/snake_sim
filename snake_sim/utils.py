@@ -8,10 +8,28 @@ from importlib import resources
 from time import time
 from typing import Dict, Tuple
 
+import cProfile
+import pstats
+from io import StringIO
+
 from importlib import resources
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = json.load(config_file)
+
+
+class SingletonMeta(type):
+    _instances = {}
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            instance = super().__call__(*args, **kwargs)
+            cls._instances[cls] = instance
+        return cls._instances[cls]
+
+    @classmethod
+    def reset(cls):
+        cls._instances.clear()
+
 
 class DotDict(dict):
     def __init__(self, other_dict={}):
@@ -39,6 +57,10 @@ class DotDict(dict):
 
 
 class Coord(tuple):
+
+    def distance(self, other):
+        return math.sqrt(math.pow(self.x - other[0], 2) + math.pow(self.y - other[1], 2))
+
     def __new__(cls, x, y):
         return super(Coord, cls).__new__(cls, (x, y))
 
@@ -145,3 +167,19 @@ def create_color_map(snake_values: dict) -> Dict[int, Tuple[int, int, int]]:
         color_map[snake_value_dict["head_value"]] = config.snake_colors[i % color_len]["head_color"]
         color_map[snake_value_dict["body_value"]] = config.snake_colors[i % color_len]["body_color"]
     return color_map
+
+
+def profile(sort_by='cumulative'):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            pr = cProfile.Profile()
+            pr.enable()
+            result = func(*args, **kwargs)
+            pr.disable()
+            s = StringIO()
+            ps = pstats.Stats(pr, stream=s).sort_stats(sort_by)
+            ps.print_stats()
+            print(s.getvalue())
+            return result
+        return wrapper
+    return decorator

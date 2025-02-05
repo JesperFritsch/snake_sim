@@ -55,12 +55,9 @@ class SnakeRep:
 
 
 class EnvData:
-    def __init__(self, map: np.ndarray, snakes: Dict[int, SnakeRep]):
-        self.map = map.tobytes()
-        self.snakes = {id: {
-                                'is_alive': snake_rep.is_alive,
-                                'length': len(snake_rep.body),
-                            } for id, snake_rep in snakes.items()}
+    def __init__(self, map: bytes, snakes: dict):
+        self.map = map
+        self.snakes = snakes
 
 
 class EnvInitData:
@@ -70,18 +67,16 @@ class EnvInitData:
                 free_value: int,
                 blocked_value: int,
                 food_value: int,
-                snake_reps: Dict[int, SnakeRep],
+                snake_values: Dict[int, Dict[str, int]],
+                start_positions: Dict[int, Coord],
                 base_map: np.ndarray):
         self.height = height
         self.width = width
         self.free_value = free_value
         self.blocked_value = blocked_value
         self.food_value = food_value
-        self.snake_values = {s_rep.id: {
-            "head_value": s_rep.head_value,
-            "body_value": s_rep.body_value,
-        } for s_rep in snake_reps.values()}
-        self.start_positions = {id: snake_rep.get_head() for id, snake_rep in snake_reps.items()}
+        self.snake_values = snake_values
+        self.start_positions = start_positions
         self.base_map = base_map
 
 
@@ -186,12 +181,18 @@ class SnakeEnv(ISnakeEnv):
     def get_base_map(self):
         return np.copy(self._base_map)
 
-    def get_env_data(self, id: Optional[int] = None) -> EnvData:
-        # id is not used yet, but it is preparing for being able to send different data to different snakes
-        return EnvData(self.get_map(), self._snake_reps)
-
     def get_food(self):
         return self._food_handler.get_food()
+
+    def get_head_positions(self) -> Dict[int, Coord]:
+        return {id: snake_rep.get_head() for id, snake_rep in self._snake_reps.items()}
+
+    def get_env_data(self, for_id: Optional[int] = None) -> EnvData:
+        # id is not used yet, but it is preparing for being able to send different data to different snakes
+        return EnvData(
+            self.get_map().tobytes(),
+            {id: {'is_alive': snake_rep.is_alive, 'length': len(snake_rep.body)} for id, snake_rep in self._snake_reps.items()}
+        )
 
     def get_init_data(self) -> EnvInitData:
         return EnvInitData(
@@ -200,7 +201,8 @@ class SnakeEnv(ISnakeEnv):
             self._free_value,
             self._blocked_value,
             self._food_value,
-            self._snake_reps,
+            {s_rep.id: {"head_value": s_rep.head_value, "body_value": s_rep.body_value} for s_rep in self._snake_reps.values()},
+            {s_rep.id: s_rep.get_head() for s_rep in self._snake_reps.values()},
             self.get_base_map())
 
     def resize(self, height, width):
