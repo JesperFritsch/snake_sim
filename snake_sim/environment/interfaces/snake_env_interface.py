@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict
 from snake_sim.utils import Coord
 from snake_sim.environment.interfaces.food_handler_interface import IFoodHandler
 
@@ -43,4 +43,8 @@ class ISnakeEnv(ABC):
 
     @abstractmethod
     def get_food(self):
+        pass
+
+    @abstractmethod
+    def get_head_positions(self) -> Dict[int, Coord]:
         pass

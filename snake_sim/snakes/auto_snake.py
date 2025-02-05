@@ -54,8 +54,8 @@ class AutoSnake(AutoSnakeBase):
     MAX_RISK_CALC_DEPTH = 3
     SAFE_MARGIN_FACTOR = 0.12
 
-    def __init__(self, id: str, start_length: int, calc_timeout=1000):
-        super().__init__(id, start_length)
+    def __init__(self, calc_timeout=1000):
+        super().__init__()
         self.calc_timeout = calc_timeout
         self.food_in_route = []
         self.failed_paths = set()
@@ -423,7 +423,7 @@ class AutoSnake(AutoSnakeBase):
                     min_margin,
                     safe_margin_factor=safe_margin_factor,
                     safe_food_margin=max_food,
-                    exhaustive=True)
+                    exhaustive=False)
                 # print("next_frame: ", next_frame.try_coord)
                 search_stack.append(next_frame)
             # print("#####################")

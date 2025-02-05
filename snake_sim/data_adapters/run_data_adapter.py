@@ -16,20 +16,25 @@ class RunDataAdapter:
         if not isinstance(env_init_data, EnvInitData):
             raise ValueError('env_init_data must be of type EnvInitData')
         self._env_init_data = env_init_data
+        self._run_data = None
+        self.snake_reps: Dict[int, SnakeRep] = {}
+        self.initialize(env_init_data, color_mapping)
+
+    def initialize(self, env_init_data: EnvInitData, color_mapping: dict):
         self._run_data = RunData(
-            height=self._env_init_data.height,
-            width=self._env_init_data.width,
+            height=env_init_data.height,
+            width=env_init_data.width,
             color_mapping=color_mapping,
-            base_map=self._env_init_data.base_map,
-            food_value=self._env_init_data.food_value,
-            free_value=self._env_init_data.free_value,
-            blocked_value=self._env_init_data.blocked_value,
-            snake_ids=list(self._env_init_data.snake_values.keys()),
-            snake_values=self._env_init_data.snake_values
+            base_map=env_init_data.base_map,
+            food_value=env_init_data.food_value,
+            free_value=env_init_data.free_value,
+            blocked_value=env_init_data.blocked_value,
+            snake_ids=list(env_init_data.snake_values.keys()),
+            snake_values=env_init_data.snake_values
         )
         self.snake_reps: Dict[int, SnakeRep] = {}
-        for id, snake_data in self._env_init_data.snake_values.items():
-            start_pos = self._env_init_data.start_positions[id]
+        for id, snake_data in env_init_data.snake_values.items():
+            start_pos = env_init_data.start_positions[id]
             self.snake_reps[id] = SnakeRep(id, snake_data['head_value'], snake_data['body_value'], start_pos)
 
     def get_run_data(self):
@@ -45,7 +50,7 @@ class RunDataAdapter:
             step=loop_step.step,
             food=loop_step.food
         )
-        for snake_id, decision in loop_step.desicions.items():
+        for snake_id, decision in loop_step.decisions.items():
             snake_rep = self.snake_reps[snake_id]
             # Grow has to be called before move
             if loop_step.snake_grew.get(snake_id, False):

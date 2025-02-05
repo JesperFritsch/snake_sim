@@ -10,11 +10,11 @@ class ISnake(ABC):
         pass
 
     @abstractmethod
-    def get_id(self) -> int:
+    def set_id(self, id: int):
         pass
 
     @abstractmethod
-    def get_length(self) -> int:
+    def set_start_length(self, start_length: int):
         pass
 
     @abstractmethod

@@ -1,27 +1,30 @@
 import time
 import json
+import logging
 from dataclasses import dataclass, field
 from importlib import resources
-
+from pathlib import Path
 from typing import Optional, List, Dict
 from multiprocessing import Event
 
+from snake_sim.utils import DotDict, Coord, profile
+from snake_sim.environment.snake_env import EnvData
 from snake_sim.environment.interfaces.main_loop_interface import IMainLoop
 from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver
-from snake_sim.utils import DotDict, Coord
 from snake_sim.environment.snake_handlers import ISnakeHandler
 from snake_sim.environment.interfaces.snake_env_interface import ISnakeEnv
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     config = DotDict(json.load(config_file))
 
+log = logging.getLogger(Path(__file__).stem)
 
 @dataclass
 class LoopStepData:
     step: int
     total_time: Optional[float] = field(default_factory=float)
     snake_times: Optional[Dict[int, float]] = field(default_factory=dict)
-    desicions: Optional[Dict[int, Coord]] = field(default_factory=dict)
+    decisions: Optional[Dict[int, Coord]] = field(default_factory=dict)
     snake_grew: Optional[Dict[int, bool]] = field(default_factory=dict)
     lengths: Optional[Dict[int, int]] = field(default_factory=dict)
     food: Optional[List[Coord]] = field(default_factory=list)
@@ -39,42 +42,63 @@ class SimLoop(IMainLoop):
         self._current_step_data: LoopStepData = None
         self._step_start_time = None
         self._is_running = False
+        self._did_notify_start = False
+        self._did_notify_end = False
 
-    def start(self, stop_event):
-        # stop_event is a multiprocessing.Event object
+    # @profile()
+    def _loop(self):
+        while self._is_running:
+            snake_positions = self._env.get_head_positions()
+            update_batches = self._snake_handler.get_batch_order(snake_positions)
+            if len(update_batches) == 0:
+                self.stop()
+            self._pre_update()
+            for batch in update_batches:
+                self._update_batch(batch)
+            self._steps += 1
+            self._post_update()
+
+    def _prepare_batch(self, batch: List[int]) -> Dict[int, EnvData]:
+        return {id: self._env.get_env_data(id) for id in batch}
+
+    def _update_batch(self, batch: List[int]):
+        batch_data = self._prepare_batch(batch)
+        decisions = self._snake_handler.get_decisions(batch_data)
+        self._apply_decisions(decisions)
+
+    def _apply_decisions(self, decisions: Dict[int, Coord]):
+        for id, decision in decisions.items():
+            if decision is None:
+                self._snake_handler.kill_snake(id)
+            else:
+                alive, grew = self._env.move_snake(id, decision)
+                if alive:
+                    self._current_step_data.snake_times[id] = 0 # TODO: Implement snake times
+                    self._current_step_data.decisions[id] = decision
+                    self._current_step_data.snake_grew[id] = grew
+                else:
+                    self._snake_handler.kill_snake(id)
+
+    def start(self):
         self._is_running = True
         if not self._snake_handler:
             raise ValueError('Snake handler not set')
         if not self._env:
             raise ValueError('Environment not set')
-        self._notify_start()
-        while self._is_running:
-            update_ordered_ids = self._snake_handler.get_update_order()
-            if stop_event.is_set() or len(update_ordered_ids) == 0:
-                self.stop()
-            self._pre_update()
-            self._env.update_food()
-            self._current_step_data.food = self._env.get_food()
-            for id in update_ordered_ids:
-                time_start = time.time()
-                decision = self._snake_handler.get_decision(id, self._env.get_env_data())
-                time_spent = time.time() - time_start
-                alive, grew = self._env.move_snake(id, decision)
-                if alive:
-                    self._current_step_data.snake_times[id] = time_spent
-                    self._current_step_data.desicions[id] = decision
-                    self._current_step_data.snake_grew[id] = grew
-                else:
-                    self._snake_handler.kill_snake(id)
-            self._steps += 1
-            self._post_update()
+        try:
+            self._notify_start()
+            self._loop()
+        finally:
+            self._notify_end()
 
     def stop(self):
-        self._is_running = False
         self._notify_end()
+        self._is_running = False
 
     def _pre_update(self):
+        self._env.update_food()
         self._current_step_data = LoopStepData(self._steps)
+        self._current_step_data.food = self._env.get_food()
         self._step_start_time = time.time()
 
     def _post_update(self):
@@ -88,16 +112,22 @@ class SimLoop(IMainLoop):
         self._notify_step()
 
     def _notify_start(self):
+        if self._did_notify_start: return
+        log.debug('Loop started')
         for observer in self._observers:
             observer.notify_start()
+        self._did_notify_start = True
 
     def _notify_step(self):
         for observer in self._observers:
             observer.notify_step(self._current_step_data)
 
     def _notify_end(self):
+        if self._did_notify_end: return
+        log.debug('Loop ended')
         for observer in self._observers:
             observer.notify_end()
+        self._did_notify_end = True
 
     def set_snake_handler(self, snake_handler: ISnakeHandler):
         self._snake_handler = snake_handler
@@ -134,10 +164,10 @@ class GameLoop(SimLoop):
         if sleep_time > 0:
             time.sleep(sleep_time)
 
-    def start(self, stop_event):
+    def start(self):
         if not self._steps_per_min:
             raise ValueError('Steps per minute not set')
-        super().start(stop_event)
+        super().start()
 
     def set_steps_per_min(self, spm):
         self._steps_per_min = spm

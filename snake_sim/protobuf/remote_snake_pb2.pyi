@@ -19,7 +19,7 @@ class SnakeId(_message.Message):
     id: int
     def __init__(self, id: _Optional[int] = ...) -> None: ...
 
-class SnakeLength(_message.Message):
+class StartLength(_message.Message):
     __slots__ = ("length",)
     LENGTH_FIELD_NUMBER: _ClassVar[int]
     length: int
