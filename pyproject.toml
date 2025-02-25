@@ -1,3 +1,3 @@
 [build-system]
-requires = ["setuptools", "setuptools-grpc", "pybind11"]
+requires = ["setuptools", "pybind11", "protobuf", "grpcio-tools"]
 build-backend = "setuptools.build_meta"
