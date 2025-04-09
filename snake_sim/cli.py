@@ -37,6 +37,7 @@ def add_run_config_arguments(parser):
     parser.add_argument('--map', type=str, help='Path to map file')
     parser.add_argument('--start-length', type=int, help='Starting length of the snakes')
     parser.add_argument('--external-snake-targets', type=str, nargs='+', help='External snake targets')
+    parser.add_argument('--inproc-snakes', action="store_true", help='Run all snakes in one process, otherwise one process per snake', default=False)
 
 
 def add_playback_arguments(parser):

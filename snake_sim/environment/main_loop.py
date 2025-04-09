@@ -92,7 +92,6 @@ class SimLoop(IMainLoop):
             self._notify_end()
 
     def stop(self):
-        self._notify_end()
         self._is_running = False
 
     def _pre_update(self):
@@ -124,10 +123,10 @@ class SimLoop(IMainLoop):
 
     def _notify_end(self):
         if self._did_notify_end: return
+        self._did_notify_end = True
         log.debug('Loop ended')
         for observer in self._observers:
             observer.notify_end()
-        self._did_notify_end = True
 
     def set_snake_handler(self, snake_handler: ISnakeHandler):
         self._snake_handler = snake_handler

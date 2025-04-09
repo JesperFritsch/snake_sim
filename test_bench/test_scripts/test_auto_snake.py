@@ -9,13 +9,17 @@ from collections import deque
 import cProfile
 import pstats
 
+from importlib import resources
+
 from snake_sim.snakes.auto_snake import AutoSnake
 from snake_sim.utils import Coord
 from snake_sim.environment.snake_env import EnvData, EnvInitData, SnakeRep
 from snake_sim.render import core
 from snake_sim.render.pygame_render import play_frame_buffer
 
-STATE_FILE_DIR = Path(__file__).parent.parent / 'state_files'
+with resources.path('snake_sim', '__init__.py') as init_path:
+    STATE_FILE_DIR = Path(init_path.parent) / "test_bench" / "state_files"
+
 
 RUN_STEPS = []
 
@@ -86,12 +90,12 @@ def test_area_check_performace(snake: AutoSnake, s_map, iterations=1000):
 def run_tests(snake: AutoSnake, s_map):
     pr = cProfile.Profile()
     pr.enable()
-
-    # test_make_choice(snake, s_map)
+    print("current tile: ", snake.coord)
+    test_make_choice(snake, s_map)
     test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000)
     # test_area_check_direction(snake, s_map, Coord(-1, 0))
-    test_explore(snake, s_map)
+    # test_explore(snake, s_map)
 
     pr.disable()
     s = StringIO()
@@ -103,17 +107,11 @@ def run_tests(snake: AutoSnake, s_map):
     render_steps(RUN_STEPS)
 
 
-def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map):
-    snake = AutoSnake(id, 1, calc_timeout=1500)
-    env_init_data = EnvInitData(
-        state_dict['width'],
-        state_dict['height'],
-        state_dict['free_value'],
-        state_dict['blocked_value'],
-        state_dict['food_value'],
-        snake_reps,
-        state_dict['base_map']
-    )
+def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, state_dict):
+    snake = AutoSnake(calc_timeout=1500)
+    snake.set_id(id)
+    snake.set_start_length(1)
+    env_init_data = create_env_init_data(snake_reps.values(), state_dict)
     snake_rep = snake_reps[id]
     snake.set_init_data(env_init_data)
     snake.body_coords = snake_rep.body.copy()
@@ -163,14 +161,15 @@ def create_snake_reps(state_dict) -> Dict[int, SnakeRep]:
     return snake_reps
 
 
-def create_env_init_data(snake_reps: List[SnakeRep]) -> EnvInitData:
+def create_env_init_data(snake_reps: List[SnakeRep], state_dict) -> EnvInitData:
     return EnvInitData(
         state_dict['width'],
         state_dict['height'],
         state_dict['free_value'],
         state_dict['blocked_value'],
         state_dict['food_value'],
-        snake_reps,
+        {int(k): v for k, v in state_dict['snake_values'].items()},
+        {s_rep.id: s_rep.get_head() for s_rep in snake_reps},
         state_dict['base_map']
     )
 
@@ -200,6 +199,6 @@ if __name__ == "__main__":
     else:
         s_map = create_map(state_dict, snake_reps)
         # print_map(s_map, state_dict, snake_id)
-        test_snake = create_test_snake(snake_id, snake_reps, s_map)
+        test_snake = create_test_snake(snake_id, snake_reps, s_map, state_dict)
         test_snake.print_map(s_map)
         run_tests(test_snake, s_map)

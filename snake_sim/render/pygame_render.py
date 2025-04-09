@@ -8,7 +8,8 @@ import threading
 import time
 from pathlib import Path
 
-import snake_sim
+from importlib import resources
+
 from snake_sim.render import core
 # from snake_sim.snake_env import RunData, StepData
 from snake_sim.run_data.run_data import RunData, StepData
@@ -169,9 +170,10 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
                 elif event.key == pygame.K_RIGHT:
                     new_frame = True
                 elif event.key == pygame.K_RETURN:
-                    p_root = Path(snake_sim.__file__).parent.parent
-                    test_bench = p_root / "test_bench" / "state_files"
-                    state_file = test_bench / f"state_{sim_step}.json"
+                    with resources.path('snake_sim', '__init__.py') as init_path:
+                        p_root = init_path.parent
+                    state_files_folder = p_root / "test_bench" / "state_files"
+                    state_file = state_files_folder / f"state_{sim_step}.json"
                     if not state_file.parent.exists():
                         state_file.parent.mkdir(parents=True)
                     with open(state_file, 'w') as f:

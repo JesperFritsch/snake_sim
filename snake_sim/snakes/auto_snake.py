@@ -197,10 +197,11 @@ class AutoSnake(AutoSnakeBase):
         route = self._get_route(self.map, self.coord, target_tiles=[l for l in food_locations if l != self.coord])
         while route:
             route = self._fix_route(route)
-            return route
-            # if self._check_safe_food_route(s_map, route) or True:
-            # else:
-            #     food_locations.remove(route[0])
+            # return route
+            if self._check_safe_food_route(s_map, route):
+                break
+            else:
+                food_locations.remove(route[0])
             route = self._get_route(self.map, self.coord, target_tiles=[l for l in food_locations if l != self.coord])
         return route
 
@@ -258,11 +259,12 @@ class AutoSnake(AutoSnakeBase):
         planned_tile = None
         planned_route = None
         closest_food_route = self._get_closest_accessible_food_route()
+        # print("closest_food_route: ", closest_food_route)
         if closest_food_route:
             planned_route = closest_food_route
             planned_tile = planned_route.pop()
         valid_tiles = self._valid_tiles(self.map, self.coord)
-        if planned_tile and self.might_close_area(self.map, planned_tile, self.coord):
+        if planned_tile: # and self.might_close_area(self.map, planned_tile, self.coord):
             food_map = self._get_future_available_food_map()
         else:
             food_map = {k: 0 for k in valid_tiles}
@@ -279,6 +281,7 @@ class AutoSnake(AutoSnakeBase):
             if planned_tile is None or planned_tile_food_value < best_food_value:
                 planned_tile = best_food_tile
             planned_area = self._area_check_wrapper(self.map, self.body_coords, planned_tile, safe_margin_factor=self.SAFE_MARGIN_FACTOR)
+            # print("planned_tile: ", planned_tile)
             # print("planned_area: ", planned_area)
             if planned_area['margin'] > planned_area['food_count'] and planned_area['margin_over_edge'] > self.SAFE_MARGIN_FACTOR:
                 # print("explore_option")

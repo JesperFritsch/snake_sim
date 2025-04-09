@@ -43,6 +43,7 @@ class SimConfig:
     verbose: bool
     start_length: int
     external_snake_targets: List[str]
+    inproc_snakes: bool
 
 
 @dataclass
@@ -113,6 +114,7 @@ class SnakeLoopControl:
         for id, snake in self._snake_handler.get_snakes().items():
             start_pos = self._snake_enviroment.add_snake(id, start_length=self._config.start_length)
             try:
+                log.debug(f"Snake {id} start position: {start_pos}")
                 snake.set_id(id)
                 snake.set_start_length(self._config.start_length)
                 snake.set_start_position(start_pos)
@@ -214,9 +216,11 @@ class SnakeLoopControl:
                 self.shutdown()
             threading.Thread(target=wait_stop_event, args=(stop_event,), daemon=True).start()
 
-        self._spawn_snake_processes()
-        self._initialize_remotes()
-        # self._initialize_inproc_snakes()
+        if self._config.inproc_snakes:
+            self._initialize_inproc_snakes()
+        else:
+            self._spawn_snake_processes()
+            self._initialize_remotes()
         if isinstance(self._config, GameConfig):
             self._initialize_manual_snakes()
         self._finalize_snakes()
@@ -242,33 +246,24 @@ class SnakeLoopControl:
 
 
 def setup_loop(config) -> SnakeLoopControl:
-    if config.command == "stream" or config.command == "compute":
-        sim_config = SimConfig(
-            map=config.map,
-            food=config.food,
-            height=config.grid_height,
-            width=config.grid_width,
-            food_decay=config.food_decay,
-            snake_count=config.snake_count,
-            calc_timeout=config.calc_timeout,
-            verbose=config.verbose,
-            start_length=config.start_length,
-            external_snake_targets=config.external_snake_targets
-        )
-    elif config.command == "game":
+    sim_config = SimConfig(
+        map=config.map,
+        food=config.food,
+        height=config.grid_height,
+        width=config.grid_width,
+        food_decay=config.food_decay,
+        snake_count=config.snake_count,
+        calc_timeout=config.calc_timeout,
+        verbose=config.verbose,
+        start_length=config.start_length,
+        external_snake_targets=config.external_snake_targets,
+        inproc_snakes=config.inproc_snakes
+    )
+    if config.command == "game":
         sim_config = GameConfig(
-            map=config.map,
-            food=config.food,
-            height=config.grid_height,
-            width=config.grid_width,
-            food_decay=config.food_decay,
-            snake_count=config.snake_count,
-            calc_timeout=config.calc_timeout,
-            verbose=config.verbose,
+            **sim_config.__dict__,
             player_count=config.num_players,
             spm=config.spm,
-            start_length=config.start_length,
-            external_snake_targets=config.external_snake_targets
         )
     loop_control = SnakeLoopControl(sim_config)
     loop_control.init_loop()

@@ -49,7 +49,6 @@ class SnakeHandler(ISnakeHandler):
     def _process_batch_concurrent(self, batch_data: Dict[int, EnvData]) -> Dict[int, Coord]:
         if not self._executor:
             self._init_executor()
-        # print("Processing batch: ", list(batch_data.keys()))
         futures = {self._executor.submit(self.get_decision, id, env_data): id for id, env_data in batch_data.items()}
         decisions = {}
         for future in as_completed(futures, timeout=default_config["decision_timeout_ms"] / 1000):
@@ -73,7 +72,8 @@ class SnakeHandler(ISnakeHandler):
 
     def get_decision(self, id, env_data: EnvData) -> Coord:
         snake = self._snakes[id]
-        if not ProcessPool().is_running(id):
+        if isinstance(self._snakes[id], RemoteSnake) and not ProcessPool().is_running(id):
+            log.debug(f"Snake {id} process is not running, killing it")
             self.kill_snake(id)
             return
         decision = snake.update(env_data)
