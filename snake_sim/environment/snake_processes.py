@@ -31,7 +31,10 @@ class SnakeProcess:
                 self.process.join()
             else:
                 if self.stop_event:
-                    self.stop_event.set()
+                    try:
+                        self.stop_event.set()
+                    except Exception as e:
+                        log.error(f"Error setting stop event: {e}")
                     self.process.join()
                 else:
                     log.warning("No stop event found for process, killing process with SIGKILL")
@@ -94,3 +97,4 @@ class ProcessPool(metaclass=SingletonMeta):
             self.kill_snake_process(process)
         for process in processes.values():
             process.process.join()
+        self._manager.shutdown()
