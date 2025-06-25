@@ -51,3 +51,10 @@ class IPCRunDataObserver(IRunDataObserver):
     def notify_end(self, run_data):
         log.debug('Sending stopped signal')
         self._pipe_conn.send('stopped')
+        self.close()
+
+    def close(self):
+        try:
+            self._pipe_conn.close()
+        except Exception as e:
+            log.debug('Error closing pipe: %s', e)
