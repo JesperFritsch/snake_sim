@@ -393,6 +393,10 @@ class AutoSnake(AutoSnakeBase):
             # and we dont need to actually find a path to the end
             # but that only works if the number of tiles left is large enough, if an area has 5 tiles and the margin is 1
             # then best_margin_over_edge will be 0.2 which might be over the limit, but there is a high risk of unreachables
+            # self.print_map(s_map)
+            # for a_coord, area in frame.area_checks.items():
+            #     print("area: ", a_coord, " margin: ", area['margin'], " margin_over_edge: ", area['margin_over_edge'], " food_count: ", area['food_count'], " is_clear: ", area['is_clear'], " has_tail: ", area['has_tail'])
+            # print("frame: ", frame.try_coord, " margin: ", frame.best_margin, " margin_over_edge: ", frame.best_margin_over_edge, " has_tail: ", frame.has_tail, " has_safe_food_margin: ", frame.has_safe_food_margin)
             if frame.has_safe_food_margin:
                 if (frame.best_margin_over_edge >= safe_margin_factor and
                     frame.best_margin > frame.best_margin_over_edge * 40) and len(search_stack) >= min_depth:
