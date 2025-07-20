@@ -112,7 +112,7 @@ public:
     Coord start_coord;
     Coord end_coord = Coord();
     int id;
-    int max_index = 0;
+    int max_index = -1; // max_index is the index of the snake in this area, if it is not in this area, then it is -1
     int tile_count = 0;
     int food_count = 0;
     int edge_tile_count = 0;
@@ -188,7 +188,7 @@ struct ExploreResults{
     int tile_count = 0;
     int food_count = 0;
     int edge_tile_count = 0;
-    int max_index = 0;
+    int max_index = -1; // max_index is the index of the snake in this area, if it is not in this area, then it is -1
     bool has_tail = false;
     bool early_exit = false;
     std::vector<int> connected_areas;
@@ -481,7 +481,7 @@ public:
                 edge_tiles_here = total_edge_tile_count_here - step_data->edge_tiles_until_here;
             }
 
-            if (step_data->node->max_index > 0){
+            if (step_data->node->max_index >= 0){
                 calc_tiles = total_tile_count_here;
                 calc_food = total_food_count_here;
                 calc_edge_tiles = total_edge_tile_count_here;
@@ -1019,7 +1019,7 @@ public:
         int tile_count = 0;
         int food_count = 0;
         int edge_tile_count = 0;
-        int max_index = 0;
+        int max_index = -1;
         bool has_tail = false;
         bool did_early_exit = false;
         std::vector<Coord> to_explore;
@@ -1092,7 +1092,7 @@ public:
                             break;
                         }
                     }
-                } else if (coord_val == body_value && !(curr_coord == start_coord && area_id == 0)) {
+                } else if ((coord_val == body_value || coord_val == head_value) && !(curr_coord == start_coord && area_id == 0)) {
                     auto it = std::find(body_coords.begin(), body_coords.end(), n_coord);
                     if (it != body_coords.end()) {
                         int body_index = static_cast<int>(std::distance(body_coords.begin(), it));  // Cast to int
@@ -1196,7 +1196,7 @@ public:
                 continue;
             }
             // If an area has just one tile, no max index and only one area to explore, then we can just add the tile to the previous node
-            if (prev_node != nullptr && prev_node->is_one_dim && result.tile_count == 1 && result.max_index == 0 && (result.connected_areas.size() + result.to_explore.size() == 2)){
+            if (prev_node != nullptr && prev_node->is_one_dim && result.tile_count == 1 && result.max_index < 0 && (result.connected_areas.size() + result.to_explore.size() == 2)){
                 // std::cout << "Adding to previous node" << std::endl;
                 current_node = prev_node;
                 current_node->tile_count += result.tile_count;
@@ -1214,7 +1214,7 @@ public:
                 current_node->edge_tile_count = result.edge_tile_count;
                 current_node->max_index = result.max_index;
                 current_node->has_tail = result.has_tail;
-                if (current_node->tile_count == 1 && (result.connected_areas.size() + result.to_explore.size() == 2) && current_node->max_index == 0){ // a node cant really have 2 or 3 tiles, next step after 1 is 4, but anyways...
+                if (current_node->tile_count == 1 && (result.connected_areas.size() + result.to_explore.size() == 2) && current_node->max_index < 0){ // a node cant really have 2 or 3 tiles, next step after 1 is 4, but anyways...
                     current_node->is_one_dim = true;
                 }
             }
