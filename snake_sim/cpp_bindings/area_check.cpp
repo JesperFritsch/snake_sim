@@ -24,6 +24,7 @@ unsigned int cantor_pairing(int k1, int k2)
     return (k1 + k2) * (k1 + k2 + 1) / 2 + k2;
 }
 
+
 struct Coord
 {
     int x;
@@ -55,7 +56,7 @@ struct Coord
     {
         return x == other.x && y == other.y;
     }
-
+    
     bool operator!=(const Coord &other) const
     {
         return x != other.x || y != other.y;
@@ -66,6 +67,13 @@ struct Coord
         return x * 1000 + y;
     }
 };
+
+
+bool get_tile_evenness(Coord coord)
+{
+    return coord.x % 2 == coord.y % 2;
+}
+
 
 namespace std
 {
@@ -118,6 +126,36 @@ struct AreaCheckResult
                                               margin_over_edge(margin_over_edge) {}
 };
 
+
+struct ConnectedAreaInfo
+{
+    int id;
+    Coord self_coord;
+    Coord other_coord;
+    bool is_bad_gateway_from_here;
+    bool is_bad_gateway_to_here;
+
+    ConnectedAreaInfo() : 
+        id(-1),
+        self_coord(Coord()),
+        other_coord(Coord()),
+        is_bad_gateway_from_here(false),
+        is_bad_gateway_to_here(false) {}
+
+    ConnectedAreaInfo(
+        int id, 
+        Coord self_coord, 
+        Coord other_coord, 
+        bool is_bad_gateway_from_here,
+        bool is_bad_gateway_to_here
+    ) : id(id),
+        self_coord(self_coord),
+        other_coord(other_coord),
+        is_bad_gateway_from_here(is_bad_gateway_from_here),
+        is_bad_gateway_to_here(is_bad_gateway_to_here) {}
+};
+
+
 class AreaNode
 {
 public:
@@ -128,7 +166,9 @@ public:
     int tile_count = 0;
     int food_count = 0;
     int edge_tile_count = 0;
-    std::unordered_map<int, std::pair<Coord, Coord>> neighbour_connections; // map of area_id to pair of coords that connect the areas
+    int even_tile_count = 0;
+    int odd_tile_count = 0;
+    std::unordered_map<int, ConnectedAreaInfo> neighbour_connections; // map of area_id to pair of coords that connect the areas
 
     // one_dim is true if the area is a line that the snake can not turn around in.
     bool is_one_dim = false;
@@ -164,18 +204,18 @@ public:
         }
     }
 
-    void add_connection(AreaNode *node, unsigned int edge, Coord self_coord, Coord other_coord)
+    void add_connection(AreaNode *node, unsigned int edge, ConnectedAreaInfo info)
     {
         auto it = std::find_if(edge_nodes.begin(), edge_nodes.end(), [node](std::pair<AreaNode *, unsigned int> &pair)
                                { return pair.first == node; });
         if (it == edge_nodes.end())
         {
             edge_nodes.push_back(std::make_pair(node, edge));
-            neighbour_connections[node->id] = std::make_pair(self_coord, other_coord);
+            neighbour_connections[node->id] = info;
         }
     }
 
-    std::pair<Coord, Coord> get_connection_coords(int area_id)
+    ConnectedAreaInfo get_connection_info(int area_id)
     {
         if (neighbour_connections.find(area_id) != neighbour_connections.end())
         {
@@ -218,10 +258,12 @@ struct ExploreResults
     int tile_count = 0;
     int food_count = 0;
     int edge_tile_count = 0;
+    int even_tile_count = 0;
+    int odd_tile_count = 0;
     int max_index = -1; // max_index is the index of the snake in this area, if it is not in this area, then it is -1
     bool has_tail = false;
     bool early_exit = false;
-    std::vector<std::pair<int, std::pair<Coord, Coord>>> connected_areas;
+    std::vector<ConnectedAreaInfo> connected_areas;
     std::vector<Coord> to_explore;
 
     ExploreResults()
@@ -234,13 +276,17 @@ struct ExploreResults
         int tile_count,
         int food_count,
         int edge_tile_count,
+        int even_tile_count,
+        int odd_tile_count,
         int max_index,
         bool has_tail,
         bool early_exit,
-        std::vector<std::pair<int, std::pair<Coord, Coord>>> connected_areas,
+        std::vector<ConnectedAreaInfo> connected_areas,
         std::vector<Coord> to_explore) : tile_count(tile_count),
                                          food_count(food_count),
                                          edge_tile_count(edge_tile_count),
+                                         even_tile_count(even_tile_count),
+                                         odd_tile_count(odd_tile_count),
                                          max_index(max_index),
                                          has_tail(has_tail),
                                          connected_areas(connected_areas),
@@ -402,7 +448,7 @@ public:
         nodes.reserve(200);
     }
 
-    void connect_nodes(int id1, int id2, Coord id1_coord, Coord id2_coord)
+    void connect_nodes(int id1, int id2, ConnectedAreaInfo conn_info)
     {
         AreaNode *node1 = get_node(id1);
         AreaNode *node2 = get_node(id2);
@@ -410,10 +456,19 @@ public:
         {
             return;
         }
-        this->connect_nodes(node1, node2, id1_coord, id2_coord);
+        // Create ConnectedAreaInfo for the other node, so coords and bad_gateway are swapped.
+        ConnectedAreaInfo conn_info2 = ConnectedAreaInfo(
+            id1,
+            conn_info.other_coord,
+            conn_info.self_coord,
+            conn_info.is_bad_gateway_to_here,
+            conn_info.is_bad_gateway_from_here
+        );
+        this->connect_nodes(node1, node2, conn_info, conn_info2);
     }
 
-    void connect_nodes(AreaNode *node1, AreaNode *node2, Coord node1_coord, Coord node2_coord)
+    void connect_nodes(AreaNode *node1, AreaNode *node2, ConnectedAreaInfo conn_info1, ConnectedAreaInfo conn_info2)
+    // conn_info1 has info about the connection from node1 to node2 and conn_info2 vice versa
     {
         if (node1 == nullptr || node2 == nullptr || node1->id == node2->id)
         {
@@ -422,10 +477,11 @@ public:
         if (node1->id > node2->id)
         {
             std::swap(node1, node2);
+            std::swap(conn_info1, conn_info2);
         }
         auto edge_id = cantor_pairing(node1->id, node2->id);
-        node1->add_connection(node2, edge_id, node1_coord, node2_coord);
-        node2->add_connection(node1, edge_id, node2_coord, node1_coord);
+        node1->add_connection(node2, edge_id, conn_info1);
+        node2->add_connection(node1, edge_id, conn_info2);
     }
 
     AreaNode *get_node(int id)
@@ -842,6 +898,48 @@ public:
         this->print_mark = Coord();
     }
 
+    bool _is_bad_gateway(uint8_t *s_map, Coord coord1, Coord coord2)
+    // Checking if going through a 'gateway' creates an unvisitable tile.
+    // below is a diagram of the situation we are checking for
+    /*
+    X X 2 X X
+    X . 1 . X
+    */
+    {
+        const int cols = this->width;
+        const int coord1_x = coord1.x;
+        const int coord1_y = coord1.y;
+        const int coord2_x = coord2.x;
+        const int coord2_y = coord2.y;
+
+        const int delta_y = coord1_y - coord2_y;
+        const int delta_x = coord1_x - coord2_x;
+        if(std::abs(delta_x) + std::abs(delta_y) != 1)
+        {
+            throw std::invalid_argument("coord1 and coord2 must be adjacent");
+        }
+        
+        const Coord n_r1 = Coord(coord1_x + delta_y, coord1_y + delta_x);
+        const Coord n_r2 = Coord(coord1_x + (delta_y * 2), coord1_y + (delta_x * 2));
+        const Coord n_l1 = Coord(coord1_x - delta_y, coord1_y - delta_x);
+        const Coord n_l2 = Coord(coord1_x - (delta_y * 2), coord1_y - (delta_x * 2));
+
+        if (this->is_inside(n_r1.x, n_r1.y) && s_map[n_r1.y * cols + n_r1.x] <= this->free_value)
+        {
+            if (!this->is_inside(n_r2.x, n_r2.y) || s_map[n_r2.y * cols + n_r2.x] > this->free_value)
+            {
+                if (this->is_inside(n_l1.x, n_l1.y) && s_map[n_l1.y * cols + n_l1.x] <= this->free_value)
+                {
+                    if (!this->is_inside(n_l2.x, n_l2.y) || s_map[n_l2.y * cols + n_l2.x] > this->free_value)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     bool is_single_entrance(py::array_t<uint8_t> s_map, py::tuple coord, py::tuple check_coord)
     {
         auto buf = s_map.request();
@@ -1069,14 +1167,27 @@ public:
         int food_count = 0;
         int edge_tile_count = 0;
         int max_index = -1;
+        int even_count = 0;
+        int odd_count = 0;
         bool has_tail = false;
         bool did_early_exit = false;
         std::vector<Coord> to_explore;
-        std::vector<std::pair<int, std::pair<Coord, Coord>>> connected_areas;
+        std::vector<ConnectedAreaInfo> connected_areas;
         int checked_value = checked[start_coord.y * width + start_coord.x];
         if (checked_value != unexplored_area_id && checked_value != area_id)
         {
-            return ExploreResults(tile_count, food_count, edge_tile_count, max_index, has_tail, did_early_exit, connected_areas, to_explore);
+            return ExploreResults(
+                tile_count, 
+                food_count, 
+                edge_tile_count, 
+                even_count,
+                odd_count,
+                max_index, 
+                has_tail, 
+                did_early_exit, 
+                connected_areas, 
+                to_explore
+            );
         }
         tile_count += 1;
         size_t body_len = body_coords.size();
@@ -1124,17 +1235,27 @@ public:
                         if (std::find_if(
                                 connected_areas.begin(),
                                 connected_areas.end(),
-                                [checked_val](const std::pair<int, std::pair<Coord, Coord>>& p) {
-                                    return p.first == checked_val;
+                                [checked_val](const ConnectedAreaInfo& p) {
+                                    return p.id == checked_val;
                                 }) == connected_areas.end())
                         {
-                            connected_areas.push_back(std::make_pair(checked_val, std::make_pair(curr_coord, n_coord)));
+                            const bool is_bad_gateway_from_here = _is_bad_gateway(s_map, curr_coord, n_coord);
+                            const bool is_bad_gateway_to_here = _is_bad_gateway(s_map, n_coord, curr_coord);
+                            connected_areas.push_back(
+                                ConnectedAreaInfo(
+                                    checked_val, 
+                                    curr_coord, 
+                                    n_coord, 
+                                    is_bad_gateway_from_here, 
+                                    is_bad_gateway_to_here
+                                )
+                            );
                         }
                     }
                     continue;
                 }
-                int coord_val = s_map[n_y * width + n_x];
-                if (coord_val == free_value || coord_val == food_value)
+                int n_coord_val = s_map[n_y * width + n_x];
+                if (n_coord_val == free_value || n_coord_val == food_value)
                 {
                     int entrance_code = _is_single_entrance(s_map, curr_coord, n_coord);
                     // int entrance_code = 0;
@@ -1142,6 +1263,7 @@ public:
                     {
                         checked[n_y * width + n_x] = area_id; // this used to be above this if statement, dont know if this will cause a bug, but i think it should be fine.
                         tile_count += 1;
+                        get_tile_evenness(n_coord) ? even_count++ : odd_count++;
                         current_coords.push_back(n_coord);
                     }
                     else
@@ -1157,7 +1279,7 @@ public:
                         }
                     }
                 }
-                else if ((coord_val == body_value || coord_val == head_value) && !(curr_coord == start_coord && area_id == 0))
+                else if ((n_coord_val == body_value || n_coord_val == head_value) && !(curr_coord == start_coord && area_id == 0))
                 {
                     auto it = std::find(body_coords.begin(), body_coords.end(), n_coord);
                     if (it != body_coords.end())
@@ -1203,7 +1325,19 @@ public:
                 break;
             }
         }
-        return ExploreResults(tile_count, food_count, edge_tile_count, max_index, has_tail, did_early_exit, connected_areas, to_explore);
+        return ExploreResults(
+            tile_count, 
+            food_count, 
+            edge_tile_count, 
+            even_count,
+            odd_count,
+            max_index, 
+            has_tail, 
+            did_early_exit, 
+            connected_areas, 
+            to_explore
+        );
+
     }
 
     AreaCheckResult _area_check2(
@@ -1276,6 +1410,8 @@ public:
                 current_node->tile_count += result.tile_count;
                 current_node->food_count += result.food_count;
                 current_node->edge_tile_count += result.edge_tile_count;
+                current_node->even_tile_count += result.even_tile_count;
+                current_node->odd_tile_count += result.odd_tile_count;
                 current_node->max_index = result.max_index;
                 current_node->has_tail = result.has_tail;
                 current_node->end_coord = current_coord;
@@ -1287,6 +1423,8 @@ public:
                 current_node->tile_count = result.tile_count;
                 current_node->food_count = result.food_count;
                 current_node->edge_tile_count = result.edge_tile_count;
+                current_node->even_tile_count = result.even_tile_count;
+                current_node->odd_tile_count = result.odd_tile_count;
                 current_node->max_index = result.max_index;
                 current_node->has_tail = result.has_tail;
                 if (current_node->tile_count == 1 && (result.connected_areas.size() + result.to_explore.size() == 2) && current_node->max_index < 0)
@@ -1296,9 +1434,9 @@ public:
             }
             for (auto connected_area : result.connected_areas)
             {
-                if (graph.get_node(connected_area.first) != nullptr)
+                if (graph.get_node(connected_area.id) != nullptr)
                 {
-                    graph.connect_nodes(current_node->id, connected_area.first, connected_area.second.first, connected_area.second.second);
+                    graph.connect_nodes(current_node->id, connected_area.id, connected_area);
                 }
             }
             // std::cout << "Made connections" << std::endl;
