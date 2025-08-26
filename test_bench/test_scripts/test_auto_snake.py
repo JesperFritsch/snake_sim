@@ -94,8 +94,8 @@ def run_tests(snake: AutoSnake, s_map):
     # test_make_choice(snake, s_map)
     # test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000)
-    # test_area_check_direction(snake, s_map, Coord(-1, 0))
-    test_explore(snake, s_map)
+    test_area_check_direction(snake, s_map, Coord(0, 0))
+    # test_explore(snake, s_map)
 
     pr.disable()
     s = StringIO()
