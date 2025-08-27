@@ -69,7 +69,8 @@ struct Coord
 };
 
 
-bool get_tile_evenness(Coord coord)
+bool get_coord_mod_parity(Coord coord)
+// returns true if the tile is even and false if odd, think black and white on a chessboard.
 {
     return coord.x % 2 == coord.y % 2;
 }
@@ -101,8 +102,8 @@ struct AreaCheckResult
     AreaCheckResult() : is_clear(false),
                         tile_count(0),
                         total_steps(0),
-                        edge_tile_count(0),
                         food_count(0),
+                        edge_tile_count(0),
                         has_tail(false),
                         margin(INT_MIN),
                         needed_steps(0),
@@ -166,7 +167,7 @@ public:
     int tile_count = 0;
     int food_count = 0;
     int edge_tile_count = 0;
-    int even_odd_balance = 0;
+    int coord_parity_diff = 0;
     std::unordered_map<int, ConnectedAreaInfo> neighbour_connections; // map of area_id to pair of coords that connect the areas
 
     // one_dim is true if the area is a line that the snake can not turn around in.
@@ -223,6 +224,15 @@ public:
         throw std::out_of_range("Area ID not found in neighbour connections");
     }
 
+    int get_visitable_tiles(){
+        if (is_one_dim){
+            return tile_count;
+        }
+        else{
+            return tile_count - std::abs(coord_parity_diff);
+        }
+    }
+
     unsigned int get_edge(AreaNode *node)
     {
         auto it = std::find_if(edge_nodes.begin(), edge_nodes.end(), [node](std::pair<AreaNode *, unsigned int> &pair)
@@ -257,7 +267,7 @@ struct ExploreResults
     int tile_count = 0;
     int food_count = 0;
     int edge_tile_count = 0;
-    int even_odd_balance = 0; // even_odd_balance is positive if there are more even tiles (black), negative if more odd tiles (white)
+    int coord_parity_diff = 0; // coord_parity_diff is positive if there are more even tiles (black), negative if more odd tiles (white)
     int max_index = -1; // max_index is the index of the snake in this area, if it is not in this area, then it is -1
     bool has_tail = false;
     bool early_exit = false;
@@ -274,7 +284,7 @@ struct ExploreResults
         int tile_count,
         int food_count,
         int edge_tile_count,
-        int even_odd_balance,
+        int coord_parity_diff,
         int max_index,
         bool has_tail,
         bool early_exit,
@@ -282,9 +292,10 @@ struct ExploreResults
         std::vector<Coord> to_explore) : tile_count(tile_count),
                                          food_count(food_count),
                                          edge_tile_count(edge_tile_count),
-                                         even_odd_balance(even_odd_balance),
+                                         coord_parity_diff(coord_parity_diff),
                                          max_index(max_index),
                                          has_tail(has_tail),
+                                         early_exit(early_exit),
                                          connected_areas(connected_areas),
                                          to_explore(to_explore) {}
 };
@@ -311,9 +322,10 @@ struct SearchNode
     int tiles_until_here = 0;
     int food_until_here = 0;
     int edge_tiles_until_here = 0;
-
+    
     std::vector<std::vector<unsigned int>> searched_edges;
     std::vector<unsigned int> used_edges;
+    std::vector<int> entered_from_nodes;
 
     SearchNode() = default;
 
@@ -360,6 +372,7 @@ struct SearchNode
         if (edge != 0)
         {
             add_used_edge(edge);
+            entered_from_nodes.push_back(node->id);
         }
         nr_visits++;
         if (first_visit())
@@ -410,7 +423,7 @@ struct SearchNode
         int edge_tiles;
         if (first_visit())
         {
-            tiles = node->tile_count;
+            tiles = node->get_visitable_tiles();
             food = node->food_count;
             edge_tiles = node->edge_tile_count;
         }
@@ -420,8 +433,43 @@ struct SearchNode
             food = 0;
             edge_tiles = 0;
         }
+        if (!entered_from_nodes.empty()){
+            auto connection_info = node->get_connection_info(entered_from_nodes.back());
+            if (connection_info.is_bad_gateway_from_here)
+            // we are actually coming in to the current node, but the naming is from the perspective of insdide the node.
+            {
+                tiles -= 1;
+            }
+        }
         return Additionals(tiles, food, edge_tiles);
     }
+
+    int path_tile_adjustment(AreaNode *next_node)
+    // depending of the path in nodes the amount of visitable tiles may change
+    // more complex logic could possibly be implemented here sp that the exact number of visitable tiles
+    // is more accurate, now it might be a bit lower than reality.
+    {
+        if (!entered_from_nodes.empty()) {
+            auto next_connection_info = node->get_connection_info(next_node->id);
+            auto previous_connection_info = node->get_connection_info(entered_from_nodes.back());
+            // bool exit_coord_parity = get_coord_mod_parity(next_connection_info.self_coord);
+            // bool entry_coord_parity = get_coord_mod_parity(previous_connection_info.self_coord);
+            if (node->is_one_dim)
+            {
+               return 0;
+            }
+            int adjustment = 0;
+            if (next_connection_info.is_bad_gateway_from_here)
+            {
+                adjustment -= 1;
+            }
+            return adjustment;
+        } else {
+            // No previous node, so no adjustment possible
+            return 0;
+        }
+    }
+
 };
 
 class AreaGraph
@@ -431,7 +479,7 @@ public:
     int map_width = 0;
     int map_height = 0;
     AreaNode *root = nullptr;
-    std::unordered_map<int, std::unique_ptr<AreaNode>> nodes;
+    std::unordered_map<int, std::shared_ptr<AreaNode>> nodes;
 
     AreaGraph()
     {
@@ -496,14 +544,25 @@ public:
 
     AreaNode *add_node_with_id(Coord start_coord, int id)
     {
-        auto new_node = std::make_unique<AreaNode>(start_coord, id);
+        auto new_node = std::make_shared<AreaNode>(start_coord, id);
         auto new_node_ptr = new_node.get();
-        nodes[id] = std::move(new_node);
+        nodes[id] = new_node;
         if (id == 0)
         {
             root = new_node_ptr;
         }
         return new_node_ptr;
+    }
+
+    void add_id_for_node(int original_id, int linked_id)
+    {
+        auto original_node_it = nodes.find(original_id);
+        if (original_node_it == nodes.end())
+        {
+            throw std::out_of_range("Original node ID not found");
+        }
+        // Map the new id to the same AreaNode object (no copy)
+        nodes[linked_id] = original_node_it->second;
     }
 
     void remove_node(int id)
@@ -643,6 +702,7 @@ public:
             // std::cout << "node tile count: " << current_node->tile_count << std::endl;
             // std::cout << "node food count: " << current_node->food_count << std::endl;
             // std::cout << "edge tile count: " << current_node->edge_tile_count << std::endl;
+            // std::cout << "coord parity diff: " << current_node->coord_parity_diff << std::endl;
             // std::cout << "is one dim: " << current_node->is_one_dim << std::endl;
             // std::cout << "has tail: " << current_node->has_tail << std::endl;
             // std::cout << "Tiles before: " << tiles_before << std::endl;
@@ -709,7 +769,7 @@ public:
                 {
                     best_result = current_result;
                 }
-                if ((best_result.margin >= target_margin && best_result.margin > best_result.food_count) && !exhaustive && current_result.margin_over_edge > safe_margin_factor)
+                if ((best_result.margin >= target_margin && best_result.margin > best_result.food_count) && !exhaustive)
                 {
                     break;
                 }
@@ -820,6 +880,11 @@ public:
                     total_food_count_stack.push_back(total_food_count_here);
                     total_edge_tile_count_stack.push_back(total_edge_tile_count_here);
                 }
+                // int tile_adjustment = step_data->path_tile_adjustment(next_node);
+                // if (tile_adjustment != 0)
+                // {
+                //     total_tile_count_stack.back() += tile_adjustment;
+                // }
             }
             else
             {
@@ -1118,33 +1183,41 @@ public:
         bool exhaustive,
         float safe_margin_factor)
     {
-        auto s_map_buf = s_map.request();
-        uint8_t *s_map_ptr = static_cast<uint8_t *>(s_map_buf.ptr);
-        Coord start_coord = Coord(start_coord_py[0].cast<int>(), start_coord_py[1].cast<int>());
-        std::vector<Coord> body_coords;
-        for (auto item : body_coords_py)
-        {
-            auto coord = item.cast<py::tuple>();
-            body_coords.push_back(Coord(coord[0].cast<int>(), coord[1].cast<int>()));
-        }
+        try {
+            auto s_map_buf = s_map.request();
+            uint8_t *s_map_ptr = static_cast<uint8_t *>(s_map_buf.ptr);
+            Coord start_coord = Coord(start_coord_py[0].cast<int>(), start_coord_py[1].cast<int>());
+            std::vector<Coord> body_coords;
+            for (auto item : body_coords_py)
+            {
+                auto coord = item.cast<py::tuple>();
+                body_coords.push_back(Coord(coord[0].cast<int>(), coord[1].cast<int>()));
+            }
 
-        AreaCheckResult result = _area_check2(
-            s_map_ptr,
-            body_coords,
-            start_coord,
-            target_margin,
-            food_check,
-            exhaustive,
-            safe_margin_factor);
-        return py::dict(
-            py::arg("is_clear") = result.is_clear,
-            py::arg("tile_count") = result.tile_count,
-            py::arg("total_steps") = result.total_steps,
-            py::arg("food_count") = result.food_count,
-            py::arg("has_tail") = result.has_tail,
-            py::arg("margin") = result.margin,
-            py::arg("margin_over_edge") = result.margin_over_edge,
-            py::arg("edge_tile_count") = result.edge_tile_count);
+            AreaCheckResult result = _area_check2(
+                s_map_ptr,
+                body_coords,
+                start_coord,
+                target_margin,
+                food_check,
+                exhaustive,
+                safe_margin_factor);
+            return py::dict(
+                py::arg("is_clear") = result.is_clear,
+                py::arg("tile_count") = result.tile_count,
+                py::arg("total_steps") = result.total_steps,
+                py::arg("food_count") = result.food_count,
+                py::arg("has_tail") = result.has_tail,
+                py::arg("margin") = result.margin,
+                py::arg("margin_over_edge") = result.margin_over_edge,
+                py::arg("edge_tile_count") = result.edge_tile_count);
+        } catch (const std::exception& e) {
+            PyErr_SetString(PyExc_RuntimeError, e.what());
+            throw py::error_already_set();
+        } catch (...) {
+            PyErr_SetString(PyExc_RuntimeError, "Unknown C++ exception in area_check");
+            throw py::error_already_set();
+        }
     }
 
     ExploreResults explore_area(
@@ -1163,7 +1236,7 @@ public:
         int food_count = 0;
         int edge_tile_count = 0;
         int max_index = -1;
-        int even_odd_balance = 0;
+        int coord_parity_diff = 0;
         bool has_tail = false;
         bool did_early_exit = false;
         std::vector<Coord> to_explore;
@@ -1175,7 +1248,7 @@ public:
                 tile_count, 
                 food_count, 
                 edge_tile_count, 
-                even_odd_balance,
+                coord_parity_diff,
                 max_index, 
                 has_tail, 
                 did_early_exit, 
@@ -1184,7 +1257,7 @@ public:
             );
         }
         tile_count += 1;
-        even_odd_balance += get_tile_evenness(start_coord) ? 1 : -1;
+        coord_parity_diff += get_coord_mod_parity(start_coord) ? 1 : -1;
         size_t body_len = body_coords.size();
         auto tail_coord = body_coords[body_len - 1];
         std::deque<Coord> current_coords;
@@ -1258,7 +1331,7 @@ public:
                     {
                         checked[n_y * width + n_x] = area_id; // this used to be above this if statement, dont know if this will cause a bug, but i think it should be fine.
                         tile_count += 1;
-                        even_odd_balance += get_tile_evenness(n_coord) ? 1 : -1;
+                        coord_parity_diff += get_coord_mod_parity(n_coord) ? 1 : -1;
                         current_coords.push_back(n_coord);
                     }
                     else
@@ -1302,14 +1375,12 @@ public:
                 edge_tile_count += 1;
             }
             int calc_target_margin = std::max(std::max(target_margin, food_count + total_food_count), 1);
-            int total_steps = tile_count - (food_count + total_food_count);
+            int total_steps = tile_count - (food_count + total_food_count) - std::abs(coord_parity_diff);
             int needed_steps = (max_index > 0) ? snake_length - max_index : snake_length + 1;
             int margin = total_steps - needed_steps;
-            double margin_over_edge = (float)margin / (float)edge_tile_count;
-            if (early_exit && margin_over_edge > (safe_margin_factor * 2) && margin > calc_target_margin * 2)
+            if (early_exit && margin > calc_target_margin * 2)
             {
                 // std::cout << "Early exit" << std::endl;
-                // std::cout << "Margin over tiles: " << margin_over_edge << std::endl;
                 // std::cout << "Margin: " << margin << std::endl;
                 // std::cout << "Target margin: " << calc_target_margin << std::endl;
                 // std::cout << "Tile count: " << tile_count << std::endl;
@@ -1324,7 +1395,7 @@ public:
             tile_count, 
             food_count, 
             edge_tile_count, 
-            even_odd_balance,
+            coord_parity_diff,
             max_index, 
             has_tail, 
             did_early_exit, 
@@ -1401,10 +1472,11 @@ public:
             {
                 // std::cout << "Adding to previous node" << std::endl;
                 current_node = prev_node;
+                graph.add_id_for_node(prev_node->id, current_id);
                 current_node->tile_count += result.tile_count;
                 current_node->food_count += result.food_count;
                 current_node->edge_tile_count += result.edge_tile_count;
-                current_node->even_odd_balance += result.even_odd_balance;
+                current_node->coord_parity_diff += result.coord_parity_diff;
                 current_node->max_index = result.max_index;
                 current_node->has_tail = result.has_tail;
                 current_node->end_coord = current_coord;
@@ -1416,10 +1488,10 @@ public:
                 current_node->tile_count = result.tile_count;
                 current_node->food_count = result.food_count;
                 current_node->edge_tile_count = result.edge_tile_count;
-                current_node->even_odd_balance = result.even_odd_balance;
+                current_node->coord_parity_diff = result.coord_parity_diff;
                 current_node->max_index = result.max_index;
                 current_node->has_tail = result.has_tail;
-                if (current_node->tile_count == 1 && (result.connected_areas.size() + result.to_explore.size() == 2) && current_node->max_index < 0)
+                if (current_node->tile_count == 1)
                 { // a node cant really have 2 or 3 tiles, next step after 1 is 4, but anyways...
                     current_node->is_one_dim = true;
                 }
@@ -1439,31 +1511,31 @@ public:
         }
         
         // print the nodes and their attributes along with their connections
-        for (const auto& node_pair : graph.nodes) {
-            const AreaNode* node = node_pair.second.get();
-            std::cout 
-            << "Node ID: " << node->id  << std::endl
-            << "Tile Count: " << node->tile_count  << std::endl
-            << "Food Count: " << node->food_count  << std::endl
-            << "Edge Tile Count: " << node->edge_tile_count  << std::endl
-            << "Even or Odd balance: " << node->even_odd_balance << std::endl
-            << "Max Index: " << node->max_index  << std::endl
-            << "Has Tail: " << node->has_tail  << std::endl
-            << "Is One Dim: " << node->is_one_dim  << std::endl
-            << "Start Coord: (" << node->start_coord.x << ", " << node->start_coord.y << ")" << std::endl
-            << "End Coord: (" << node->end_coord.x << ", " << node->end_coord.y << ")" << std::endl
-            << "Connections: " << std::endl;
-            for (const auto& conn_pair : node->neighbour_connections) {
-                int connected_area_id = conn_pair.first;
-                const ConnectedAreaInfo& info = conn_pair.second;
-                std::cout << "    Connected to area: " << connected_area_id
-                        << " [Self: (" << info.self_coord.x << ", " << info.self_coord.y << ")"
-                        << " Other: (" << info.other_coord.x << ", " << info.other_coord.y << ")]"
-                        << " Bad gateway: " << info.is_bad_gateway_from_here
-                        << std::endl;
-            }
-            std::cout << std::endl;
-        }
+        // for (const auto& node_pair : graph.nodes) {
+        //     const AreaNode* node = node_pair.second.get();
+        //     std::cout 
+        //     << "Node ID: " << node->id  << std::endl
+        //     << "Tile Count: " << node->tile_count  << std::endl
+        //     << "Food Count: " << node->food_count  << std::endl
+        //     << "Edge Tile Count: " << node->edge_tile_count  << std::endl
+        //     << "Even or Odd balance: " << node->coord_parity_diff << std::endl
+        //     << "Max Index: " << node->max_index  << std::endl
+        //     << "Has Tail: " << node->has_tail  << std::endl
+        //     << "Is One Dim: " << node->is_one_dim  << std::endl
+        //     << "Start Coord: (" << node->start_coord.x << ", " << node->start_coord.y << ")" << std::endl
+        //     << "End Coord: (" << node->end_coord.x << ", " << node->end_coord.y << ")" << std::endl
+        //     << "Connections: " << std::endl;
+        //     for (const auto& conn_pair : node->neighbour_connections) {
+        //         int connected_area_id = conn_pair.first;
+        //         const ConnectedAreaInfo& info = conn_pair.second;
+        //         std::cout << "    Connected to area: " << connected_area_id
+        //                 << " [Self: (" << info.self_coord.x << ", " << info.self_coord.y << ")"
+        //                 << " Other: (" << info.other_coord.x << ", " << info.other_coord.y << ")]"
+        //                 << " Bad gateway: " << info.is_bad_gateway_from_here
+        //                 << std::endl;
+        //     }
+        //     std::cout << std::endl;
+        // }
 
         // std::cout << "Graph size: " << graph.nodes.size() << std::endl;
         return graph.search_best2(body_coords.size(), s_map, food_value, width, target_margin, food_check, exhaustive, safe_margin_factor);
