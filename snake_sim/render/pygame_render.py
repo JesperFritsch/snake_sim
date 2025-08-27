@@ -24,7 +24,8 @@ def catch_exceptions(func):
         except KeyboardInterrupt:
             pass
         finally:
-            pygame.quit()
+            pass
+            # pygame.quit()
     return wrapper
 
 

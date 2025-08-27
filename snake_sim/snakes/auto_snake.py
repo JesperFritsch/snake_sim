@@ -197,11 +197,11 @@ class AutoSnake(AutoSnakeBase):
         route = self._get_route(self.map, self.coord, target_tiles=[l for l in food_locations if l != self.coord])
         while route:
             route = self._fix_route(route)
-            # return route
-            if self._check_safe_food_route(s_map, route):
-                break
-            else:
-                food_locations.remove(route[0])
+            return route
+            # if self._check_safe_food_route(s_map, route):
+            #     break
+            # else:
+            #     food_locations.remove(route[0])
             route = self._get_route(self.map, self.coord, target_tiles=[l for l in food_locations if l != self.coord])
         return route
 
@@ -231,7 +231,7 @@ class AutoSnake(AutoSnakeBase):
             additonal_food[coord] = old_map_value == self.env_data.food_value
         all_checks = [a for check in all_area_checks.values() for a in check]
         combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks])
-        # combine_food = False
+        combine_food = False
         if all_checks:
             combined_food = max([a['food_count'] for a in all_checks])
         else:
@@ -283,7 +283,7 @@ class AutoSnake(AutoSnakeBase):
             planned_area = self._area_check_wrapper(self.map, self.body_coords, planned_tile, safe_margin_factor=self.SAFE_MARGIN_FACTOR)
             # print("planned_tile: ", planned_tile)
             # print("planned_area: ", planned_area)
-            if planned_area['margin'] > planned_area['food_count'] and planned_area['margin_over_edge'] > self.SAFE_MARGIN_FACTOR:
+            if planned_area['margin'] > planned_area['food_count']:
                 # print("explore_option")
                 safe_option = self._explore_option(planned_tile)
                 # print("safe_option: ", safe_option)
@@ -398,8 +398,7 @@ class AutoSnake(AutoSnakeBase):
             #     print("area: ", a_coord, " margin: ", area['margin'], " margin_over_edge: ", area['margin_over_edge'], " food_count: ", area['food_count'], " is_clear: ", area['is_clear'], " has_tail: ", area['has_tail'])
             # print("frame: ", frame.try_coord, " margin: ", frame.best_margin, " margin_over_edge: ", frame.best_margin_over_edge, " has_tail: ", frame.has_tail, " has_safe_food_margin: ", frame.has_safe_food_margin)
             if frame.has_safe_food_margin:
-                if (frame.best_margin_over_edge >= safe_margin_factor and
-                    frame.best_margin > frame.best_margin_over_edge * 40) and len(search_stack) >= min_depth:
+                if len(search_stack) >= min_depth:
                     return True
 
                 if len(search_stack) > len(body_coords) + 1 or frame.has_tail:

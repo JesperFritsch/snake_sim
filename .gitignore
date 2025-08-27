@@ -11,4 +11,4 @@ logs/
 build/
 dist/
 *.so
-test_bench/state_files/
+snake_sim/test_bench/state_files*
