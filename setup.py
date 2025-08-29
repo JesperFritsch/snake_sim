@@ -62,17 +62,24 @@ class build_proto(build_py):
 extra_compile_args = []
 extra_link_args = []
 
-if os.name == 'nt':
-    extra_compile_args.extend(['/Od', '/Zi', '/DDEBUG', '/DPYBIND11_DETAILED_ERROR_MESSAGES'])
-    extra_link_args.extend(['/DEBUG'])
+debug_build = os.environ.get("DEBUG", "0") == "1"
+
+if debug_build:
+    if os.name == 'nt':
+        extra_compile_args.extend(['/Od', '/Zi', '/DDEBUG', '/DPYBIND11_DETAILED_ERROR_MESSAGES'])
+        extra_link_args.extend(['/DEBUG'])
+    else:
+        extra_compile_args.extend(['-O0', '-g', '-DDEBUG', '-DPYBIND11_DETAILED_ERROR_MESSAGES'])
 else:
-    extra_compile_args.extend(['-O0', '-g', '-DDEBUG', '-DPYBIND11_DETAILED_ERROR_MESSAGES'])
+    if os.name == 'nt':
+        extra_compile_args.extend(['/O2'])
+    else:
+        extra_compile_args.extend(['-O3', '-march=native', '-flto'])
 
 if sys.platform == 'win32':
     extra_compile_args.append('/std:c++17')
 else:
     extra_compile_args.append('-std=c++11')
-
 
 ext_modules = [
     Extension(
@@ -83,7 +90,8 @@ ext_modules = [
             get_pybind_include(user=True),
         ],
         language='c++',
-        extra_compile_args=['/std:c++17'] if sys.platform == 'win32' else ['-std=c++17'],
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
     ),
 ]
 

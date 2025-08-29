@@ -51,7 +51,6 @@ def test_explore(snake: AutoSnake, s_map):
                 snake.body_coords.copy(),
                 tile,
                 rundata=RUN_STEPS,
-                safe_margin_factor=snake.SAFE_MARGIN_FACTOR,
                 exhaustive=True
             )
         print(f"Time explore: {(time.time() - time_start) * 1000}")
@@ -72,7 +71,7 @@ def render_steps(runsteps):
 def test_area_check(snake: AutoSnake, s_map):
     for tile in snake._valid_tiles(s_map, snake.body_coords[0]):
         time_start = time.time()
-        area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile)
+        area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile, exhaustive=True)
         print(f"Time area check: {(time.time() - time_start) * 1000}")
         print(f"Tile: {tile}, Area check: {area_check}")
 
@@ -91,10 +90,12 @@ def run_tests(snake: AutoSnake, s_map):
     pr = cProfile.Profile()
     pr.enable()
     print("current tile: ", snake.coord)
+    print("snake length: ", snake.length)
     test_make_choice(snake, s_map)
     test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000)
-    # test_area_check_direction(snake, s_map, Coord(1, 0))
+    # test_area_check_direction(snake, s_map, Coord(-1, 0))
+    test_area_check_direction(snake, s_map, Coord(0, -1))
     # test_explore(snake, s_map)
 
     pr.disable()
