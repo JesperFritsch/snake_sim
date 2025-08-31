@@ -7,7 +7,7 @@ from pathlib import Path
 from importlib import resources
 
 from snake_sim.logging_setup import setup_logging
-from snake_sim.utils import DotDict
+from snake_sim.environment.types import DotDict
 from snake_sim.render.pygame_render import play_runfile, play_stream, play_game
 from snake_sim.cli import cli
 from snake_sim.environment.snake_loop_control import setup_loop

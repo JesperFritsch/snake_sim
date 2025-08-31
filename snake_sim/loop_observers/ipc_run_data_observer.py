@@ -4,7 +4,7 @@ import logging
 import functools
 from pathlib import Path
 
-from snake_sim.loop_observers.run_data_observer_interface import IRunDataObserver
+from snake_sim.environment.interfaces.run_data_observer_interface import IRunDataObserver
 from snake_sim.run_data.run_data import StepData
 
 log = logging.getLogger(Path(__file__).stem)

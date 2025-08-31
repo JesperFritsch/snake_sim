@@ -3,7 +3,7 @@ import json
 from typing import Optional
 import importlib.resources as pkg_resources
 
-from snake_sim.utils import DotDict, Coord
+from snake_sim.environment.types import DotDict, Coord
 from snake_sim.environment.interfaces.food_handler_interface import IFoodHandler
 
 with pkg_resources.open_text('snake_sim.config', 'default_config.json') as config_file:

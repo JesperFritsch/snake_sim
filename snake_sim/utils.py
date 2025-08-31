@@ -14,6 +14,8 @@ from io import StringIO
 
 from importlib import resources
 
+from snake_sim.environment.types import DotDict
+
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = json.load(config_file)
 
@@ -30,79 +32,6 @@ class SingletonMeta(type):
     def reset(cls):
         cls._instances.clear()
 
-
-class DotDict(dict):
-    def __init__(self, other_dict={}):
-        for k, v in other_dict.items():
-            if isinstance(v, dict):
-                v = DotDict(v)
-            # elif isinstance(v, Iterable) and not isinstance(v, str):
-            #     v = [DotDict(e) if isinstance(e, dict) else e for e in v]
-            self[k.lower()] = v
-
-    def __getattr__(self, attr):
-        try:
-            return self[attr.lower()]
-        except KeyError:
-            raise AttributeError
-
-    def __setattr__(self, attr, value):
-        self[attr.lower()] = value
-
-    def __delattr__(self, attr):
-        try:
-            del self[attr]
-        except KeyError:
-            raise AttributeError
-
-
-class Coord(tuple):
-
-    def distance(self, other):
-        return math.sqrt(math.pow(self.x - other[0], 2) + math.pow(self.y - other[1], 2))
-
-    def __new__(cls, x, y):
-        return super(Coord, cls).__new__(cls, (x, y))
-
-    def __reduce__(self):
-        return (self.__class__, (self[0], self[1]))
-
-    def __add__(self, other):
-        return Coord(self.x + other[0], self.y + other[1])
-
-    def __sub__(self, other):
-        return Coord(self.x - other[0], self.y - other[1])
-
-    def __mul__(self, other):
-        return Coord(self.x * other[0], self.y * other[1])
-
-    def __eq__(self, other):
-        return (
-                (isinstance(other, tuple) or isinstance(other, list)) and
-                len(self) == len(other) and
-                self.x == other[0] and
-                self.y == other[1]
-            )
-
-    def __hash__(self):
-        return hash((self.x, self.y))
-
-    @property
-    def x(self):
-        return self[0]
-
-    @property
-    def y(self):
-        return self[1]
-
-    def __repr__(self):
-        return f"Coord(x={self[0]}, y={self[1]})"
-
-    def __str__(self):
-        return repr(self)
-
-    def __format__(self, format_spec):
-        return str(self).__format__(format_spec)
 
 
 def exec_time(func):

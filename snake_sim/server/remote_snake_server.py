@@ -9,9 +9,8 @@ from threading import Event
 from typing import Optional
 
 from snake_proto_template.python import remote_snake_pb2, remote_snake_pb2_grpc
-from snake_sim.utils import Coord
 from snake_sim.snakes.snake import ISnake
-from snake_sim.environment.snake_env import EnvInitData, EnvData
+from snake_sim.environment.types import Coord, EnvInitData, EnvData
 
 class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
     def __init__(self, snake_instance: ISnake):

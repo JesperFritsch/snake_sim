@@ -2,11 +2,12 @@ from typing import Dict, Tuple
 import json
 
 from importlib import resources
-from snake_sim.utils import DotDict, SingletonMeta
+from snake_sim.utils import SingletonMeta
 from snake_sim.snakes.snake import ISnake
 from snake_sim.snakes.auto_snake import AutoSnake
 from snake_sim.snakes.manual_snake import ManualSnake
 from snake_sim.snakes.remote_snake import RemoteSnake
+from snake_sim.environment.types import DotDict
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))

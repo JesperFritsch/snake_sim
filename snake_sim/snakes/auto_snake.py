@@ -14,7 +14,8 @@ import sys
 from snake_sim.cpp_bindings.area_check import AreaChecker
 from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles
 
-from snake_sim.utils import coord_op, distance, exec_time, Coord
+from snake_sim.utils import coord_op, distance, exec_time
+from snake_sim.environment.types import Coord
 
 from snake_sim.snakes.auto_snake_base import AutoSnakeBase
 
@@ -212,7 +213,7 @@ class AutoSnake(AutoSnakeBase):
             self.env_data.food_value,
             [self.env_data.free_value, self.env_data.food_value]
         )
-        if dir_tuple is None:
+        if dir_tuple == (0,0):
             return None
         return Coord(*dir_tuple)
 
@@ -252,7 +253,11 @@ class AutoSnake(AutoSnakeBase):
             additonal_food[coord] = old_map_value == self.env_data.food_value
         all_checks = [a for check in all_area_checks.values() for a in check]
         combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks]) or self.length < 15
+        # combine_food = False
         
+        debug.debug_print("all_area_checks: ")
+        debug.debug_print(''.join([f"\n{c}: {check}" for c, checks in all_area_checks.items() for check in checks]))
+
         if all_checks:
             combined_food = max([a['food_count'] for a in all_checks])
         else:
@@ -282,7 +287,10 @@ class AutoSnake(AutoSnakeBase):
         closest_food_direction = self._get_food_dir()
         debug.debug_print("closest_food_direction:", closest_food_direction)
         if closest_food_direction:
-            planned_tile = self.coord + closest_food_direction
+            planned_tile = Coord(*self.coord) + closest_food_direction
+            planned_tile = (planned_tile.x, planned_tile.y)
+            # debug.debug_print("planned_tile (food): ", planned_tile, type(planned_tile), "planned_tile.x:", planned_tile.x, "planned_tile.y:", planned_tile.y, planned_tile_tuple)
+            # planned_tile = tuple((planned_tile.x, planned_tile.y))
         valid_tiles = self._valid_tiles(self.map, self.coord)
         if planned_tile: # and self.might_close_area(self.map, planned_tile, self.coord):
             food_map = self._get_future_available_food_map()

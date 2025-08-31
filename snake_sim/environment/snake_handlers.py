@@ -14,7 +14,7 @@ from snake_sim.environment.interfaces.snake_handler_interface import ISnakeHandl
 from snake_sim.snakes.snake import ISnake
 from snake_sim.snakes.remote_snake import RemoteSnake
 from snake_sim.environment.snake_env import EnvData
-from snake_sim.utils import Coord
+from snake_sim.environment.types import Coord
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = json.load(config_file)

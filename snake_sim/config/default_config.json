@@ -8,6 +8,7 @@
     "verbose": false,
     "sound": false,
     "inproc_snakes": false,
+    "rate_meter": false,
     "fps": 10,
     "map": null,
     "spm": 180,

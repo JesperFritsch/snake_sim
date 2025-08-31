@@ -2,7 +2,7 @@ import sys
 import argparse
 import json
 
-from snake_sim.utils import DotDict
+from snake_sim.environment.types import DotDict
 from pathlib import Path
 
 
@@ -38,6 +38,7 @@ def add_run_config_arguments(parser):
     parser.add_argument('--start-length', type=int, help='Starting length of the snakes')
     parser.add_argument('--external-snake-targets', type=str, nargs='+', help='External snake targets')
     parser.add_argument('--inproc-snakes', action="store_true", help='Run all snakes in one process, otherwise one process per snake', default=False)
+    parser.add_argument('--rate-meter', action="store_true", help='Rate meter for steps per second for all snakes combined', default=False)
 
 
 def add_playback_arguments(parser):

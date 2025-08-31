@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-
+from snake_sim.environment.types import LoopStepData
 
 class ILoopObserver(ABC):
 
@@ -8,7 +8,7 @@ class ILoopObserver(ABC):
         pass
 
     @abstractmethod
-    def notify_step(self, loop_data):
+    def notify_step(self, step_data: LoopStepData):
         pass
 
     @abstractmethod
