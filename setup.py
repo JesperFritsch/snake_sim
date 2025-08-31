@@ -5,7 +5,6 @@ import sys
 import configparser
 from grpc_tools import protoc
 import glob
-from glob import glob
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path.
@@ -86,7 +85,7 @@ ext_modules = [
     Extension(
         'snake_sim.cpp_bindings.area_check',
         # Use glob to automatically include all .cpp files in the src directory
-        sorted(glob('snake_sim/cpp_bindings/scr/*.cpp')),
+        sorted(glob.glob('snake_sim/cpp_bindings/scr/*.cpp')),
         include_dirs=[
             'snake_sim/cpp_bindings/include',
             get_pybind_include(),
