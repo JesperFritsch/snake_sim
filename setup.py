@@ -77,17 +77,31 @@ else:
         extra_compile_args.extend(['-O3', '-march=native', '-flto'])
 
 if sys.platform == 'win32':
-    extra_compile_args.append('/std:c++17')
+    extra_compile_args.append('/std:c++11')
 else:
     extra_compile_args.append('-std=c++11')
+
 
 ext_modules = [
     Extension(
         'snake_sim.cpp_bindings.area_check',
         # Use glob to automatically include all .cpp files in the src directory
-        sorted(glob.glob('snake_sim/cpp_bindings/scr/*.cpp')),
+        sorted(glob.glob('snake_sim/cpp_bindings/area_check/src/*.cpp')),
         include_dirs=[
-            'snake_sim/cpp_bindings/include',
+            *glob.glob('snake_sim/cpp_bindings/*/include'),
+            get_pybind_include(),
+            get_pybind_include(user=True),
+        ],
+        language='c++',
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
+    ),
+    Extension(
+        'snake_sim.cpp_bindings.utils',
+        # Use glob to automatically include all .cpp files in the src directorye
+        sorted(glob.glob('snake_sim/cpp_bindings/utils/src/*.cpp')),
+        include_dirs=[
+            *glob.glob('snake_sim/cpp_bindings/*/include'),
             get_pybind_include(),
             get_pybind_include(user=True),
         ],
