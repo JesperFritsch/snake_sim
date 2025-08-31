@@ -1,8 +1,9 @@
 import random
 import json
-from typing import Optional
+from typing import Optional, Set
 import importlib.resources as pkg_resources
 
+from snake_sim.utils import get_locations
 from snake_sim.environment.types import DotDict, Coord
 from snake_sim.environment.interfaces.food_handler_interface import IFoodHandler
 
@@ -17,7 +18,7 @@ class FoodHandler(IFoodHandler):
         self.height = height
         self.max_food = max_food
         self.decay_count = decay_count if decay_count else None
-        self.locations = set()
+        self.locations: Set[Coord] = set()
         self.decay_counters = {}
         self.newest_food = []
 
@@ -28,10 +29,7 @@ class FoodHandler(IFoodHandler):
     def _generate_new(self, s_map):
         empty_tiles = []
         self.newest_food = []
-        for y in range(self.height):
-            for x in range(self.width):
-                if s_map[y, x] == config.free_value:
-                    empty_tiles.append((x, y))
+        empty_tiles = get_locations(s_map, config.free_value, self.width, self.height)
         for _ in range(self.max_food - len(self.locations)):
             if empty_tiles:
                 new_food = random.choice(empty_tiles)

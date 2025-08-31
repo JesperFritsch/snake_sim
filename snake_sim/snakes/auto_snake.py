@@ -1,25 +1,25 @@
-import random
-import numpy as np
 import math
-import itertools
 from typing import List
-from collections import deque
-from dataclasses import dataclass
-from statistics import mean
 from functools import cmp_to_key
 from time import time
-from pprint import pprint
-import sys
 
 from snake_sim.cpp_bindings.area_check import AreaChecker
 from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles
 
-from snake_sim.utils import coord_op, distance, exec_time
-from snake_sim.environment.types import Coord
-
-from snake_sim.snakes.auto_snake_base import AutoSnakeBase
-
 import snake_sim.debugging as debug
+from snake_sim.utils import distance, exec_time, get_locations
+from snake_sim.environment.types import Coord
+from snake_sim.snakes.snake import Snake
+
+from snake_sim.debugging import enable_debug_for, activate_debug
+
+
+# activate_debug()
+# enable_debug_for('_next_step')
+# enable_debug_for('_get_future_available_food_map')
+# enable_debug_for('_best_first_search')
+
+
 
 class BFSFrame:
     def __init__(self,
@@ -55,9 +55,8 @@ class BFSFrame:
         return None
 
 
-class AutoSnake(AutoSnakeBase):
+class AutoSnake(Snake):
     TIME_LIMIT = True
-    MAX_RISK_CALC_DEPTH = 3
     SAFE_MARGIN_FACTOR = 0.035
 
     def __init__(self, calc_timeout=1000):
@@ -69,46 +68,23 @@ class AutoSnake(AutoSnakeBase):
 
     def _init_area_checker(self):
         self.area_checker = AreaChecker(
-            self.env_data.food_value,
-            self.env_data.free_value,
+            self.env_init_data.food_value,
+            self.env_init_data.free_value,
             self.body_value,
             self.head_value,
-            self.env_data.width,
-            self.env_data.height)
+            self.env_init_data.width,
+            self.env_init_data.height)
 
-    def _fix_route(self, route, s_coord=None, valid_tiles=None):
-        valid_tiles = valid_tiles or self._valid_tiles(self.map, self.coord)
-        s_coord = s_coord or self.coord
-        # print("Coord: ", s_coord)
-        if s_coord in route and len(route) > 1:
-            route = deque(list(route)[:route.index(s_coord)])
-        try:
-            if route[-1] not in valid_tiles:
-                try:
-                    sub_route = self._get_route(self.map, s_coord, end=route[-1])
-                    route = deque(list(route) + sub_route[1:-1])
-                except Exception as e:
-                    print(e)
-                    print("Coord: ", s_coord)
-                    raise ValueError('Invalid route')
-        except IndexError as e:
-            print(e)
-            print('Route: ', route)
-            print("Coord: ", s_coord)
-        except Exception as e:
-            print(e)
-            print('Route: ', route)
-            print("Coord: ", s_coord)
-        return route
 
     def _valid_tiles(self, s_map, coord, discount=None):
         return list(get_visitable_tiles(
             s_map,
-            self.env_data.width,
-            self.env_data.height,
+            self.env_init_data.width,
+            self.env_init_data.height,
             coord,
-            [self.env_data.free_value, self.env_data.food_value]
+            [self.env_init_data.free_value, self.env_init_data.food_value]
         ))
+
 
     def _explore_option(self, start_coord, target_margin=0, timeout_ms=None, exhaustive=False):
         # This is taking the risk of not finding that the snake cant use all the tiles in the area.
@@ -147,71 +123,25 @@ class AutoSnake(AutoSnakeBase):
         else:
             return None
 
-    def might_close_area(self, s_map, head_coord, neck_coord):
-        """
-        This should cover all scenarios where an area check is needed.
-        checking if the head will close of any area.
-        and checking if the head creates paths that are one tile wide.
-        """
-        free_value = self.env_data.free_value
-        food_value = self.env_data.food_value
-        head_dir = (head_coord[0] - neck_coord[0], head_coord[1] - neck_coord[1])
-        perp_axis = (head_dir[1], head_dir[0])
-        coord_ahead = (head_coord[0] + head_dir[0], head_coord[1] + head_dir[1])
 
-        if not self.is_inside(coord_ahead):
-            return True
-
-        if s_map[coord_ahead[1], coord_ahead[0]] != free_value and s_map[coord_ahead[1], coord_ahead[0]] != food_value:
-            return True
-        besides_a = (head_coord[0] + perp_axis[0], head_coord[1] + perp_axis[1])
-        besides_b = (head_coord[0] - perp_axis[0], head_coord[1] - perp_axis[1])
-        diag_a_ahead = (coord_ahead[0] + perp_axis[0], coord_ahead[1] + perp_axis[1])
-        diag_b_ahead = (coord_ahead[0] - perp_axis[0], coord_ahead[1] - perp_axis[1])
-
-        if self.is_inside(diag_a_ahead) and self.is_inside(besides_a):
-            if s_map[diag_a_ahead[1], diag_a_ahead[0]] != free_value and s_map[diag_a_ahead[1], diag_a_ahead[0]] != food_value:
-                if s_map[besides_a[1], besides_a[0]] == free_value or s_map[besides_a[1], besides_a[0]] == food_value:
-                    return True
-            besides2 = (head_coord[0] + perp_axis[0] * 2, head_coord[1] + perp_axis[1] * 2)
-            if s_map[besides_a[1], besides_a[0]] == free_value or s_map[besides_a[1], besides_a[0]] == food_value:
-                if self.is_inside(besides2) and (s_map[besides2[1], besides2[0]] != free_value and s_map[besides2[1], besides2[0]] != food_value):
-                    return True
-
-        if self.is_inside(diag_b_ahead) and self.is_inside(besides_b):
-            if s_map[diag_b_ahead[1], diag_b_ahead[0]] != free_value and s_map[diag_b_ahead[1], diag_b_ahead[0]] != food_value:
-                if s_map[besides_b[1], besides_b[0]] == free_value or s_map[besides_b[1], besides_b[0]] == food_value:
-                    return True
-            besides2 = (head_coord[0] - perp_axis[0] * 2, head_coord[1] - perp_axis[1] * 2)
-            if s_map[besides_b[1], besides_b[0]] == free_value or s_map[besides_b[1], besides_b[0]] == food_value:
-                if self.is_inside(besides2) and (s_map[besides2[1], besides2[0]] != free_value and s_map[besides2[1], besides2[0]] != food_value):
-                    return True
-        return False
-
-    def _check_safe_food_route(self, s_map, food_route):
-        end_coord = food_route[0]
-        body_copy = self.body_coords.copy()
-        map_copy = s_map.copy()
-        for coord in reversed(food_route):
-            old_tail = self.update_body(coord, body_copy, self.length + 1)
-            self._update_snake_position(map_copy, body_copy, old_tail)
-        valid_tiles = self._valid_tiles(map_copy, end_coord)
-        area_checks = [self._area_check_wrapper(map_copy, body_copy, tile) for tile in valid_tiles]
-        return any([a["margin"] >= a["food_count"] for a in area_checks])
-
-    def get_locations(self, s_map, value):
-        coordinate = np.where(s_map == value)
-        return [(int(col), int(row)) for row, col in zip(coordinate[0], coordinate[1])]
-
+    def _update_snake_position(self, s_map, body_coords, old_tail):
+        head = body_coords[0]
+        if old_tail is not None:
+            s_map[old_tail[1], old_tail[0]] = self.env_init_data.free_value
+        for i in range(2):
+            x, y = body_coords[i]
+            s_map[y, x] = self.head_value if body_coords[i] == head else self.body_value
+        return s_map
+    
 
     def _get_food_dir(self):
         dir_tuple = get_dir_to_tile(
             self.map,
-            self.env_data.width,
-            self.env_data.height,
+            self.env_init_data.width,
+            self.env_init_data.height,
             self.coord,
-            self.env_data.food_value,
-            [self.env_data.free_value, self.env_data.food_value]
+            self.env_init_data.food_value,
+            [self.env_init_data.free_value, self.env_init_data.food_value]
         )
         if dir_tuple == (0,0):
             return None
@@ -221,7 +151,7 @@ class AutoSnake(AutoSnakeBase):
     def _get_future_available_food_map(self):
         s_map = self.map.copy()
         valid_tiles = self._valid_tiles(self.map, self.coord)
-        food_locations = self.get_locations(s_map, self.env_data.food_value)
+        food_locations = self.env_data.food_locations
         future_valids = {coord: self._valid_tiles(self.map, coord) for coord in valid_tiles}
         food_map = {}
         all_area_checks = {}
@@ -234,14 +164,14 @@ class AutoSnake(AutoSnakeBase):
             body_coords_copy = self.body_coords.copy()
             map_copy = s_map.copy()
             old_map_value = map_copy[y, x]
-            old_tail = self.update_body(coord, body_coords_copy, self.length)
+            old_tail = self._update_body(coord, body_coords_copy, self.length)
             self._update_snake_position(map_copy, body_coords_copy, old_tail)
             area_checks = [
                 self._area_check_wrapper(
                     map_copy, 
                     body_coords_copy, 
                     tile, 
-                    food_check=True, 
+                    # food_check=True, 
                     max_food=len(food_locations)
                 ) 
                 for tile in valids
@@ -250,7 +180,7 @@ class AutoSnake(AutoSnakeBase):
             all_area_checks[coord] = area_checks
             if clear_checks:
                 all_clear_checks[coord] = clear_checks
-            additonal_food[coord] = old_map_value == self.env_data.food_value
+            additonal_food[coord] = old_map_value == self.env_init_data.food_value
         all_checks = [a for check in all_area_checks.values() for a in check]
         combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks]) or self.length < 15
         # combine_food = False
@@ -279,12 +209,13 @@ class AutoSnake(AutoSnakeBase):
         return areas_map
 
 
-    def _pick_direction(self):
+    def _next_step(self):
         if self.area_checker is None:
             self._init_area_checker()
         next_tile = None
         planned_tile = None
         closest_food_direction = self._get_food_dir()
+        debug.debug_print("Current tile:", self.coord)
         debug.debug_print("closest_food_direction:", closest_food_direction)
         if closest_food_direction:
             planned_tile = Coord(*self.coord) + closest_food_direction
@@ -322,12 +253,7 @@ class AutoSnake(AutoSnakeBase):
             option = self._get_best_option()
             if option:
                 next_tile = option
-        return next_tile
-
-    def _target_tile(self, body_coords):
-        self_coord = body_coords[0]
-        s_dir = coord_op(self_coord, body_coords[1], '-')
-        return coord_op(self_coord, s_dir, '+')
+        return Coord(*next_tile) if next_tile else None
 
     def _area_check_wrapper(self, s_map, body_coords, start_coord, target_margin=0, max_food=0, food_check=False, exhaustive=False):
         return self.area_checker.area_check(s_map, list(body_coords), start_coord, target_margin, max_food, food_check, exhaustive)
@@ -336,9 +262,9 @@ class AutoSnake(AutoSnakeBase):
         body_copy = body_coords.copy()
         map_copy = s_map.copy()
         length = len(body_coords)
-        if s_map[new_coord[1], new_coord[0]] == self.env_data.food_value:
+        if s_map[new_coord[1], new_coord[0]] == self.env_init_data.food_value:
             length += 1
-        old_tail = self.update_body(new_coord, body_copy, length)
+        old_tail = self._update_body(new_coord, body_copy, length)
         self._update_snake_position(map_copy, body_copy, old_tail)
         valid_tiles = self._valid_tiles(map_copy, new_coord)
         best_margin = -len(body_coords)

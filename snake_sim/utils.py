@@ -3,10 +3,11 @@ import string
 import os
 import platform
 import math
+import numpy as np
 import json
 from importlib import resources
 from time import time
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 import cProfile
 import pstats
@@ -14,7 +15,9 @@ from io import StringIO
 
 from importlib import resources
 
-from snake_sim.environment.types import DotDict
+from snake_sim.cpp_bindings.utils import get_locations_with_value
+
+from snake_sim.environment.types import DotDict, Coord
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = json.load(config_file)
@@ -47,8 +50,12 @@ def coord_cmp(coord1, coord2):
     return coord1[0] == coord2[0] and coord1[1] == coord2[1]
 
 
-def distance(c1, c2):
+def distance(c1, c2) -> float:
     return math.sqrt(math.pow(c1[0] - c2[0], 2) + math.pow(c1[1] - c2[1], 2))
+
+
+def get_locations(s_map: np.ndarray, value, width, height) -> List[Coord]:
+    return get_locations_with_value(s_map.flatten(), width, height, value)
 
 
 def is_headless():
@@ -63,6 +70,7 @@ def is_headless():
     else:
         # For Unix-like systems, check DISPLAY variable
         return os.environ.get("DISPLAY") is None
+
 
 def coord_op(coord_left, coord_right, op):
     # Check the operation and perform it directly
@@ -98,7 +106,7 @@ def create_color_map(snake_values: dict) -> Dict[int, Tuple[int, int, int]]:
     return color_map
 
 
-def profile(sort_by='cumulative'):
+def profile(sort_by='time'):
     def decorator(func):
         def wrapper(*args, **kwargs):
             pr = cProfile.Profile()
@@ -112,3 +120,33 @@ def profile(sort_by='cumulative'):
             return result
         return wrapper
     return decorator
+
+
+def print_map(s_map: np.ndarray, free_value: int, food_value: int, blocked_value: int, head_value: int, body_value: int):
+    width, height = s_map.shape
+    max_nr_digits_width = len(str(width))
+    max_nr_digits_height = len(str(height))
+    w_nr_strings = [str(i).rjust(max_nr_digits_width) for i in range(height)]
+    h_nr_strings = [str(i).rjust(max_nr_digits_height) for i in range(width)]
+    digit_rows = [(' ' * max_nr_digits_height) + ''.join([f" {nr_string[i]} " for nr_string in w_nr_strings]) for i in range(max_nr_digits_width)]
+    print('\n'.join(digit_rows))
+    for i, row in enumerate(s_map):
+        print_row = [h_nr_strings[i]]
+        for c in row:
+            if c == free_value:
+                print_row.append(' . ')
+            elif c == food_value:
+                print_row.append(' F ')
+            elif c == blocked_value:
+                print_row.append(' # ')
+            elif c == head_value:
+                print_row.append(f' A ')
+            elif c == body_value:
+                print_row.append(' a ')
+            elif c % 2 == 0:
+                print_row.append(f' X ')
+            else:
+                print_row.append(f' x ')
+        print_row.append(h_nr_strings[i])
+        print(''.join(print_row))
+    print('\n'.join(digit_rows))

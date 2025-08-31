@@ -17,6 +17,7 @@ from snake_sim.environment.types import Coord, EnvData, EnvInitData
 from snake_sim.render import core
 from snake_sim.render.pygame_render import play_frame_buffer
 from snake_sim.debugging import enable_debug_for, activate_debug
+from snake_sim.utils import print_map, get_locations
 
 from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles
 
@@ -39,11 +40,12 @@ def get_state_file_path():
     return latest_file
 
 
-def test_make_choice(snake: AutoSnake, s_map):
-    env_data = EnvData(s_map, {})
-    snake.set_new_head = lambda x: print(f"New head: {x}")
+def test_make_choice(snake: AutoSnake, s_map, food_locations: List[Coord] = None):
+    env_data = EnvData(s_map, {}, food_locations)
+    snake._set_new_head = lambda x: print(f"New head: {x}")
     start_time = time.time()
-    choice = snake.update(env_data)
+    for _ in range(100):
+        choice = snake.update(env_data)
     print(f"Time make choice: {(time.time() - start_time) * 1000}")
     print(f"Choice: {choice}")
 
@@ -78,7 +80,6 @@ def render_steps(runsteps):
 def test_area_check(snake: AutoSnake, s_map):
     for tile in snake._valid_tiles(s_map, snake.body_coords[0]):
         time_start = time.time()
-        food_locations = snake.get_locations(s_map, snake.env_data.food_value)
         area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile)
         print(f"Time area check: {(time.time() - time_start) * 1000}")
         print(f"Tile: {tile}, Area check: {area_check}")
@@ -126,7 +127,7 @@ def run_tests(snake: AutoSnake, s_map):
     pr.enable()
     print("current tile: ", snake.coord)
     print("snake length: ", snake.length)
-    test_make_choice(snake, s_map)
+    test_make_choice(snake, s_map, state_dict['food'])
     # test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000)
     # test_area_check_direction(snake, s_map, Coord(-1, 0))
@@ -137,10 +138,10 @@ def run_tests(snake: AutoSnake, s_map):
 
     pr.disable()
     s = StringIO()
-    sortby = 'tottime'
+    sortby = 'time'
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    # ps.print_stats()
-    # print(s.getvalue())
+    ps.print_stats()
+    print(s.getvalue())
     if RUN_STEPS:
         render_steps(RUN_STEPS)
 
@@ -154,13 +155,13 @@ def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, state_dict):
     snake.set_init_data(env_init_data)
     snake.body_coords = snake_rep.body.copy()
     snake._init_area_checker()
-    snake.update_map(s_map)
+    snake._update_map(s_map)
     snake.coord = snake.body_coords[0]
     snake.length = len(snake.body_coords)
     return snake
 
 
-def print_map(s_map, state_dict, show_snake_id=None):
+def print_colored_map(s_map, state_dict, show_snake_id=None):
     color_mapping = state_dict['color_mapping']
     blocked_value = state_dict['blocked_value']
     highlight_values = state_dict['snake_values'][str(show_snake_id)].values() if show_snake_id is not None else []
@@ -228,8 +229,8 @@ if __name__ == "__main__":
     snake_reps = create_snake_reps(state_dict)
 
     activate_debug()
-    enable_debug_for('_pick_direction')
-    enable_debug_for('_get_future_available_food_map')
+    enable_debug_for('_next_step')
+    enable_debug_for('_get_food_dir')
     enable_debug_for('_best_first_search')
 
     snake_id = 0
@@ -241,8 +242,20 @@ if __name__ == "__main__":
             print(f"ID: {s_rep.id: <4} HEAD: {Coord(*s_rep.get_head()): <20} body len: {s_rep._length: <4}, body_color: {rgb_color_text('  ', *state_dict['color_mapping'][str(s_rep.body_value)])}")
     else:
         s_map = create_map(state_dict, snake_reps)
-        # print_map(s_map, state_dict, snake_id)
+        # print_colored_map(s_map, state_dict, snake_id)
         test_snake = create_test_snake(snake_id, snake_reps, s_map, state_dict)
-        test_snake.print_map(s_map)
+        print_map(
+            s_map, 
+            test_snake.env_init_data.free_value, 
+            test_snake.env_init_data.food_value, 
+            test_snake.env_init_data.blocked_value, 
+            test_snake.head_value, 
+            test_snake.body_value
+        )
+        print("snake env_init_data: ", test_snake.env_init_data)
+        print("snake env_data: ", test_snake.env_data)
+        print("snake head: ", test_snake.coord)
+        print("snake head value: ", test_snake.head_value)
+        print("snake body value: ", test_snake.body_value)
         sys.stdout.flush()
         run_tests(test_snake, s_map)
