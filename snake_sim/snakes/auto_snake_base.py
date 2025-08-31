@@ -95,8 +95,15 @@ class AutoSnakeBase(Snake):
 
 
     def print_map(self, s_map):
-        for row in s_map:
-            print_row = []
+        width, height = s_map.shape
+        max_nr_digits_width = len(str(width))
+        max_nr_digits_height = len(str(height))
+        w_nr_strings = [str(i).rjust(max_nr_digits_width) for i in range(height)]
+        h_nr_strings = [str(i).rjust(max_nr_digits_height) for i in range(width)]
+        digit_rows = [(' ' * max_nr_digits_height) + ''.join([f" {nr_string[i]} " for nr_string in w_nr_strings]) for i in range(max_nr_digits_width)]
+        print('\n'.join(digit_rows))
+        for i, row in enumerate(s_map):
+            print_row = [h_nr_strings[i]]
             for c in row:
                 if c == self.env_data.free_value:
                     print_row.append(' . ')
