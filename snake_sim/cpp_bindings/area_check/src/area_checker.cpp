@@ -1,7 +1,6 @@
 #include "area_checker.hpp"
 
 
-
 void AreaChecker::print_map(uint8_t *s_map)
 {
     int rows = this->height;
@@ -74,7 +73,7 @@ X . 1 . X
     return false;
 }
 
-int AreaChecker::_is_single_entrance(uint8_t *s_map, Coord coord, Coord check_coord)
+int AreaChecker::is_single_entrance(uint8_t *s_map, Coord coord, Coord check_coord)
 {
     // return code 2 is for a passage like:
     // x . .
@@ -230,7 +229,7 @@ int AreaChecker::_is_single_entrance(uint8_t *s_map, Coord coord, Coord check_co
     return 1;
 }
 
-py::dict AreaChecker::area_check(
+py::dict AreaChecker::py_area_check(
     py::array_t<uint8_t> s_map,
     py::list body_coords_py,
     py::tuple start_coord_py,
@@ -250,7 +249,7 @@ py::dict AreaChecker::area_check(
             body_coords.push_back(Coord(coord[0].cast<int>(), coord[1].cast<int>()));
         }
 
-        AreaCheckResult result = _area_check(
+        AreaCheckResult result = area_check(
             s_map_ptr,
             body_coords,
             start_coord,
@@ -346,7 +345,7 @@ ExploreResults AreaChecker::explore_area(
                         // check if the gateway is diagonal
                         const Coord delta = n_coord - curr_coord;
                         const Coord check_coord = n_coord + delta;
-                        const int check_result = _is_single_entrance(s_map, n_coord, check_coord);
+                        const int check_result = is_single_entrance(s_map, n_coord, check_coord);
                         const bool is_diag_gateway = (check_result == 2);
                         connected_areas.push_back(
                             ConnectedAreaInfo(
@@ -365,7 +364,7 @@ ExploreResults AreaChecker::explore_area(
             int n_coord_val = s_map[n_y * width + n_x];
             if (n_coord_val == free_value || n_coord_val == food_value)
             {
-                int entrance_code = _is_single_entrance(s_map, curr_coord, n_coord);
+                int entrance_code = is_single_entrance(s_map, curr_coord, n_coord);
                 // int entrance_code = 0;
                 if (entrance_code == 0)
                 {
@@ -433,7 +432,7 @@ ExploreResults AreaChecker::explore_area(
     );
 }
 
-AreaCheckResult AreaChecker::_area_check(
+AreaCheckResult AreaChecker::area_check(
     uint8_t *s_map,
     std::vector<Coord> &body_coords,
     Coord &start_coord,

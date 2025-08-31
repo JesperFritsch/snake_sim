@@ -1,8 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include "area_types.hpp"
-
+#include "util_types.hpp"
 
 inline unsigned int cantor_pairing(int k1, int k2)
 {

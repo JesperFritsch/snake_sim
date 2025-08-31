@@ -1,0 +1,19 @@
+{
+  "configurations": [
+    {
+      "name": "Linux",
+      "includePath": [
+        "${workspaceFolder}/snake_sim/cpp_bindings/**/include",
+        "/home/jesper/py_fun/snake_sim/snake_venv/lib/python3.12/site-packages/pybind11/include",
+        "/home/jesper/py_fun/snake_sim/snake_venv/include/python3.12",
+        "/usr/include/python3.12"
+      ],
+      "defines": [],
+      "compilerPath": "/usr/bin/g++",
+      "cStandard": "c11",
+      "cppStandard": "c++11",
+      "intelliSenseMode": "linux-gcc-x64"
+    }
+  ],
+  "version": 4
+}

@@ -18,6 +18,8 @@ from snake_sim.render import core
 from snake_sim.render.pygame_render import play_frame_buffer
 from snake_sim.debugging import enable_debug_for, activate_debug
 
+from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles
+
 with resources.path('snake_sim', '__init__.py') as init_path:
     STATE_FILE_DIR = Path(init_path.parent) / "test_bench" / "state_files"
 
@@ -40,7 +42,9 @@ def get_state_file_path():
 def test_make_choice(snake: AutoSnake, s_map):
     env_data = EnvData(s_map, {})
     snake.set_new_head = lambda x: print(f"New head: {x}")
+    start_time = time.time()
     choice = snake.update(env_data)
+    print(f"Time make choice: {(time.time() - start_time) * 1000}")
     print(f"Choice: {choice}")
 
 
@@ -60,7 +64,9 @@ def test_explore(snake: AutoSnake, s_map):
 
 def test_area_check_direction(snake: AutoSnake, s_map, direction):
     tile = Coord(*snake.coord) + direction
-    area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile, exhaustive=True)
+    start_time = time.time()
+    area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile)
+    print(f"Time area check direction {direction}: {(time.time() - start_time) * 1000}")
     print(f"Direction: {direction}, Area check: {area_check}")
 
 
@@ -88,6 +94,33 @@ def test_area_check_performace(snake: AutoSnake, s_map, iterations=1000):
     print(f"Tile: {tile}, Area check: {area_check}")
 
 
+def test_get_dir_to_tile(snake: AutoSnake, s_map, tile_value, start_coord):
+    time_start = time.time()
+    direction = get_dir_to_tile(
+        s_map,
+        snake.env_data.width,
+        snake.env_data.height,
+        (start_coord.x, start_coord.y),
+        tile_value,
+        [snake.env_data.free_value, snake.env_data.food_value]
+    )
+    print(f"Time get_dir_to_tile: {(time.time() - time_start) * 1000}")
+    print(f"Direction to tile value {tile_value}: {direction}")
+
+
+def test_get_visitable_tiles(snake: AutoSnake, s_map, center_coord):
+    time_start = time.time()
+    visitable_tiles = get_visitable_tiles(
+        s_map,
+        snake.env_data.width,
+        snake.env_data.height,
+        (center_coord.x, center_coord.y),
+        [snake.env_data.free_value, snake.env_data.food_value]
+    )
+    print(f"Time get_visitable_tiles: {(time.time() - time_start) * 1000}")
+    print(f"Visitable tiles from {center_coord}: {visitable_tiles}")
+
+
 def run_tests(snake: AutoSnake, s_map):
     pr = cProfile.Profile()
     pr.enable()
@@ -97,8 +130,10 @@ def run_tests(snake: AutoSnake, s_map):
     # test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000)
     # test_area_check_direction(snake, s_map, Coord(-1, 0))
-    test_area_check_direction(snake, s_map, Coord(-1, 0))
+    # test_area_check_direction(snake, s_map, Coord(-1, 0))
     # test_explore(snake, s_map)
+    # test_get_dir_to_tile(snake, s_map, snake.env_data.food_value, Coord(58, 61))
+    # test_get_visitable_tiles(snake, s_map, snake.coord)
 
     pr.disable()
     s = StringIO()
@@ -194,6 +229,8 @@ if __name__ == "__main__":
 
     activate_debug()
     enable_debug_for('_pick_direction')
+    # enable_debug_for('_area_check_wrapper')
+    enable_debug_for('_best_first_search')
 
     snake_id = 0
     frame_builder = core.FrameBuilder(state_dict, 2, (1, 1))

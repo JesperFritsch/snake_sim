@@ -119,6 +119,8 @@ class AutoSnakeBase(Snake):
                     print_row.append(f' X ')
                 else:
                     print_row.append(f' x ')
+            print_row.append(h_nr_strings[i])
             print(''.join(print_row))
+        print('\n'.join(digit_rows))
 
 
