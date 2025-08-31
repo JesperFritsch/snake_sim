@@ -6,9 +6,9 @@ from pathlib import Path
 from importlib import resources
 from collections import deque
 
-from snake_sim.utils import DotDict, Coord
 from snake_sim.environment.food_handlers import IFoodHandler
 from snake_sim.environment.interfaces.snake_env_interface import ISnakeEnv
+from snake_sim.environment.types import EnvData, EnvInitData, DotDict, Coord
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     config = DotDict(json.load(config_file))
@@ -52,32 +52,6 @@ class SnakeRep:
 
     def get_tail(self) -> Coord:
         return self.body[-1]
-
-
-class EnvData:
-    def __init__(self, map: bytes, snakes: dict):
-        self.map = map
-        self.snakes = snakes
-
-
-class EnvInitData:
-    def __init__(self,
-                height: int,
-                width: int,
-                free_value: int,
-                blocked_value: int,
-                food_value: int,
-                snake_values: Dict[int, Dict[str, int]],
-                start_positions: Dict[int, Coord],
-                base_map: np.ndarray):
-        self.height = height
-        self.width = width
-        self.free_value = free_value
-        self.blocked_value = blocked_value
-        self.food_value = food_value
-        self.snake_values = snake_values
-        self.start_positions = start_positions
-        self.base_map = base_map
 
 
 class SnakeEnv(ISnakeEnv):

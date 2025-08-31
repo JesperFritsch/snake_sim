@@ -1,6 +1,7 @@
 import numpy as np
 from collections import deque
-from snake_sim.utils import coord_op, DotDict, Coord
+from snake_sim.utils import coord_op
+from snake_sim.environment.types import DotDict, Coord
 from snake_sim.environment.interfaces.snake_interface import ISnake
 
 DIRS = (

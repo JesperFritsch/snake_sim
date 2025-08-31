@@ -6,7 +6,7 @@ from typing import Dict
 from snake_sim.environment.snake_env import EnvInitData, SnakeRep
 from snake_sim.environment.main_loop import LoopStepData
 from snake_sim.run_data.run_data import RunData, StepData
-from snake_sim.utils import DotDict, Coord
+from snake_sim.environment.types import DotDict, Coord
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     config = DotDict(json.load(config_file))

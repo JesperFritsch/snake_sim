@@ -3,13 +3,15 @@ import logging
 import atexit
 import functools
 import threading
+from dataclasses import dataclass
 
 from pathlib import Path
 from typing import Union, List, Optional
 from importlib import resources as pkg_resources
 
 from snake_sim.environment.interfaces.main_loop_interface import ILoopObserver
-from snake_sim.loop_observers.run_data_observer_interface import IRunDataObserver
+from snake_sim.environment.interfaces.run_data_observer_interface import IRunDataObserver
+from snake_sim.loop_observers.tqdm_loop_observer import TqdmLoopObserver
 
 from snake_sim.loop_observers.run_data_loop_source import RunDataSource
 from snake_sim.loop_observers.recorder_run_data_observer import RecorderRunDataObserver
@@ -21,8 +23,9 @@ from snake_sim.environment.snake_env import SnakeEnv, EnvInitData
 from snake_sim.environment.food_handlers import FoodHandler
 from snake_sim.environment.snake_processes import ProcessPool
 from snake_sim.controllers.keyboard_controller import ControllerCollection
-from snake_sim.utils import get_map_files_mapping, DotDict, create_color_map
-from dataclasses import dataclass
+from snake_sim.utils import get_map_files_mapping, create_color_map
+from snake_sim.environment.types import DotDict
+
 
 with pkg_resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
@@ -275,4 +278,7 @@ def setup_loop(config) -> SnakeLoopControl:
                 recording_file=recording_file,
             )
         )
+    if config.rate_meter:
+        loop_control.add_observer(TqdmLoopObserver())
+    
     return loop_control

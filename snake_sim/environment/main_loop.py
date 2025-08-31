@@ -1,33 +1,23 @@
 import time
 import json
 import logging
-from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
-from typing import Optional, List, Dict
+from typing import List, Dict
 from multiprocessing import Event
 
-from snake_sim.utils import DotDict, Coord, profile
+from snake_sim.utils import profile
 from snake_sim.environment.snake_env import EnvData
 from snake_sim.environment.interfaces.main_loop_interface import IMainLoop
 from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver
 from snake_sim.environment.snake_handlers import ISnakeHandler
 from snake_sim.environment.interfaces.snake_env_interface import ISnakeEnv
+from snake_sim.environment.types import LoopStepData, DotDict, Coord
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     config = DotDict(json.load(config_file))
 
 log = logging.getLogger(Path(__file__).stem)
-
-@dataclass
-class LoopStepData:
-    step: int
-    total_time: Optional[float] = field(default_factory=float)
-    snake_times: Optional[Dict[int, float]] = field(default_factory=dict)
-    decisions: Optional[Dict[int, Coord]] = field(default_factory=dict)
-    snake_grew: Optional[Dict[int, bool]] = field(default_factory=dict)
-    lengths: Optional[Dict[int, int]] = field(default_factory=dict)
-    food: Optional[List[Coord]] = field(default_factory=list)
 
 
 class SimLoop(IMainLoop):
@@ -145,7 +135,7 @@ class SimLoop(IMainLoop):
 
     def set_environment(self, env: ISnakeEnv):
         self._env = env
-
+    
 
 class GameLoop(SimLoop):
 

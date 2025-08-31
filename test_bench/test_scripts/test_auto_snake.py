@@ -12,8 +12,8 @@ import pstats
 from importlib import resources
 
 from snake_sim.snakes.auto_snake import AutoSnake
-from snake_sim.utils import Coord
-from snake_sim.environment.snake_env import EnvData, EnvInitData, SnakeRep
+from snake_sim.environment.snake_env import SnakeRep
+from snake_sim.environment.types import Coord, EnvData, EnvInitData
 from snake_sim.render import core
 from snake_sim.render.pygame_render import play_frame_buffer
 from snake_sim.debugging import enable_debug_for, activate_debug
@@ -229,7 +229,7 @@ if __name__ == "__main__":
 
     activate_debug()
     enable_debug_for('_pick_direction')
-    # enable_debug_for('_area_check_wrapper')
+    enable_debug_for('_get_future_available_food_map')
     enable_debug_for('_best_first_search')
 
     snake_id = 0

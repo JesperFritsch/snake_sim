@@ -1,7 +1,6 @@
 
 from abc import ABC, abstractmethod
-from snake_sim.utils import Coord
-from snake_sim.environment.snake_env import EnvInitData, EnvData
+from snake_sim.environment.types import Coord, EnvInitData, EnvData
 
 
 class ISnake(ABC):

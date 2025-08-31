@@ -2,7 +2,7 @@
 from typing import Optional
 from pathlib import Path
 
-from snake_sim.loop_observers.run_data_observer_interface import IRunDataObserver
+from snake_sim.environment.interfaces.run_data_observer_interface import IRunDataObserver
 from snake_sim.run_data.run_data import StepData, RunData
 
 class RecorderRunDataObserver(IRunDataObserver):

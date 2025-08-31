@@ -5,7 +5,7 @@ from typing import Set
 from snake_sim.environment.interfaces.main_loop_interface import ILoopObserver
 from snake_sim.environment.main_loop import LoopStepData
 from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
-from snake_sim.loop_observers.run_data_observer_interface import IRunDataObserver
+from snake_sim.environment.interfaces.run_data_observer_interface import IRunDataObserver
 
 log = logging.getLogger(Path(__file__).stem)
 

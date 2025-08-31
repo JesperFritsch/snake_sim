@@ -6,7 +6,8 @@ from statistics import mean
 import numpy as np
 from time import time
 
-from snake_sim.utils import coord_op, exec_time, Coord
+from snake_sim.utils import coord_op, exec_time
+from snake_sim.environment.types import Coord
 
 from snake_sim.snakes.snake import Snake
 

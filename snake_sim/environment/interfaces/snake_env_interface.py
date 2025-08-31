@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple, Dict
-from snake_sim.utils import Coord
+from snake_sim.environment.types import Coord
 from snake_sim.environment.interfaces.food_handler_interface import IFoodHandler
 
 
