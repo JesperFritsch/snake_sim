@@ -16,6 +16,7 @@ from snake_sim.utils import Coord
 from snake_sim.environment.snake_env import EnvData, EnvInitData, SnakeRep
 from snake_sim.render import core
 from snake_sim.render.pygame_render import play_frame_buffer
+from snake_sim.debugging import enable_debug_for, activate_debug
 
 with resources.path('snake_sim', '__init__.py') as init_path:
     STATE_FILE_DIR = Path(init_path.parent) / "test_bench" / "state_files"
@@ -71,14 +72,15 @@ def render_steps(runsteps):
 def test_area_check(snake: AutoSnake, s_map):
     for tile in snake._valid_tiles(s_map, snake.body_coords[0]):
         time_start = time.time()
-        area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile, exhaustive=True)
+        food_locations = snake.get_locations(s_map, snake.env_data.food_value)
+        area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile)
         print(f"Time area check: {(time.time() - time_start) * 1000}")
         print(f"Tile: {tile}, Area check: {area_check}")
 
 
 def test_area_check_performace(snake: AutoSnake, s_map, iterations=1000):
     stime = time.time()
-    direction = Coord(0, 1)
+    direction = Coord(0, -1)
     for _ in range(iterations):
         tile = Coord(*snake.coord) + direction
         area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile)
@@ -92,10 +94,10 @@ def run_tests(snake: AutoSnake, s_map):
     print("current tile: ", snake.coord)
     print("snake length: ", snake.length)
     test_make_choice(snake, s_map)
-    test_area_check(snake, s_map)
+    # test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000)
     # test_area_check_direction(snake, s_map, Coord(-1, 0))
-    test_area_check_direction(snake, s_map, Coord(0, -1))
+    test_area_check_direction(snake, s_map, Coord(-1, 0))
     # test_explore(snake, s_map)
 
     pr.disable()
@@ -190,6 +192,9 @@ if __name__ == "__main__":
 
     snake_reps = create_snake_reps(state_dict)
 
+    activate_debug()
+    enable_debug_for('_pick_direction')
+
     snake_id = 0
     frame_builder = core.FrameBuilder(state_dict, 2, (1, 1))
     put_food_in_frame(frame_builder.last_frame, state_dict['food'], (0, 255, 0), frame_builder.expand_factor, frame_builder.offset)
@@ -202,4 +207,5 @@ if __name__ == "__main__":
         # print_map(s_map, state_dict, snake_id)
         test_snake = create_test_snake(snake_id, snake_reps, s_map, state_dict)
         test_snake.print_map(s_map)
+        sys.stdout.flush()
         run_tests(test_snake, s_map)
