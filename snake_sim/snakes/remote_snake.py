@@ -57,10 +57,13 @@ class RemoteSnake(ISnake):
         # print(f"{self.target}: Updating")
         env_data_proto = remote_snake_pb2.EnvData(
             map=env_data.map,
-            snakes={k: remote_snake_pb2.SnakeRep(is_alive=v["is_alive"], length=v["length"]) for k, v in env_data.snakes.items()}
+            snakes={k: remote_snake_pb2.SnakeRep(is_alive=v["is_alive"], length=v["length"]) for k, v in env_data.snakes.items()},
+            food_locations=[remote_snake_pb2.Coord(x=coord[0], y=coord[1]) for coord in env_data.food_locations] if env_data.food_locations else []
         )
         response_iterator = self.stub.Update(iter([env_data_proto]))
         for response in response_iterator:
+            if not response.HasField("direction"):
+                return None
             return Coord(x=response.direction.x, y=response.direction.y)
 
 

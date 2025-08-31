@@ -5,6 +5,7 @@
 
 #include "path_utils.hpp"
 #include "util_types.hpp"
+#include "area_utils.hpp"
 
 namespace py = pybind11;
 
@@ -27,6 +28,14 @@ PYBIND11_MODULE(utils, m)
         py::arg("height"),
         py::arg("center_coord"),
         py::arg("visitable_values"),
+        py::return_value_policy::copy
+    );
+
+    m.def("get_locations_with_value", &py_get_locations_with_value,
+        py::arg("s_map"),
+        py::arg("width"),
+        py::arg("height"),
+        py::arg("value"),
         py::return_value_policy::copy
     );
 }

@@ -67,7 +67,6 @@ class SnakeEnv(ISnakeEnv):
         self._used_map_values = set([self._free_value, self._blocked_value, self._food_value])
 
     def add_snake(self, id: int, start_position: Optional[Coord]=None, start_length: int=1) -> Coord:
-        # snake_body is expected to be an iterable with Coord like [(1,2), (1,3)]
         if start_position is None:
             start_position = self._random_free_tile()
         head_value, body_value = self._assign_map_values()
@@ -165,7 +164,8 @@ class SnakeEnv(ISnakeEnv):
         # id is not used yet, but it is preparing for being able to send different data to different snakes
         return EnvData(
             self.get_map().tobytes(),
-            {id: {'is_alive': snake_rep.is_alive, 'length': len(snake_rep.body)} for id, snake_rep in self._snake_reps.items()}
+            {id: {'is_alive': snake_rep.is_alive, 'length': len(snake_rep.body)} for id, snake_rep in self._snake_reps.items()},
+            self.get_food()
         )
 
     def get_init_data(self) -> EnvInitData:

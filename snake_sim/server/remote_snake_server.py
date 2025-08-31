@@ -48,10 +48,14 @@ class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
         for env_data_proto in request_iterator:
             env_data = EnvData(
                 map=env_data_proto.map,
-                snakes={k: {"is_alive": v.is_alive, "length": v.length} for k, v in env_data_proto.snakes.items()}
+                snakes={k: {"is_alive": v.is_alive, "length": v.length} for k, v in env_data_proto.snakes.items()},
+                food_locations=[Coord(x=coord.x, y=coord.y) for coord in env_data_proto.food_locations]
             )
             direction = self._snake_instance.update(env_data)
-            yield remote_snake_pb2.UpdateResponse(direction=remote_snake_pb2.Coord(x=direction.x, y=direction.y))
+            if direction is None:
+                yield remote_snake_pb2.UpdateResponse()
+            else:
+                yield remote_snake_pb2.UpdateResponse(direction=remote_snake_pb2.Coord(x=direction.x, y=direction.y))
 
 
 def import_snake_module(snake_module_file):

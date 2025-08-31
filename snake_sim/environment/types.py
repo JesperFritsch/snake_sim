@@ -85,6 +85,7 @@ class Coord(tuple):
 
 @dataclass
 class LoopStepData:
+    # decisions, snake_grew and snake_times will only have values for alive snakes
     step: int
     total_time: Optional[float] = field(default_factory=float)
     snake_times: Optional[Dict[int, float]] = field(default_factory=dict)
@@ -95,9 +96,11 @@ class LoopStepData:
 
 
 class EnvData:
-    def __init__(self, map: bytes, snakes: dict):
+    def __init__(self, map: bytes, snakes: dict, food_locations: Optional[List[Coord]]):
         self.map = map
         self.snakes = snakes
+        self.food_locations = food_locations
+
 
 
 class EnvInitData:
