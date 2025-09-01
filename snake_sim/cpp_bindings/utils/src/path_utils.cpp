@@ -13,7 +13,8 @@ Coord get_dir_to_tile(
     int height, 
     Coord from_coord, 
     int tile_value,
-    std::vector<int> visitable_values
+    std::vector<int> visitable_values,
+    bool clockwise
 ){
     std::vector<bool> visited(width * height, false);
     std::deque<Coord> coords_to_visit;
@@ -34,8 +35,12 @@ Coord get_dir_to_tile(
             }
             return step - from_coord;
         }
+        auto visitable_tiles = get_visitable_tiles(s_map, width, height, current, visitable_values);
+        if (!clockwise){
+            std::reverse(visitable_tiles.begin(), visitable_tiles.end());
+        }
 
-        for (const auto& valid_coord : get_visitable_tiles(s_map, width, height, current, visitable_values)){
+        for (const auto& valid_coord : visitable_tiles){
             int neighbor_index = valid_coord.y * width + valid_coord.x;
             if (!visited[neighbor_index]){
                 visited[neighbor_index] = true;
@@ -56,7 +61,7 @@ std::vector<Coord> get_visitable_tiles(
     Coord center_coord, 
     std::vector<int> visitable_values
 ){
-    std::array<Coord, 4> directions = {Coord(0,1), Coord(1,0), Coord(0,-1), Coord(-1,0)};
+    std::array<Coord, 4> directions = {Coord(1,0), Coord(0,1), Coord(-1,0), Coord(0,-1)};
     std::vector<Coord> result;
     for (const auto& dir : directions){
         Coord candidate_coord = center_coord + dir;

@@ -12,6 +12,8 @@ import pstats
 from importlib import resources
 
 from snake_sim.snakes.auto_snake import AutoSnake
+from snake_sim.snakes.survivor_snake import SurvivorSnake
+from snake_sim.snakes.strategies.food_strategy import FoodSeeker
 from snake_sim.environment.snake_env import SnakeRep
 from snake_sim.environment.types import Coord, EnvData, EnvInitData
 from snake_sim.render import core
@@ -44,7 +46,7 @@ def test_make_choice(snake: AutoSnake, s_map, food_locations: List[Coord] = None
     env_data = EnvData(s_map, {}, food_locations)
     snake._set_new_head = lambda x: print(f"New head: {x}")
     start_time = time.time()
-    for _ in range(100):
+    for _ in range(1):
         choice = snake.update(env_data)
     print(f"Time make choice: {(time.time() - start_time) * 1000}")
     print(f"Choice: {choice}")
@@ -65,7 +67,7 @@ def test_explore(snake: AutoSnake, s_map):
 
 
 def test_area_check_direction(snake: AutoSnake, s_map, direction):
-    tile = Coord(*snake.coord) + direction
+    tile = Coord(*snake.get_head_coord()) + direction
     start_time = time.time()
     area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile)
     print(f"Time area check direction {direction}: {(time.time() - start_time) * 1000}")
@@ -89,7 +91,7 @@ def test_area_check_performace(snake: AutoSnake, s_map, iterations=1000):
     stime = time.time()
     direction = Coord(0, -1)
     for _ in range(iterations):
-        tile = Coord(*snake.coord) + direction
+        tile = Coord(*snake.get_head_coord()) + direction
         area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile)
     print(f"Time: {(time.time() - stime) * 1000}")
     print(f"Tile: {tile}, Area check: {area_check}")
@@ -125,8 +127,8 @@ def test_get_visitable_tiles(snake: AutoSnake, s_map, center_coord):
 def run_tests(snake: AutoSnake, s_map):
     pr = cProfile.Profile()
     pr.enable()
-    print("current tile: ", snake.coord)
-    print("snake length: ", snake.length)
+    print("current tile: ", snake.get_head_coord())
+    print("snake length: ", snake._length)
     test_make_choice(snake, s_map, state_dict['food'])
     # test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000)
@@ -134,7 +136,7 @@ def run_tests(snake: AutoSnake, s_map):
     # test_area_check_direction(snake, s_map, Coord(-1, 0))
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_data.food_value, Coord(58, 61))
-    # test_get_visitable_tiles(snake, s_map, snake.coord)
+    # test_get_visitable_tiles(snake, s_map, snake.get_head_coord())
 
     pr.disable()
     s = StringIO()
@@ -147,17 +149,19 @@ def run_tests(snake: AutoSnake, s_map):
 
 
 def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, state_dict):
-    snake = AutoSnake(calc_timeout=1500)
+    snake = SurvivorSnake()
+    snake.set_strategy(1, FoodSeeker())
+    # snake = AutoSnake(calc_timeout=1500)
     snake.set_id(id)
     snake.set_start_length(1)
     env_init_data = create_env_init_data(snake_reps.values(), state_dict)
     snake_rep = snake_reps[id]
     snake.set_init_data(env_init_data)
-    snake.body_coords = snake_rep.body.copy()
+    snake._body_coords = snake_rep.body.copy()
     snake._init_area_checker()
     snake._update_map(s_map)
-    snake.coord = snake.body_coords[0]
-    snake.length = len(snake.body_coords)
+    snake._head_coord = snake.get_body_coords()[0]
+    snake._length = len(snake.get_body_coords())
     return snake
 
 
@@ -233,7 +237,7 @@ if __name__ == "__main__":
     enable_debug_for('_get_food_dir')
     enable_debug_for('_best_first_search')
 
-    snake_id = 0
+    snake_id = 1
     frame_builder = core.FrameBuilder(state_dict, 2, (1, 1))
     put_food_in_frame(frame_builder.last_frame, state_dict['food'], (0, 255, 0), frame_builder.expand_factor, frame_builder.offset)
 
@@ -246,16 +250,16 @@ if __name__ == "__main__":
         test_snake = create_test_snake(snake_id, snake_reps, s_map, state_dict)
         print_map(
             s_map, 
-            test_snake.env_init_data.free_value, 
-            test_snake.env_init_data.food_value, 
-            test_snake.env_init_data.blocked_value, 
-            test_snake.head_value, 
-            test_snake.body_value
+            test_snake.get_env_init_data().free_value, 
+            test_snake.get_env_init_data().food_value, 
+            test_snake.get_env_init_data().blocked_value, 
+            test_snake.get_self_map_values()[0], 
+            test_snake.get_self_map_values()[1]
         )
-        print("snake env_init_data: ", test_snake.env_init_data)
-        print("snake env_data: ", test_snake.env_data)
-        print("snake head: ", test_snake.coord)
-        print("snake head value: ", test_snake.head_value)
-        print("snake body value: ", test_snake.body_value)
+        print("snake env_init_data: ", test_snake.get_env_init_data())
+        print("snake env_data: ", test_snake.get_env_data())
+        print("snake head: ", test_snake.get_head_coord())
+        print("snake head value: ", test_snake.get_self_map_values()[0],)
+        print("snake body value: ", test_snake.get_self_map_values()[1])
         sys.stdout.flush()
         run_tests(test_snake, s_map)

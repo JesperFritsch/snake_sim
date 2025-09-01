@@ -58,6 +58,10 @@ def get_locations(s_map: np.ndarray, value, width, height) -> List[Coord]:
     return get_locations_with_value(s_map.flatten(), width, height, value)
 
 
+def get_coord_parity(coord: Coord) -> int:
+    return coord.x % 2 == coord.y % 2
+
+
 def is_headless():
     if platform.system() == "Windows":
         try:

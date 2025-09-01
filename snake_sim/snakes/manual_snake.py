@@ -2,11 +2,11 @@
 
 import random
 
-from snake_sim.snakes.snake import Snake
+from snake_sim.snakes.snake_base import SnakeBase
 from snake_sim.utils import coord_op
 
 
-class ManualSnake(Snake):
+class ManualSnake(SnakeBase):
     def __init__(self, help: int):
         super().__init__()
         self.help = help

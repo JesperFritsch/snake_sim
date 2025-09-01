@@ -19,6 +19,7 @@ PYBIND11_MODULE(utils, m)
         py::arg("from_coord"),
         py::arg("tile_value"),
         py::arg("visitable_values"),
+        py::arg("clockwise") = true,
         py::return_value_policy::copy
     );
 

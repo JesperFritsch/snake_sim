@@ -11,9 +11,7 @@ from importlib import resources
 
 from snake_sim.environment.snake_processes import ProcessPool
 from snake_sim.environment.interfaces.snake_handler_interface import ISnakeHandler
-from snake_sim.environment.interfaces.snake_strategy_user_interface import ISnakeStrategyUser
-from snake_sim.environment.snake_strategy_factory import SnakeStrategyFactory
-from snake_sim.snakes.snake import ISnake
+from snake_sim.environment.interfaces.snake_interface import ISnake
 from snake_sim.snakes.remote_snake import RemoteSnake
 from snake_sim.environment.types import Coord, EnvData, SnakeConfig
 
