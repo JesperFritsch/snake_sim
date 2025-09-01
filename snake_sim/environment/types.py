@@ -4,7 +4,6 @@ from typing import Optional, List, Dict
 import numpy as np
 
 
-
 class DotDict(dict):
     def __init__(self, other_dict={}):
         for k, v in other_dict.items():
@@ -121,3 +120,18 @@ class EnvInitData:
         self.snake_values = snake_values
         self.start_positions = start_positions
         self.base_map = base_map
+
+
+@dataclass
+class StrategyConfig:
+    type: str
+    params: dict = field(default_factory=dict)
+
+
+@dataclass
+class SnakeConfig:
+    type: str
+    # strategies is a dict of priority (int) -> StrategyConfig 
+    strategies: Dict[int, StrategyConfig] = field(default_factory=dict)
+     
+

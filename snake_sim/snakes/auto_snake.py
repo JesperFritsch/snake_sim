@@ -7,7 +7,7 @@ from snake_sim.cpp_bindings.area_check import AreaChecker
 from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles
 
 import snake_sim.debugging as debug
-from snake_sim.utils import distance, exec_time, get_locations
+from snake_sim.utils import distance, exec_time, get_locations, print_map
 from snake_sim.environment.types import Coord
 from snake_sim.snakes.snake import Snake
 
@@ -164,7 +164,7 @@ class AutoSnake(Snake):
             body_coords_copy = self.body_coords.copy()
             map_copy = s_map.copy()
             old_map_value = map_copy[y, x]
-            old_tail = self._update_body(coord, body_coords_copy, self.length)
+            old_tail = self._move_forward(coord, body_coords_copy, self.length)
             self._update_snake_position(map_copy, body_coords_copy, old_tail)
             area_checks = [
                 self._area_check_wrapper(
@@ -217,6 +217,7 @@ class AutoSnake(Snake):
         closest_food_direction = self._get_food_dir()
         debug.debug_print("Current tile:", self.coord)
         debug.debug_print("closest_food_direction:", closest_food_direction)
+        self._print_map()
         if closest_food_direction:
             planned_tile = Coord(*self.coord) + closest_food_direction
             planned_tile = (planned_tile.x, planned_tile.y)
@@ -264,7 +265,7 @@ class AutoSnake(Snake):
         length = len(body_coords)
         if s_map[new_coord[1], new_coord[0]] == self.env_init_data.food_value:
             length += 1
-        old_tail = self._update_body(new_coord, body_copy, length)
+        old_tail = self._move_forward(new_coord, body_copy, length)
         self._update_snake_position(map_copy, body_copy, old_tail)
         valid_tiles = self._valid_tiles(map_copy, new_coord)
         best_margin = -len(body_coords)

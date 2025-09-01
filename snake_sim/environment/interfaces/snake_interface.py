@@ -1,12 +1,10 @@
 
 from abc import ABC, abstractmethod
 from snake_sim.environment.types import Coord, EnvInitData, EnvData
+from typing import Tuple
 
 
 class ISnake(ABC):
-    @abstractmethod
-    def __init__(self, id: int, start_length: int):
-        pass
 
     @abstractmethod
     def set_id(self, id: int):
@@ -27,3 +25,4 @@ class ISnake(ABC):
     @abstractmethod
     def update(self, env_data: EnvData) -> Coord: # -> (int, int) as direction (1, 0) for right (-1, 0) for left
         pass
+

@@ -1,20 +1,22 @@
+from abc import abstractmethod, ABC
 import numpy as np
-from typing import Deque
+from typing import Deque, Tuple
 from collections import deque
 from snake_sim.utils import coord_op
 from snake_sim.environment.types import Coord, EnvInitData, EnvData
 from snake_sim.environment.interfaces.snake_interface import ISnake
-from snake_sim.utils import distance
+from snake_sim.utils import distance, print_map
 
 
 class NextStepNotImplemented(Exception):
     pass
 
 
-class Snake(ISnake):
+class Snake(ISnake, ABC):
     """Almost bare minimun implementation, it will instantly die because it does not return anything from update
     But it is a useful superclass for other snake implementations because it handles the map and data provided for each step"""
     def __init__(self):
+        super().__init__()
         self.id = None
         self.start_length = None
         self.alive = True
@@ -48,6 +50,15 @@ class Snake(ISnake):
         self.head_value = self.env_init_data.snake_values[self.id]['head_value']
         self.body_value = self.env_init_data.snake_values[self.id]['body_value']
 
+    def get_env_init_data(self) -> EnvInitData:
+        return self.env_init_data
+    
+    def get_env_data(self) -> EnvData:
+        return self.env_data
+    
+    def get_self_map_values(self) -> Tuple[int, int]: # head_value, body_value
+        return self.head_value, self.body_value
+
     # from abstract class
     def update(self, env_data: EnvData):
         self.env_data = env_data
@@ -59,10 +70,9 @@ class Snake(ISnake):
         self._set_new_head(next_step)
         return next_direction
 
-    # needs to be implemented by subclass
+    @abstractmethod
     def _next_step(self) -> Coord:
-        """ This method should return the coordinate the snake wants to move in as a Coord(x,y) tuple"""
-        raise NextStepNotImplemented("The snake did not implement the _next_step method")
+        pass
 
     def _is_inside(self, coord):
         x, y = coord
@@ -71,24 +81,39 @@ class Snake(ISnake):
     def _set_new_head(self, coord: Coord):
         """ Just return if the coord is invalid, the snake will be killed if it tries to move outside the map """
         if not self._is_inside(coord):
-            return
+            raise ValueError(f"Snake: {self.id} head at: {self.coord} tried to set its new head outside the map at: {coord}")
         if distance(self.coord, coord) != 1:
-            return
+            raise ValueError(f"Snake: {self.id} head at: {self.coord} tried to set its new head not ajacent to head at: {coord}")
         self.x, self.y = coord
         self.coord = coord
         if self.map[self.y, self.x] == self.env_init_data.food_value:
             self.length += 1
-        self._update_body(self.coord, self.body_coords, self.length)
+        self._move_forward(self.coord, self.body_coords, self.length)
 
-    def _update_body(self, new_head, body_coords: deque, length):
+    def _move_forward(self, new_head: Coord, body_coords: Deque[Coord], length: int) -> Coord:
         body_coords.appendleft(new_head)
-        old_tail = None
+        old_tail = body_coords[-1]
         for _ in range(len(body_coords) - length):
             old_tail = body_coords.pop()
         return old_tail
 
+    def _move_backwards(self, body_coords: Deque[Coord], old_tail: Coord) -> Coord:
+        current_head = body_coords.popleft()
+        body_coords.append(old_tail)
+        return current_head
+
     def _update_map(self, map: bytes):
         self.map = np.frombuffer(map, dtype=np.uint8).reshape(self.env_init_data.height, self.env_init_data.width)
+
+    def _print_map(self, s_map=None):
+        print_map(
+            s_map if s_map is not None else self.map,
+            self.env_init_data.free_value,
+            self.env_init_data.food_value,
+            self.env_init_data.blocked_value,
+            self.head_value,
+            self.body_value
+        )
 
     def __repr__(self) -> str:
         return f"(Class: {type(self)}, ID: {self.id}, Alive: {self.alive}, Coord: {self.coord}, Len: {self.length})"

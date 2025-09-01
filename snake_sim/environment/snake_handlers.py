@@ -11,10 +11,11 @@ from importlib import resources
 
 from snake_sim.environment.snake_processes import ProcessPool
 from snake_sim.environment.interfaces.snake_handler_interface import ISnakeHandler
+from snake_sim.environment.interfaces.snake_strategy_user_interface import ISnakeStrategyUser
+from snake_sim.environment.snake_strategy_factory import SnakeStrategyFactory
 from snake_sim.snakes.snake import ISnake
 from snake_sim.snakes.remote_snake import RemoteSnake
-from snake_sim.environment.snake_env import EnvData
-from snake_sim.environment.types import Coord
+from snake_sim.environment.types import Coord, EnvData, SnakeConfig
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = json.load(config_file)
@@ -25,6 +26,7 @@ log = logging.getLogger(Path(__file__).stem)
 class SnakeHandler(ISnakeHandler):
     def __init__(self):
         self._snakes: Dict[int, ISnake] = {}
+        self._snake_configs: Dict[int, SnakeConfig] = {}
         self._dead_snakes = set()
         self._executor = None
 
@@ -83,8 +85,9 @@ class SnakeHandler(ISnakeHandler):
             return
         return decision_coord
 
-    def add_snake(self, id, snake: ISnake):
+    def add_snake(self, id, snake: ISnake, config: SnakeConfig=None):
         self._snakes[id] = snake
+        self._snake_configs[id] = config
 
     def _create_in_range_map(self, position_data: Dict[int, Coord]) -> Dict[int, List[int]]: # Dict[id, List[id]]
         """ Creates a map of snakes that are in range of each other, meaning they can end up on the same tile in one move """

@@ -83,3 +83,6 @@ class ManualSnake(Snake):
             self.set_direction_explicit(direction)
         elif control_type == "implicit":
             self.set_direction_implicit(direction)
+    
+
+
