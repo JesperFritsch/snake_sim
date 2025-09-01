@@ -10,7 +10,7 @@ from typing import Optional
 
 from snake_proto_template.python import remote_snake_pb2, remote_snake_pb2_grpc
 from snake_sim.snakes.snake import ISnake
-from snake_sim.environment.types import Coord, EnvInitData, EnvData
+from snake_sim.environment.types import Coord, EnvInitData, EnvData, SnakeConfig
 
 class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
     def __init__(self, snake_instance: ISnake):
@@ -74,20 +74,37 @@ def cli(argv):
     parser = argparse.ArgumentParser("Remote Snake Server")
     parser.add_argument('-t', '--target', type=str, required=True, help='Server address or socket path to bind to')
     parser.add_argument('-m', '--snake_module_file', type=str, required=True, default=None, help='Path to snake module for importing snake class')
+    parser.add_argument('--log_level', type=str, default='INFO', help='Logging level')
     args = parser.parse_args(argv)
     return args
 
 
-def serve(target, snake_module_file, stop_event: Optional[Event] = None):
+def serve(target, snake_module_file=None, snake_config: SnakeConfig=None, stop_event: Optional[Event] = None):
     if not stop_event:
         stop_event = Event()
-    def handle_term(signum, frame):
+    def handle_termination(signum, frame):
         stop_event.set()
-    signal.signal(signal.SIGTERM, handle_term)
-    signal.signal(signal.SIGINT, handle_term)
+    signal.signal(signal.SIGTERM, handle_termination)
+    signal.signal(signal.SIGINT, handle_termination)
     try:
-        snake_module = import_snake_module(snake_module_file)
-        snake_instance = snake_module.AutoSnake()
+        if not bool(snake_module_file) ^ bool(snake_config):
+            raise ValueError("Either snake_module_file or snake_config must be provided, but not both and not neither")
+
+        if snake_module_file:
+            snake_module = import_snake_module(snake_module_file)
+            snake_instance = snake_module.MySnake()
+
+        elif snake_config:
+            # Only import here to avoid letting snake_module_file see our environment and code.
+            from snake_sim.environment.snake_factory import SnakeFactory, SnakeProcType
+            from snake_sim.snakes.strategies.utils import apply_strategies
+            factory = SnakeFactory()
+            _, snake_instance = factory.create_snake(
+                SnakeProcType.LOCAL,
+                snake_config
+            )
+            apply_strategies(snake_instance, snake_config)
+
         snake_servicer = RemoteSnakeServicer(snake_instance)
 
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

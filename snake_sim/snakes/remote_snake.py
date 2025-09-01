@@ -16,6 +16,7 @@ def handle_connection_loss(func):
 
 class RemoteSnake(ISnake):
     def __init__(self, target: str):
+        super().__init__()
         self.target = target
         self.channel = grpc.insecure_channel(target)
         self.stub = remote_snake_pb2_grpc.RemoteSnakeStub(self.channel)

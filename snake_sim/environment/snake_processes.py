@@ -9,14 +9,14 @@ from multiprocessing import Process, Manager
 from snake_sim.utils import SingletonMeta, rand_str
 from snake_sim.server.remote_snake_server import serve
 from snake_sim.snakes import auto_snake
+from snake_sim.environment.types import SnakeConfig
 
 log = logging.getLogger(Path(__file__).stem)
 
 class SnakeProcess:
-    def __init__(self, id: int, target: str, module_path: str, process: Process, stop_event=None):
+    def __init__(self, id: int, target: str, process: Process, stop_event=None):
         self.id = id
         self.target = target
-        self.module_path = module_path
         self.process = process
         self.stop_event = stop_event
 
@@ -82,13 +82,27 @@ class ProcessPool(metaclass=SingletonMeta):
             self._processes[id].kill()
             del self._processes[id]
 
-    def start(self, id):
+    def start(self, id, snake_config: SnakeConfig=None, module_path: str=None) -> None:
+        if not bool(module_path) ^ bool(snake_config):
+            raise ValueError("Either module_path or snake_config must be provided, but not both and not neither")
         target = self._generate_target()
-        module_path = auto_snake.__file__
         stop_event = self._manager.Event()
-        process = Process(target=serve, args=(target, module_path, stop_event))
+        process = Process(
+            target=serve, 
+            args=(target,), 
+            kwargs={
+                "snake_module_file": module_path,
+                "snake_config": snake_config,
+                "stop_event": stop_event
+            }
+        )
         process.start()
-        self._processes[id] = SnakeProcess(id, target, module_path, process, stop_event)
+        self._processes[id] = SnakeProcess(id, target, process, stop_event)
+
+    def get_target(self, id: int) -> str:
+        if id in self._processes:
+            return self._processes[id].target
+        raise ValueError(f"No process with id {id} found")
 
     def shutdown(self):
         log.debug("Shutting down processes")
@@ -98,3 +112,6 @@ class ProcessPool(metaclass=SingletonMeta):
         for process in processes.values():
             process.process.join()
         self._manager.shutdown()
+
+    def __del__(self):
+        self.shutdown()

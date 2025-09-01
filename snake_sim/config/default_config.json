@@ -28,6 +28,12 @@
     "norm_body": 4,
     "norm_main_head": 5,
     "norm_main_body": 6,
+    "snake_config": {
+        "type": "survivor",
+        "strategies" : {
+            "1": "food_seeker"
+        }
+    },
     "log_level": "DEBUG",
     "dirs": {
         "up": [0, -1],

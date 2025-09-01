@@ -9,22 +9,24 @@ from pathlib import Path
 from typing import Union, List, Optional
 from importlib import resources as pkg_resources
 
-from snake_sim.environment.interfaces.main_loop_interface import ILoopObserver
-from snake_sim.environment.interfaces.run_data_observer_interface import IRunDataObserver
-from snake_sim.loop_observers.tqdm_loop_observer import TqdmLoopObserver
+from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
 
+from snake_sim.loop_observers.tqdm_loop_observer import TqdmLoopObserver
 from snake_sim.loop_observers.run_data_loop_source import RunDataSource
 from snake_sim.loop_observers.recorder_run_data_observer import RecorderRunDataObserver
-from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
+from snake_sim.environment.interfaces.main_loop_interface import ILoopObserver
+from snake_sim.environment.interfaces.run_data_observer_interface import IRunDataObserver
 from snake_sim.environment.main_loop import SimLoop, GameLoop
 from snake_sim.environment.snake_handlers import SnakeHandler
-from snake_sim.environment.snake_factory import SnakeFactory
+from snake_sim.environment.snake_factory import SnakeFactory, SnakeProcType
 from snake_sim.environment.snake_env import SnakeEnv, EnvInitData
 from snake_sim.environment.food_handlers import FoodHandler
 from snake_sim.environment.snake_processes import ProcessPool
-from snake_sim.controllers.keyboard_controller import ControllerCollection
+from snake_sim.environment.types import DotDict, SnakeConfig
+
 from snake_sim.utils import get_map_files_mapping, create_color_map
-from snake_sim.environment.types import DotDict
+
+from snake_sim.snakes.strategies.utils import apply_strategies
 
 
 with pkg_resources.open_text('snake_sim.config', 'default_config.json') as config_file:
@@ -47,12 +49,14 @@ class SimConfig:
     start_length: int
     external_snake_targets: List[str]
     inproc_snakes: bool
+    snake_config: SnakeConfig
 
 
 @dataclass
 class GameConfig(SimConfig):
     player_count: int
     spm: int
+    snake_game_config: SnakeConfig
 
 
 class SnakeLoopControl:
@@ -62,7 +66,7 @@ class SnakeLoopControl:
             raise ValueError('Invalid configuration')
         self._loop = None
         self._config = config
-        self.process_pool = None
+        self.process_pool: ProcessPool = ProcessPool()
         self._snake_handler = SnakeHandler()
         self._snake_enviroment = SnakeEnv(
             config.width,
@@ -130,40 +134,33 @@ class SnakeLoopControl:
     def _initialize_inproc_snakes(self):
         """ Initialize in-process snakes """
         snake_factory = SnakeFactory()
-        auto_snakes = snake_factory.create_snakes({'auto': self._config.snake_count})
-        for id, snake in auto_snakes.items():
+        inproc_snakes = snake_factory.create_many_snakes(
+            self._config.snake_count - len(self._config.external_snake_targets),
+            config=self._config.snake_config
+        )
+        remote_snake_targets = self._config.external_snake_targets.copy()
+        for target in remote_snake_targets:
+            id, snake = snake_factory.create_snake(SnakeProcType.REMOTE, target=target)
             self._snake_handler.add_snake(id, snake)
+
+        for id, snake in inproc_snakes.items():
+            self._snake_handler.add_snake(id, snake, config=self._config.snake_config)
+            apply_strategies(snake, self._config.snake_config)
 
     @_loop_check
     def _initialize_remotes(self):
         """ Initialize remote snakes """
         snake_factory = SnakeFactory()
-        snake_processes = self.process_pool.get_running_processes()
-        remote_snakes = [(snake_factory.get_next_id(), t) for t in self._config.external_snake_targets]
-        remote_snakes.extend([(p.id, p.target) for p in snake_processes])
-        for id, target in remote_snakes:
-            id, snake = snake_factory.create_snake('remote', id=id, target=target)
-            self._snake_handler.add_snake(id, snake)
+        remote_snake_targets = self._config.external_snake_targets.copy()
+        remote_snake_configs = [self._config.snake_config] * (self._config.snake_count - len(remote_snake_targets))
 
-    @_loop_check
-    def _initialize_manual_snakes(self):
-        """ Initialize manual snakes """
-        snake_factory = SnakeFactory()
-        ctl_collection = ControllerCollection()
-        manual_snakes = snake_factory.create_snakes({'manual': self._config.player_count}, help=1)
-        for id, snake in manual_snakes.items():
-            self._snake_handler.add_snake(id, snake)
-            ctl_collection.bind_controller(snake)
-        ctl_collection.handle_controllers()
+        for config in remote_snake_configs:
+            id, snake = snake_factory.create_snake(SnakeProcType.REMOTE, snake_config=config)
+            self._snake_handler.add_snake(id, snake, config=config)
 
-    @_loop_check
-    def _spawn_snake_processes(self):
-        """ Spawn the snake processes created internally """
-        config = self._config
-        self.process_pool = ProcessPool()
-        snake_factory = SnakeFactory()
-        for _ in range(config.snake_count):
-            self.process_pool.start(snake_factory.get_next_id())
+        for target in remote_snake_targets:
+            id, snake = snake_factory.create_snake(SnakeProcType.REMOTE, target=target)
+            self._snake_handler.add_snake(id, snake)
 
     @_loop_check
     def add_observer(self, observer: ILoopObserver):
@@ -222,10 +219,7 @@ class SnakeLoopControl:
         if self._config.inproc_snakes:
             self._initialize_inproc_snakes()
         else:
-            self._spawn_snake_processes()
             self._initialize_remotes()
-        if isinstance(self._config, GameConfig):
-            self._initialize_manual_snakes()
         self._finalize_snakes()
         self._initialize_run_data_loop_observers() # This needs to be called after the snakes are added to the environment
         try:
@@ -260,7 +254,8 @@ def setup_loop(config) -> SnakeLoopControl:
         verbose=config.verbose,
         start_length=config.start_length,
         external_snake_targets=config.external_snake_targets,
-        inproc_snakes=config.inproc_snakes
+        inproc_snakes=config.inproc_snakes,
+        snake_config=config.snake_config,
     )
     if config.command == "game":
         sim_config = GameConfig(
