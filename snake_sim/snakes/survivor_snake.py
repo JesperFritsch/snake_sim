@@ -137,6 +137,7 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
 
     def _immediate_steps_checks(self, visitable_tiles: List[Coord]) -> Coord:
         area_checks = {coord: self._area_check_wrapper(self._map, self._body_coords, coord) for coord in visitable_tiles}
+        debug.debug_print(f"immediate area_checks: {area_checks}")
         best_tile = max(area_checks, key=lambda c: area_checks[c]['margin'], default=None)
         if best_tile is None:
             return None
