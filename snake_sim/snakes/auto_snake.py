@@ -9,7 +9,7 @@ from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles
 import snake_sim.debugging as debug
 from snake_sim.utils import distance, exec_time, get_locations, print_map
 from snake_sim.environment.types import Coord
-from snake_sim.snakes.snake import Snake
+from snake_sim.snakes.snake_base import SnakeBase
 
 from snake_sim.debugging import enable_debug_for, activate_debug
 
@@ -55,7 +55,7 @@ class BFSFrame:
         return None
 
 
-class AutoSnake(Snake):
+class AutoSnake(SnakeBase):
     TIME_LIMIT = True
     SAFE_MARGIN_FACTOR = 0.035
 

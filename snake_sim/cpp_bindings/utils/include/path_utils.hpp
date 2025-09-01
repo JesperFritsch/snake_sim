@@ -21,7 +21,8 @@ Coord get_dir_to_tile(
     int height, 
     Coord from_coord, 
     int tile_value,
-    std::vector<int> visitable_values
+    std::vector<int> visitable_values,
+    bool clockwise = true
 );
 
 inline py::tuple py_get_dir_to_tile(
@@ -30,12 +31,13 @@ inline py::tuple py_get_dir_to_tile(
     int height, 
     py::tuple from_coord, 
     int tile_value,
-    std::vector<int> visitable_values
+    std::vector<int> visitable_values,
+    bool clockwise = true
 ){
     auto buf = s_map.request();
     uint8_t *ptr = static_cast<uint8_t *>(buf.ptr);
     Coord head(from_coord[0].cast<int>(), from_coord[1].cast<int>());
-    Coord result = get_dir_to_tile(ptr, width, height, head, tile_value, visitable_values);
+    Coord result = get_dir_to_tile(ptr, width, height, head, tile_value, visitable_values, clockwise);
     return py::make_tuple(result.x, result.y);
 }
 

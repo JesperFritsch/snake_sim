@@ -4,7 +4,7 @@ from enum import Enum
 
 from importlib import resources
 from snake_sim.utils import SingletonMeta
-from snake_sim.snakes.snake import ISnake
+from snake_sim.snakes.snake_base import ISnake
 from snake_sim.snakes.auto_snake import AutoSnake
 from snake_sim.snakes.remote_snake import RemoteSnake
 from snake_sim.snakes.survivor_snake import SurvivorSnake
