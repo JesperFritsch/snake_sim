@@ -31,16 +31,16 @@ class FoodSeeker(ISnakeStrategy):
         
     def _get_food_dir_tile(self) -> Coord:
         env_init_data = self._snake.get_env_init_data()
-        map = self._snake.get_map()
+        s_map = self._snake.get_map()
         coord = self._snake.get_head_coord()
         dir_tuple = get_dir_to_tile(
-            map,
+            s_map,
             env_init_data.width,
             env_init_data.height,
             coord,
             env_init_data.food_value,
             [env_init_data.free_value, env_init_data.food_value],
-            clockwise=get_coord_parity(coord)
+            clockwise=get_coord_parity(coord) or True
         )
         if dir_tuple == (0,0):
             return None
@@ -58,12 +58,12 @@ class FoodSeeker(ISnakeStrategy):
             head_coord,
             [env_init_data.free_value, env_init_data.food_value]
         )
+        debug.debug_print(f"visitable_tiles: {visitable_tiles}")
         food_map = {
-            Coord(*coord): a["food_count"] for coord, a in
-            [
-                (coord, self._area_check_wrapper(coord)) 
-                for coord in visitable_tiles
-            ] if a["margin"] >= a["food_count"]
+            Coord(*coord): a["food_count"] 
+            if a["margin"] >= a["food_count"] else 0
+            for coord, a in
+            [(coord, self._area_check_wrapper(coord)) for coord in visitable_tiles]
         }
 
         # combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks]) or self.length < 15
@@ -85,10 +85,9 @@ class FoodSeeker(ISnakeStrategy):
     def _area_check_wrapper(self, start_coord: Coord=None):
         s_map = self._snake.get_map().copy()
         body_coords = self._snake.get_body_coords()
-        start_coord = self._snake.get_head_coord()
         # block the head coords so that area check does not count it as free space
-        s_map[start_coord.y, start_coord.x] = self._snake.get_env_init_data().blocked_value
-        return self._area_checker.area_check(
+        # s_map[start_coord.y, start_coord.x] = self._snake.get_env_init_data().blocked_value
+        result = self._area_checker.area_check(
             s_map,
             list(body_coords),
             start_coord,
@@ -97,6 +96,8 @@ class FoodSeeker(ISnakeStrategy):
             food_check=False,
             exhaustive=False
         )
+        debug.debug_print(f"Area check for {start_coord}: {result}")
+        return result
 
     def _init_area_checker(self):
         env_init_data = self._snake.get_env_init_data()

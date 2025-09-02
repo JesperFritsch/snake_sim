@@ -11,7 +11,7 @@ PYBIND11_MODULE(area_check, m)
 {
     py::class_<AreaChecker>(m, "AreaChecker")
         .def(py::init<int, int, int, int, int, int>())
-        .def("is_single_entrance", &AreaChecker::py_is_single_entrance)
+        .def("is_gate_way", &AreaChecker::py_is_gate_way)
         .def("area_check", &AreaChecker::py_area_check,
             py::arg("s_map"),
             py::arg("body_coords_py"),
