@@ -60,7 +60,7 @@ AreaCheckResult AreaGraph::search_best2(
         int total_steps;
         int calc_tiles;
         int calc_food;
-        if (step_data->node->has_tail && !food_check && step_data->node->tile_count > 1)
+        if (step_data->node->has_tail && !food_check && !(step_data->node->tile_count == 1 && step_data-> node->id == 0))
         {
             best_result.has_tail = true;
             best_result.margin = INT_MAX;
@@ -102,6 +102,7 @@ AreaCheckResult AreaGraph::search_best2(
         current_result.tile_count = calc_tiles;
         current_result.food_count = calc_food;
         current_result.needed_steps = needed_steps;
+        current_result.has_tail = step_data->node->has_tail;
         if (current_result.margin >= 0)
         {
             current_result.is_clear = true;
