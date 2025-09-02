@@ -205,6 +205,7 @@ AreaCheckResult AreaGraph::search_best2(
             // also if we have used the connection coord already in the path we can not enter the node on that coord again
             if (!step_data->can_enter_next_node(next_node) || !next_step_data->can_enter_from_node(current_node))
             {
+                DEBUG_PRINT(std::cout << "Cannot enter node: " << next_node->id << std::endl;);
                 step_data->add_searched_edge(node_edge_pair.second);
                 skipped_one = true;
                 continue;
@@ -246,6 +247,11 @@ void AreaGraph::print_nodes_debug() const {
             << "Has Tail: " << node->has_tail  << std::endl
             << "Is One Dim: " << node->is_one_dim  << std::endl
             << "Start Coord: (" << node->start_coord.x << ", " << node->start_coord.y << ")" << std::endl
+            << "Body Tiles: ";
+        for (const auto& body_tile : node->body_tiles) {
+            std::cout << "(" << body_tile.first << ", (" << body_tile.second.x << ", " << body_tile.second.y << ")), ";
+        }
+        std::cout << std::endl
             << "Connections: " << std::endl;
         for (const auto& conn_pair : node->neighbour_connections) {
             int connected_area_id = conn_pair.first;
@@ -492,13 +498,13 @@ TileCounts SearchNode::tile_count_on_exit(AreaNode *next_node, uint8_t *s_map, i
     {
         // if we are exiting through the start coord of node 0 we can ever only count one tile.
         tile_counts.total_tiles = 1;
-        tile_counts.total_food = food_until_here + tile_has_food(s_map, width, node->start_coord, food_value) ? 1 : 0;
+        tile_counts.total_food = food_until_here + (tile_has_food(s_map, width, node->start_coord, food_value) ? 1 : 0);
     }
     else if (is_conn_coord_used(next_node))
     {
         Coord tile_coord = get_entry_coord();
         tile_counts.total_tiles = tiles_until_here + 1;
-        tile_counts.total_food = food_until_here + tile_has_food(s_map, width, tile_coord, food_value) ? 1 : 0;
+        tile_counts.total_food = food_until_here + (tile_has_food(s_map, width, tile_coord, food_value) ? 1 : 0);
     }
     else {
         tile_counts.total_tiles += path_tile_adjustment(next_node);
@@ -578,6 +584,7 @@ void SearchNode::enter_unwind(int tiles, int food)
 
 void SearchNode::exit_to(AreaNode *next_node){
     auto connection_info = node->get_connection_info(next_node->id);
+    DEBUG_PRINT(std::cout << "Going to node: " << next_node->id << " through coord: (" << connection_info.self_coord.x << ", " << connection_info.self_coord.y << ")" << std::endl;);
     used_coords.push_back(connection_info.self_coord);
 }
 

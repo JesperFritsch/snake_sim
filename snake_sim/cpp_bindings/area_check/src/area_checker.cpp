@@ -73,7 +73,7 @@ X . 1 . X
     return false;
 }
 
-int AreaChecker::is_single_entrance(uint8_t *s_map, Coord coord, Coord check_coord)
+int AreaChecker::is_gate_way(uint8_t *s_map, Coord coord, Coord check_coord)
 {
     // return code 2 is for a passage like:
     // x . .
@@ -284,7 +284,7 @@ ExploreResults AreaChecker::explore_area(
     int target_margin,
     int total_food_count)
 {
-    int tile_count = 1;
+    int tile_count = 0;
     int food_count = 0;
     int max_index = area_id == 0 ? 0 : -1;
     Coord max_index_coord = Coord();
@@ -296,7 +296,7 @@ ExploreResults AreaChecker::explore_area(
     std::vector<ConnectedAreaInfo> connected_areas;
     std::deque<Coord> current_coords;
     body_tiles.reserve(body_coords.size());
-    coord_parity_diff += get_coord_mod_parity(start_coord) ? 1 : -1;
+    // coord_parity_diff += get_coord_mod_parity(start_coord) ? 1 : -1;
     current_coords.push_back(start_coord);
     checked[start_coord.y * width + start_coord.x] = area_id;
     while (!current_coords.empty())
@@ -311,6 +311,8 @@ ExploreResults AreaChecker::explore_area(
             // food_coords.insert(curr_coord);
             food_count += 1;
         }
+        tile_count += 1;
+        coord_parity_diff += get_coord_mod_parity(curr_coord) ? 1 : -1;
 
         std::array<Coord, 4> neighbours = {
             Coord(c_x, c_y - 1),
@@ -345,7 +347,7 @@ ExploreResults AreaChecker::explore_area(
                         // check if the gateway is diagonal
                         const Coord delta = n_coord - curr_coord;
                         const Coord check_coord = n_coord + delta;
-                        const int check_result = is_single_entrance(s_map, n_coord, check_coord);
+                        const int check_result = is_gate_way(s_map, n_coord, check_coord);
                         const bool is_diag_gateway = (check_result == 2);
                         connected_areas.push_back(
                             ConnectedAreaInfo(
@@ -364,13 +366,12 @@ ExploreResults AreaChecker::explore_area(
             int n_coord_val = s_map[n_y * width + n_x];
             if (n_coord_val == free_value || n_coord_val == food_value)
             {
-                int entrance_code = is_single_entrance(s_map, curr_coord, n_coord);
-                // int entrance_code = 0;
+                int entrance_code = is_gate_way(s_map, curr_coord, n_coord);
                 if (entrance_code == 0)
                 {
                     checked[n_y * width + n_x] = area_id; // this used to be above this if statement, dont know if this will cause a bug, but i think it should be fine.
-                    tile_count += 1;
-                    coord_parity_diff += get_coord_mod_parity(n_coord) ? 1 : -1;
+                    // tile_count += 1;
+                    // coord_parity_diff += get_coord_mod_parity(n_coord) ? 1 : -1;
                     current_coords.push_back(n_coord);
                 }
                 else
@@ -484,7 +485,10 @@ AreaCheckResult AreaChecker::area_check(
             prev_node->is_one_dim && 
             result.tile_count == 1 && 
             result.body_tiles.size() == 0 &&
-            (result.connected_areas.size() + result.to_explore.size() == 2)
+            (prev_node->id != 0 ? 
+                result.connected_areas.size() + result.to_explore.size() == 2
+                : result.connected_areas.size() + result.to_explore.size() == 1
+            )
         )
         {
             current_node = prev_node;

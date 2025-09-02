@@ -53,11 +53,11 @@ def test_make_choice(snake: AutoSnake, s_map, food_locations: List[Coord] = None
 
 
 def test_explore(snake: AutoSnake, s_map):
-    for tile in snake._valid_tiles(s_map, snake.body_coords[0]):
+    for tile in snake._valid_tiles(s_map, snake._body_coords[0]):
         time_start = time.time()
         result = snake._best_first_search(
                 snake.map.copy(),
-                snake.body_coords.copy(),
+                snake._body_coords.copy(),
                 tile,
                 rundata=RUN_STEPS,
                 exhaustive=True
@@ -69,7 +69,7 @@ def test_explore(snake: AutoSnake, s_map):
 def test_area_check_direction(snake: AutoSnake, s_map, direction):
     tile = Coord(*snake.get_head_coord()) + direction
     start_time = time.time()
-    area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile)
+    area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile)
     print(f"Time area check direction {direction}: {(time.time() - start_time) * 1000}")
     print(f"Direction: {direction}, Area check: {area_check}")
 
@@ -80,9 +80,9 @@ def render_steps(runsteps):
 
 
 def test_area_check(snake: AutoSnake, s_map):
-    for tile in snake._valid_tiles(s_map, snake.body_coords[0]):
+    for tile in snake._visitable_tiles(s_map, snake._body_coords[0]):
         time_start = time.time()
-        area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile)
+        area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile)
         print(f"Time area check: {(time.time() - time_start) * 1000}")
         print(f"Tile: {tile}, Area check: {area_check}")
 
@@ -92,7 +92,7 @@ def test_area_check_performace(snake: AutoSnake, s_map, iterations=1000):
     direction = Coord(0, -1)
     for _ in range(iterations):
         tile = Coord(*snake.get_head_coord()) + direction
-        area_check = snake._area_check_wrapper(s_map, snake.body_coords, tile)
+        area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile)
     print(f"Time: {(time.time() - stime) * 1000}")
     print(f"Tile: {tile}, Area check: {area_check}")
 
@@ -130,10 +130,10 @@ def run_tests(snake: AutoSnake, s_map):
     print("current tile: ", snake.get_head_coord())
     print("snake length: ", snake._length)
     test_make_choice(snake, s_map, state_dict['food'])
-    # test_area_check(snake, s_map)
+    test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000)
-    # test_area_check_direction(snake, s_map, Coord(-1, 0))
-    # test_area_check_direction(snake, s_map, Coord(-1, 0))
+    # test_area_check_direction(snake, s_map, Coord(1, 0))
+    # test_area_check_direction(snake, s_map, Coord(0, 1))
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_data.food_value, Coord(58, 61))
     # test_get_visitable_tiles(snake, s_map, snake.get_head_coord())
@@ -142,8 +142,8 @@ def run_tests(snake: AutoSnake, s_map):
     s = StringIO()
     sortby = 'time'
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print(s.getvalue())
+    # ps.print_stats()
+    # print(s.getvalue())
     if RUN_STEPS:
         render_steps(RUN_STEPS)
 

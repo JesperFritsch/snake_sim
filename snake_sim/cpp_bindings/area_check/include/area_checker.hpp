@@ -47,13 +47,13 @@ public:
 
     bool _is_bad_gateway(uint8_t *s_map, Coord coord1, Coord coord2);
     
-    int is_single_entrance(uint8_t *s_map, Coord coord, Coord check_coord);
+    int is_gate_way(uint8_t *s_map, Coord coord, Coord check_coord);
     
-    bool py_is_single_entrance(py::array_t<uint8_t> s_map, py::tuple coord, py::tuple check_coord)
+    int py_is_gate_way(py::array_t<uint8_t> s_map, py::tuple coord, py::tuple check_coord)
     {
         auto buf = s_map.request();
         uint8_t *ptr = static_cast<uint8_t *>(buf.ptr);
-        return is_single_entrance(
+        return is_gate_way(
             ptr,
             Coord(coord[0].cast<int>(), coord[1].cast<int>()),
             Coord(check_coord[0].cast<int>(), check_coord[1].cast<int>()));
