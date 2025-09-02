@@ -77,6 +77,7 @@ public:
         int target_margin,
         int max_food,
         bool food_check,
+        bool complete_area,
         bool exhaustive);
         
     py::dict py_area_check(
@@ -86,6 +87,7 @@ public:
         int target_margin,
         int max_food,
         bool food_check,
+        bool complete_area,
         bool exhaustive);
 
 private:

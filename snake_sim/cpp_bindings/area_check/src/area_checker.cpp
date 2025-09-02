@@ -73,161 +73,148 @@ X . 1 . X
     return false;
 }
 
-int AreaChecker::is_gate_way(uint8_t *s_map, Coord coord, Coord check_coord)
+
+int AreaChecker::is_gate_way(uint8_t __restrict *s_map, Coord coord, Coord check_coord)
 {
     // return code 2 is for a passage like:
     // x . .
     // . . .
     // . . x
     // or flipped
-    const int cols = this->width;
-    static constexpr int offmap_value = -1;
+    const unsigned int cols = static_cast<unsigned int>(this->width);
+    const unsigned int rows = static_cast<unsigned int>(this->height);
+    const uint8_t free_value = static_cast<uint8_t>(this->free_value);
+    const uint8_t offmap_value = free_value + 1; // offmap is considered blocked
+    const unsigned int ch_x = check_coord.x, ch_y = check_coord.y;
+    const unsigned int c_x = coord.x, c_y = coord.y;
     const Coord delta = check_coord - coord;
-    int value;
+    const int delta_x = delta.x;
+    const int delta_y = delta.y;
+    const bool ch_interior = (1 <= ch_x && ch_x < cols-1 && 1 <= ch_y && ch_y < rows-1);
+    const bool c_interior  = (1 <= c_x  && c_x  < cols-1 && 1 <= c_y  && c_y  < rows-1);
 
-    const std::array<Coord, 8> ch_neighbours = {
-        Coord(check_coord.x - 1, check_coord.y - 1),
-        Coord(check_coord.x, check_coord.y - 1),
-        Coord(check_coord.x + 1, check_coord.y - 1),
-        Coord(check_coord.x + 1, check_coord.y),
-        Coord(check_coord.x + 1, check_coord.y + 1),
-        Coord(check_coord.x, check_coord.y + 1),
-        Coord(check_coord.x - 1, check_coord.y + 1),
-        Coord(check_coord.x - 1, check_coord.y)};
+    if (
+        ch_interior && c_interior
+    )
     {
-        bool all_free = true;
-        for (const auto &c : ch_neighbours)
-        {
-            if (!this->is_inside(c.x, c.y) ||
-                s_map[c.y * cols + c.x] > this->free_value)
-            {
-                all_free = false;
-                break;
-            }
-        }
-        if (all_free)
+        // 1) If all 8 neighbors around check_coord are free, return 0 quickly
+
+        const uint8_t* rN = s_map + (ch_y - 1) * cols + (ch_x - 1);
+        const uint8_t* rC = rN + cols;
+        const uint8_t* rS = rC + cols;
+
+        const uint8_t ch_NW = rN[0], ch_N = rN[1], ch_NE = rN[2];
+        const uint8_t ch_W  = rC[0],               ch_E = rC[2];
+        const uint8_t ch_SW = rS[0], ch_S = rS[1], ch_SE = rS[2];
+
+        if ((ch_NW <= free_value) && (ch_N <= free_value) &&
+            (ch_NE <= free_value) && (ch_E <= free_value) &&
+            (ch_SE <= free_value) && (ch_S <= free_value) &&
+            (ch_SW <= free_value) && (ch_W <= free_value))
         {
             return 0;
         }
-    }
 
-    // 2) Prepare neighbours
-    const std::array<Coord, 8> neighbours = {
-        Coord(coord.x - 1, coord.y - 1),
-        Coord(coord.x, coord.y - 1),
-        Coord(coord.x + 1, coord.y - 1),
-        Coord(coord.x + 1, coord.y),
-        Coord(coord.x + 1, coord.y + 1),
-        Coord(coord.x, coord.y + 1),
-        Coord(coord.x - 1, coord.y + 1),
-        Coord(coord.x - 1, coord.y)};
+        rN = s_map + (c_y - 1) * cols + (c_x - 1);
+        rC = rN + cols;
+        rS = rC + cols;
 
-    // 3) Fill corner_values & neighbour_values in fewer branches
-    std::array<int, 4> corner_values{};
-    std::array<int, 4> neighbour_values{};
+        const uint8_t c_NW = rN[0], c_N = rN[1], c_NE = rN[2];
+        const uint8_t c_W  = rC[0],               c_E = rC[2];
+        const uint8_t c_SW = rS[0], c_S = rS[1], c_SE = rS[2];
 
-    for (unsigned int i = 0; i < 8; i++)
-    {
-        const Coord &nc = neighbours[i];
-        const bool inside = this->is_inside(nc.x, nc.y);
-        if (i % 2 == 0)
-        {
-            corner_values[i / 2] =
-                inside ? s_map[nc.y * cols + nc.x] : offmap_value;
-        }
-        else
-        {
-            neighbour_values[i / 2] =
-                inside ? s_map[nc.y * cols + nc.x] : offmap_value;
-        }
-    }
-
-    if (corner_values[0] > this->free_value && corner_values[0] != offmap_value &&
-        corner_values[2] > this->free_value && corner_values[2] != offmap_value)
-    {
-        bool is_diagonal = true;
-        for (unsigned int i = 0; i < neighbour_values.size(); i++)
-        {
-            if (neighbour_values[i] > this->free_value)
-            {
-                is_diagonal = false;
-                break;
-            }
-            if (i != 0 && i != 2 && corner_values[i] > this->free_value)
-            {
-                is_diagonal = false;
-                break;
-            }
-        }
-        if (is_diagonal)
+        if ((!(c_NW <= free_value) && !(c_SE <= free_value) &&
+            (c_N <= free_value) && (c_E <= free_value) &&
+            (c_S <= free_value) && (c_W <= free_value) &&
+            (c_NE <= free_value) && (c_SW <= free_value)) || 
+            (!(c_NE <= free_value) && !(c_SW <= free_value) &&
+            (c_N <= free_value) && (c_E <= free_value) &&
+            (c_S <= free_value) && (c_W <= free_value) &&
+            (c_NW <= free_value) && (c_SE <= free_value)))
         {
             return 2;
         }
-    }
-    if (corner_values[1] > this->free_value && corner_values[1] != offmap_value &&
-        corner_values[3] > this->free_value && corner_values[3] != offmap_value)
-    {
-        bool is_diagonal = true;
-        for (unsigned int i = 0; i < neighbour_values.size(); i++)
+
+        const uint8_t dir_c_NW = s_map[(ch_y - delta_x) * cols + (ch_x + delta_y)];
+        const uint8_t dir_c_NE = s_map[(ch_y + delta_x) * cols + (ch_x - delta_y)];
+        const uint8_t dir_c_W = s_map[(c_y - delta_x) * cols + (c_x + delta_y)];
+        const uint8_t dir_c_E = s_map[(c_y + delta_x) * cols + (c_x - delta_y)];
+
+        if ((!(dir_c_NW <= free_value) || !(dir_c_W <= free_value)) &&
+            (!(dir_c_E <= free_value) || !(dir_c_NE <= free_value)))
         {
-            if (neighbour_values[i] > this->free_value)
-            {
-                is_diagonal = false;
-                break;
-            }
-            if (i != 1 && i != 3 && corner_values[i] > this->free_value)
-            {
-                is_diagonal = false;
-                break;
-            }
+            return 1;
         }
-        if (is_diagonal)
+
+    }
+    else {
+        // 1) If all 8 neighbors around check_coord are free, return 0 quickly
+
+        auto on_map = [&](unsigned int x, unsigned int y) -> bool {
+            return (0 <= x && x < cols && 0 <= y && y < rows);
+        };
+
+        auto safe_get = [&](unsigned int x, unsigned int y) -> uint8_t {
+            if (!on_map(x,y)) return offmap_value;
+            size_t idx = static_cast<size_t>(y) * cols + static_cast<size_t>(x);
+            return s_map[idx];
+        };
+
+        const uint8_t ch_NW = safe_get(ch_x - 1, ch_y - 1);
+        const uint8_t ch_N = safe_get(ch_x, ch_y - 1);
+        const uint8_t ch_NE = safe_get(ch_x + 1, ch_y - 1);
+        const uint8_t ch_E = safe_get(ch_x + 1, ch_y);
+        const uint8_t ch_SE = safe_get(ch_x + 1, ch_y + 1);
+        const uint8_t ch_S = safe_get(ch_x, ch_y + 1);
+        const uint8_t ch_SW = safe_get(ch_x - 1, ch_y + 1);
+        const uint8_t ch_W = safe_get(ch_x - 1, ch_y);
+
+        if ((ch_NW <= free_value) && (ch_N <= free_value) &&
+            (ch_NE <= free_value) && (ch_E <= free_value) &&
+            (ch_SE <= free_value) && (ch_S <= free_value) &&
+            (ch_SW <= free_value) && (ch_W <= free_value))
+        {
+            return 0;
+        }
+
+        const uint8_t c_NW = safe_get(c_x - 1, c_y - 1);
+        const uint8_t c_N = safe_get(c_x, c_y - 1);
+        const uint8_t c_NE = safe_get(c_x + 1, c_y - 1);
+        const uint8_t c_E = safe_get(c_x + 1, c_y);
+        const uint8_t c_SE = safe_get(c_x + 1, c_y + 1);
+        const uint8_t c_S = safe_get(c_x, c_y + 1);
+        const uint8_t c_SW = safe_get(c_x - 1, c_y + 1);
+        const uint8_t c_W = safe_get(c_x - 1, c_y);
+
+        if ((!(c_NW <= free_value) && !(c_SE <= free_value) &&
+            (c_N <= free_value) && (c_E <= free_value) &&
+            (c_S <= free_value) && (c_W <= free_value) &&
+            (c_NE <= free_value) && (c_SW <= free_value)) || 
+            (!(c_NE <= free_value) && !(c_SW <= free_value) &&
+            (c_N <= free_value) && (c_E <= free_value) &&
+            (c_S <= free_value) && (c_W <= free_value) &&
+            (c_NW <= free_value) && (c_SE <= free_value)))
         {
             return 2;
         }
+
+        const uint8_t dir_c_NW = safe_get(ch_x + delta_y, ch_y - delta_x);
+        const uint8_t dir_c_NE = safe_get(ch_x - delta_y, ch_y + delta_x);
+        const uint8_t dir_c_W = safe_get(c_x + delta_y, c_y - delta_x);
+        const uint8_t dir_c_E = safe_get(c_x - delta_y, c_y + delta_x);
+
+        if ((!(dir_c_NW <= free_value) || !(dir_c_W <= free_value)) &&
+            (!(dir_c_E <= free_value) || !(dir_c_NE <= free_value)))
+        {
+            return 1;
+        }
+
     }
 
-    int x = check_coord.x + delta.y;
-    int y = check_coord.y + delta.x;
-    if (this->is_inside(x, y))
-    {
-        value = s_map[y * cols + x];
-        if (value <= this->free_value)
-        {
-            x = coord.x + delta.y;
-            y = coord.y + delta.x;
-            if (this->is_inside(x, y))
-            {
-                value = s_map[y * cols + x];
-                if (value <= this->free_value)
-                {
-                    return 0;
-                }
-            }
-        }
-    }
-
-    x = check_coord.x - delta.y;
-    y = check_coord.y - delta.x;
-    if (this->is_inside(x, y))
-    {
-        value = s_map[y * cols + x];
-        if (value <= this->free_value)
-        {
-            x = coord.x - delta.y;
-            y = coord.y - delta.x;
-            if (this->is_inside(x, y))
-            {
-                value = s_map[y * cols + x];
-                if (value <= this->free_value)
-                {
-                    return 0;
-                }
-            }
-        }
-    }
-    return 1;
+    return 0;
 }
+
+
 
 py::dict AreaChecker::py_area_check(
     py::array_t<uint8_t> s_map,
@@ -236,6 +223,7 @@ py::dict AreaChecker::py_area_check(
     int target_margin,
     int max_food,
     bool food_check,
+    bool complete_area,
     bool exhaustive)
 {
     try {
@@ -256,6 +244,7 @@ py::dict AreaChecker::py_area_check(
             target_margin,
             max_food,
             food_check,
+            complete_area,
             exhaustive);
         return py::dict(
             py::arg("is_clear") = result.is_clear,
@@ -440,6 +429,7 @@ AreaCheckResult AreaChecker::area_check(
     int target_margin,
     int max_food,
     bool food_check,
+    bool complete_area,
     bool exhaustive)
 {
     std::vector<int> checked;
@@ -472,7 +462,7 @@ AreaCheckResult AreaChecker::area_check(
             current_coord,
             current_id,
             checked,
-            !(food_check || exhaustive),
+            !(food_check || exhaustive || complete_area),
             body_coords.size(),
             target_margin,
             total_food_count
@@ -544,6 +534,8 @@ AreaCheckResult AreaChecker::area_check(
     }
     
     DEBUG_PRINT(graph.print_nodes_debug());
+
+    // return AreaCheckResult();
 
     return graph.search_best2(body_coords.size(), s_map, food_value, width, target_margin, max_food, food_check, exhaustive);
 }

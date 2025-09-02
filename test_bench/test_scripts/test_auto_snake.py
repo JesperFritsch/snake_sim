@@ -82,17 +82,16 @@ def render_steps(runsteps):
 def test_area_check(snake: AutoSnake, s_map):
     for tile in snake._visitable_tiles(s_map, snake._body_coords[0]):
         time_start = time.time()
-        area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile)
+        area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile, exhaustive=True)
         print(f"Time area check: {(time.time() - time_start) * 1000}")
         print(f"Tile: {tile}, Area check: {area_check}")
 
 
-def test_area_check_performace(snake: AutoSnake, s_map, iterations=1000):
+def test_area_check_performace(snake: AutoSnake, s_map, iterations=1000, direction=Coord(1,0)):
     stime = time.time()
-    direction = Coord(0, -1)
+    tile = Coord(*snake.get_head_coord()) + direction
     for _ in range(iterations):
-        tile = Coord(*snake.get_head_coord()) + direction
-        area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile)
+        area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile, complete_area=True)
     print(f"Time: {(time.time() - stime) * 1000}")
     print(f"Tile: {tile}, Area check: {area_check}")
 
@@ -129,9 +128,11 @@ def run_tests(snake: AutoSnake, s_map):
     pr.enable()
     print("current tile: ", snake.get_head_coord())
     print("snake length: ", snake._length)
-    test_make_choice(snake, s_map, state_dict['food'])
-    test_area_check(snake, s_map)
-    # test_area_check_performace(snake, s_map, 1000)
+    # test_make_choice(snake, s_map, state_dict['food'])
+    # test_area_check(snake, s_map)
+    test_area_check_performace(snake, s_map, 1000, Coord(-1,0))
+    result = snake._area_checker.is_gate_way(s_map, (38, 13), (38, 12))
+    print("GATEWAY: ", result)
     # test_area_check_direction(snake, s_map, Coord(1, 0))
     # test_area_check_direction(snake, s_map, Coord(0, 1))
     # test_explore(snake, s_map)
@@ -238,15 +239,16 @@ if __name__ == "__main__":
     enable_debug_for('_best_first_search')
 
     snake_id = 1
+    # snake_id = None
     frame_builder = core.FrameBuilder(state_dict, 2, (1, 1))
     put_food_in_frame(frame_builder.last_frame, state_dict['food'], (0, 255, 0), frame_builder.expand_factor, frame_builder.offset)
+    s_map = create_map(state_dict, snake_reps)
 
     if snake_id is None:
         for s_rep in snake_reps.values():
             print(f"ID: {s_rep.id: <4} HEAD: {Coord(*s_rep.get_head()): <20} body len: {s_rep._length: <4}, body_color: {rgb_color_text('  ', *state_dict['color_mapping'][str(s_rep.body_value)])}")
+        print_colored_map(s_map, state_dict, show_snake_id=snake_id)
     else:
-        s_map = create_map(state_dict, snake_reps)
-        # print_colored_map(s_map, state_dict, snake_id)
         test_snake = create_test_snake(snake_id, snake_reps, s_map, state_dict)
         print_map(
             s_map, 
