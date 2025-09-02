@@ -67,6 +67,7 @@ AreaCheckResult AreaGraph::search_best2(
             best_result.is_clear = true;
             best_result.tile_count = curr_tile_counts.total_tiles;
             best_result.food_count = curr_tile_counts.total_food;
+            best_result.total_steps = curr_tile_counts.total_tiles;
             break;
         }
         auto max_body_index_pair = step_data->get_max_body_index_pair();

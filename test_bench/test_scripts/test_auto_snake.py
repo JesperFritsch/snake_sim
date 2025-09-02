@@ -69,7 +69,7 @@ def test_explore(snake: AutoSnake, s_map):
 def test_area_check_direction(snake: AutoSnake, s_map, direction):
     tile = Coord(*snake.get_head_coord()) + direction
     start_time = time.time()
-    area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile)
+    area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile, complete_area=True)
     print(f"Time area check direction {direction}: {(time.time() - start_time) * 1000}")
     print(f"Direction: {direction}, Area check: {area_check}")
 
@@ -129,11 +129,9 @@ def run_tests(snake: AutoSnake, s_map):
     print("current tile: ", snake.get_head_coord())
     print("snake length: ", snake._length)
     # test_make_choice(snake, s_map, state_dict['food'])
-    # test_area_check(snake, s_map)
-    test_area_check_performace(snake, s_map, 1000, Coord(-1,0))
-    result = snake._area_checker.is_gate_way(s_map, (38, 13), (38, 12))
-    print("GATEWAY: ", result)
-    # test_area_check_direction(snake, s_map, Coord(1, 0))
+    test_area_check(snake, s_map)
+    # test_area_check_performace(snake, s_map, 1000, Coord(-1,0))
+    # test_area_check_direction(snake, s_map, Coord(-1, 0))
     # test_area_check_direction(snake, s_map, Coord(0, 1))
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_data.food_value, Coord(58, 61))
