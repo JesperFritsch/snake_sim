@@ -82,7 +82,7 @@ class FoodSeeker(ISnakeStrategy):
         return best_food_tile
 
 
-    def _area_check_wrapper(self, start_coord: Coord=None):
+    def _area_check_wrapper(self, start_coord: Coord=None, target_margin=0, max_food=0, food_check=False, complete_area=True, exhaustive=True):
         s_map = self._snake.get_map().copy()
         body_coords = self._snake.get_body_coords()
         # block the head coords so that area check does not count it as free space
@@ -93,8 +93,9 @@ class FoodSeeker(ISnakeStrategy):
             start_coord,
             target_margin=0,
             max_food=0,
-            food_check=False,
-            exhaustive=False
+            food_check=food_check,
+            complete_area=complete_area,
+            exhaustive=exhaustive
         )
         debug.debug_print(f"Area check for {start_coord}: {result}")
         return result

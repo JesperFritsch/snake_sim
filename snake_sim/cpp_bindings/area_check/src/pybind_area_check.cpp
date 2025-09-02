@@ -19,6 +19,7 @@ PYBIND11_MODULE(area_check, m)
             py::arg("target_margin"),
             py::arg("max_food"),
             py::arg("food_check"),
+            py::arg("complete_area"),
             py::arg("exhaustive")
         );
 }
