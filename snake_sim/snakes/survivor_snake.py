@@ -16,9 +16,9 @@ from snake_sim.cpp_bindings.utils import get_visitable_tiles
 
 
 # debug.activate_debug()
-debug.enable_debug_for("SurvivorSnake")
-debug.enable_debug_for("FoodSeeker")
-debug.enable_debug_for("_next_step")
+# debug.enable_debug_for("SurvivorSnake")
+# debug.enable_debug_for("FoodSeeker")
+# debug.enable_debug_for("_next_step")
 
 
 class SurvivorSnake(IStrategySnake, SnakeBase):

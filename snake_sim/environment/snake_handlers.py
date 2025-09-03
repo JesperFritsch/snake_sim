@@ -24,14 +24,13 @@ log = logging.getLogger(Path(__file__).stem)
 class SnakeHandler(ISnakeHandler):
     def __init__(self):
         self._snakes: Dict[int, ISnake] = {}
-        self._snake_configs: Dict[int, SnakeConfig] = {}
         self._dead_snakes = set()
         self._executor = None
 
     def _init_executor(self):
         nr_snakes = len(self._snakes)
         # max workers is the number of remote snakes, because a batch will never be bigger than the number of remote snakes
-        self._executor = ThreadPoolExecutor(max_workers=nr_snakes * 2)
+        self._executor = ThreadPoolExecutor(max_workers=nr_snakes)
 
     def get_snakes(self) -> Dict[int, ISnake]:
         return self._snakes.copy()
@@ -83,9 +82,8 @@ class SnakeHandler(ISnakeHandler):
             return
         return decision_coord
 
-    def add_snake(self, id, snake: ISnake, config: SnakeConfig=None):
+    def add_snake(self, id, snake: ISnake):
         self._snakes[id] = snake
-        self._snake_configs[id] = config
 
     def _create_in_range_map(self, position_data: Dict[int, Coord]) -> Dict[int, List[int]]: # Dict[id, List[id]]
         """ Creates a map of snakes that are in range of each other, meaning they can end up on the same tile in one move """

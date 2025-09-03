@@ -110,7 +110,7 @@ def create_color_map(snake_values: dict) -> Dict[int, Tuple[int, int, int]]:
     return color_map
 
 
-def profile(sort_by='time'):
+def profile(sort_by='cumtime'):
     def decorator(func):
         def wrapper(*args, **kwargs):
             pr = cProfile.Profile()

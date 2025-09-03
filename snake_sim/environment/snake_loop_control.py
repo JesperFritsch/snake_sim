@@ -135,8 +135,9 @@ class SnakeLoopControl:
         """ Initialize in-process snakes """
         snake_factory = SnakeFactory()
         inproc_snakes = snake_factory.create_many_snakes(
-            self._config.snake_count - len(self._config.external_snake_targets),
-            config=self._config.snake_config
+            proc_type=SnakeProcType.LOCAL,
+            snake_config=self._config.snake_config,
+            count=self._config.snake_count - len(self._config.external_snake_targets)
         )
         remote_snake_targets = self._config.external_snake_targets.copy()
         for target in remote_snake_targets:
@@ -144,7 +145,7 @@ class SnakeLoopControl:
             self._snake_handler.add_snake(id, snake)
 
         for id, snake in inproc_snakes.items():
-            self._snake_handler.add_snake(id, snake, config=self._config.snake_config)
+            self._snake_handler.add_snake(id, snake)
             apply_strategies(snake, self._config.snake_config)
 
     @_loop_check
@@ -156,7 +157,7 @@ class SnakeLoopControl:
 
         for config in remote_snake_configs:
             id, snake = snake_factory.create_snake(SnakeProcType.REMOTE, snake_config=config)
-            self._snake_handler.add_snake(id, snake, config=config)
+            self._snake_handler.add_snake(id, snake)
 
         for target in remote_snake_targets:
             id, snake = snake_factory.create_snake(SnakeProcType.REMOTE, target=target)
