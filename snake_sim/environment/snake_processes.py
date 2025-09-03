@@ -2,6 +2,7 @@ import os
 import platform
 import logging
 import socket
+import threading
 from pathlib import Path
 from typing import Dict, List
 from multiprocessing import Process, Manager
@@ -11,6 +12,7 @@ from snake_sim.server.remote_snake_server import serve
 from snake_sim.environment.types import SnakeConfig
 
 log = logging.getLogger(Path(__file__).stem)
+
 
 class SnakeProcess:
     def __init__(self, id: int, target: str, process: Process, stop_event=None):
@@ -24,20 +26,27 @@ class SnakeProcess:
 
     def kill(self):
         if self.process.is_alive():
-            log.info(f"Stopping process with id {self.id}")
-            if platform.system() == "Windows":
-                self.process.terminate()
-                self.process.join()
-            else:
-                if self.stop_event:
-                    try:
-                        self.stop_event.set()
-                    except Exception as e:
-                        log.error(f"Error setting stop event: {e}")
-                    self.process.join()
+            log.debug(f"Stopping process with id {self.id}")
+            stopped_with_event = False
+            if self.stop_event:
+                try:
+                    log.debug("Setting stop event for process")
+                    self.stop_event.set()
+                    stopped_with_event = True
+                except Exception as e:
+                    log.debug(f"Error setting stop event: {e}")
+            if not stopped_with_event:
+                log.debug("Could not stop with event, killing process")
+                if platform.system() == "Windows":
+                    log.debug("Terminating process (Windows)")
+                    self.process.terminate()
                 else:
-                    log.warning("No stop event found for process, killing process with SIGKILL")
+                    log.debug("Killing process (Unix)")
                     self.process.kill()
+            log.debug(f"Joining process - {self.process.pid}")
+            self.process.join()
+        else:
+            log.debug(f"Process with id {self.id} already stopped")
         if self.target.startswith("unix:"):
             try:
                 filename = self.target.split(':')[1]
@@ -51,6 +60,8 @@ class ProcessPool(metaclass=SingletonMeta):
     def __init__(self):
         self._processes: Dict[int, SnakeProcess] = {}
         self._manager = Manager()
+        self._shutdown_lock = threading.Lock()
+        self._shutdown = False
 
     def get_running_processes(self) -> List[SnakeProcess]:
         return self._processes.values()
@@ -92,7 +103,8 @@ class ProcessPool(metaclass=SingletonMeta):
             kwargs={
                 "snake_module_file": module_path,
                 "snake_config": snake_config,
-                "stop_event": stop_event
+                "stop_event": stop_event,
+                "log_level": log.level
             }
         )
         process.start()
@@ -104,13 +116,17 @@ class ProcessPool(metaclass=SingletonMeta):
         raise ValueError(f"No process with id {id} found")
 
     def shutdown(self):
-        log.debug("Shutting down processes")
-        processes = self._processes.copy()
-        for process in processes.keys():
-            self.kill_snake_process(process)
-        for process in processes.values():
-            process.process.join()
-        self._manager.shutdown()
+        with self._shutdown_lock:
+            if self._shutdown:
+                return
+            self._shutdown = True
+            processes = self._processes.copy()
+            if processes:
+                log.debug("Shutting down processes")
+                for process in list(processes.keys()):
+                    if process in self._processes:
+                        self.kill_snake_process(process)
+            self._manager.shutdown()
 
     def __del__(self):
         self.shutdown()

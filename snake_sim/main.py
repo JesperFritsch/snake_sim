@@ -1,6 +1,7 @@
 import sys
 import json
 import logging
+import platform
 import signal
 from multiprocessing import Pipe, Process, Manager
 from pathlib import Path
@@ -24,9 +25,16 @@ log = logging.getLogger(Path(__file__).stem)
 def start_snakes(loop_control, log_level, stop_event):
     # set up logging
     # define signal handlers if the process needs to be killed on a linux system
-    signal.signal(signal.SIGINT, lambda s, h: stop_event.set())
-    signal.signal(signal.SIGTERM, lambda s, h: stop_event.set())
-    setup_logging(log_level)
+    def handle_termination(s, h):
+        try:
+            stop_event.set()
+        except:
+            log.debug("could not set stop_event")
+
+    signal.signal(signal.SIGINT, handle_termination)
+    signal.signal(signal.SIGTERM, handle_termination)
+    if platform.system() == "Windows":
+        setup_logging(log_level)
     loop_control.run(stop_event)
 
 
@@ -67,6 +75,11 @@ def main():
     except Exception as e:
         log.error(e)
         log.debug("TRACE: ", exc_info=True)
+    finally:
+        try:
+            stop_event.set()
+        except:
+            pass
 
 if __name__ == '__main__':
     main()

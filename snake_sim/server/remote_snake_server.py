@@ -1,7 +1,11 @@
+import os
+
+os.environ["GRPC_VERBOSITY"] = "ERROR"
+
 import grpc
-import signal
 import argparse
 import sys
+import platform
 
 from pathlib import Path
 from concurrent import futures
@@ -11,6 +15,9 @@ from typing import Optional
 from snake_proto_template.python import remote_snake_pb2, remote_snake_pb2_grpc
 from snake_sim.snakes.snake_base import ISnake
 from snake_sim.environment.types import Coord, EnvInitData, EnvData, SnakeConfig
+from snake_sim.logging_setup import setup_logging
+
+import logging
 
 class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
     def __init__(self, snake_instance: ISnake):
@@ -79,13 +86,19 @@ def cli(argv):
     return args
 
 
-def serve(target, snake_module_file=None, snake_config: SnakeConfig=None, stop_event: Optional[Event] = None):
-    if not stop_event:
-        stop_event = Event()
-    def handle_termination(signum, frame):
-        stop_event.set()
-    signal.signal(signal.SIGTERM, handle_termination)
-    signal.signal(signal.SIGINT, handle_termination)
+def serve(
+        target, 
+        snake_module_file=None, 
+        snake_config: SnakeConfig=None, 
+        stop_event: Optional[Event] = None,
+        log_level=logging.INFO):
+    # set up logging if on Windows
+    if platform.system() == "Windows":
+        setup_logging(log_level)
+
+
+    log = logging.getLogger(f"{target}")
+
     try:
         if not bool(snake_module_file) ^ bool(snake_config):
             raise ValueError("Either snake_module_file or snake_config must be provided, but not both and not neither")
@@ -107,18 +120,24 @@ def serve(target, snake_module_file=None, snake_config: SnakeConfig=None, stop_e
 
         snake_servicer = RemoteSnakeServicer(snake_instance)
 
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=3))
         remote_snake_pb2_grpc.add_RemoteSnakeServicer_to_server(snake_servicer, server)
         server.add_insecure_port(target)
         server.start()
         if stop_event:
-            stop_event.wait()
+            try:
+                stop_event.wait()
+            except:
+                # Manager is already dead, just exit gracefully
+                pass
         else:
             server.wait_for_termination()
-    except KeyboardInterrupt:
-        pass
+
     except Exception as e:
-        print(f"Error in server: {e}")
+        log.error(e)
+        log.debug("TRACE: ", exc_info=True)
+    finally:
+        server.stop(0)
 
 
 if __name__ == '__main__':

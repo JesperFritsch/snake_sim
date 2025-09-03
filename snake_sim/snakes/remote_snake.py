@@ -4,6 +4,7 @@ from snake_proto_template.python import remote_snake_pb2, remote_snake_pb2_grpc
 from snake_sim.environment.interfaces.snake_interface import ISnake
 from snake_sim.environment.types import Coord, EnvInitData, EnvData
 
+import logging
 
 def handle_connection_loss(func):
     def wrapper(self, *args, **kwargs):
@@ -20,9 +21,11 @@ class RemoteSnake(ISnake):
         self.target = target
         self.channel = grpc.insecure_channel(target)
         self.stub = remote_snake_pb2_grpc.RemoteSnakeStub(self.channel)
+        self._log = logging.getLogger(f"RemoteSnake-{target}")
 
     @handle_connection_loss
     def kill(self):
+        self._log.debug(f"got killed")
         self.stub.Kill(remote_snake_pb2.Empty())
         self.channel.close()
 
@@ -70,3 +73,10 @@ class RemoteSnake(ISnake):
 
     def __reduce__(self):
         return (self.__class__, (self.target))
+    
+    def __del__(self):
+        self._log.debug(f"Deleting RemoteSnake connected to")
+        try:
+            self.kill()
+        except Exception:
+            pass

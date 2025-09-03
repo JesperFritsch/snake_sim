@@ -37,6 +37,7 @@ class SnakeHandler(ISnakeHandler):
         return self._snakes.copy()
 
     def kill_snake(self, id):
+        log.debug(f"Killing snake with id {id}")
         ProcessPool().kill_snake_process(id)
         return self._dead_snakes.add(id)
 
@@ -73,7 +74,6 @@ class SnakeHandler(ISnakeHandler):
     def get_decision(self, id, env_data: EnvData) -> Coord:
         snake = self._snakes[id]
         if isinstance(self._snakes[id], RemoteSnake) and not ProcessPool().is_running(id):
-            log.debug(f"Snake {id} process is not running, killing it")
             self.kill_snake(id)
             return
         decision = snake.update(env_data)
