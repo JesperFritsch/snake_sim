@@ -221,7 +221,6 @@ py::dict AreaChecker::py_area_check(
     py::list body_coords_py,
     py::tuple start_coord_py,
     int target_margin,
-    int max_food,
     bool food_check,
     bool complete_area,
     bool exhaustive)
@@ -242,7 +241,6 @@ py::dict AreaChecker::py_area_check(
             body_coords,
             start_coord,
             target_margin,
-            max_food,
             food_check,
             complete_area,
             exhaustive);
@@ -427,7 +425,6 @@ AreaCheckResult AreaChecker::area_check(
     std::vector<Coord> &body_coords,
     Coord &start_coord,
     int target_margin,
-    int max_food,
     bool food_check,
     bool complete_area,
     bool exhaustive)
@@ -537,5 +534,5 @@ AreaCheckResult AreaChecker::area_check(
 
     // return AreaCheckResult();
 
-    return graph.search_best2(body_coords.size(), s_map, food_value, width, target_margin, max_food, food_check, exhaustive);
+    return graph.search_best2(body_coords.size(), s_map, food_value, width, target_margin, food_check, exhaustive);
 }
