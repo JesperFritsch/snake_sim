@@ -212,7 +212,11 @@ class SnakeLoopControl:
         # If a stop event is provided, start a thread that waits for the event to be set
         if stop_event:
             def wait_stop_event(stop_event):
-                stop_event.wait()
+                try:
+                    stop_event.wait()
+                except (ConnectionResetError, BrokenPipeError):
+                    # Manager is already dead, just exit gracefully
+                    pass
                 self.shutdown()
             threading.Thread(target=wait_stop_event, args=(stop_event,), daemon=True).start()
 
@@ -238,8 +242,7 @@ class SnakeLoopControl:
         """Shuts down the loop"""
         self._is_shutdown = True
         self._loop.stop()
-        if self.process_pool:
-            self.process_pool.shutdown()
+        self.process_pool.shutdown()
 
 
 def setup_loop(config) -> SnakeLoopControl:

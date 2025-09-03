@@ -30,7 +30,7 @@ class SnakeFactory(metaclass=SingletonMeta):
         self._created_ids = set()
 
     def _get_next_id(self):
-        id = max(self._created_ids) + 1 if self._created_ids else 1
+        id = max(self._created_ids) + 1 if self._created_ids else 0
         self._created_ids.add(id)
         return id
 

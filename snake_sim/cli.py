@@ -25,7 +25,7 @@ def add_common_arguments(parser):
     parser.add_argument('--no-record', action='store_true', help='Do not record the run', default=False)
     parser.add_argument('--record-dir', type=Path, action=EnsureDirAction, help='where to put the recording file', default=Path(__file__).parent / 'runs')
     parser.add_argument('--record-file', type=str, help='Name of the recording file', default="")
-
+    parser.add_argument('--log-level', type=str, help='Logging level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO')
 
 def add_run_config_arguments(parser):
     parser.add_argument('--snake-count', type=int, help='Number of snakes to simulate')

@@ -20,6 +20,9 @@ class ISnake(ABC):
         self._env_init_data: EnvInitData = None
         self._env_data: EnvData = None
 
+    def kill(self):
+        self._alive = False
+
     def set_id(self, id: int):
         self._id = id
 
