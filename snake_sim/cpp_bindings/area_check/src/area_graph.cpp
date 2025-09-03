@@ -7,7 +7,6 @@ AreaCheckResult AreaGraph::search_best2(
     uint8_t food_value, 
     int width, 
     int target_margin, 
-    int max_food,
     bool food_check, 
     bool exhaustive
 )
@@ -116,10 +115,6 @@ AreaCheckResult AreaGraph::search_best2(
                 (current_result.food_count >= best_result.food_count))
             {
                 best_result = current_result;
-            }
-            if ((best_result.food_count >= max_food) && !exhaustive && max_food > 0)
-            {
-                break;
             }
         }
         else

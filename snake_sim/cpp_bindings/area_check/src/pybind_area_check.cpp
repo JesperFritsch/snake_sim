@@ -17,7 +17,6 @@ PYBIND11_MODULE(area_check, m)
             py::arg("body_coords_py"),
             py::arg("start_coord_py"),
             py::arg("target_margin"),
-            py::arg("max_food"),
             py::arg("food_check"),
             py::arg("complete_area"),
             py::arg("exhaustive")

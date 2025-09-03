@@ -8,7 +8,6 @@ from multiprocessing import Process, Manager
 
 from snake_sim.utils import SingletonMeta, rand_str
 from snake_sim.server.remote_snake_server import serve
-from snake_sim.snakes import auto_snake
 from snake_sim.environment.types import SnakeConfig
 
 log = logging.getLogger(Path(__file__).stem)

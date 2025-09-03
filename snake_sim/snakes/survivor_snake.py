@@ -108,8 +108,8 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
         self._revert_snake_step(map_copy, current_head, current_tail, next_head)
         return False
 
-    def _area_check_wrapper(self, s_map, body_coords, start_coord, target_margin=0, max_food=0, food_check=False, complete_area=False, exhaustive=False):
-        result = self._area_checker.area_check(s_map, list(body_coords), start_coord, target_margin, max_food, food_check, complete_area, exhaustive)
+    def _area_check_wrapper(self, s_map, body_coords, start_coord, target_margin=0, food_check=False, complete_area=False, exhaustive=False):
+        result = self._area_checker.area_check(s_map, list(body_coords), start_coord, target_margin, food_check, complete_area, exhaustive)
         return result
 
     def _get_best_opiton_from_cache(self) -> Union[Coord, None]:

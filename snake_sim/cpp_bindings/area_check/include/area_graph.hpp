@@ -167,7 +167,6 @@ public:
         uint8_t food_value, 
         int width, 
         int target_margin, 
-        int max_food,
         bool food_check, 
         bool exhaustive
     );

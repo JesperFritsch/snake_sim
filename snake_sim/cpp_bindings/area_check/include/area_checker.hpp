@@ -75,7 +75,6 @@ public:
         std::vector<Coord> &body_coords,
         Coord &start_coord,
         int target_margin,
-        int max_food,
         bool food_check,
         bool complete_area,
         bool exhaustive);
@@ -85,7 +84,6 @@ public:
         py::list body_coords_py,
         py::tuple start_coord_py,
         int target_margin,
-        int max_food,
         bool food_check,
         bool complete_area,
         bool exhaustive);
