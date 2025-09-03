@@ -120,7 +120,7 @@ def serve(
 
         snake_servicer = RemoteSnakeServicer(snake_instance)
 
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=3))
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         remote_snake_pb2_grpc.add_RemoteSnakeServicer_to_server(snake_servicer, server)
         server.add_insecure_port(target)
         server.start()

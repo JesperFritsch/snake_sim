@@ -88,9 +88,9 @@ class ProcessPool(metaclass=SingletonMeta):
         return id in self._processes and self._processes[id].is_running()
 
     def kill_snake_process(self, id: int):
-        if id in self._processes:
-            self._processes[id].kill()
-            del self._processes[id]
+        snake_process = self._processes.pop(id, None)
+        if snake_process:
+            snake_process.kill()
 
     def start(self, id, snake_config: SnakeConfig=None, module_path: str=None) -> None:
         if not bool(module_path) ^ bool(snake_config):

@@ -55,12 +55,12 @@ def test_explore(snake: SurvivorSnake, s_map):
     for tile in snake._valid_tiles(s_map, snake._body_coords[0]):
         time_start = time.time()
         result = snake._best_first_search(
-                snake.map.copy(),
-                snake._body_coords.copy(),
-                tile,
-                rundata=RUN_STEPS,
-                exhaustive=True
-            )
+            snake.map.copy(),
+            snake._body_coords.copy(),
+            tile,
+            rundata=RUN_STEPS,
+            exhaustive=True
+        )
         print(f"Time explore: {(time.time() - time_start) * 1000}")
         print(f"Tile: {tile}, Result: {result}")
 
@@ -90,7 +90,7 @@ def test_area_check_performace(snake: SurvivorSnake, s_map, iterations=1000, dir
     stime = time.time()
     tile = Coord(*snake.get_head_coord()) + direction
     for _ in range(iterations):
-        area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile, complete_area=True)
+        area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile, complete_area=False)
     print(f"Time: {(time.time() - stime) * 1000}")
     print(f"Tile: {tile}, Area check: {area_check}")
 
@@ -127,9 +127,9 @@ def run_tests(snake: SurvivorSnake, s_map):
     pr.enable()
     print("current tile: ", snake.get_head_coord())
     print("snake length: ", snake._length)
-    test_make_choice(snake, s_map, state_dict['food'])
-    test_area_check(snake, s_map)
-    # test_area_check_performace(snake, s_map, 1000, Coord(-1,0))
+    # test_make_choice(snake, s_map, state_dict['food'])
+    # test_area_check(snake, s_map)
+    test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
     # test_area_check_direction(snake, s_map, Coord(1, 0))
     # test_area_check_direction(snake, s_map, Coord(0, 1))
     # test_explore(snake, s_map)
@@ -140,8 +140,8 @@ def run_tests(snake: SurvivorSnake, s_map):
     s = StringIO()
     sortby = 'time'
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    # ps.print_stats()
-    # print(s.getvalue())
+    ps.print_stats()
+    print(s.getvalue())
     if RUN_STEPS:
         render_steps(RUN_STEPS)
 
@@ -231,11 +231,11 @@ if __name__ == "__main__":
     snake_reps = create_snake_reps(state_dict)
 
     activate_debug()
-    enable_debug_for('_next_step')
-    enable_debug_for('_get_food_dir')
-    enable_debug_for('_best_first_search')
+    # enable_debug_for('_next_step')
+    # enable_debug_for('_get_food_dir')
+    # enable_debug_for('_best_first_search')
 
-    snake_id = 16
+    snake_id = 0
     # snake_id = None
     frame_builder = core.FrameBuilder(state_dict, 2, (1, 1))
     put_food_in_frame(frame_builder.last_frame, state_dict['food'], (0, 255, 0), frame_builder.expand_factor, frame_builder.offset)
