@@ -2,6 +2,7 @@ import random
 import string
 import os
 import platform
+import sys
 import math
 import numpy as np
 import json
@@ -132,25 +133,31 @@ def print_map(s_map: np.ndarray, free_value: int, food_value: int, blocked_value
     max_nr_digits_height = len(str(height))
     w_nr_strings = [str(i).rjust(max_nr_digits_width) for i in range(height)]
     h_nr_strings = [str(i).rjust(max_nr_digits_height) for i in range(width)]
-    digit_rows = [(' ' * max_nr_digits_height) + ''.join([f" {nr_string[i]} " for nr_string in w_nr_strings]) for i in range(max_nr_digits_width)]
-    print('\n'.join(digit_rows))
+    digit_rows = [' '.join([f"{nr_string[i]}" for nr_string in w_nr_strings]) for i in range(max_nr_digits_width)]
+    map_rows = []
     for i, row in enumerate(s_map):
-        print_row = [h_nr_strings[i]]
+        map_row = [h_nr_strings[i]]
         for c in row:
             if c == free_value:
-                print_row.append(' . ')
+                map_row.append('.')
             elif c == food_value:
-                print_row.append(' F ')
+                map_row.append('F')
             elif c == blocked_value:
-                print_row.append(' # ')
+                map_row.append('#')
             elif c == head_value:
-                print_row.append(f' A ')
+                map_row.append(f'A')
             elif c == body_value:
-                print_row.append(' a ')
+                map_row.append('a')
             elif c % 2 == 0:
-                print_row.append(f' X ')
+                map_row.append(f'X')
             else:
-                print_row.append(f' x ')
-        print_row.append(h_nr_strings[i])
-        print(''.join(print_row))
-    print('\n'.join(digit_rows))
+                map_row.append(f'x')
+        map_row.append(h_nr_strings[i])
+        map_rows.append(' '.join(map_row))
+    for digit_row in digit_rows:
+        print(' ' * (max_nr_digits_height + 1) + digit_row)
+    for row in map_rows:
+        print(row)
+    for digit_row in digit_rows:
+        print(' ' * (max_nr_digits_height + 1) + digit_row)
+    sys.stdout.flush()

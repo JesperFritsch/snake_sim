@@ -18,7 +18,7 @@ from snake_sim.environment.types import Coord, EnvData, EnvInitData
 from snake_sim.render import core
 from snake_sim.render.pygame_render import play_frame_buffer
 from snake_sim.debugging import enable_debug_for, activate_debug
-from snake_sim.utils import print_map, get_locations
+from snake_sim.utils import print_map, get_locations, profile
 
 from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles
 
@@ -90,7 +90,7 @@ def test_area_check_performace(snake: SurvivorSnake, s_map, iterations=1000, dir
     stime = time.time()
     tile = Coord(*snake.get_head_coord()) + direction
     for _ in range(iterations):
-        area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile, complete_area=False)
+        area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile, complete_area=True)
     print(f"Time: {(time.time() - stime) * 1000}")
     print(f"Tile: {tile}, Area check: {area_check}")
 
@@ -122,26 +122,19 @@ def test_get_visitable_tiles(snake: SurvivorSnake, s_map, center_coord):
     print(f"Visitable tiles from {center_coord}: {visitable_tiles}")
 
 
+# @profile()
 def run_tests(snake: SurvivorSnake, s_map):
-    pr = cProfile.Profile()
-    pr.enable()
     print("current tile: ", snake.get_head_coord())
     print("snake length: ", snake._length)
-    # test_make_choice(snake, s_map, state_dict['food'])
-    # test_area_check(snake, s_map)
-    test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
+    test_make_choice(snake, s_map, state_dict['food'])
+    test_area_check(snake, s_map)
+    # test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
     # test_area_check_direction(snake, s_map, Coord(1, 0))
     # test_area_check_direction(snake, s_map, Coord(0, 1))
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_data.food_value, Coord(58, 61))
     # test_get_visitable_tiles(snake, s_map, snake.get_head_coord())
 
-    pr.disable()
-    s = StringIO()
-    sortby = 'time'
-    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print(s.getvalue())
     if RUN_STEPS:
         render_steps(RUN_STEPS)
 
@@ -231,9 +224,10 @@ if __name__ == "__main__":
     snake_reps = create_snake_reps(state_dict)
 
     activate_debug()
-    # enable_debug_for('_next_step')
-    # enable_debug_for('_get_food_dir')
-    # enable_debug_for('_best_first_search')
+    enable_debug_for('SurvivorSnake')
+    enable_debug_for('_next_step')
+    enable_debug_for('_get_food_dir')
+    enable_debug_for('_best_first_search')
 
     snake_id = 0
     # snake_id = None

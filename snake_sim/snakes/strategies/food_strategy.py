@@ -47,6 +47,8 @@ class FoodSeeker(ISnakeStrategy):
         return self._snake.get_head_coord() + Coord(*dir_tuple)
     
 
+    # def _do_need_food_map(self):
+
     def _get_future_available_food_map(self):
         s_map = self._snake.get_map()
         env_init_data = self._snake.get_env_init_data()

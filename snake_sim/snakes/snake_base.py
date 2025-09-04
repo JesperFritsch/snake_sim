@@ -56,21 +56,21 @@ class SnakeBase(ISnake, ABC):
             raise ValueError(f"Snake: {self._id} head at: {self._head_coord} tried to set its new head not ajacent to head at: {coord}")
         self.x, self.y = coord
         self._head_coord = coord
+        grow = False
         if self._map[self.y, self.x] == self._env_init_data.food_value:
             self._length += 1
-        self._move_forward(self._head_coord, self._body_coords, self._length)
+            grow = True
+        self._move_forward(self._head_coord, self._body_coords, grow)
 
-    def _move_forward(self, new_head: Coord, body_coords: Deque[Coord], length: int) -> Coord:
+    def _move_forward(self, new_head: Coord, body_coords: Deque[Coord], grow: bool):
         body_coords.appendleft(new_head)
-        old_tail = body_coords[-1]
-        for _ in range(len(body_coords) - length):
-            old_tail = body_coords.pop()
-        return old_tail
+        if not grow:
+            body_coords.pop()
 
-    def _move_backwards(self, body_coords: Deque[Coord], old_tail: Coord) -> Coord:
-        current_head = body_coords.popleft()
-        body_coords.append(old_tail)
-        return current_head
+    def _move_backwards(self, old_tail: Coord, body_coords: Deque[Coord], shrink: bool):
+        body_coords.popleft()
+        if not shrink:
+            body_coords.append(old_tail)
 
     def _update_map(self, map: bytes):
         self._map = np.frombuffer(map, dtype=np.uint8).reshape(self._env_init_data.height, self._env_init_data.width)

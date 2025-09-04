@@ -5,7 +5,6 @@ from functools import wraps
 
 import snake_sim.debugging as debug
 
-from snake_sim.environment.interfaces.snake_strategy_interface import ISnakeStrategy
 from snake_sim.environment.interfaces.strategy_snake_interface import IStrategySnake
 from snake_sim.environment.types import Coord
 from snake_sim.snakes.snake_base import SnakeBase
@@ -98,15 +97,33 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
         current_head = self._head_coord
         current_tail = self._body_coords[-1]
         map_copy = self._apply_snake_step(self._current_map_copy, current_head, current_tail, next_head)
+        did_grow = False
+        if self._map[next_head.y, next_head.x] == self._env_init_data.food_value:
+            did_grow = True
+        self._move_forward(next_head, self._body_coords, did_grow)
+        # self._print_map(map_copy)
         # map_copy is a reference to self._current_map_copy
+        found_safe = False
         for tile in visitable_tiles_after_move:
             area_check_result = self._area_check_wrapper(map_copy, self._body_coords, tile, target_margin=target_margin)
             self._area_check_cache.setdefault(next_head, []).append(area_check_result)
             debug.debug_print(f"area_check_result for move to {next_head} with head at {tile}: {area_check_result}")
             if self._is_margin_safe(area_check_result):
-                return True
+                found_safe = True
+                break
+        self._move_backwards(current_tail, self._body_coords, did_grow)
         self._revert_snake_step(map_copy, current_head, current_tail, next_head)
-        return False
+        return found_safe
+
+    # def _is_move_safe(self, next_head: Coord) -> bool:
+    #     target_margin = math.ceil(self._length / 10) # without a higher target margin the area check will early exit at (margin > food_count)
+    #     s_map = self.get_map()
+    #     area_check_result = self._area_check_wrapper(s_map, self._body_coords, next_head, target_margin=target_margin)
+    #     self._area_check_cache.setdefault(next_head, []).append(area_check_result)
+    #     debug.debug_print(f"area_check_result for move to {next_head} with head at {next_head}: {area_check_result}")
+    #     if self._is_margin_safe(area_check_result):
+    #         return True
+    #     return False
 
     def _area_check_wrapper(self, s_map, body_coords, start_coord, target_margin=0, food_check=False, complete_area=False, exhaustive=False):
         result = self._area_checker.area_check(s_map, list(body_coords), start_coord, target_margin, food_check, complete_area, exhaustive)
