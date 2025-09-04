@@ -1,4 +1,5 @@
 import inspect
+import sys
 
 ENABLED_DEBUG_FUNCTIONS = set()
 
@@ -13,6 +14,7 @@ def debug_print_func(*args, **kwargs):
     if func_name in ENABLED_DEBUG_FUNCTIONS or (class_name and class_name in ENABLED_DEBUG_FUNCTIONS):
         prefix = f"[{class_name + '.' if class_name else ''}{func_name}]"
         print(prefix, *args, **kwargs)
+        sys.stdout.flush()
 
 def debug_print(*args, **kwargs):
     pass

@@ -3,7 +3,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from typing import Tuple, Deque, Dict
 
-
+# commeted because of circular import
 # from snake_sim.environment.interfaces.snake_strategy_interface import ISnakeStrategy
 from snake_sim.environment.interfaces.snake_interface import ISnake
 from snake_sim.environment.types import Coord, EnvInitData, EnvData

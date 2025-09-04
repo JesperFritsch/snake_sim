@@ -357,8 +357,6 @@ ExploreResults AreaChecker::explore_area(
                 if (entrance_code == 0)
                 {
                     checked[n_y * width + n_x] = area_id; // this used to be above this if statement, dont know if this will cause a bug, but i think it should be fine.
-                    // tile_count += 1;
-                    // coord_parity_diff += get_coord_mod_parity(n_coord) ? 1 : -1;
                     current_coords.push_back(n_coord);
                 }
                 else

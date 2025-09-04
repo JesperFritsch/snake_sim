@@ -108,26 +108,6 @@ AreaCheckResult AreaGraph::search_best2(
             current_result.is_clear = true;
         }
         
-        if (food_check)
-        {
-            if (
-                current_result.margin > current_result.food_count &&
-                (current_result.food_count >= best_result.food_count))
-            {
-                best_result = current_result;
-            }
-        }
-        else
-        {
-            if (current_result.margin > best_result.margin)
-            {
-                best_result = current_result;
-            }
-            if ((best_result.margin >= target_margin && best_result.margin > best_result.food_count) && !exhaustive)
-            {
-                break;
-            }
-        }
         
         DEBUG_PRINT(std::cout << "\n####### NODE #######" << std::endl;);
         DEBUG_PRINT(std::cout << (forward ? "--> Forward" : "<-- Backward") << std::endl;);
@@ -189,7 +169,27 @@ AreaCheckResult AreaGraph::search_best2(
         DEBUG_PRINT(std::cout << "  margin: " << best_result.margin << std::endl;);
         DEBUG_PRINT(std::cout << "  total steps: " << best_result.total_steps << std::endl;);
         DEBUG_PRINT(std::cout << "  has tail: " << best_result.has_tail << std::endl;);
-
+        
+        if (food_check)
+        {
+            if (
+                current_result.margin > current_result.food_count &&
+                (current_result.food_count >= best_result.food_count))
+            {
+                best_result = current_result;
+            }
+        }
+        else
+        {
+            if (current_result.margin > best_result.margin)
+            {
+                best_result = current_result;
+            }
+            if ((best_result.margin >= target_margin && best_result.margin > best_result.food_count) && !exhaustive)
+            {
+                break;
+            }
+        }
 
         auto node_edge_pair = step_data->get_next_node_and_edge();
         if (node_edge_pair.first != nullptr)
@@ -343,6 +343,19 @@ void AreaGraph::connect_nodes(int id1, int id2, ConnectedAreaInfo conn_info)
 }
 
 
+bool SearchNode::count_bad_gate_way(Coord entry_coord, Coord exit_coord)
+{
+    Coord delta = exit_coord - entry_coord;
+    // if we enter and exit on adjacent (non-diagonal) tiles then it is not a bad gateway
+    if ((std::abs(delta.x) == 1 && std::abs(delta.y) == 0) ||
+        (std::abs(delta.x) == 0 && std::abs(delta.y) == 1))
+    {
+        return false;
+    }
+    return true;
+}
+
+
 int SearchNode::path_tile_adjustment(AreaNode *next_node)
 // depending of the path in nodes the amount of visitable tiles may change
 // more complex logic could possibly be implemented here sp that the exact number of visitable tiles
@@ -358,12 +371,11 @@ int SearchNode::path_tile_adjustment(AreaNode *next_node)
         return 0;
     }
     int adjustment = 0;
-    if (next_connection_info.is_bad_gateway_from_here)
+    if (next_connection_info.is_bad_gateway_from_here && count_bad_gate_way(entry_coord, exit_coord))
     {
         adjustment -= 1;
     }
     adjustment += path_parity_tile_adjustment(entry_coord, exit_coord);
-    DEBUG_PRINT(std::cout << "Path tile adjustment from node " << node->id << " to node " << next_node->id << " is " << adjustment << std::endl;);
     return adjustment;
 }
 
@@ -378,45 +390,37 @@ int SearchNode::get_max_body_tile_adjustment(Coord max_index_coord)
 
 }
 
-int SearchNode::path_parity_tile_adjustment(Coord start, Coord end){
-    if (start == end || node->is_one_dim){
+int SearchNode::path_parity_tile_adjustment(Coord enter, Coord exit){
+    if (enter == exit || node->is_one_dim){
         return 0;
     }
 
-    bool start_parity = get_coord_mod_parity(start);
-    bool end_parity = get_coord_mod_parity(end);
-    if(node->coord_parity_diff == 0){
-        if (start_parity != end_parity){
-            return 0;
-        }
-        else{
-            return -1;
-        }
+    bool enter_parity = get_coord_mod_parity(enter);
+    bool exit_parity = get_coord_mod_parity(exit);
+    int adjustment = 0;
+    if(node->coord_parity_diff == 0 && enter_parity == exit_parity){
+        adjustment = -1;
     }
     else if(node->coord_parity_diff > 0){
         // more even tiles
-        if (!start_parity && !end_parity){
-            return -1;
+        if (!enter_parity && !exit_parity){
+            adjustment = -1;
         }
-        else if (start_parity && end_parity){
-            return 1;
-        }
-        else{
-            return 0;
+        else if (enter_parity && exit_parity){
+            adjustment = 1;
         }
     }
     else{
         // more odd tiles
-        if (start_parity && end_parity){
-            return -1;
+        if (enter_parity && exit_parity){
+            adjustment = -1;
         }
-        else if (!start_parity && !end_parity){
-            return 1;
-        }
-        else{
-            return 0;
+        else if (!enter_parity && !exit_parity){
+            adjustment = 1;
         }
     }
+    DEBUG_PRINT(std::cout << "Path parity tile adjustment from (" << enter.x << ", " << enter.y << ") to (" << exit.x << ", " << exit.y << ") is " << adjustment << std::endl;);
+    return adjustment;
 }
 
 Coord SearchNode::get_entry_coord()
@@ -439,10 +443,16 @@ std::pair<int, Coord> SearchNode::get_max_body_index_pair()
     if (node->tile_count == 1){
         return node->body_tiles[0];
     }
+    Coord entry_coord = get_entry_coord();
     auto it = std::find_if(
         node->body_tiles.begin(), 
         node->body_tiles.end(), 
-        [this](const std::pair<int, Coord> &pair){ return !this->is_coord_used(pair.second) && pair.second != node->start_coord; }
+        [&](const std::pair<int, Coord> &pair){ return (
+            ((entry_coord == pair.second) && visited_before() ? 
+            get_coord_used_count(pair.second) < 2 : 
+            get_coord_used_count(pair.second) < 1) &&
+            !(node->id == 0 && pair.second == node->start_coord) 
+        ); }
     );
     if (it == node->body_tiles.end()){
         return std::make_pair(-1, Coord());
@@ -450,16 +460,13 @@ std::pair<int, Coord> SearchNode::get_max_body_index_pair()
     return *it;
 }
 
-bool SearchNode::is_coord_used(Coord coord)
-// returns true if the coord is already used in the path
+unsigned int SearchNode::get_coord_used_count(Coord coord)
+// returns how many times the coord is used in this node path
 {
     if (node->tile_count == 1 || node->is_one_dim){
-        return false;
+        return 0;
     }
-    if (std::find(used_coords.begin(), used_coords.end(), coord) != used_coords.end()){
-        return true;
-    }
-    return false;
+    return static_cast<unsigned int>(std::count(used_coords.begin(), used_coords.end(), coord));
 }
 
 bool SearchNode::is_conn_coord_used(AreaNode *other_node)
@@ -471,7 +478,7 @@ bool SearchNode::is_conn_coord_used(AreaNode *other_node)
     auto next_connection_info = node->get_connection_info(other_node->id);
     Coord conn_coord = next_connection_info.self_coord;
     DEBUG_PRINT(std::cout << "Used coords: "; for (const auto& coord : used_coords) { std::cout << "(" << coord.x << ", " << coord.y << ") "; } std::cout << std::endl;);
-    return is_coord_used(conn_coord);
+    return get_coord_used_count(conn_coord) > 0;
 }
 
 bool SearchNode::is_conn_coord_start_cord(AreaNode *next_node)
@@ -488,6 +495,18 @@ bool SearchNode::is_conn_coord_start_cord(AreaNode *next_node)
     return false;
 }
 
+bool SearchNode::can_enter_next_node(AreaNode *next_node){
+    auto next_connection_info = node->get_connection_info(next_node->id);
+    Coord conn_coord = next_connection_info.self_coord;
+    Coord enter_coord = get_entry_coord();
+    DEBUG_PRINT(std::cout << "Entry coord: (" << enter_coord.x << ", " << enter_coord.y << "), Connection coord: (" << conn_coord.x << ", " << conn_coord.y << ")" << std::endl;);
+    auto conn_coord_used_count = get_coord_used_count(conn_coord);
+    if (enter_coord == conn_coord && conn_coord_used_count < 2){
+        return true;
+    }
+    return (is_conn_coord_used(next_node) && visited_before()) ? false : true;
+}
+
 TileCounts SearchNode::tile_count_on_exit(AreaNode *next_node, uint8_t *s_map, int width, uint8_t food_value)
 {
     auto tile_counts = tile_count_on_enter();
@@ -500,7 +519,7 @@ TileCounts SearchNode::tile_count_on_exit(AreaNode *next_node, uint8_t *s_map, i
     else if (is_conn_coord_used(next_node))
     {
         Coord tile_coord = get_entry_coord();
-        tile_counts.total_tiles = tiles_until_here + 1;
+        tile_counts.total_tiles = tiles_until_here + (first_visit() ? 1 : 0);
         tile_counts.total_food = food_until_here + (tile_has_food(s_map, width, tile_coord, food_value) ? 1 : 0);
     }
     else {
@@ -530,6 +549,7 @@ TileCounts SearchNode::tile_count_on_enter()
         if (connection_info.is_bad_gateway_from_here)
         // we are actually coming in to the current node, but the naming is from the perspective of insdide the node.
         {
+            DEBUG_PRINT(std::cout << "Reducing new tile count by 1 because of bad gateway from here" << std::endl;);
             tile_counts.new_tiles -= 1;
         }
 

@@ -97,12 +97,9 @@ struct SearchNode
 
     bool is_conn_coord_used(AreaNode *other_node);
 
-    bool is_coord_used(Coord coord);
+    unsigned int get_coord_used_count(Coord coord);
 
-    bool can_enter_next_node(AreaNode *next_node)
-    {
-        return (is_conn_coord_used(next_node) && visited_before()) ? false : true;
-    }
+    bool can_enter_next_node(AreaNode *next_node);
 
     bool can_enter_from_node(AreaNode *from_node)
     {
@@ -116,6 +113,8 @@ struct SearchNode
     int path_parity_tile_adjustment(Coord start, Coord end);
 
     int get_max_body_tile_adjustment(Coord max_index_coord);
+
+    bool count_bad_gate_way(Coord entry_coord, Coord exit_coord);
 
     int path_tile_adjustment(AreaNode *next_node);
 

@@ -13,7 +13,7 @@ from snake_sim.environment.snake_processes import ProcessPool
 from snake_sim.environment.interfaces.snake_handler_interface import ISnakeHandler
 from snake_sim.environment.interfaces.snake_interface import ISnake
 from snake_sim.snakes.remote_snake import RemoteSnake
-from snake_sim.environment.types import Coord, EnvData, SnakeConfig
+from snake_sim.environment.types import Coord, EnvData
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = json.load(config_file)
