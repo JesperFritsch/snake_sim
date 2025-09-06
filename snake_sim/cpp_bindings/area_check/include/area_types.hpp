@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <climits>
+#include <limits>
 
 #include "util_types.hpp"
 
@@ -113,11 +114,7 @@ struct ExploreResults
     std::vector<ConnectedAreaInfo> connected_areas;
     std::vector<Coord> to_explore;
 
-    ExploreResults()
-    {
-        connected_areas.reserve(10);
-        to_explore.reserve(100);
-    }
+    ExploreResults() {}
 
     ExploreResults(
         int tile_count,
@@ -155,4 +152,33 @@ struct TileCounts
         total_tiles(total_tiles),
         total_food(total_food),
         new_tiles(new_tiles) {}
+};
+
+
+struct RecurseCheckResult
+{
+    std::unordered_map<Coord, std::unordered_map<int, float>> best_margin_fracs_at_depth;
+
+    RecurseCheckResult() : 
+        best_margin_fracs_at_depth(std::unordered_map<Coord, std::unordered_map<int, float>>()) {}
+};
+
+struct RecurseCheckFrame
+{
+    Coord head;
+    Coord old_tail;
+    std::vector<Coord> to_visit;
+    Coord base_coord;
+    bool setup_done = false;
+    bool did_grow = false;
+    float best_margin_frac = std::numeric_limits<float>::lowest();
+
+    RecurseCheckFrame(
+        Coord head,
+        std::vector<Coord> to_visit,
+        Coord base_coord = Coord()
+    ) :
+        head(head),
+        to_visit(to_visit),
+        base_coord(base_coord){}
 };

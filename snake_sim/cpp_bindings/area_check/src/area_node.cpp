@@ -51,7 +51,7 @@ ConnectedAreaInfo AreaNode::get_connection_info(int area_id)
     throw std::out_of_range("Area ID not found in neighbour connections");
 }
 
-int AreaNode::get_visitable_tiles(){
+int AreaNode::get_countable_tiles(){
     if (is_one_dim || tile_count == 1){
         return tile_count;
     }

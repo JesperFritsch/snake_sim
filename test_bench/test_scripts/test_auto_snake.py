@@ -50,6 +50,20 @@ def test_make_choice(snake: SurvivorSnake, s_map, food_locations: List[Coord] = 
     print(f"Time make choice: {(time.time() - start_time) * 1000}")
     print(f"Choice: {choice}")
 
+def test_recurse_area_check(snake: SurvivorSnake, s_map, direction=Coord(1,0)):
+    tile = Coord(*snake.get_head_coord()) + direction
+    start_time = time.time()
+    area_check = snake._area_checker.recurse_area_check(
+        s_map,
+        [tuple(coord) for coord in snake._body_coords],
+        (tile.x, tile.y),
+        snake._length,
+        2,
+        # 1.0,
+        SurvivorSnake.SAFE_MARGIN_FRAC
+    )
+    print(f"Time recurse area check direction {direction}: {(time.time() - start_time) * 1000}")
+    print(f"Direction: {direction}, Area check: {area_check}")
 
 def test_explore(snake: SurvivorSnake, s_map):
     for tile in snake._valid_tiles(s_map, snake._body_coords[0]):
@@ -68,9 +82,17 @@ def test_explore(snake: SurvivorSnake, s_map):
 def test_area_check_direction(snake: SurvivorSnake, s_map, direction):
     tile = Coord(*snake.get_head_coord()) + direction
     start_time = time.time()
-    area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile, complete_area=True)
+    area_check = snake._area_checker.area_check(
+        s_map,
+        [tuple(coord) for coord in snake._body_coords],
+        (tile.x, tile.y),
+        10,
+        False,
+        False,
+        False
+    )
     print(f"Time area check direction {direction}: {(time.time() - start_time) * 1000}")
-    print(f"Direction: {direction}, Area check: {area_check}")
+    print(f"Direction: {direction}, Coord: {tile} Area check: {area_check}")
 
 
 def render_steps(runsteps):
@@ -126,11 +148,12 @@ def test_get_visitable_tiles(snake: SurvivorSnake, s_map, center_coord):
 def run_tests(snake: SurvivorSnake, s_map):
     print("current tile: ", snake.get_head_coord())
     print("snake length: ", snake._length)
-    test_make_choice(snake, s_map, state_dict['food'])
-    test_area_check(snake, s_map)
+    # test_recurse_area_check(snake, s_map, Coord(1,0))
+    # test_make_choice(snake, s_map, state_dict['food'])
+    # test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
-    # test_area_check_direction(snake, s_map, Coord(1, 0))
-    # test_area_check_direction(snake, s_map, Coord(0, 1))
+    test_area_check_direction(snake, s_map, Coord(-1, 0))
+    # test_area_check_direction(snake, s_map, Coord(0, -1))
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_data.food_value, Coord(58, 61))
     # test_get_visitable_tiles(snake, s_map, snake.get_head_coord())

@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>      // for size_t
 #include <stdexcept>    // for std::out_of_range
+#include <cmath>        // for std::abs, std::sqrt
 
 
 struct Coord
@@ -53,6 +54,18 @@ struct Coord
     std::size_t hash() const
     {
         return x * 1000 + y;
+    }
+
+    float distance(const Coord &other) const
+    {
+        int dx = x - other.x;
+        int dy = y - other.y;
+        return std::sqrt(dx * dx + dy * dy);
+    }
+
+    int manhattan_distance(const Coord &other) const
+    {
+        return std::abs(x - other.x) + std::abs(y - other.y);
     }
 };
 

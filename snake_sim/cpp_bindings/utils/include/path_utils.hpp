@@ -41,7 +41,6 @@ inline py::tuple py_get_dir_to_tile(
     return py::make_tuple(result.x, result.y);
 }
 
-// inline to hopefully make it faster
 std::vector<Coord> get_visitable_tiles(
     uint8_t *s_map, 
     int width, 

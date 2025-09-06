@@ -15,6 +15,7 @@
 #include "area_graph.hpp"    // for AreaGraph
 #include "area_utils.hpp"    // for utility functions (if any)
 #include "area_debug.hpp"
+#include "path_utils.hpp"
 
 namespace py = pybind11;
 
@@ -87,6 +88,22 @@ public:
         bool food_check,
         bool complete_area,
         bool exhaustive);
+
+    RecurseCheckResult recurse_area_check(
+        uint8_t *s_map,
+        std::deque<Coord> &body_coords,
+        Coord search_first,
+        unsigned int snake_length,
+        unsigned int max_depth,
+        float safe_margin_frac);
+
+    py::dict py_recurse_area_check(
+        py::array_t<uint8_t> s_map,
+        py::list body_coords_py,
+        py::tuple search_first_py,
+        unsigned int snake_length,
+        unsigned int max_depth,
+        float safe_margin_frac);
 
 private:
     uint8_t food_value;

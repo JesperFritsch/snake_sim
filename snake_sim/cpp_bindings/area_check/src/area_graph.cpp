@@ -533,7 +533,7 @@ TileCounts SearchNode::tile_count_on_enter()
     TileCounts tile_counts;
     if (first_visit())
     {
-        int new_tiles = node->get_visitable_tiles();
+        int new_tiles = node->get_countable_tiles();
         tile_counts.new_tiles = new_tiles;
         tile_counts.total_food = food_until_here + node->food_count;
         tile_counts.total_tiles = tiles_until_here + new_tiles;

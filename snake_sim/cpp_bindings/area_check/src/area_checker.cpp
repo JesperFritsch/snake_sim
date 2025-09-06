@@ -3,38 +3,7 @@
 
 void AreaChecker::print_map(uint8_t *s_map)
 {
-    int rows = this->height;
-    int cols = this->width;
-    char c;
-    for (int i = 0; i < rows; i++)
-    {
-        for (int j = 0; j < cols; j++)
-        {
-            if (s_map[i * cols + j] == 1)
-            {
-                c = '.';
-            }
-            else if (s_map[i * cols + j] == 0)
-            {
-                c = 'F';
-            }
-            else if (s_map[i * cols + j] == 2)
-            {
-                c = '#';
-            }
-            else
-            {
-                c = (char)s_map[i * cols + j];
-            }
-            if (Coord(j, i) == this->print_mark)
-            {
-                c = '+';
-            }
-            std::cout << " " << c << " ";
-        }
-        std::cout << std::endl;
-    }
-    this->print_mark = Coord();
+    ::print_map(s_map, width, height, head_value, body_value, food_value);
 }
 
 bool AreaChecker::_is_bad_gateway(uint8_t *s_map, Coord coord1, Coord coord2)
@@ -45,7 +14,7 @@ X X 2 X X
 X . 1 . X
 */
 {
-    const int cols = this->width;
+    const int cols = width;
     Coord delta = coord1 - coord2;
     if(std::abs(delta.x) + std::abs(delta.y) != 1)
     {
@@ -57,13 +26,13 @@ X . 1 . X
     const Coord n_l1 = Coord(coord1.x - delta.y, coord1.y - delta.x);
     const Coord n_l2 = Coord(coord1.x - (delta.y * 2), coord1.y - (delta.x * 2));
 
-    if (this->is_inside(n_r1.x, n_r1.y) && s_map[n_r1.y * cols + n_r1.x] <= this->free_value)
+    if (is_inside(n_r1.x, n_r1.y) && s_map[n_r1.y * cols + n_r1.x] <= free_value)
     {
-        if (!this->is_inside(n_r2.x, n_r2.y) || s_map[n_r2.y * cols + n_r2.x] > this->free_value)
+        if (!is_inside(n_r2.x, n_r2.y) || s_map[n_r2.y * cols + n_r2.x] > free_value)
         {
-            if (this->is_inside(n_l1.x, n_l1.y) && s_map[n_l1.y * cols + n_l1.x] <= this->free_value)
+            if (is_inside(n_l1.x, n_l1.y) && s_map[n_l1.y * cols + n_l1.x] <= free_value)
             {
-                if (!this->is_inside(n_l2.x, n_l2.y) || s_map[n_l2.y * cols + n_l2.x] > this->free_value)
+                if (!is_inside(n_l2.x, n_l2.y) || s_map[n_l2.y * cols + n_l2.x] > free_value)
                 {
                     return true;
                 }
@@ -283,9 +252,15 @@ ExploreResults AreaChecker::explore_area(
     std::vector<ConnectedAreaInfo> connected_areas;
     std::deque<Coord> current_coords;
     body_tiles.reserve(body_coords.size());
-    // coord_parity_diff += get_coord_mod_parity(start_coord) ? 1 : -1;
     current_coords.push_back(start_coord);
     checked[start_coord.y * width + start_coord.x] = area_id;
+
+    if (s_map[start_coord.y * width + start_coord.x] > free_value)
+    {
+        return ExploreResults();
+    }
+
+
     while (!current_coords.empty())
     {
         auto curr_coord = current_coords.front();
@@ -533,4 +508,217 @@ AreaCheckResult AreaChecker::area_check(
     // return AreaCheckResult();
 
     return graph.search_best2(body_coords.size(), s_map, food_value, width, target_margin, food_check, exhaustive);
+}
+
+// best first search area check
+// returns a map of base coords to a map of depth to best margin fraction found at that depth
+// eg. {Coord(5,5): {0: 0.1, 1: 0.05}, Coord(6,5): {0: 0.2, 1: 0.15}}
+// max_depth is the maximum frames allowed in the stack -1 (-1 because the first frame is not a move)
+// will perform one area_check per visitable tile at each frame.
+
+RecurseCheckResult AreaChecker::recurse_area_check(
+    uint8_t *s_map,
+    std::deque<Coord> &body_coords,
+    Coord search_first,
+    unsigned int snake_length,
+    unsigned int max_depth,
+    float safe_margin_frac
+){  
+
+    auto get_margin_frac = [&] (AreaCheckResult &result) -> float {
+        if (result.total_steps == 0) return 0.0f;
+        if (result.has_tail) return std::numeric_limits<float>::infinity();
+        return static_cast<float>(result.margin) / static_cast<float>(result.total_steps);
+    };
+
+    auto move_snake_forward = [&] (std::deque<Coord> &body_coords, Coord &new_head, bool do_grow) -> void {
+        body_coords.push_front(new_head);
+        if (!do_grow){
+            body_coords.pop_back();
+        }
+    };
+
+    auto move_snake_backward = [&] (std::deque<Coord> &body_coords, Coord &old_tail, bool do_shrink) -> void {
+        body_coords.pop_front();
+        if (!do_shrink){
+            body_coords.push_back(old_tail);
+        }
+    };
+
+    auto apply_snake_move_on_map = [&] (std::vector<uint8_t> &s_map_vec, Coord &current_head, Coord &current_tail, Coord &new_head) -> void {
+        s_map_vec[current_head.y * width + current_head.x] = body_value;
+        s_map_vec[new_head.y * width + new_head.x] = head_value;
+        s_map_vec[current_tail.y * width + current_tail.x] = free_value;
+    };
+
+    auto revert_snake_move_on_map = [&] (std::vector<uint8_t> &s_map_vec, Coord &current_head, Coord &current_tail, Coord &new_head) -> void {
+        s_map_vec[current_head.y * width + current_head.x] = head_value;
+        s_map_vec[new_head.y * width + new_head.x] = free_value;
+        s_map_vec[current_tail.y * width + current_tail.x] = body_value;
+    };
+
+    auto has_food = [&] (std::vector<uint8_t> &s_map_vec, Coord &coord) -> bool {
+        return s_map_vec[coord.y * width + coord.x] == food_value;
+    };
+
+    auto s_map_vec = std::vector<uint8_t>(s_map, s_map + (width * height));
+    RecurseCheckResult result;
+    std::vector<RecurseCheckFrame> stack;
+    unsigned int depth = 0;
+    int target_margin = 10;
+    Coord head_coord = body_coords.front();
+    RecurseCheckFrame first_frame(
+        head_coord,
+        get_visitable_tiles(s_map, width, height, head_coord, {free_value, food_value})
+    );
+    stack.reserve(max_depth + 1);
+    //sort to_visit in reverse order by distance to search_first
+    if (search_first != Coord()){
+        std::sort(first_frame.to_visit.begin(), first_frame.to_visit.end(), [&] (const Coord &a, const Coord &b) {
+            return a.distance(search_first) > b.distance(search_first);
+        });
+    }
+    
+    stack.push_back(first_frame);
+    
+    while(!stack.empty()){
+        // std::cout << "----------------------------------------" << std::endl << std::endl;
+        auto& current_frame = stack.back();
+        depth = stack.size() - 1;
+        // the base coords are the next options from the head of the first frame
+        
+        if (
+            depth >= max_depth && 
+            current_frame.best_margin_frac >= safe_margin_frac
+        ){
+            // we can stop searching this base coord, as we have found a safe margin fraction deep enough
+            stack.clear();
+            break;
+        }
+    
+        if (!current_frame.setup_done && depth > 0){ 
+            // apply the move of the current frame
+            Coord curr_head = body_coords.front();
+            Coord curr_tail = body_coords.back();
+            bool do_grow = has_food(s_map_vec, current_frame.head);
+            move_snake_forward(body_coords, current_frame.head, do_grow);
+            apply_snake_move_on_map(s_map_vec, curr_head, curr_tail, current_frame.head);
+            current_frame.setup_done = true;
+            current_frame.old_tail = curr_tail;
+            current_frame.did_grow = do_grow;
+        }
+
+        // print_map(s_map_vec.data());
+        // std::cout << "Current base coord: (" << current_frame.base_coord.x << "," << current_frame.base_coord.y << ")" << std::endl;
+        // std::cout << "Depth: " << depth << ", stack size: " << stack.size() << ", to visit: " << current_frame.to_visit.size() << ", head: (" << current_frame.head.x << "," << current_frame.head.y << ")" << std::endl;
+        // std::cout << "best margin frac for this frame: " << current_frame.best_margin_frac << std::endl;
+        // std::cout << "results so far: " << std::endl;
+        // for (const auto& kv : result.best_margin_fracs_at_depth) {
+        //     std::cout << "  Base coord (" << kv.first.x << "," << kv.first.y << "): ";
+        //     for (const auto& depth_kv : kv.second) {
+        //         std::cout << "  Depth " << depth_kv.first << ": " << depth_kv.second << " ";
+        //     }
+        //     std::cout << std::endl;
+        // }   
+        // std::cout << "visitable tiles: ";
+        // for (const auto& tile : current_frame.to_visit) {
+        //     std::cout << "(" << tile.x << "," << tile.y << ") ";
+        // }
+        // std::cout << std::endl;
+        
+        
+        if (!current_frame.to_visit.empty()){
+            Coord &next_tile = current_frame.to_visit.back();
+            current_frame.to_visit.pop_back();
+            Coord base_coord = (depth == 0) ? next_tile : current_frame.base_coord;
+            auto body_coords_vec = std::vector<Coord>(body_coords.begin(), body_coords.end());
+            // std::cout << "checking next tile (" << next_tile.x << "," << next_tile.y << ")" << std::endl;
+            auto check_result = area_check(
+                s_map_vec.data(),
+                body_coords_vec,
+                next_tile,
+                target_margin,
+                false,
+                false,
+                false
+            );
+            // std::cout << "  area check result - is_clear: " << check_result.is_clear << ", tile_count: " << check_result.tile_count << ", total_steps: " << check_result.total_steps << ", food_count: " << check_result.food_count << ", has_tail: " << check_result.has_tail << ", margin: " << check_result.margin << std::endl;
+            auto& best_margin_fracs_for_base = result.best_margin_fracs_at_depth[base_coord];
+            auto margin_frac_it = best_margin_fracs_for_base.find(depth);
+            auto margin_frac = get_margin_frac(check_result);
+            // std::cout << "calculated margin frac for next tile (" << next_tile.x << "," << next_tile.y << "): " << margin_frac << std::endl;
+            // std::cout << "safe margin frac: " << safe_margin_frac << std::endl;
+
+            if (margin_frac_it == best_margin_fracs_for_base.end()){
+                best_margin_fracs_for_base[depth] = margin_frac;
+            }
+            else if (margin_frac > margin_frac_it->second){
+                // std::cout << "updating best margin frac for base coord (" << base_coord.x << "," << base_coord.y << ") at depth " << depth << " from " << margin_frac_it->second << " to " << margin_frac << std::endl;
+                margin_frac_it->second = margin_frac;
+            }
+
+            if (margin_frac > current_frame.best_margin_frac){
+                current_frame.best_margin_frac = margin_frac;
+            }
+
+            if (margin_frac >= safe_margin_frac && (depth < max_depth)){
+
+                auto current_direction = next_tile - current_frame.head;
+                auto next_visitables = get_visitable_tiles(s_map_vec.data(), width, height, next_tile, {free_value, food_value});
+                auto preferred_tile = next_tile + current_direction;
+                std::sort(next_visitables.begin(), next_visitables.end(), [&] (const Coord &a, const Coord &b) {
+                    return a.distance(preferred_tile) > b.distance(preferred_tile);
+                });
+
+                RecurseCheckFrame next_frame(
+                    next_tile,
+                    next_visitables,
+                    base_coord
+                );
+                // std::cout << "  pushing new frame for next tile (" << next_tile.x << "," << next_tile.y << ") with " << next_visitables.size() << " visitable tiles" << std::endl;
+                stack.push_back(next_frame);
+            }
+            // always pop the tile after we checked it.
+        } else {
+            if (current_frame.setup_done && depth > 0){
+                // revert the move of the current frame
+                Coord old_head = body_coords[1];
+                Coord old_tail = current_frame.old_tail;
+                move_snake_backward(body_coords, current_frame.old_tail, current_frame.did_grow);
+                revert_snake_move_on_map(s_map_vec, old_head, old_tail, current_frame.head);
+            }
+            stack.pop_back();
+        }
+    }
+    return result;
+}
+
+py::dict AreaChecker::py_recurse_area_check(
+    py::array_t<uint8_t> s_map,
+    py::list body_coords_py,
+    py::tuple search_first_py,
+    unsigned int snake_length,
+    unsigned int max_depth,
+    float safe_margin_frac)
+{
+    auto buf = s_map.request();
+    uint8_t *ptr = static_cast<uint8_t *>(buf.ptr);
+    std::deque<Coord> body_coords;
+    for (auto item : body_coords_py) {
+        py::tuple t = item.cast<py::tuple>();
+        body_coords.emplace_back(t[0].cast<int>(), t[1].cast<int>());
+    }
+    Coord search_first(search_first_py[0].cast<int>(), search_first_py[1].cast<int>());
+    RecurseCheckResult result = recurse_area_check(
+        ptr, body_coords, search_first, snake_length, max_depth, safe_margin_frac);
+    py::dict margin_fracs_dict;
+    for (const auto& kv : result.best_margin_fracs_at_depth) {
+        py::tuple coord_tuple = py::make_tuple(kv.first.x, kv.first.y);
+        py::dict depth_dict;
+        for (const auto& depth_kv : kv.second) {
+            depth_dict[py::int_(depth_kv.first)] = py::float_(depth_kv.second);
+        }
+        margin_fracs_dict[coord_tuple] = depth_dict;
+    }
+    return margin_fracs_dict;
 }

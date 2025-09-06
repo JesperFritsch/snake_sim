@@ -26,15 +26,14 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
     If it is provided with a strategy, it will try to follow that strategy as long as it does not lead to death.
     """
 
-    SAFE_MARGIN_FACTOR = 0.035 # (margin / total_steps) >= SAFE_MARGIN_FACTOR -> considered safe
+    SAFE_MARGIN_FRAC = 0.035 # (margin / total_steps) >= SAFE_MARGIN_FRAC -> considered safe
+    MAX_RECURSE_DEPTH = 1
 
     def __init__(self):
         super().__init__()
         self._area_checker = None # type AreaChecker, will be initialized in set_init_data
         self._current_direction: Coord = None
         self._current_map_copy: np.ndarray = None
-        self._area_check_cache: Dict[Coord, List[Dict]] = {}
-        self._current_visitable_tiles: List[Coord] = []
         self._current_strategy_tile: Coord = None
 
     def set_init_data(self, env_init_data):
@@ -54,24 +53,47 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
     @_step_calc_wrapper
     def _next_step(self) -> Coord:
         debug.debug_print(f"current_tile: {self._head_coord}, current_direction: {self._current_direction}")
-        for tile in self._current_visitable_tiles:
-            debug.debug_print(f"checking tile {tile}")
-            tile_coord = Coord(*tile)
-            if self._is_move_safe(tile_coord):
-                debug.debug_print(f"safe move found: {tile_coord}")
-                return tile_coord
-        best_option = self._get_best_opiton_from_cache()
-        if best_option is not None:
-            debug.debug_print(f"no safe move found, using best option from cache: {best_option}")
-            return best_option
-        debug.debug_print("no safe move found, no best option in cache")
-        immediate_best = self._immediate_steps_checks(self._current_visitable_tiles)
-        if immediate_best is not None:
-            debug.debug_print(f"no safe move found, using immediate best option: {immediate_best}")
-            return immediate_best
-        debug.debug_print("no safe move found, no immediate best option")
-        return None
+        search_first = self._current_strategy_tile if self._current_strategy_tile is not None else self._current_direction
+        if search_first is None:
+            search_first = Coord(-1, -1)
+        debug.debug_print(f"search_first: {search_first}")
+        margin_fracs = self._get_margin_fracs(search_first)
+        best_option = self._get_best_option(margin_fracs)
+        debug.debug_print(f"best_option: {best_option}")
+        return best_option
         
+    def _get_margin_fracs(self, search_first: Coord) -> Dict[Coord, Dict[int, float]]:
+        result = self._area_checker.recurse_area_check(
+            self._current_map_copy,
+            list(self._body_coords),
+            search_first,
+            self._length,
+            self.MAX_RECURSE_DEPTH,
+            self.SAFE_MARGIN_FRAC
+        )
+        converted = {Coord(*coord): res for coord, res in result.items()}
+        debug.debug_print(f"margin_fracs: {converted}")
+        return converted
+    
+    def _get_best_option(self, margin_fracs: Dict[Coord, Dict[int, float]]) -> Union[Coord, None]:
+        max_depth = max([len(depths) for depths in margin_fracs.values()]) if len(margin_fracs) > 0 else 0
+        debug.debug_print(f"max_depth found: {max_depth}")
+        if not margin_fracs:
+            debug.debug_print("no margin fracs found, will die")
+            return None
+        strat_margin_fracs = margin_fracs[self._current_strategy_tile] if self._current_strategy_tile in margin_fracs else {}
+        strat_margin_frac_max_depth = max(strat_margin_fracs.keys()) if len(strat_margin_fracs) > 0 else -1
+        strat_margin_frac_at_depth = strat_margin_fracs.get(strat_margin_frac_max_depth, -1)
+        debug.debug_print(f"max_depth: {strat_margin_frac_max_depth}, strat_margin_frac_at_depth: {strat_margin_frac_at_depth}")
+        if strat_margin_frac_at_depth >= self.SAFE_MARGIN_FRAC:
+            debug.debug_print(f"choosing strategy tile {self._current_strategy_tile} with margin frac {strat_margin_frac_at_depth}")
+            return self._current_strategy_tile
+        else:
+            return max(
+                margin_fracs,
+                key=lambda coord: margin_fracs[coord].get(max(margin_fracs[coord].keys()), -1)
+            )
+
     def _init_area_checker(self):
         self._area_checker = AreaChecker(
             self._env_init_data.food_value,
@@ -81,122 +103,10 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
             self._env_init_data.width,
             self._env_init_data.height)
 
-    def _is_margin_safe(self, area_check_result) -> bool:
-        total_steps = area_check_result['total_steps']
-        if total_steps == 0:
-            return False
-        food_count = area_check_result['food_count']
-        margin = area_check_result['margin']
-        return (margin / total_steps) >= self.SAFE_MARGIN_FACTOR and margin >= food_count 
-
-    def _is_move_safe(self, next_head: Coord) -> bool:
-        target_margin = math.ceil(self._length / 10) # without a higher target margin the area check will early exit at (margin > food_count)
-        visitable_tiles_after_move = self._visitable_tiles(self._map, next_head)
-        if len(visitable_tiles_after_move) == 0:
-            return False
-        current_head = self._head_coord
-        current_tail = self._body_coords[-1]
-        map_copy = self._apply_snake_step(self._current_map_copy, current_head, current_tail, next_head)
-        did_grow = False
-        if self._map[next_head.y, next_head.x] == self._env_init_data.food_value:
-            did_grow = True
-        self._move_forward(next_head, self._body_coords, did_grow)
-        # self._print_map(map_copy)
-        # map_copy is a reference to self._current_map_copy
-        found_safe = False
-        for tile in visitable_tiles_after_move:
-            area_check_result = self._area_check_wrapper(map_copy, self._body_coords, tile, target_margin=target_margin)
-            self._area_check_cache.setdefault(next_head, []).append(area_check_result)
-            debug.debug_print(f"area_check_result for move to {next_head} with head at {tile}: {area_check_result}")
-            if self._is_margin_safe(area_check_result):
-                found_safe = True
-                break
-        self._move_backwards(current_tail, self._body_coords, did_grow)
-        self._revert_snake_step(map_copy, current_head, current_tail, next_head)
-        return found_safe
-
-    # def _is_move_safe(self, next_head: Coord) -> bool:
-    #     target_margin = math.ceil(self._length / 10) # without a higher target margin the area check will early exit at (margin > food_count)
-    #     s_map = self.get_map()
-    #     area_check_result = self._area_check_wrapper(s_map, self._body_coords, next_head, target_margin=target_margin)
-    #     self._area_check_cache.setdefault(next_head, []).append(area_check_result)
-    #     debug.debug_print(f"area_check_result for move to {next_head} with head at {next_head}: {area_check_result}")
-    #     if self._is_margin_safe(area_check_result):
-    #         return True
-    #     return False
-
-    def _area_check_wrapper(self, s_map, body_coords, start_coord, target_margin=0, food_check=False, complete_area=False, exhaustive=False):
-        result = self._area_checker.area_check(s_map, list(body_coords), start_coord, target_margin, food_check, complete_area, exhaustive)
-        return result
-
-    def _get_best_opiton_from_cache(self) -> Union[Coord, None]:
-        best_option = max(
-            ((tile, results) for tile, results in self._area_check_cache.items()), 
-            key=lambda item: (
-                max(
-                    (res['margin'] for res in item[1]),
-                    default=-1
-                )
-            ),
-            default=(None, None)
-        )
-        if best_option[0] is None:
-            return None
-        closest_to_strat_tile = min(
-            self._current_visitable_tiles, 
-            key=lambda tile: distance(self._current_strategy_tile, tile), default=None
-        )
-        if closest_to_strat_tile is not None:
-            cached_area_checks = self._area_check_cache.get(closest_to_strat_tile, [])
-            if any(map(self._is_margin_safe, cached_area_checks)):
-                return Coord(*closest_to_strat_tile)
-
-        return Coord(*best_option[0])
-
-    def _immediate_steps_checks(self, visitable_tiles: List[Coord]) -> Coord:
-        area_checks = {coord: self._area_check_wrapper(self._map, self._body_coords, coord) for coord in visitable_tiles}
-        debug.debug_print(f"immediate area_checks: {area_checks}")
-        best_tile = max(area_checks, key=lambda c: area_checks[c]['margin'], default=None)
-        if best_tile is None:
-            return None
-        return Coord(*best_tile)
-
-    def _apply_snake_step(self, s_map, current_head: Coord, current_tail: Coord, next_head: Coord) -> np.ndarray:
-        s_map[current_tail.y, current_tail.x] = self._env_init_data.free_value
-        s_map[current_head.y, current_head.x] = self._body_value
-        s_map[next_head.y, next_head.x] = self._head_value
-        return s_map
-
-    def _revert_snake_step(self, s_map, old_head: Coord, old_tail: Coord, current_head: Coord) -> np.ndarray:
-        s_map[old_tail.y, old_tail.x] = self._body_value
-        s_map[old_head.y, old_head.x] = self._head_value
-        s_map[current_head.y, current_head.x] = self._env_init_data.free_value
-        return s_map
-
-    def _visitable_tiles(self, s_map, coord):
-        return list(
-            get_visitable_tiles(
-                s_map,
-                self.get_env_init_data().width,
-                self.get_env_init_data().height,
-                coord,
-                [self.get_env_init_data().free_value, self.get_env_init_data().food_value]
-            )
-        )
-
     def _pre_step_calc(self):
         self._current_map_copy = self._map.copy()
-        self._area_check_cache = {}
         self._current_direction = self._head_coord - self._body_coords[1] if len(self._body_coords) > 1 else None
         self._current_strategy_tile = self._get_strategy_tile()
-        self._current_visitable_tiles = self._visitable_tiles(self._map, self._head_coord)
-        self._current_visitable_tiles.sort(
-            key=lambda t: (
-                0 if self._current_strategy_tile == t else
-                1 if self._current_direction == t else
-                2
-            ), 
-        ) # prioritize strategy tile if it is visitable
 
     def _post_step_calc(self):
         pass

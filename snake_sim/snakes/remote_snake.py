@@ -75,7 +75,6 @@ class RemoteSnake(ISnake):
         return (self.__class__, (self.target))
     
     def __del__(self):
-        self._log.debug(f"Deleting RemoteSnake connected to")
         try:
             self.kill()
         except Exception:

@@ -36,7 +36,7 @@ public:
 
     ConnectedAreaInfo get_connection_info(int area_id);
 
-    int get_visitable_tiles();
+    int get_countable_tiles();
 
     unsigned int get_edge(AreaNode *node);
 
