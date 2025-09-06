@@ -5,6 +5,9 @@
 #include <pybind11/stl.h>
 #include <cstdint>
 #include <vector>
+#include <iostream>
+
+
 #include "util_types.hpp"
 
 
@@ -38,3 +41,5 @@ inline py::list py_get_locations_with_value(py::array_t<uint8_t> s_map, int widt
     }
     return result;
 }
+
+void print_map(uint8_t *s_map, int width, int height, int head_value, int body_value, int food_value);

@@ -20,5 +20,13 @@ PYBIND11_MODULE(area_check, m)
             py::arg("food_check"),
             py::arg("complete_area"),
             py::arg("exhaustive")
+        )
+        .def("recurse_area_check", &AreaChecker::py_recurse_area_check,
+            py::arg("s_map"),
+            py::arg("body_coords_py"),
+            py::arg("search_first_py"),
+            py::arg("snake_length"),
+            py::arg("max_depth"),
+            py::arg("safe_margin_frac")
         );
 }

@@ -2,2319 +2,1979 @@ pygame 2.6.1 (SDL 2.28.4, Python 3.12.11)
 Hello from the pygame community. https://www.pygame.org/contribute.html
                        1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3
    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- 0 . . . F . . . . . . . . . . . # . . . . . . . . . . . . . . . .  0
- 1 . # . # # # . . . . . . . . . # . # # # # # # # . # . . . . . .  1
- 2 . # . . . # . . . . . . . . . # . # . . . . . # . # . . . . . .  2
- 3 . # . . . # . # # # # . . . . # . # . . . . . . . # . . . . . .  3
- 4 . # . . . # . # . . # . . . . # a a a a a a . # . # . . . . . .  4
- 5 . # # # . # . # . . # . . . . # a # . . . A . # . # . . . . . .  5
- 6 . . . . . . . # . . # . . . . # a # # # # # # # . # . . . . . .  6
- 7 . . # # # # . # . . # . . . . # a a a a . . . . . # . . . . . .  7
- 8 . . . . . # . # . . # . . . . # a a a a # # # # # # # # # # . #  8
- 9 . . . . . # . # . . # . . . . # a a a a # . . . . . . . . # . .  9
-10 . . . . . # . # . . # . . . . # a a a a # . . . . . . . a a a . 10
-11 . . . . . # . # . . # . . . . # a a a a # . . . . . . . a # a . 11
-12 . . . . . # . # . . . . . . . # a a a a # a a a . . . . a # a . 12
-13 . . . . . # . # . . # # # # # # a a a a # a a a . . . . a # a . 13
-14 . . . . . # a a a . # . F a a # a a a a # a a a a a a a a # a . 14
-15 . . . . . # a # a . # a a a a # a a a a # a # # # # # # # # a . 15
-16 . . . . . # a # a . # a a a a # a a a a a a # . . a a a a a a . 16
-17 . . . . . # a # a . # a a a a # a a a . . . # . . a . . . # . . 17
-18 . . . . . # a # a . # a a a a # a a a a a a # . . a . . . # . . 18
-19 . . . . . # a # a . # a a a a # a a a a a a # . . a . . . # . . 19
-20 . . . . . # a # a . # a a a a # a a a a a a # . . a . . . # . . 20
-21 . . . . . # a # a . # . a a a # a a a a a a # . . a . . . # . . 21
-22 . . . . . # a # a . # . . a a # a a a a a a # . . a . . . # . . 22
-23 . . . . . # a # a . . . . a a # a a a a a a # . a a F . . # . # 23
-24 . . . . . # a # a a a a a a a # a a a a a a # # a # # # # # . . 24
-25 . . F . . # a # # # # # # # # # a a a a a a a a a # . . . . . . 25
-26 . . . . . # a a a a a a a a a # a a a . a a a a a # . F . . . . 26
-27 . . . . . # a a a a a a a a a # a a a . . a a a a # . . . . . . 27
-28 . . . . . a a a a a a a a a a # a a a . . a a a a # . . . . . . 28
-29 # # # # . a a a a a a a a a a # a . a a a a a a a # . . . . . . 29
-30 . . . . . a a a a a a a a a a # a a a a a a a a a # . . . . . . 30
-31 . . . . . . . . . . . a a a a a a a a a a a a a a . . . . . . . 31
+ 0 . F . . . . . . . . . . . . . . # . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . # . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . # . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . # . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . # # # # # # # # # # # # # . . . . . . . . .  4
+ 5 . . . . . . . . . . # . . . . . . . . . . . # . . . . . . . . .  5
+ 6 . . . . . . . . . . # . . . . . . . . . . . # . . . . . . . . .  6
+ 7 . . . . . . . . . . # # . . . . . . . . . # # . . . . . . . . .  7
+ 8 . . . . . . . . . . . # # . . . . . . . # # . . . . . . . . . .  8
+ 9 . . . . # # # # . . . . # # . . . . . # # . . . . . . . . . . .  9
+10 . . . . # . . # # . . . . # # . . . # # . . . . # # # # . . . . 10
+11 . . . . # . . . # # . . . . # . . # # . . . . # # . . # . . . . 11
+12 . . . . # . . . . # # . . . . . . . . . . . # # . . . # . . . . 12
+13 . . . . # . . . . . # # . . . . . . . . . # # . . . . # . . . F 13
+14 . . . . # . . . . . . # # # # # # # . . # # . . . . . # . . . . 14
+15 # # # # # . . . . . . . . . . . . # . . . . . . . . . # # # # # 15
+16 . . . . # . . . . . . . . . . # . . . . F . . . . . . # . . . . 16
+17 . . . . # . . . . . . # # . . # # # # # # # . . . . . # . . . . 17
+18 . . . . # . . . . . # # . . . . . . . . . # # . . . . # . . . . 18
+19 . . . . # . . . . # # . . a a a a a a a a a # # . . . # . . . . 19
+20 . . . . # . . . # # . . a a # # . . # . . a . # # . . # . . . . 20
+21 . . . . # . . # # . . a a # # . . . # # . A . . # # # # . . . . 21
+22 . . . . # # # # . . a a # # . . . . . # # . . . . . . . . . . . 22
+23 . . . . . . . . . a a # # . . . . . . . # # . . . . . . . . . . 23
+24 . . . . . . . . . a # # . . . . . . . . . # # . . . . . . . . . 24
+25 . . . . . . . . a a # . . . . . . . . . . . # . . . . . . . . . 25
+26 . . . . . . . . a . # . . . . . . . . . . . # . . . . . . . . . 26
+27 . . . . . . . a a . # # # # # # # # # # # # # . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . # . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . # . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . # . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . # . . . . . . . . . . . . . . . 31
                        1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3
    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-snake env_init_data:  <snake_sim.environment.types.EnvInitData object at 0x7f1572a77890>
+snake env_init_data:  <snake_sim.environment.types.EnvInitData object at 0x7f1a1360f560>
 snake env_data:  None
-snake head:  Coord(x=21, y=5)
+snake head:  Coord(x=21, y=21)
 snake head value:  3
 snake body value:  4
-Node ID: 42
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (25, 31)
-Body Tiles: (185, (25, 31)), 
-Connections: 
-    Connected to area: 41 [Self: (25, 31) Other: (26, 31)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 41
-Tile Count: 44
-Food Count: 1
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (30, 24)
-Body Tiles: 
-Connections: 
-    Connected to area: 42 [Self: (26, 31) Other: (25, 31)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 40 [Self: (30, 24) Other: (30, 23)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 40
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (30, 23)
-Body Tiles: 
-Connections: 
-    Connected to area: 41 [Self: (30, 23) Other: (30, 24)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 39 [Self: (30, 23) Other: (30, 22)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 39
-Tile Count: 12
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 17)
-Body Tiles: (164, (30, 17)), 
-Connections: 
-    Connected to area: 40 [Self: (30, 22) Other: (30, 23)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 38 [Self: (31, 17) Other: (31, 16)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 38
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 16)
-Body Tiles: (164, (31, 16)), 
-Connections: 
-    Connected to area: 39 [Self: (31, 16) Other: (31, 17)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 36 [Self: (31, 16) Other: (31, 15)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 37
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (16, 3)
-Body Tiles: (6, (16, 3)), 
-Connections: 
-    Connected to area: 12 [Self: (16, 3) Other: (16, 2)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 36
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 15)
-Body Tiles: (163, (31, 15)), 
-Connections: 
-    Connected to area: 38 [Self: (31, 15) Other: (31, 16)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 34 [Self: (31, 15) Other: (31, 14)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 34
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 14)
-Body Tiles: (162, (31, 14)), 
-Connections: 
-    Connected to area: 36 [Self: (31, 14) Other: (31, 15)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 32 [Self: (31, 14) Other: (31, 13)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 32
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 13)
-Body Tiles: (161, (31, 13)), 
-Connections: 
-    Connected to area: 34 [Self: (31, 13) Other: (31, 14)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 30 [Self: (31, 13) Other: (31, 12)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 30
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 12)
-Body Tiles: (160, (31, 12)), 
-Connections: 
-    Connected to area: 32 [Self: (31, 12) Other: (31, 13)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 28 [Self: (31, 12) Other: (31, 11)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 28
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 11)
-Body Tiles: (159, (31, 11)), 
-Connections: 
-    Connected to area: 30 [Self: (31, 11) Other: (31, 12)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 26 [Self: (31, 11) Other: (31, 10)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 26
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 10)
-Body Tiles: (158, (31, 10)), 
-Connections: 
-    Connected to area: 28 [Self: (31, 10) Other: (31, 11)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 23 [Self: (31, 10) Other: (31, 9)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 25
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (20, 7)
-Body Tiles: (126, (20, 7)), 
-Connections: 
-    Connected to area: 6 [Self: (20, 7) Other: (21, 7)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 23
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (31, 9)
-Body Tiles: 
-Connections: 
-    Connected to area: 26 [Self: (31, 9) Other: (31, 10)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 20 [Self: (31, 9) Other: (30, 9)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 6
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 20
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (30, 9)
-Body Tiles: (158, (30, 9)), 
-Connections: 
-    Connected to area: 23 [Self: (30, 9) Other: (31, 9)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 17 [Self: (30, 9) Other: (30, 8)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 6
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 17
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (30, 8)
-Body Tiles: 
-Connections: 
-    Connected to area: 20 [Self: (30, 8) Other: (30, 9)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 14 [Self: (30, 8) Other: (30, 7)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 6
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 14
-Tile Count: 48
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (26, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 17 [Self: (30, 7) Other: (30, 8)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 11 [Self: (26, 0) Other: (25, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 6
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 11
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (25, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 14 [Self: (25, 0) Other: (26, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (25, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 6
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 9
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (24, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 12 [Self: (24, 0) Other: (23, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 11 [Self: (24, 0) Other: (25, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 5 [Self: (24, 0) Other: (24, 1)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 6
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 5
-Tile Count: 2
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 2)
-Body Tiles: 
-Connections: 
-    Connected to area: 9 [Self: (24, 1) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 2) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 6
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 5
-Tile Count: 2
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 2)
-Body Tiles: 
-Connections: 
-    Connected to area: 9 [Self: (24, 1) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 2) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 4
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (24, 3)
-Body Tiles: 
-Connections: 
-    Connected to area: 6 [Self: (24, 3) Other: (24, 4)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 5 [Self: (24, 3) Other: (24, 2)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 3 [Self: (24, 3) Other: (23, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 3
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 3)
-Body Tiles: 
-Connections: 
-    Connected to area: 4 [Self: (23, 3) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 2 [Self: (23, 3) Other: (22, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 2
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (22, 3)
-Body Tiles: (4, (18, 3)), (3, (19, 3)), (2, (20, 3)), (1, (21, 3)), 
-Connections: 
-    Connected to area: 3 [Self: (22, 3) Other: (23, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 1 [Self: (22, 3) Other: (22, 4)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 1
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (22, 4)
-Body Tiles: (1, (22, 4)), 
-Connections: 
-    Connected to area: 2 [Self: (22, 4) Other: (22, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 0 [Self: (22, 4) Other: (22, 5)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 0
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (22, 5)
-Body Tiles: (0, (22, 5)), 
-Connections: 
-    Connected to area: 1 [Self: (22, 5) Other: (22, 4)] Bad gateway: 0 Diag gateway: 0
-
-
-####### NODE #######
---> Forward
-nr_visits: 1
-Current node: 0
-start coord: (22, 5)
-node tile count: 1
-node food count: 0
-max body pair: (0, (22, 5))
-Body tiles: (0, (22, 5)), 
-has body: 1
-has only head: 1
-nr body tiles: 1
-coord parity diff: -1
-is one dim: 1
-has tail: 0
-Tiles before: 0
-Food before: 0
-current node new tiles: 1
-tiles until here: 0
-food until here: 0
-needed steps: 310
-total steps: 1
-margin: -309
-searched edges now: 
-used edges: 
-edge nodes: (1, 2), 
-search stack: (0, )
-total tile count stack: ()
-total food count stack: ()
-
-current result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 310
-  margin: -309
-  total steps: 1
-  has tail: 0
-best result: 
-  is clear: 0
-  tile count: 0
-  food count: 0
-  needed steps: 0
-  margin: -2147483648
-  total steps: 0
-  has tail: 0
-Cannot enter node: 1
-
-####### NODE #######
---> Forward
-nr_visits: 1
-Current node: 0
-start coord: (22, 5)
-node tile count: 1
-node food count: 0
-max body pair: (0, (22, 5))
-Body tiles: (0, (22, 5)), 
-has body: 1
-has only head: 1
-nr body tiles: 1
-coord parity diff: -1
-is one dim: 1
-has tail: 0
-Tiles before: 0
-Food before: 0
-current node new tiles: 1
-tiles until here: 0
-food until here: 0
-needed steps: 310
-total steps: 1
-margin: -309
-searched edges now: 2, 
-used edges: 
-edge nodes: (1, 2), 
-search stack: (0, )
-total tile count stack: ()
-total food count stack: ()
-
-current result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 310
-  margin: -309
-  total steps: 1
-  has tail: 0
-best result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 310
-  margin: -309
-  total steps: 1
-  has tail: 0
-Node ID: 2
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (18, 5)
-Body Tiles: (4, (18, 5)), 
-Connections: 
-    Connected to area: 1 [Self: (18, 5) Other: (19, 5)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 1
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (19, 5)
-Body Tiles: (3, (19, 5)), 
-Connections: 
-    Connected to area: 2 [Self: (19, 5) Other: (18, 5)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 0 [Self: (19, 5) Other: (20, 5)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 0
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (20, 5)
-Body Tiles: (2, (20, 5)), (0, (20, 5)), 
-Connections: 
-    Connected to area: 1 [Self: (20, 5) Other: (19, 5)] Bad gateway: 0 Diag gateway: 0
-
-
-####### NODE #######
---> Forward
-nr_visits: 1
-Current node: 0
-start coord: (20, 5)
-node tile count: 1
-node food count: 0
-max body pair: (2, (20, 5))
-Body tiles: (2, (20, 5)), (0, (20, 5)), 
-has body: 1
-has only head: 0
-nr body tiles: 2
-coord parity diff: -1
-is one dim: 0
-has tail: 0
-Tiles before: 0
-Food before: 0
-current node new tiles: 1
-tiles until here: 0
-food until here: 0
-needed steps: 308
-total steps: 1
-margin: -307
-searched edges now: 
-used edges: 
-edge nodes: (1, 2), 
-search stack: (0, )
-total tile count stack: ()
-total food count stack: ()
-
-current result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 308
-  margin: -307
-  total steps: 1
-  has tail: 0
-best result: 
-  is clear: 0
-  tile count: 0
-  food count: 0
-  needed steps: 0
-  margin: -2147483648
-  total steps: 0
-  has tail: 0
-Cannot enter node: 1
-
-####### NODE #######
---> Forward
-nr_visits: 1
-Current node: 0
-start coord: (20, 5)
-node tile count: 1
-node food count: 0
-max body pair: (2, (20, 5))
-Body tiles: (2, (20, 5)), (0, (20, 5)), 
-has body: 1
-has only head: 0
-nr body tiles: 2
-coord parity diff: -1
-is one dim: 0
-has tail: 0
-Tiles before: 0
-Food before: 0
-current node new tiles: 1
-tiles until here: 0
-food until here: 0
-needed steps: 308
-total steps: 1
-margin: -307
-searched edges now: 2, 
-used edges: 
-edge nodes: (1, 2), 
-search stack: (0, )
-total tile count stack: ()
-total food count stack: ()
-
-current result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 308
-  margin: -307
-  total steps: 1
-  has tail: 0
-best result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 308
-  margin: -307
-  total steps: 1
-  has tail: 0
-current tile:  Coord(x=21, y=5)
-snake length:  310
-[SurvivorSnake._next_step] current_tile: Coord(x=21, y=5), current_direction: Coord(x=0, y=1)
-[SurvivorSnake._next_step] checking tile (22, 5)
-                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3
-   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- 0 . . . F . . . . . . . . . . . # . . . . . . . . . . . . . . . .  0
- 1 . # . # # # . . . . . . . . . # . # # # # # # # . # . . . . . .  1
- 2 . # . . . # . . . . . . . . . # . # . . . . . # . # . . . . . .  2
- 3 . # . . . # . # # # # . . . . # . # . . . . . . . # . . . . . .  3
- 4 . # . . . # . # . . # . . . . # a a a a a a . # . # . . . . . .  4
- 5 . # # # . # . # . . # . . . . # a # . . . a A # . # . . . . . .  5
- 6 . . . . . . . # . . # . . . . # a # # # # # # # . # . . . . . .  6
- 7 . . # # # # . # . . # . . . . # a a a a . . . . . # . . . . . .  7
- 8 . . . . . # . # . . # . . . . # a a a a # # # # # # # # # # . #  8
- 9 . . . . . # . # . . # . . . . # a a a a # . . . . . . . . # . .  9
-10 . . . . . # . # . . # . . . . # a a a a # . . . . . . . a a a . 10
-11 . . . . . # . # . . # . . . . # a a a a # . . . . . . . a # a . 11
-12 . . . . . # . # . . . . . . . # a a a a # a a a . . . . a # a . 12
-13 . . . . . # . # . . # # # # # # a a a a # a a a . . . . a # a . 13
-14 . . . . . # a a a . # . F a a # a a a a # a a a a a a a a # a . 14
-15 . . . . . # a # a . # a a a a # a a a a # a # # # # # # # # a . 15
-16 . . . . . # a # a . # a a a a # a a a a a a # . . a a a a a a . 16
-17 . . . . . # a # a . # a a a a # a a a . . . # . . a . . . # . . 17
-18 . . . . . # a # a . # a a a a # a a a a a a # . . a . . . # . . 18
-19 . . . . . # a # a . # a a a a # a a a a a a # . . a . . . # . . 19
-20 . . . . . # a # a . # a a a a # a a a a a a # . . a . . . # . . 20
-21 . . . . . # a # a . # . . a a # a a a a a a # . . a . . . # . . 21
-22 . . . . . # a # a . # . . a a # a a a a a a # . . a . . . # . . 22
-23 . . . . . # a # a . . . . a a # a a a a a a # . a a F . . # . # 23
-24 . . . . . # a # a a a a a a a # a a a a a a # # a # # # # # . . 24
-25 . . F . . # a # # # # # # # # # a a a a a a a a a # . . . . . . 25
-26 . . . . . # a a a a a a a a a # a a a . a a a a a # . F . . . . 26
-27 . . . . . # a a a a a a a a a # a a a . . a a a a # . . . . . . 27
-28 . . . . . a a a a a a a a a a # a a a . . a a a a # . . . . . . 28
-29 # # # # . a a a a a a a a a a # a . a a a a a a a # . . . . . . 29
-30 . . . . . a a a a a a a a a a # a a a a a a a a a # . . . . . . 30
-31 . . . . . . . . . . . a a a a a a a a a a a a a a . . . . . . . 31
-                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3
-   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-Node ID: 41
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (25, 31)
-Body Tiles: (186, (25, 31)), 
-Connections: 
-    Connected to area: 40 [Self: (25, 31) Other: (26, 31)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 40
-Tile Count: 44
-Food Count: 1
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (30, 24)
-Body Tiles: 
-Connections: 
-    Connected to area: 41 [Self: (26, 31) Other: (25, 31)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 39 [Self: (30, 24) Other: (30, 23)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 39
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (30, 23)
-Body Tiles: 
-Connections: 
-    Connected to area: 40 [Self: (30, 23) Other: (30, 24)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 38 [Self: (30, 23) Other: (30, 22)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 38
-Tile Count: 12
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 17)
-Body Tiles: (165, (30, 17)), 
-Connections: 
-    Connected to area: 39 [Self: (30, 22) Other: (30, 23)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 37 [Self: (31, 17) Other: (31, 16)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 37
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 16)
-Body Tiles: (165, (31, 16)), 
-Connections: 
-    Connected to area: 38 [Self: (31, 16) Other: (31, 17)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 35 [Self: (31, 16) Other: (31, 15)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 36
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (16, 3)
-Body Tiles: (7, (16, 3)), 
-Connections: 
-    Connected to area: 11 [Self: (16, 3) Other: (16, 2)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 35
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 15)
-Body Tiles: (164, (31, 15)), 
-Connections: 
-    Connected to area: 37 [Self: (31, 15) Other: (31, 16)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 33 [Self: (31, 15) Other: (31, 14)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 11
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 36 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 8 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 33
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 14)
-Body Tiles: (163, (31, 14)), 
-Connections: 
-    Connected to area: 35 [Self: (31, 14) Other: (31, 15)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 31 [Self: (31, 14) Other: (31, 13)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 11
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 36 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 8 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 31
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 13)
-Body Tiles: (162, (31, 13)), 
-Connections: 
-    Connected to area: 33 [Self: (31, 13) Other: (31, 14)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 29 [Self: (31, 13) Other: (31, 12)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 11
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 36 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 8 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 29
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 12)
-Body Tiles: (161, (31, 12)), 
-Connections: 
-    Connected to area: 31 [Self: (31, 12) Other: (31, 13)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 27 [Self: (31, 12) Other: (31, 11)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 11
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 36 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 8 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 27
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 11)
-Body Tiles: (160, (31, 11)), 
-Connections: 
-    Connected to area: 29 [Self: (31, 11) Other: (31, 12)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 25 [Self: (31, 11) Other: (31, 10)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 11
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 36 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 8 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 25
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 10)
-Body Tiles: (159, (31, 10)), 
-Connections: 
-    Connected to area: 27 [Self: (31, 10) Other: (31, 11)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 22 [Self: (31, 10) Other: (31, 9)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 24
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (20, 7)
-Body Tiles: (127, (20, 7)), 
-Connections: 
-    Connected to area: 5 [Self: (20, 7) Other: (21, 7)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 11
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 36 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 8 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 22
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (31, 9)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (31, 9) Other: (31, 10)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 19 [Self: (31, 9) Other: (30, 9)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 5
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 24 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 3 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 11
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 36 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 8 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 19
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (30, 9)
-Body Tiles: (159, (30, 9)), 
-Connections: 
-    Connected to area: 22 [Self: (30, 9) Other: (31, 9)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 16 [Self: (30, 9) Other: (30, 8)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 5
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 24 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 3 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 11
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 36 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 8 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 16
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (30, 8)
-Body Tiles: 
-Connections: 
-    Connected to area: 19 [Self: (30, 8) Other: (30, 9)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 13 [Self: (30, 8) Other: (30, 7)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 5
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 24 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 3 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 11
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 36 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 8 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 13
-Tile Count: 48
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (26, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 16 [Self: (30, 7) Other: (30, 8)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 10 [Self: (26, 0) Other: (25, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 5
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 24 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 3 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 11
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 36 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 8 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 10
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (25, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 13 [Self: (25, 0) Other: (26, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 8 [Self: (25, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 5
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 24 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 3 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 8
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (24, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 11 [Self: (24, 0) Other: (23, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 10 [Self: (24, 0) Other: (25, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 0) Other: (24, 1)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 5
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 24 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 3 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 4
-Tile Count: 2
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 2)
-Body Tiles: 
-Connections: 
-    Connected to area: 8 [Self: (24, 1) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 3 [Self: (24, 2) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 5
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 24 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 3 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 4
-Tile Count: 2
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 2)
-Body Tiles: 
-Connections: 
-    Connected to area: 8 [Self: (24, 1) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 3 [Self: (24, 2) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 3
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (24, 3)
-Body Tiles: 
-Connections: 
-    Connected to area: 5 [Self: (24, 3) Other: (24, 4)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 3) Other: (24, 2)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 2 [Self: (24, 3) Other: (23, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 2
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 3)
-Body Tiles: 
-Connections: 
-    Connected to area: 3 [Self: (23, 3) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 1 [Self: (23, 3) Other: (22, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 1
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (22, 3)
-Body Tiles: (5, (18, 3)), (4, (19, 3)), (3, (20, 3)), (2, (21, 3)), 
-Connections: 
-    Connected to area: 2 [Self: (22, 3) Other: (23, 3)] Bad gateway: 1 Diag gateway: 0
-    Connected to area: 0 [Self: (22, 3) Other: (22, 4)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 0
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (22, 4)
-Body Tiles: (2, (22, 4)), (0, (22, 4)), 
-Connections: 
-    Connected to area: 1 [Self: (22, 4) Other: (22, 3)] Bad gateway: 0 Diag gateway: 0
-
-
-####### NODE #######
---> Forward
-nr_visits: 1
-Current node: 0
-start coord: (22, 4)
-node tile count: 1
-node food count: 0
-max body pair: (2, (22, 4))
-Body tiles: (2, (22, 4)), (0, (22, 4)), 
-has body: 1
-has only head: 0
-nr body tiles: 2
-coord parity diff: 1
-is one dim: 0
-has tail: 0
-Tiles before: 0
-Food before: 0
-current node new tiles: 1
-tiles until here: 0
-food until here: 0
-needed steps: 308
-total steps: 1
-margin: -307
-searched edges now: 
-used edges: 
-edge nodes: (1, 2), 
-search stack: (0, )
-total tile count stack: ()
-total food count stack: ()
-
-current result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 308
-  margin: -307
-  total steps: 1
-  has tail: 0
-best result: 
-  is clear: 0
-  tile count: 0
-  food count: 0
-  needed steps: 0
-  margin: -2147483648
-  total steps: 0
-  has tail: 0
-Cannot enter node: 1
-
-####### NODE #######
---> Forward
-nr_visits: 1
-Current node: 0
-start coord: (22, 4)
-node tile count: 1
-node food count: 0
-max body pair: (2, (22, 4))
-Body tiles: (2, (22, 4)), (0, (22, 4)), 
-has body: 1
-has only head: 0
-nr body tiles: 2
-coord parity diff: 1
-is one dim: 0
-has tail: 0
-Tiles before: 0
-Food before: 0
-current node new tiles: 1
-tiles until here: 0
-food until here: 0
-needed steps: 308
-total steps: 1
-margin: -307
-searched edges now: 2, 
-used edges: 
-edge nodes: (1, 2), 
-search stack: (0, )
-total tile count stack: ()
-total food count stack: ()
-
-current result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 308
-  margin: -307
-  total steps: 1
-  has tail: 0
-best result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 308
-  margin: -307
-  total steps: 1
-  has tail: 0
-[SurvivorSnake._is_move_safe] area_check_result for move to Coord(x=22, y=5) with head at (22, 4): {'is_clear': False, 'tile_count': 1, 'total_steps': 1, 'food_count': 0, 'has_tail': False, 'margin': -307}
-[SurvivorSnake._next_step] checking tile (20, 5)
-                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3
-   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- 0 . . . F . . . . . . . . . . . # . . . . . . . . . . . . . . . .  0
- 1 . # . # # # . . . . . . . . . # . # # # # # # # . # . . . . . .  1
- 2 . # . . . # . . . . . . . . . # . # . . . . . # . # . . . . . .  2
- 3 . # . . . # . # # # # . . . . # . # . . . . . . . # . . . . . .  3
- 4 . # . . . # . # . . # . . . . # a a a a a a . # . # . . . . . .  4
- 5 . # # # . # . # . . # . . . . # a # . . A a . # . # . . . . . .  5
- 6 . . . . . . . # . . # . . . . # a # # # # # # # . # . . . . . .  6
- 7 . . # # # # . # . . # . . . . # a a a a . . . . . # . . . . . .  7
- 8 . . . . . # . # . . # . . . . # a a a a # # # # # # # # # # . #  8
- 9 . . . . . # . # . . # . . . . # a a a a # . . . . . . . . # . .  9
-10 . . . . . # . # . . # . . . . # a a a a # . . . . . . . a a a . 10
-11 . . . . . # . # . . # . . . . # a a a a # . . . . . . . a # a . 11
-12 . . . . . # . # . . . . . . . # a a a a # a a a . . . . a # a . 12
-13 . . . . . # . # . . # # # # # # a a a a # a a a . . . . a # a . 13
-14 . . . . . # a a a . # . F a a # a a a a # a a a a a a a a # a . 14
-15 . . . . . # a # a . # a a a a # a a a a # a # # # # # # # # a . 15
-16 . . . . . # a # a . # a a a a # a a a a a a # . . a a a a a a . 16
-17 . . . . . # a # a . # a a a a # a a a . . . # . . a . . . # . . 17
-18 . . . . . # a # a . # a a a a # a a a a a a # . . a . . . # . . 18
-19 . . . . . # a # a . # a a a a # a a a a a a # . . a . . . # . . 19
-20 . . . . . # a # a . # a a a a # a a a a a a # . . a . . . # . . 20
-21 . . . . . # a # a . # . . a a # a a a a a a # . . a . . . # . . 21
-22 . . . . . # a # a . # . . a a # a a a a a a # . . a . . . # . . 22
-23 . . . . . # a # a . . . . a a # a a a a a a # . a a F . . # . # 23
-24 . . . . . # a # a a a a a a a # a a a a a a # # a # # # # # . . 24
-25 . . F . . # a # # # # # # # # # a a a a a a a a a # . . . . . . 25
-26 . . . . . # a a a a a a a a a # a a a . a a a a a # . F . . . . 26
-27 . . . . . # a a a a a a a a a # a a a . . a a a a # . . . . . . 27
-28 . . . . . a a a a a a a a a a # a a a . . a a a a # . . . . . . 28
-29 # # # # . a a a a a a a a a a # a . a a a a a a a # . . . . . . 29
-30 . . . . . a a a a a a a a a a # a a a a a a a a a # . . . . . . 30
-31 . . . . . . . . . . . a a a a a a a a a a a a a a . . . . . . . 31
-                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3
-   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-Node ID: 1
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (18, 5)
-Body Tiles: (5, (18, 5)), 
-Connections: 
-    Connected to area: 0 [Self: (18, 5) Other: (19, 5)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 0
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (19, 5)
-Body Tiles: (4, (19, 5)), (0, (19, 5)), 
-Connections: 
-    Connected to area: 1 [Self: (19, 5) Other: (18, 5)] Bad gateway: 0 Diag gateway: 0
-
-
-####### NODE #######
---> Forward
-nr_visits: 1
-Current node: 0
-start coord: (19, 5)
-node tile count: 1
-node food count: 0
-max body pair: (4, (19, 5))
-Body tiles: (4, (19, 5)), (0, (19, 5)), 
-has body: 1
-has only head: 0
-nr body tiles: 2
-coord parity diff: 1
-is one dim: 0
-has tail: 0
-Tiles before: 0
-Food before: 0
-current node new tiles: 1
-tiles until here: 0
-food until here: 0
-needed steps: 306
-total steps: 1
-margin: -305
-searched edges now: 
-used edges: 
-edge nodes: (1, 2), 
-search stack: (0, )
-total tile count stack: ()
-total food count stack: ()
-
-current result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 306
-  margin: -305
-  total steps: 1
-  has tail: 0
-best result: 
-  is clear: 0
-  tile count: 0
-  food count: 0
-  needed steps: 0
-  margin: -2147483648
-  total steps: 0
-  has tail: 0
-Cannot enter node: 1
-
-####### NODE #######
---> Forward
-nr_visits: 1
-Current node: 0
-start coord: (19, 5)
-node tile count: 1
-node food count: 0
-max body pair: (4, (19, 5))
-Body tiles: (4, (19, 5)), (0, (19, 5)), 
-has body: 1
-has only head: 0
-nr body tiles: 2
-coord parity diff: 1
-is one dim: 0
-has tail: 0
-Tiles before: 0
-Food before: 0
-current node new tiles: 1
-tiles until here: 0
-food until here: 0
-needed steps: 306
-total steps: 1
-margin: -305
-searched edges now: 2, 
-used edges: 
-edge nodes: (1, 2), 
-search stack: (0, )
-total tile count stack: ()
-total food count stack: ()
-
-current result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 306
-  margin: -305
-  total steps: 1
-  has tail: 0
-best result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 306
-  margin: -305
-  total steps: 1
-  has tail: 0
-[SurvivorSnake._is_move_safe] area_check_result for move to Coord(x=20, y=5) with head at (19, 5): {'is_clear': False, 'tile_count': 1, 'total_steps': 1, 'food_count': 0, 'has_tail': False, 'margin': -305}
-[SurvivorSnake._next_step] no safe move found, using best option from cache: Coord(x=20, y=5)
-Node ID: 42
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (25, 31)
-Body Tiles: (185, (25, 31)), 
-Connections: 
-    Connected to area: 41 [Self: (25, 31) Other: (26, 31)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 41
-Tile Count: 44
-Food Count: 1
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (30, 24)
-Body Tiles: 
-Connections: 
-    Connected to area: 42 [Self: (26, 31) Other: (25, 31)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 40 [Self: (30, 24) Other: (30, 23)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 40
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (30, 23)
-Body Tiles: 
-Connections: 
-    Connected to area: 41 [Self: (30, 23) Other: (30, 24)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 39 [Self: (30, 23) Other: (30, 22)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 39
-Tile Count: 12
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 17)
-Body Tiles: (164, (30, 17)), 
-Connections: 
-    Connected to area: 40 [Self: (30, 22) Other: (30, 23)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 38 [Self: (31, 17) Other: (31, 16)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 38
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 16)
-Body Tiles: (164, (31, 16)), 
-Connections: 
-    Connected to area: 39 [Self: (31, 16) Other: (31, 17)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 36 [Self: (31, 16) Other: (31, 15)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 37
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (16, 3)
-Body Tiles: (6, (16, 3)), 
-Connections: 
-    Connected to area: 12 [Self: (16, 3) Other: (16, 2)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 36
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 15)
-Body Tiles: (163, (31, 15)), 
-Connections: 
-    Connected to area: 38 [Self: (31, 15) Other: (31, 16)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 34 [Self: (31, 15) Other: (31, 14)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 34
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 14)
-Body Tiles: (162, (31, 14)), 
-Connections: 
-    Connected to area: 36 [Self: (31, 14) Other: (31, 15)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 32 [Self: (31, 14) Other: (31, 13)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 32
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 13)
-Body Tiles: (161, (31, 13)), 
-Connections: 
-    Connected to area: 34 [Self: (31, 13) Other: (31, 14)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 30 [Self: (31, 13) Other: (31, 12)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 30
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 12)
-Body Tiles: (160, (31, 12)), 
-Connections: 
-    Connected to area: 32 [Self: (31, 12) Other: (31, 13)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 28 [Self: (31, 12) Other: (31, 11)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 28
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 11)
-Body Tiles: (159, (31, 11)), 
-Connections: 
-    Connected to area: 30 [Self: (31, 11) Other: (31, 12)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 26 [Self: (31, 11) Other: (31, 10)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 26
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (31, 10)
-Body Tiles: (158, (31, 10)), 
-Connections: 
-    Connected to area: 28 [Self: (31, 10) Other: (31, 11)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 23 [Self: (31, 10) Other: (31, 9)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 25
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (20, 7)
-Body Tiles: (126, (20, 7)), 
-Connections: 
-    Connected to area: 6 [Self: (20, 7) Other: (21, 7)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 23
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (31, 9)
-Body Tiles: 
-Connections: 
-    Connected to area: 26 [Self: (31, 9) Other: (31, 10)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 20 [Self: (31, 9) Other: (30, 9)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 6
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 20
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (30, 9)
-Body Tiles: (158, (30, 9)), 
-Connections: 
-    Connected to area: 23 [Self: (30, 9) Other: (31, 9)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 17 [Self: (30, 9) Other: (30, 8)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 6
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 17
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (30, 8)
-Body Tiles: 
-Connections: 
-    Connected to area: 20 [Self: (30, 8) Other: (30, 9)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 14 [Self: (30, 8) Other: (30, 7)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 6
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 14
-Tile Count: 48
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (26, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 17 [Self: (30, 7) Other: (30, 8)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 11 [Self: (26, 0) Other: (25, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 6
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 12
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 37 [Self: (16, 2) Other: (16, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (23, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 11
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (25, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 14 [Self: (25, 0) Other: (26, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 9 [Self: (25, 0) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 6
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 9
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (24, 0)
-Body Tiles: 
-Connections: 
-    Connected to area: 12 [Self: (24, 0) Other: (23, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 11 [Self: (24, 0) Other: (25, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 5 [Self: (24, 0) Other: (24, 1)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 6
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 5
-Tile Count: 2
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 2)
-Body Tiles: 
-Connections: 
-    Connected to area: 9 [Self: (24, 1) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 2) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 6
-Tile Count: 7
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 4)
-Body Tiles: 
-Connections: 
-    Connected to area: 25 [Self: (21, 7) Other: (20, 7)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 4) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 5
-Tile Count: 2
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (24, 2)
-Body Tiles: 
-Connections: 
-    Connected to area: 9 [Self: (24, 1) Other: (24, 0)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 4 [Self: (24, 2) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 4
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (24, 3)
-Body Tiles: 
-Connections: 
-    Connected to area: 6 [Self: (24, 3) Other: (24, 4)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 5 [Self: (24, 3) Other: (24, 2)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 3 [Self: (24, 3) Other: (23, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 3
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (23, 3)
-Body Tiles: 
-Connections: 
-    Connected to area: 4 [Self: (23, 3) Other: (24, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 2 [Self: (23, 3) Other: (22, 3)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 2
-Tile Count: 10
-Food Count: 0
-Even or Odd balance: 0
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (22, 3)
-Body Tiles: (4, (18, 3)), (3, (19, 3)), (2, (20, 3)), (1, (21, 3)), 
-Connections: 
-    Connected to area: 3 [Self: (22, 3) Other: (23, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 1 [Self: (22, 3) Other: (22, 4)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 1
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (22, 4)
-Body Tiles: (1, (22, 4)), 
-Connections: 
-    Connected to area: 2 [Self: (22, 4) Other: (22, 3)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 0 [Self: (22, 4) Other: (22, 5)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 0
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 1
-Start Coord: (22, 5)
-Body Tiles: (0, (22, 5)), 
-Connections: 
-    Connected to area: 1 [Self: (22, 5) Other: (22, 4)] Bad gateway: 0 Diag gateway: 0
-
-
-####### NODE #######
---> Forward
-nr_visits: 1
-Current node: 0
-start coord: (22, 5)
-node tile count: 1
-node food count: 0
-max body pair: (0, (22, 5))
-Body tiles: (0, (22, 5)), 
-has body: 1
-has only head: 1
-nr body tiles: 1
-coord parity diff: -1
-is one dim: 1
-has tail: 0
-Tiles before: 0
-Food before: 0
-current node new tiles: 1
-tiles until here: 0
-food until here: 0
-needed steps: 310
-total steps: 1
-margin: -309
-searched edges now: 
-used edges: 
-edge nodes: (1, 2), 
-search stack: (0, )
-total tile count stack: ()
-total food count stack: ()
-
-current result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 310
-  margin: -309
-  total steps: 1
-  has tail: 0
-best result: 
-  is clear: 0
-  tile count: 0
-  food count: 0
-  needed steps: 0
-  margin: -2147483648
-  total steps: 0
-  has tail: 0
-Cannot enter node: 1
-
-####### NODE #######
---> Forward
-nr_visits: 1
-Current node: 0
-start coord: (22, 5)
-node tile count: 1
-node food count: 0
-max body pair: (0, (22, 5))
-Body tiles: (0, (22, 5)), 
-has body: 1
-has only head: 1
-nr body tiles: 1
-coord parity diff: -1
-is one dim: 1
-has tail: 0
-Tiles before: 0
-Food before: 0
-current node new tiles: 1
-tiles until here: 0
-food until here: 0
-needed steps: 310
-total steps: 1
-margin: -309
-searched edges now: 2, 
-used edges: 
-edge nodes: (1, 2), 
-search stack: (0, )
-total tile count stack: ()
-total food count stack: ()
-
-current result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 310
-  margin: -309
-  total steps: 1
-  has tail: 0
-best result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 310
-  margin: -309
-  total steps: 1
-  has tail: 0
-Node ID: 2
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (18, 5)
-Body Tiles: (4, (18, 5)), 
-Connections: 
-    Connected to area: 1 [Self: (18, 5) Other: (19, 5)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 1
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: 1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (19, 5)
-Body Tiles: (3, (19, 5)), 
-Connections: 
-    Connected to area: 2 [Self: (19, 5) Other: (18, 5)] Bad gateway: 0 Diag gateway: 0
-    Connected to area: 0 [Self: (19, 5) Other: (20, 5)] Bad gateway: 0 Diag gateway: 0
-
-Node ID: 0
-Tile Count: 1
-Food Count: 0
-Even or Odd balance: -1
-Has Tail: 0
-Is One Dim: 0
-Start Coord: (20, 5)
-Body Tiles: (2, (20, 5)), (0, (20, 5)), 
-Connections: 
-    Connected to area: 1 [Self: (20, 5) Other: (19, 5)] Bad gateway: 0 Diag gateway: 0
-
-
-####### NODE #######
---> Forward
-nr_visits: 1
-Current node: 0
-start coord: (20, 5)
-node tile count: 1
-node food count: 0
-max body pair: (2, (20, 5))
-Body tiles: (2, (20, 5)), (0, (20, 5)), 
-has body: 1
-has only head: 0
-nr body tiles: 2
-coord parity diff: -1
-is one dim: 0
-has tail: 0
-Tiles before: 0
-Food before: 0
-current node new tiles: 1
-tiles until here: 0
-food until here: 0
-needed steps: 308
-total steps: 1
-margin: -307
-searched edges now: 
-used edges: 
-edge nodes: (1, 2), 
-search stack: (0, )
-total tile count stack: ()
-total food count stack: ()
-
-current result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 308
-  margin: -307
-  total steps: 1
-  has tail: 0
-best result: 
-  is clear: 0
-  tile count: 0
-  food count: 0
-  needed steps: 0
-  margin: -2147483648
-  total steps: 0
-  has tail: 0
-Cannot enter node: 1
-
-####### NODE #######
---> Forward
-nr_visits: 1
-Current node: 0
-start coord: (20, 5)
-node tile count: 1
-node food count: 0
-max body pair: (2, (20, 5))
-Body tiles: (2, (20, 5)), (0, (20, 5)), 
-has body: 1
-has only head: 0
-nr body tiles: 2
-coord parity diff: -1
-is one dim: 0
-has tail: 0
-Tiles before: 0
-Food before: 0
-current node new tiles: 1
-tiles until here: 0
-food until here: 0
-needed steps: 308
-total steps: 1
-margin: -307
-searched edges now: 2, 
-used edges: 
-edge nodes: (1, 2), 
-search stack: (0, )
-total tile count stack: ()
-total food count stack: ()
-
-current result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 308
-  margin: -307
-  total steps: 1
-  has tail: 0
-best result: 
-  is clear: 0
-  tile count: 1
-  food count: 0
-  needed steps: 308
-  margin: -307
-  total steps: 1
-  has tail: 0
-New head: Coord(x=20, y=5)
-Time make choice: 8.993387222290039
-Choice: Coord(x=-1, y=0)
-Time area check: 3.265380859375
-Tile: (22, 5), Area check: {'is_clear': False, 'tile_count': 1, 'total_steps': 1, 'food_count': 0, 'has_tail': False, 'margin': -309}
-Time area check: 0.7781982421875
-Tile: (20, 5), Area check: {'is_clear': False, 'tile_count': 1, 'total_steps': 1, 'food_count': 0, 'has_tail': False, 'margin': -307}
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . A . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . a a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (-1,-1)
+Depth: 0, stack size: 1, to visit: 3, head: (21,21)
+best margin frac for this frame: -3.40282e+38
+results so far: 
+visitable tiles: (20,21) (21,22) (22,21) 
+checking next tile (22,21)
+  area check result - is_clear: 1, tile_count: 48, total_steps: 48, food_count: 0, has_tail: 0, margin: 22
+calculated margin frac for next tile (22,21): 0.458333
+safe margin frac: 0.025
+  pushing new frame for next tile (22,21) with 3 visitable tiles
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a A . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 1, stack size: 2, to visit: 3, head: (22,21)
+best margin frac for this frame: -3.40282e+38
+results so far: 
+  Base coord (22,21):   Depth 0: 0.458333 
+visitable tiles: (22,22) (22,20) (23,21) 
+checking next tile (23,21)
+  area check result - is_clear: 1, tile_count: 49, total_steps: 49, food_count: 0, has_tail: 0, margin: 24
+calculated margin frac for next tile (23,21): 0.489796
+safe margin frac: 0.025
+  pushing new frame for next tile (23,21) with 1 visitable tiles
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a a A X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 2, stack size: 3, to visit: 1, head: (23,21)
+best margin frac for this frame: -3.40282e+38
+results so far: 
+  Base coord (22,21):   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: (23,22) 
+checking next tile (23,22)
+  area check result - is_clear: 1, tile_count: 46, total_steps: 46, food_count: 0, has_tail: 0, margin: 22
+calculated margin frac for next tile (23,22): 0.478261
+safe margin frac: 0.025
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a a A X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 2, stack size: 3, to visit: 0, head: (23,21)
+best margin frac for this frame: 0.478261
+results so far: 
+  Base coord (22,21):   Depth 2: 0.478261   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: 
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a A . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 1, stack size: 2, to visit: 2, head: (22,21)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (22,21):   Depth 2: 0.478261   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: (22,22) (22,20) 
+checking next tile (22,20)
+  area check result - is_clear: 0, tile_count: 1, total_steps: 1, food_count: 0, has_tail: 0, margin: -22
+calculated margin frac for next tile (22,20): -22
+safe margin frac: 0.025
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a A . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 1, stack size: 2, to visit: 1, head: (22,21)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (22,21):   Depth 2: 0.478261   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: (22,22) 
+checking next tile (22,22)
+  area check result - is_clear: 1, tile_count: 48, total_steps: 48, food_count: 0, has_tail: 0, margin: 22
+calculated margin frac for next tile (22,22): 0.458333
+safe margin frac: 0.025
+  pushing new frame for next tile (22,22) with 3 visitable tiles
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a a . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 2, stack size: 3, to visit: 3, head: (22,22)
+best margin frac for this frame: -3.40282e+38
+results so far: 
+  Base coord (22,21):   Depth 2: 0.478261   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: (23,22) (21,22) (22,23) 
+checking next tile (22,23)
+  area check result - is_clear: 1, tile_count: 49, total_steps: 49, food_count: 0, has_tail: 0, margin: 24
+calculated margin frac for next tile (22,23): 0.489796
+safe margin frac: 0.025
+updating best margin frac for base coord (22,21) at depth 2 from 0.478261 to 0.489796
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a a . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 2, stack size: 3, to visit: 2, head: (22,22)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: (23,22) (21,22) 
+checking next tile (21,22)
+  area check result - is_clear: 0, tile_count: 1, total_steps: 1, food_count: 0, has_tail: 0, margin: -22
+calculated margin frac for next tile (21,22): -22
+safe margin frac: 0.025
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a a . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 2, stack size: 3, to visit: 1, head: (22,22)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: (23,22) 
+checking next tile (23,22)
+  area check result - is_clear: 1, tile_count: 48, total_steps: 48, food_count: 0, has_tail: 0, margin: 22
+calculated margin frac for next tile (23,22): 0.458333
+safe margin frac: 0.025
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a a . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 2, stack size: 3, to visit: 0, head: (22,22)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: 
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a A . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 1, stack size: 2, to visit: 0, head: (22,21)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: 
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . A . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . a a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (-1,-1)
+Depth: 0, stack size: 1, to visit: 2, head: (21,21)
+best margin frac for this frame: 0.458333
+results so far: 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: (20,21) (21,22) 
+checking next tile (21,22)
+  area check result - is_clear: 1, tile_count: 49, total_steps: 49, food_count: 0, has_tail: 0, margin: 24
+calculated margin frac for next tile (21,22): 0.489796
+safe margin frac: 0.025
+  pushing new frame for next tile (21,22) with 1 visitable tiles
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X A . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (21,22)
+Depth: 1, stack size: 2, to visit: 1, head: (21,22)
+best margin frac for this frame: -3.40282e+38
+results so far: 
+  Base coord (21,22):   Depth 0: 0.489796 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: (22,22) 
+checking next tile (22,22)
+  area check result - is_clear: 1, tile_count: 46, total_steps: 46, food_count: 0, has_tail: 0, margin: 22
+calculated margin frac for next tile (22,22): 0.478261
+safe margin frac: 0.025
+  pushing new frame for next tile (22,22) with 3 visitable tiles
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X a A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (21,22)
+Depth: 2, stack size: 3, to visit: 3, head: (22,22)
+best margin frac for this frame: -3.40282e+38
+results so far: 
+  Base coord (21,22):   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: (22,23) (22,21) (23,22) 
+checking next tile (23,22)
+  area check result - is_clear: 1, tile_count: 48, total_steps: 48, food_count: 0, has_tail: 0, margin: 22
+calculated margin frac for next tile (23,22): 0.458333
+safe margin frac: 0.025
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X a A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (21,22)
+Depth: 2, stack size: 3, to visit: 2, head: (22,22)
+best margin frac for this frame: 0.458333
+results so far: 
+  Base coord (21,22):   Depth 2: 0.458333   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: (22,23) (22,21) 
+checking next tile (22,21)
+  area check result - is_clear: 1, tile_count: 48, total_steps: 48, food_count: 0, has_tail: 0, margin: 22
+calculated margin frac for next tile (22,21): 0.458333
+safe margin frac: 0.025
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X a A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (21,22)
+Depth: 2, stack size: 3, to visit: 1, head: (22,22)
+best margin frac for this frame: 0.458333
+results so far: 
+  Base coord (21,22):   Depth 2: 0.458333   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: (22,23) 
+checking next tile (22,23)
+  area check result - is_clear: 1, tile_count: 49, total_steps: 49, food_count: 0, has_tail: 0, margin: 24
+calculated margin frac for next tile (22,23): 0.489796
+safe margin frac: 0.025
+updating best margin frac for base coord (21,22) at depth 2 from 0.458333 to 0.489796
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X a A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (21,22)
+Depth: 2, stack size: 3, to visit: 0, head: (22,22)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: 
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X A . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (21,22)
+Depth: 1, stack size: 2, to visit: 0, head: (21,22)
+best margin frac for this frame: 0.478261
+results so far: 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: 
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . A . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . a a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (-1,-1)
+Depth: 0, stack size: 1, to visit: 1, head: (21,21)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: (20,21) 
+checking next tile (20,21)
+  area check result - is_clear: 0, tile_count: 3, total_steps: 3, food_count: 0, has_tail: 0, margin: -18
+calculated margin frac for next tile (20,21): -6
+safe margin frac: 0.025
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . A . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . a a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (-1,-1)
+Depth: 0, stack size: 1, to visit: 0, head: (21,21)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (20,21):   Depth 0: -6 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+visitable tiles: 
+current tile:  Coord(x=21, y=21)
+snake length:  25
+Time recurse area check direction Coord(x=1, y=0): 9.293556213378906
+Direction: Coord(x=1, y=0), Area check: {(20, 21): {0: -6.0}, (21, 22): {2: 0.4897959232330322, 1: 0.47826087474823, 0: 0.4897959232330322}, (22, 21): {2: 0.4897959232330322, 1: 0.4897959232330322, 0: 0.4583333432674408}}
+[SurvivorSnake._next_step] current_tile: Coord(x=21, y=21), current_direction: Coord(x=0, y=1)
+[SurvivorSnake._next_step] search_first: Coord(x=0, y=0)
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . A . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . a a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (-1,-1)
+Depth: 0, stack size: 1, to visit: 3, head: (21,21)
+best margin frac for this frame: -3.40282e+38
+results so far: 
+visitable tiles: (22,21) (21,22) (20,21) 
+checking next tile (20,21)
+  area check result - is_clear: 0, tile_count: 3, total_steps: 3, food_count: 0, has_tail: 0, margin: -18
+calculated margin frac for next tile (20,21): -6
+safe margin frac: 0.025
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . A . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . a a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (-1,-1)
+Depth: 0, stack size: 1, to visit: 2, head: (21,21)
+best margin frac for this frame: -6
+results so far: 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: (22,21) (21,22) 
+checking next tile (21,22)
+  area check result - is_clear: 1, tile_count: 49, total_steps: 49, food_count: 0, has_tail: 0, margin: 24
+calculated margin frac for next tile (21,22): 0.489796
+safe margin frac: 0.025
+  pushing new frame for next tile (21,22) with 1 visitable tiles
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X A . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (21,22)
+Depth: 1, stack size: 2, to visit: 1, head: (21,22)
+best margin frac for this frame: -3.40282e+38
+results so far: 
+  Base coord (21,22):   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: (22,22) 
+checking next tile (22,22)
+  area check result - is_clear: 1, tile_count: 46, total_steps: 46, food_count: 0, has_tail: 0, margin: 22
+calculated margin frac for next tile (22,22): 0.478261
+safe margin frac: 0.025
+  pushing new frame for next tile (22,22) with 3 visitable tiles
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X a A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (21,22)
+Depth: 2, stack size: 3, to visit: 3, head: (22,22)
+best margin frac for this frame: -3.40282e+38
+results so far: 
+  Base coord (21,22):   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: (22,23) (22,21) (23,22) 
+checking next tile (23,22)
+  area check result - is_clear: 1, tile_count: 48, total_steps: 48, food_count: 0, has_tail: 0, margin: 22
+calculated margin frac for next tile (23,22): 0.458333
+safe margin frac: 0.025
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X a A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (21,22)
+Depth: 2, stack size: 3, to visit: 2, head: (22,22)
+best margin frac for this frame: 0.458333
+results so far: 
+  Base coord (21,22):   Depth 2: 0.458333   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: (22,23) (22,21) 
+checking next tile (22,21)
+  area check result - is_clear: 1, tile_count: 48, total_steps: 48, food_count: 0, has_tail: 0, margin: 22
+calculated margin frac for next tile (22,21): 0.458333
+safe margin frac: 0.025
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X a A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (21,22)
+Depth: 2, stack size: 3, to visit: 1, head: (22,22)
+best margin frac for this frame: 0.458333
+results so far: 
+  Base coord (21,22):   Depth 2: 0.458333   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: (22,23) 
+checking next tile (22,23)
+  area check result - is_clear: 1, tile_count: 49, total_steps: 49, food_count: 0, has_tail: 0, margin: 24
+calculated margin frac for next tile (22,23): 0.489796
+safe margin frac: 0.025
+updating best margin frac for base coord (21,22) at depth 2 from 0.458333 to 0.489796
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X a A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (21,22)
+Depth: 2, stack size: 3, to visit: 0, head: (22,22)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: 
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X A . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (21,22)
+Depth: 1, stack size: 2, to visit: 0, head: (21,22)
+best margin frac for this frame: 0.478261
+results so far: 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: 
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . A . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . a a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (-1,-1)
+Depth: 0, stack size: 1, to visit: 1, head: (21,21)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: (22,21) 
+checking next tile (22,21)
+  area check result - is_clear: 1, tile_count: 48, total_steps: 48, food_count: 0, has_tail: 0, margin: 22
+calculated margin frac for next tile (22,21): 0.458333
+safe margin frac: 0.025
+  pushing new frame for next tile (22,21) with 3 visitable tiles
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a A . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 1, stack size: 2, to visit: 3, head: (22,21)
+best margin frac for this frame: -3.40282e+38
+results so far: 
+  Base coord (22,21):   Depth 0: 0.458333 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: (22,22) (22,20) (23,21) 
+checking next tile (23,21)
+  area check result - is_clear: 1, tile_count: 49, total_steps: 49, food_count: 0, has_tail: 0, margin: 24
+calculated margin frac for next tile (23,21): 0.489796
+safe margin frac: 0.025
+  pushing new frame for next tile (23,21) with 1 visitable tiles
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a a A X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 2, stack size: 3, to visit: 1, head: (23,21)
+best margin frac for this frame: -3.40282e+38
+results so far: 
+  Base coord (22,21):   Depth 1: 0.489796   Depth 0: 0.458333 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: (23,22) 
+checking next tile (23,22)
+  area check result - is_clear: 1, tile_count: 46, total_steps: 46, food_count: 0, has_tail: 0, margin: 22
+calculated margin frac for next tile (23,22): 0.478261
+safe margin frac: 0.025
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a a A X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 2, stack size: 3, to visit: 0, head: (23,21)
+best margin frac for this frame: 0.478261
+results so far: 
+  Base coord (22,21):   Depth 2: 0.478261   Depth 1: 0.489796   Depth 0: 0.458333 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: 
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a A . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 1, stack size: 2, to visit: 2, head: (22,21)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (22,21):   Depth 2: 0.478261   Depth 1: 0.489796   Depth 0: 0.458333 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: (22,22) (22,20) 
+checking next tile (22,20)
+  area check result - is_clear: 0, tile_count: 1, total_steps: 1, food_count: 0, has_tail: 0, margin: -22
+calculated margin frac for next tile (22,20): -22
+safe margin frac: 0.025
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a A . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 1, stack size: 2, to visit: 1, head: (22,21)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (22,21):   Depth 2: 0.478261   Depth 1: 0.489796   Depth 0: 0.458333 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: (22,22) 
+checking next tile (22,22)
+  area check result - is_clear: 1, tile_count: 48, total_steps: 48, food_count: 0, has_tail: 0, margin: 22
+calculated margin frac for next tile (22,22): 0.458333
+safe margin frac: 0.025
+  pushing new frame for next tile (22,22) with 3 visitable tiles
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a a . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 2, stack size: 3, to visit: 3, head: (22,22)
+best margin frac for this frame: -3.40282e+38
+results so far: 
+  Base coord (22,21):   Depth 2: 0.478261   Depth 1: 0.489796   Depth 0: 0.458333 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: (23,22) (21,22) (22,23) 
+checking next tile (22,23)
+  area check result - is_clear: 1, tile_count: 49, total_steps: 49, food_count: 0, has_tail: 0, margin: 24
+calculated margin frac for next tile (22,23): 0.489796
+safe margin frac: 0.025
+updating best margin frac for base coord (22,21) at depth 2 from 0.478261 to 0.489796
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a a . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 2, stack size: 3, to visit: 2, head: (22,22)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: (23,22) (21,22) 
+checking next tile (21,22)
+  area check result - is_clear: 0, tile_count: 1, total_steps: 1, food_count: 0, has_tail: 0, margin: -22
+calculated margin frac for next tile (21,22): -22
+safe margin frac: 0.025
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a a . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 2, stack size: 3, to visit: 1, head: (22,22)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: (23,22) 
+checking next tile (23,22)
+  area check result - is_clear: 1, tile_count: 48, total_steps: 48, food_count: 0, has_tail: 0, margin: 22
+calculated margin frac for next tile (23,22): 0.458333
+safe margin frac: 0.025
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a a . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . A . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 2, stack size: 3, to visit: 0, head: (22,22)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: 
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . a A . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . . a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (22,21)
+Depth: 1, stack size: 2, to visit: 0, head: (22,21)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: 
+----------------------------------------
+
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+ 0 . F . . . . . . . . . . . . . . X . . . . . . . . . F . . . . .  0
+ 1 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  1
+ 2 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  2
+ 3 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . .  3
+ 4 . . . . . . . . . . X X X X X X X X X X X X X . . . . . . . . .  4
+ 5 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  5
+ 6 . . . . . . . . . . X . . . . . . . . . . . X . . . . . . . . .  6
+ 7 . . . . . . . . . . X X . . . . . . . . . X X . . . . . . . . .  7
+ 8 . . . . . . . . . . . X X . . . . . . . X X . . . . . . . . . .  8
+ 9 . . . . X X X X . . . . X X . . . . . X X . . . . . . . . . . .  9
+10 . . . . X . . X X . . . . X X . . . X X . . . . X X X X . . . . 10
+11 . . . . X . . . X X . . . . X . . X X . . . . X X . . X . . . . 11
+12 . . . . X . . . . X X . . . . . . . . . . . X X . . . X . . . . 12
+13 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . F 13
+14 . . . . X . . . . . . X X X X X X X . . X X . . . . . X . . . . 14
+15 X X X X X . . . . . . . . . . . . X . . . . . . . . . X X X X X 15
+16 . . . . X . . . . . . . . . . X . . . . F . . . . . . X . . . . 16
+17 . . . . X . . . . . . X X . . X X X X X X X . . . . . X . . . . 17
+18 . . . . X . . . . . X X . . . . . . . . . X X . . . . X . . . . 18
+19 . . . . X . . . . X X . . a a a a a a a a a X X . . . X . . . . 19
+20 . . . . X . . . X X . . a a X X . . X . . a . X X . . X . . . . 20
+21 . . . . X . . X X . . a a X X . . . X X . A . . X X X X . . . . 21
+22 . . . . X X X X . . a a X X . . . . . X X . . . . . . . . . . . 22
+23 . . . . . . . . . a a X X . . . . . . . X X . . . . . . . . . . 23
+24 . . . . . . . . . a X X . . . . . . . . . X X . . . . . . . . . 24
+25 . . . . . . . . a a X . . . . . . . . . . . X . . . . . . . . . 25
+26 . . . . . . . . a . X . . . . . . . . . . . X . . . . . . . . . 26
+27 . . . . . . . a a . X X X X X X X X X X X X X . . . . . . . . . 27
+28 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 28
+29 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 29
+30 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 30
+31 . . . . . . . . . . . . . . . . X . . . . . . . . . . . . . . . 31
+                       1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+Current base coord: (-1,-1)
+Depth: 0, stack size: 1, to visit: 0, head: (21,21)
+best margin frac for this frame: 0.489796
+results so far: 
+  Base coord (22,21):   Depth 2: 0.489796   Depth 1: 0.489796   Depth 0: 0.458333 
+  Base coord (21,22):   Depth 2: 0.489796   Depth 1: 0.478261   Depth 0: 0.489796 
+  Base coord (20,21):   Depth 0: -6 
+visitable tiles: 
+[SurvivorSnake._get_margin_fracs] margin_fracs: {Coord(x=22, y=21): {2: 0.4897959232330322, 1: 0.4897959232330322, 0: 0.4583333432674408}, Coord(x=21, y=22): {2: 0.4897959232330322, 1: 0.47826087474823, 0: 0.4897959232330322}, Coord(x=20, y=21): {0: -6.0}}
+[SurvivorSnake._get_best_option] max_depth found: 3
+[SurvivorSnake._get_best_option] max_depth: -1, strat_margin_frac_at_depth: -1
+[SurvivorSnake._next_step] best_option: Coord(x=22, y=21)
+New head: Coord(x=22, y=21)
+Time make choice: 8.838653564453125
+Choice: Coord(x=1, y=0)
+Time area check direction Coord(x=0, y=1): 0.08034706115722656
+Direction: Coord(x=0, y=1), Coord: Coord(x=21, y=22) Area check: {'is_clear': True, 'tile_count': 49, 'total_steps': 49, 'food_count': 0, 'has_tail': False, 'margin': 24}
