@@ -113,6 +113,7 @@ struct ExploreResults
     std::vector<std::pair<int, Coord>> body_tiles;
     std::vector<ConnectedAreaInfo> connected_areas;
     std::vector<Coord> to_explore;
+    std::vector<Coord> jagged_edge_tiles;
 
     ExploreResults() {}
 
@@ -124,7 +125,8 @@ struct ExploreResults
         bool has_tail,
         std::vector<std::pair<int, Coord>> body_tiles,
         std::vector<ConnectedAreaInfo> connected_areas,
-        std::vector<Coord> to_explore
+        std::vector<Coord> to_explore,
+        std::vector<Coord> jagged_edge_tiles
     ) : 
         tile_count(tile_count),
         food_count(food_count),
@@ -133,7 +135,8 @@ struct ExploreResults
         has_tail(has_tail),
         body_tiles(body_tiles),
         connected_areas(connected_areas),
-        to_explore(to_explore) {}
+        to_explore(to_explore),
+        jagged_edge_tiles(jagged_edge_tiles) {}
 };
 
 

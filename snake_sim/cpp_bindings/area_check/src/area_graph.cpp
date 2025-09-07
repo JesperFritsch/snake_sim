@@ -124,6 +124,7 @@ AreaCheckResult AreaGraph::search_best2(
         DEBUG_PRINT(std::cout << "has only head: " << current_node->has_only_head << std::endl;);
         DEBUG_PRINT(std::cout << "nr body tiles: " << current_node->body_tiles.size() << std::endl;);
         DEBUG_PRINT(std::cout << "coord parity diff: " << current_node->coord_parity_diff << std::endl;);
+        DEBUG_PRINT(std::cout << "jagged edge discount: " << current_node->jagged_edge_discount << std::endl;);
         DEBUG_PRINT(std::cout << "is one dim: " << current_node->is_one_dim << std::endl;);
         DEBUG_PRINT(std::cout << "has tail: " << current_node->has_tail << std::endl;);
         DEBUG_PRINT(std::cout << "Tiles before: " << tiles_before << std::endl;);
@@ -244,7 +245,8 @@ void AreaGraph::print_nodes_debug() const {
             << "Has Tail: " << node->has_tail  << std::endl
             << "Is One Dim: " << node->is_one_dim  << std::endl
             << "Start Coord: (" << node->start_coord.x << ", " << node->start_coord.y << ")" << std::endl
-            << "Body Tiles: ";
+            << "Body Tiles: " << std::endl
+            << "Jagged edge discount: " << node->jagged_edge_discount << std::endl;
         for (const auto& body_tile : node->body_tiles) {
             std::cout << "(" << body_tile.first << ", (" << body_tile.second.x << ", " << body_tile.second.y << ")), ";
         }
@@ -260,7 +262,6 @@ void AreaGraph::print_nodes_debug() const {
                     << " Diag gateway: " << info.is_diag_gateway
                     << std::endl;
         }
-        std::cout << std::endl;
     }
 }
 

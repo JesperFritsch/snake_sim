@@ -5,6 +5,7 @@
 #include <vector>
 #include <cstdint>
 #include <deque>
+#include <iostream>
 #include <array>
 #include <unordered_map>
 #include <algorithm>
@@ -67,4 +68,18 @@ inline py::tuple py_get_visitable_tiles(
     return py_result;
 }
 
+inline bool same_diagonal(Coord c1, Coord c2, bool dec){
+    // dec = true when y decreases when x increases
+    // . . X
+    // . X .
+    // X . .
+    return (c1.x - c2.x) == (!dec ? (c1.y - c2.y) : (c2.y - c1.y));
+}
 
+bool is_free_diagonal(
+    const uint8_t __restrict *s_map, 
+    int width, 
+    Coord from_coord, 
+    Coord to_coord, 
+    std::vector<int> visitable_values
+);
