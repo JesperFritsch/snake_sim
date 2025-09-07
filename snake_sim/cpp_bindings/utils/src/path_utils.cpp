@@ -74,3 +74,30 @@ std::vector<Coord> get_visitable_tiles(
     }
     return result;
 }
+
+bool is_free_diagonal(const uint8_t __restrict *s_map, int width, Coord from_coord, Coord to_coord, std::vector<int> visitable_values)
+//assumes from_coord and to_coord are diagonal
+{
+    if (to_coord.y < from_coord.y) {
+        std::swap(from_coord, to_coord);
+    }
+    Coord delta = to_coord - from_coord;
+    int min_delta = std::min(std::abs(delta.x), std::abs(delta.y));
+    int iterations = (min_delta + 1) / 2;
+    unsigned int stride = static_cast<unsigned int>(width) + (delta.x > 0 ? 1 : -1);
+    unsigned int f_h_index = from_coord.y * width + from_coord.x;
+    unsigned int t_h_index = to_coord.y * width + to_coord.x;
+    // search from ends to middle
+    for (int i = 0; i < iterations; i++){
+
+        f_h_index += stride;
+        if (std::find(visitable_values.begin(), visitable_values.end(), s_map[f_h_index]) == visitable_values.end()){
+            return false;
+        }
+        t_h_index -= stride;
+        if (std::find(visitable_values.begin(), visitable_values.end(), s_map[t_h_index]) == visitable_values.end()){
+            return false;
+        }
+    }
+    return true;
+}

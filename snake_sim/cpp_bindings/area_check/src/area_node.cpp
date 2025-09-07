@@ -56,7 +56,7 @@ int AreaNode::get_countable_tiles(){
         return tile_count;
     }
     else{
-        return tile_count - std::abs(coord_parity_diff);
+        return tile_count - std::abs(coord_parity_diff) - jagged_edge_discount;
     }
 }
 

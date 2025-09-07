@@ -5,6 +5,8 @@
 #include <vector> 
 #include <deque>
 #include <stdexcept>
+#include <unordered_set>
+#include <unordered_map>
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
@@ -46,10 +48,21 @@ public:
 
     void print_map(uint8_t *s_map);
 
-    bool _is_bad_gateway(uint8_t *s_map, Coord coord1, Coord coord2);
+    bool is_bad_gateway(uint8_t *s_map, Coord coord1, Coord coord2);
     
-    int is_gate_way(uint8_t *s_map, Coord coord, Coord check_coord);
+    int is_gate_way(uint8_t __restrict *s_map, Coord coord, Coord check_coord);
     
+    bool is_jagged_edge_tile(uint8_t __restrict *s_map, Coord coord);
+
+    std::vector<std::deque<Coord>> find_jagged_edges(std::vector<Coord> jagged_edge_tiles);
+
+    std::unordered_set<Coord> get_overlapping_jagged_tiles(
+        const uint8_t __restrict *s_map,
+        std::deque<Coord> &tiles1, 
+        std::deque<Coord> &tiles2);
+
+    int calculate_jagged_edge_discount(const uint8_t *s_map, const std::vector<Coord> jagged_edge_tiles);
+
     int py_is_gate_way(py::array_t<uint8_t> s_map, py::tuple coord, py::tuple check_coord)
     {
         auto buf = s_map.request();
@@ -57,9 +70,10 @@ public:
         return is_gate_way(
             ptr,
             Coord(coord[0].cast<int>(), coord[1].cast<int>()),
-            Coord(check_coord[0].cast<int>(), check_coord[1].cast<int>()));
+            Coord(check_coord[0].cast<int>(), check_coord[1].cast<int>())
+        );
     }
-    
+        
     ExploreResults explore_area(
         uint8_t *s_map,
         std::vector<Coord> &body_coords,
@@ -93,7 +107,7 @@ public:
         uint8_t *s_map,
         std::deque<Coord> &body_coords,
         Coord search_first,
-        unsigned int snake_length,
+        int target_margin,
         unsigned int max_depth,
         float safe_margin_frac);
 
@@ -101,7 +115,7 @@ public:
         py::array_t<uint8_t> s_map,
         py::list body_coords_py,
         py::tuple search_first_py,
-        unsigned int snake_length,
+        int target_margin,
         unsigned int max_depth,
         float safe_margin_frac);
 

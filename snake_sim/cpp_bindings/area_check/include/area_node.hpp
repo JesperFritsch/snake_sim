@@ -14,6 +14,7 @@ public:
     int tile_count = 0;
     int food_count = 0;
     int coord_parity_diff = 0;
+    int jagged_edge_discount = 0; // discount for jagged edge tiles in this area
     bool is_one_dim = false; // one_dim is true if the area is a 1 tile wide path
     bool has_tail = false;
     bool has_only_head = false;

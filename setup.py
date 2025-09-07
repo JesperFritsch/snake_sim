@@ -88,7 +88,8 @@ ext_modules = [
         # Use glob to automatically include all .cpp files in the src directory
         sorted(glob.glob('snake_sim/cpp_bindings/**/src/*.cpp')),
         include_dirs=[
-            *glob.glob('snake_sim/cpp_bindings/*/include'),
+            'snake_sim/cpp_bindings/area_check/include',
+            'snake_sim/cpp_bindings/utils/include',
             get_pybind_include(),
             get_pybind_include(user=True),
         ],
@@ -99,9 +100,9 @@ ext_modules = [
     Extension(
         'snake_sim.cpp_bindings.utils',
         # Use glob to automatically include all .cpp files in the src directorye
-        sorted(glob.glob('snake_sim/cpp_bindings/**/src/*.cpp')),
+        sorted(glob.glob('snake_sim/cpp_bindings/utils/src/*.cpp')),
         include_dirs=[
-            *glob.glob('snake_sim/cpp_bindings/*/include'),
+            'snake_sim/cpp_bindings/utils/include',
             get_pybind_include(),
             get_pybind_include(user=True),
         ],

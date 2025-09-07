@@ -11,7 +11,6 @@ from snake_sim.snakes.snake_base import SnakeBase
 from snake_sim.utils import print_map, distance
 
 from snake_sim.cpp_bindings.area_check import AreaChecker
-from snake_sim.cpp_bindings.utils import get_visitable_tiles
 
 
 # debug.activate_debug()
@@ -26,7 +25,7 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
     If it is provided with a strategy, it will try to follow that strategy as long as it does not lead to death.
     """
 
-    SAFE_MARGIN_FRAC = 0.035 # (margin / total_steps) >= SAFE_MARGIN_FRAC -> considered safe
+    SAFE_MARGIN_FRAC = 0.03 # (margin / total_steps) >= SAFE_MARGIN_FRAC -> considered safe
     MAX_RECURSE_DEPTH = 1
 
     def __init__(self):
@@ -63,11 +62,12 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
         return best_option
         
     def _get_margin_fracs(self, search_first: Coord) -> Dict[Coord, Dict[int, float]]:
+        target_margin = max(10, math.ceil(self.SAFE_MARGIN_FRAC * len(self._body_coords)))
         result = self._area_checker.recurse_area_check(
             self._current_map_copy,
             list(self._body_coords),
             search_first,
-            self._length,
+            target_margin,
             self.MAX_RECURSE_DEPTH,
             self.SAFE_MARGIN_FRAC
         )
