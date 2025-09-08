@@ -542,11 +542,14 @@ ExploreResults AreaChecker::explore_area(
     jagged_edge_tiles.reserve(100);
     current_coords.push_back(start_coord);
     
-    if (s_map[start_coord.y * width + start_coord.x] > free_value)
+    if (
+        s_map[start_coord.y * width + start_coord.x] > free_value ||
+        checked[start_coord.y * width + start_coord.x] != unexplored_area_id
+    )
     {
         return ExploreResults();
     }
-    
+
     checked[start_coord.y * width + start_coord.x] = area_id;
     while (!current_coords.empty())
     {
@@ -626,10 +629,10 @@ ExploreResults AreaChecker::explore_area(
                     {
                         to_explore.push_back(n_coord);
                     }
-                    if (entrance_code == 2)
-                    {
-                        break;
-                    }
+                    // if (entrance_code == 2)
+                    // {
+                    //     break;
+                    // }
                 }
             }
             else if (n_coord_val == body_value || n_coord_val == head_value)
@@ -739,6 +742,10 @@ AreaCheckResult AreaChecker::area_check(
             target_margin,
             total_food_count
         );
+        if (result.tile_count == 0)
+        {
+            continue;
+        }
         total_food_count += result.food_count;
         int jagged_edge_discount = calculate_jagged_edge_discount(s_map, result.jagged_edge_tiles);
         // If an area has just one tile, no max index and only one area to explore, then we can just add the tile to the previous node

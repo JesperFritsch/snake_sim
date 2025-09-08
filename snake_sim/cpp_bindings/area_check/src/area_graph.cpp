@@ -511,39 +511,56 @@ bool SearchNode::can_enter_next_node(AreaNode *next_node){
 TileCounts SearchNode::tile_count_on_exit(AreaNode *next_node, uint8_t *s_map, int width, uint8_t food_value)
 {
     auto tile_counts = tile_count_on_enter();
+    int new_tiles = tile_counts.new_tiles;
+    int new_food = node->food_count;
     if (is_conn_coord_start_cord(next_node))
     {
         // if we are exiting through the start coord of node 0 we can ever only count one tile.
-        tile_counts.total_tiles = 1;
-        tile_counts.total_food = food_until_here + (tile_has_food(s_map, width, node->start_coord, food_value) ? 1 : 0);
+        new_tiles = 1;
+        new_food = tile_has_food(s_map, width, node->start_coord, food_value) ? 1 : 0;
+        tile_counts.total_tiles = new_tiles;
+        tile_counts.total_food = food_until_here + new_food;
     }
     else if (is_conn_coord_used(next_node))
     {
         Coord tile_coord = get_entry_coord();
-        tile_counts.total_tiles = tiles_until_here + (first_visit() ? 1 : 0);
-        tile_counts.total_food = food_until_here + (tile_has_food(s_map, width, tile_coord, food_value) ? 1 : 0);
+        new_tiles = (first_visit() ? 1 : 0);
+        new_food = (tile_has_food(s_map, width, tile_coord, food_value) ? 1 : 0);
+        tile_counts.total_tiles = tiles_until_here + new_tiles;
+        tile_counts.total_food = food_until_here + new_food;
     }
     else {
         tile_counts.total_tiles += path_tile_adjustment(next_node);
     }
+    counted_tiles_stack.push_back(new_tiles + (counted_tiles_stack.size() ? counted_tiles_stack.back() : 0));
+    counted_food_stack.push_back(new_food + (counted_food_stack.size() ? counted_food_stack.back() : 0));
+    
+    DEBUG_PRINT(std::cout << "new tiles on exit: " << new_tiles << std::endl;);
+    DEBUG_PRINT(std::cout << "new food on exit: " << new_food << std::endl;);
+    DEBUG_PRINT(std::cout << "total tiles on exit: " << tile_counts.total_tiles << std::endl;);
+    DEBUG_PRINT(std::cout << "total food on exit: " << tile_counts.total_food << std::endl;);
+    DEBUG_PRINT(std::cout << "Counted tiles stack: "; for (const auto& count : counted_tiles_stack) { std::cout << count << ", "; } std::cout << std::endl;);
+    DEBUG_PRINT(std::cout << "Counted food stack: "; for (const auto& count : counted_food_stack) { std::cout << count << ", "; } std::cout << std::endl;);
     return tile_counts;
 }
 
 TileCounts SearchNode::tile_count_on_enter()
 {
     TileCounts tile_counts;
+    int new_tiles = node->get_countable_tiles();
     if (first_visit())
     {
-        int new_tiles = node->get_countable_tiles();
         tile_counts.new_tiles = new_tiles;
         tile_counts.total_food = food_until_here + node->food_count;
         tile_counts.total_tiles = tiles_until_here + new_tiles;
     }
     else
-    {
-        tile_counts.new_tiles = 0;
-        tile_counts.total_food = food_until_here;
-        tile_counts.total_tiles = tiles_until_here;
+    {   
+        int counted_tiles = counted_tiles_stack.size() ? counted_tiles_stack.back() : 0;
+        int counted_food = counted_food_stack.size() ? counted_food_stack.back() : 0;
+        tile_counts.new_tiles = new_tiles - counted_tiles;
+        tile_counts.total_food = food_until_here + node->food_count - counted_food;
+        tile_counts.total_tiles = tiles_until_here + new_tiles - counted_tiles;
     }
     if (!entered_from_nodes.empty()){
         auto connection_info = node->get_connection_info(entered_from_nodes.back());
@@ -596,6 +613,8 @@ void SearchNode::enter_unwind(int tiles, int food)
 {
     tiles_until_here = tiles;
     food_until_here = food;
+    counted_tiles_stack.pop_back();
+    counted_food_stack.pop_back();
     used_edges.pop_back();
     used_coords.pop_back();
 }   
