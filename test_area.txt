@@ -2,46 +2,50 @@ pygame 2.6.1 (SDL 2.28.4, Python 3.12.11)
 Hello from the pygame community. https://www.pygame.org/contribute.html
                        1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3
    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- 0 . . . . . . . . . . . . . . . . # . . . . . . . . . . F . . . .  0
- 1 . . . . . . . . . . . . . . . . # . . . . . . . . . . . . . . .  1
- 2 . . . . . . . . . . . . . . . . # . . . . . . . . . . . . . . .  2
- 3 . . . . . . . . . . . . . . . . # . . . . . . . . . . . . . . .  3
- 4 . . . . . . . . . . # # # # # # # # # # # # # . . . . . . . . .  4
- 5 . . . . . . . . . . # . . . . . . . . . . . # . . . . . . . . .  5
- 6 . . . . . . . . . . # . . . . . . . . . . . # . . . . . . . . .  6
- 7 . . . . . . . . . . # # . . . . . . . . . # # . . . . . . . . .  7
- 8 . . . . . . . . . . . # # F . . . . . . # # . . . . . . . . . .  8
- 9 . . . . # # # # . . . . # # . . . . . # # . . . . . . . . . . .  9
-10 . . . . # . . # # . F . . # # . . . # # . . . . # # # # . . . . 10
-11 . . . . # F . . # # . . . . # . . # # . . . . # # . . # . . . . 11
-12 . . . . # A . . . # # . . . . . . . . . . F # # . . . # . . . . 12
-13 . . . . # a . . . . # # . . . . . . . . . # # . . . . # . . . . 13
-14 . . . F # a F . . . F # # # # # # # . . # # . . . . . # . . . . 14
-15 # # # # # a F . . . . . . . a a a # . . . . . . . . . # # # # # 15
-16 a a a a # a . . . . a a a a a # a a a a a a a a a . a # F . a a 16
-17 a a a a # a . . . a a # # a a # # # # # # # . a a a a # . . a a 17
-18 a a a a # a a . a a # # a a a a a a a a a # # a a a a # . . a a 18
-19 a a a a # a a a a # # a a a a a a a a a a a # # a a a # . . a a 19
-20 a a a a # a a a # # a a a a # # a a # a a a a # # a a # . . a a 20
-21 a a a a # a a # # a a a a # # a a a # # a a a a # # # # . . a a 21
-22 a a a a # # # # a a a a # # a a . a . # # a a a a a a a a a a a 22
-23 a a a a a a a a a a a # # . a a . a a a # # a a a a a a a a a a 23
-24 a a a a a a a a a a # # a a a a a a a a a # # a a a a a a a a a 24
-25 a . a a a a a a a a # a a a a . a a a . a a # a a a a a a a a a 25
-26 a a a . a a a a a a # a a a a a a a a a a a # a a a a a a a a a 26
-27 a a a a a a a a a a # # # # # # # # # # # # # a a a a a a a a a 27
-28 a a a a a a a a a a a a a a a a # a a a a a a a a a a a a a a a 28
-29 a a a a a a a a a a a a a a a a # a a a a a a a a a a a a a a a 29
-30 a a a a a a a a a a a a a a a a # a a a a a a a a a a a a a a a 30
-31 a a a a a a a a a a a a a a a a # a a a a a a a a a a a a a a a 31
+ 0 . . . . . . . . # . . # . . . . . . # . . . . . . . . . . . . .  0
+ 1 . . . # . . . . # . . # . . . . . . # . . . . . . . . . . . . .  1
+ 2 . . . # . . . . # . . # # # . . # # # . . . . . . . . . . . . .  2
+ 3 . # # # . . . . . . . . . # . . . . . . . # # # # # # # # # # #  3
+ 4 . . . # . . . . . . . . . # . . . . # . . . . . . . . . F . . F  4
+ 5 . . . # # # # . # . . # # # . . . . # . . . . . . . . . . . . .  5
+ 6 . . . # . . . . # . . # . . . . . . # . . . . . . . F F . . . .  6
+ 7 . # # # . . . . # # # # . . . . . . # . . . . . # . # . . . . .  7
+ 8 . . a # # # # . . . . . . . . . . . # . . . . . # . # . . . . .  8
+ 9 . . a # a a a a a a a a a . . . . . # . . . # . . . . F # . . .  9
+10 a a a # a a a a a a a a a a a . . . # . . . # . . . . . # . . . 10
+11 a # # # a a a a a a a a a a a . . . # . . . # # # # # # # . . . 11
+12 a a a # a a a a a a a . a a a a a . # . . . . . . . . . . . . . 12
+13 a a a a a a a a a a a a a . . . a . # . . . . . . . . . . . . . 13
+14 # # # # # # # # # # # # # # # # a . # . . . . . . . . . . . . . 14
+15 . . . . . a a a a a a a a a a a a . . . . . . . . . . . . . . . 15
+16 . a a a a a a a a a a a . . . . # # # # # # # # # # # # # # # # 16
+17 . a a a a a a a a a a a . . . . # . . . a a a a a a # a a a a a 17
+18 . a a a a a a a a a a a . . . . # . . . a # # # # a # a a a a a 18
+19 . a a a a a a a a a a a . . . . # . . . a . . . # a # a a . a a 19
+20 . . . . . A . . . . a a . . . . # # # # a . . . # a # # # # a a 20
+21 . . . . . . . . . . a a . . . . # . . . a . . . # a a a a a a a 21
+22 . . . # . # # # . . a a . . . . # . . . a # # # # . . . . a a a 22
+23 . . # # . . . # # . a a . . . . # . . . a a a a a a # # # # a a 23
+24 . # # . . . . . # # a a . . . . # # # # . . . . . a . . . # a a 24
+25 . # . . . . . . . # a a . . . . # . . . a a a a a a . . . # a a 25
+26 . # . . . . . . . # a a . . . . # . . . a # # # # . . . . # a a 26
+27 . # . . . . . . . # a a a a a . # . . . a . . . # # # # # # a a 27
+28 . # # . . . . . # # a a a a a a # # # # a . . . # a a a a a a a 28
+29 . . # # . . . # # a a a a a a a # . . . a . . . # a a a a a a a 29
+30 . . . # # # . # a a a a a a a a a a a a a # # # # a a . a a a a 30
+31 . . . . . . . . a a a a a a a a a a a a a a a a a a a a a a a a 31
                        1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3
    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-snake env_init_data:  <snake_sim.environment.types.EnvInitData object at 0x7fc07898b0b0>
+snake env_init_data:  <snake_sim.environment.types.EnvInitData object at 0x7f07dd87ba70>
 snake env_data:  None
-snake head:  Coord(x=5, y=12)
+snake head:  Coord(x=5, y=20)
 snake head value:  3
 snake body value:  4
-current tile:  Coord(x=5, y=12)
-snake length:  406
-Time area check direction Coord(x=0, y=-1): 0.4534721374511719
-Direction: Coord(x=0, y=-1), Coord: Coord(x=5, y=11) Area check: {'is_clear': False, 'tile_count': 28, 'total_steps': 24, 'food_count': 4, 'has_tail': False, 'margin': -2}
+current tile:  Coord(x=5, y=20)
+snake length:  280
+Time area check: 0.3249645233154297
+Tile: (6, 20), Area check: {'is_clear': True, 'tile_count': 85, 'total_steps': 85, 'food_count': 0, 'has_tail': False, 'margin': 6}
+Time area check: 0.17595291137695312
+Tile: (5, 21), Area check: {'is_clear': False, 'tile_count': 75, 'total_steps': 75, 'food_count': 0, 'has_tail': False, 'margin': -4}
+Time area check: 0.1766681671142578
+Tile: (4, 20), Area check: {'is_clear': False, 'tile_count': 74, 'total_steps': 74, 'food_count': 0, 'has_tail': False, 'margin': -5}

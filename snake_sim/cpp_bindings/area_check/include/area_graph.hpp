@@ -22,6 +22,8 @@ struct SearchNode
     int first_food_until_here = 0; // only set on first visit
     int jagged_edge_discount = 0; // 0 means no discount, positive values are the discount
     
+    std::vector<int> counted_tiles_stack;
+    std::vector<int> counted_food_stack;
     std::vector<std::vector<unsigned int>> searched_edges;
     std::vector<unsigned int> used_edges;
     std::vector<Coord> used_coords;

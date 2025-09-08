@@ -25,7 +25,7 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
     If it is provided with a strategy, it will try to follow that strategy as long as it does not lead to death.
     """
 
-    SAFE_MARGIN_FRAC = 0.03 # (margin / total_steps) >= SAFE_MARGIN_FRAC -> considered safe
+    SAFE_MARGIN_FRAC = 0.02 # (margin / total_steps) >= SAFE_MARGIN_FRAC -> considered safe
     MAX_RECURSE_DEPTH = 1
 
     def __init__(self):

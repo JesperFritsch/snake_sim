@@ -164,11 +164,11 @@ def test_get_visitable_tiles(snake: SurvivorSnake, s_map, center_coord):
 def run_tests(snake: SurvivorSnake, s_map):
     print("current tile: ", snake.get_head_coord())
     print("snake length: ", snake._length)
-    test_recurse_area_check(snake, s_map, Coord(1,0))
+    # test_recurse_area_check(snake, s_map, Coord(1,0))
     # test_make_choice(snake, s_map, state_dict['food'])
     test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
-    # test_area_check_direction(snake, s_map, Coord(0, -1))
+    # test_area_check_direction(snake, s_map, Coord(-1, 0))
     # test_area_check_direction(snake, s_map, Coord(0, -1))
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_data.food_value, Coord(58, 61))
