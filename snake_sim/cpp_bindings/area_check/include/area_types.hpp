@@ -110,7 +110,7 @@ struct ExploreResults
     int coord_parity_diff = 0; // coord_parity_diff is positive if there are more even tiles (black), negative if more odd tiles (white)
     bool early_exit = false;
     bool has_tail = false;
-    std::vector<std::pair<int, Coord>> body_tiles;
+    std::vector<std::pair<std::pair<int, bool>, Coord>> body_tiles;
     std::vector<ConnectedAreaInfo> connected_areas;
     std::vector<Coord> to_explore;
     std::vector<Coord> jagged_edge_tiles;
@@ -123,7 +123,7 @@ struct ExploreResults
         int coord_parity_diff,
         bool early_exit,
         bool has_tail,
-        std::vector<std::pair<int, Coord>> body_tiles,
+        std::vector<std::pair<std::pair<int, bool>, Coord>> body_tiles,
         std::vector<ConnectedAreaInfo> connected_areas,
         std::vector<Coord> to_explore,
         std::vector<Coord> jagged_edge_tiles

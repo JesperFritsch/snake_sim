@@ -109,13 +109,13 @@ struct SearchNode
         return (is_conn_coord_used(from_node) || (is_visited() && node->tile_count == 1)) ? false : true;
     }
 
-    std::pair<int, Coord> get_max_body_index_pair();
+    std::pair<std::pair<int, bool>, Coord> get_max_body_index_pair();
 
     Coord get_entry_coord();
 
     int path_parity_tile_adjustment(Coord start, Coord end);
 
-    int get_max_body_tile_adjustment(Coord max_index_coord);
+    int get_max_body_tile_adjustment(std::pair<std::pair<int, bool>, Coord> max_body_index_pair);
 
     bool count_bad_gate_way(Coord entry_coord, Coord exit_coord);
 

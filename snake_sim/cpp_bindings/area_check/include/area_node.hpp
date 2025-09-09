@@ -19,7 +19,7 @@ public:
     bool has_tail = false;
     bool has_only_head = false;
     bool has_body = false;
-    std::vector<std::pair<int, Coord>> body_tiles; // vector of (snake_index, coord) for body tiles in this area
+    std::vector<std::pair<std::pair<int, bool>, Coord>> body_tiles; // vector of (snake_index, coord) for body tiles in this area
     std::unordered_map<int, ConnectedAreaInfo> neighbour_connections; // map of area_id to pair of coords that connect the areas
     std::vector<std::pair<AreaNode *, unsigned int>> edge_nodes;
 

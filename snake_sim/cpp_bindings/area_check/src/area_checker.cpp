@@ -533,7 +533,7 @@ ExploreResults AreaChecker::explore_area(
     std::array<Coord, 4> neighbours;
     std::vector<Coord> to_explore;
     std::vector<Coord> jagged_edge_tiles;
-    std::vector<std::pair<int, Coord>> body_tiles;
+    std::vector<std::pair<std::pair<int, bool>, Coord>> body_tiles; // ((body index, bad exit), coord)
     std::vector<ConnectedAreaInfo> connected_areas;
     std::deque<Coord> current_coords;
     body_tiles.reserve(body_coords.size());
@@ -649,7 +649,8 @@ ExploreResults AreaChecker::explore_area(
                             has_tail = true;
                         }
                     }
-                    body_tiles.push_back(std::make_pair(body_index, curr_coord));
+                    bool bad_exit = is_bad_gateway(s_map, curr_coord, n_coord);
+                    body_tiles.emplace_back(std::make_pair(std::make_pair(body_index, bad_exit), curr_coord));
                 }
             }
             if (n_coord_val > free_value){
@@ -778,7 +779,7 @@ AreaCheckResult AreaChecker::area_check(
             current_node->jagged_edge_discount = jagged_edge_discount;
             if (
                 current_node->tile_count == 1 && 
-                (result.body_tiles.size() == 1 ? result.body_tiles[0].first == 0 : result.body_tiles.size() == 0) &&
+                (result.body_tiles.size() == 1 ? result.body_tiles[0].first.first == 0 : result.body_tiles.size() == 0) &&
                 (result.connected_areas.size() + result.to_explore.size() <= 2)
             )
             { // a node cant really have 2 or 3 tiles, next step after 1 is 4, but anyways...

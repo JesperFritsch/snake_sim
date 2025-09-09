@@ -13,8 +13,8 @@ from snake_sim.utils import print_map, distance
 from snake_sim.cpp_bindings.area_check import AreaChecker
 
 
-# debug.activate_debug()
-# debug.enable_debug_for("SurvivorSnake")
+debug.activate_debug()
+debug.enable_debug_for("SurvivorSnake")
 # debug.enable_debug_for("FoodSeeker")
 # debug.enable_debug_for("_next_step")
 
@@ -25,7 +25,7 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
     If it is provided with a strategy, it will try to follow that strategy as long as it does not lead to death.
     """
 
-    SAFE_MARGIN_FRAC = 0.02 # (margin / total_steps) >= SAFE_MARGIN_FRAC -> considered safe
+    SAFE_MARGIN_FRAC = 0.06 # (margin / total_steps) >= SAFE_MARGIN_FRAC -> considered safe
     MAX_RECURSE_DEPTH = 1
 
     def __init__(self):

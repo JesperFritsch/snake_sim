@@ -3,10 +3,10 @@
 
 void AreaNode::finalize_node()
 {
-    std::sort(body_tiles.begin(), body_tiles.end(), [](const std::pair<int, Coord> &a, const std::pair<int, Coord> &b) {
-        return a.first > b.first;
+    std::sort(body_tiles.begin(), body_tiles.end(), [](const std::pair<std::pair<int, bool>, Coord> &a, const std::pair<std::pair<int, bool>, Coord> &b) {
+        return a.first.first > b.first.first;
     });
-    has_only_head = (body_tiles.size() == 1 && body_tiles[0].first == 0);
+    has_only_head = (body_tiles.size() == 1 && body_tiles[0].first.first == 0);
     has_body = (body_tiles.size() > 0);
     edge_nodes.reserve(6);
 }
