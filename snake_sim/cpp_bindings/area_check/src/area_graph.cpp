@@ -14,6 +14,10 @@ AreaCheckResult AreaGraph::search_best2(
     bool forward = true;
     bool skipped_one = false;
     // Map to keep track of visited nodes
+    if (nodes.empty() || root == nullptr)
+    {
+        return AreaCheckResult();
+    }
     std::unordered_map<AreaNode *, SearchNode> search_nodes_data;
     for (auto &node : nodes)
     {
@@ -70,12 +74,12 @@ AreaCheckResult AreaGraph::search_best2(
             break;
         }
         auto max_body_index_pair = step_data->get_max_body_index_pair();
-        if (max_body_index_pair.first != -1)
+        if (max_body_index_pair.first.first != -1)
         {
-            calc_tiles = curr_tile_counts.total_tiles + step_data->get_max_body_tile_adjustment(max_body_index_pair.second);
+            calc_tiles = curr_tile_counts.total_tiles + step_data->get_max_body_tile_adjustment(max_body_index_pair);
             calc_food = curr_tile_counts.total_food;
             total_steps = calc_tiles - calc_food;
-            needed_steps = snake_length - max_body_index_pair.first;
+            needed_steps = snake_length - max_body_index_pair.first.first;
             margin = total_steps - needed_steps;
         }
         else if(step_data->first_visit())
@@ -116,9 +120,9 @@ AreaCheckResult AreaGraph::search_best2(
         DEBUG_PRINT(std::cout << "start coord: (" << current_node->start_coord.x << ", " << current_node->start_coord.y << ")" << std::endl;);
         DEBUG_PRINT(std::cout << "node tile count: " << current_node->tile_count << std::endl;);
         DEBUG_PRINT(std::cout << "node food count: " << current_node->food_count << std::endl;);
-        DEBUG_PRINT(std::cout << "max body pair: (" << max_body_index_pair.first << ", (" << max_body_index_pair.second.x << ", " << max_body_index_pair.second.y << "))" << std::endl;);
+        DEBUG_PRINT(std::cout << "max body pair: (" << max_body_index_pair.first.first <<  ", " << max_body_index_pair.first.second << ")" << ", (" << max_body_index_pair.second.x << ", " << max_body_index_pair.second.y << ")), " << std::endl;);
         DEBUG_PRINT(std::cout << "Body tiles: ";);
-        DEBUG_PRINT(for(auto body_tile : current_node->body_tiles){ std::cout << "(" << body_tile.first << ", (" << body_tile.second.x << ", " << body_tile.second.y << ")), "; });
+        DEBUG_PRINT(for(auto body_tile : current_node->body_tiles){ std::cout << "(" << body_tile.first.first <<  ", " << body_tile.first.second << ")" << ", (" << body_tile.second.x << ", " << body_tile.second.y << ")), "; });
         DEBUG_PRINT(std::cout << std::endl;);
         DEBUG_PRINT(std::cout << "has body: " << current_node->has_body << std::endl;);
         DEBUG_PRINT(std::cout << "has only head: " << current_node->has_only_head << std::endl;);
@@ -248,7 +252,7 @@ void AreaGraph::print_nodes_debug() const {
             << "Body Tiles: " << std::endl
             << "Jagged edge discount: " << node->jagged_edge_discount << std::endl;
         for (const auto& body_tile : node->body_tiles) {
-            std::cout << "(" << body_tile.first << ", (" << body_tile.second.x << ", " << body_tile.second.y << ")), ";
+            std::cout << "(" << body_tile.first.first <<  ", " << body_tile.first.second << ")" << ", (" << body_tile.second.x << ", " << body_tile.second.y << ")), ";
         }
         std::cout << std::endl
             << "Connections: " << std::endl;
@@ -380,14 +384,15 @@ int SearchNode::path_tile_adjustment(AreaNode *next_node)
     return adjustment;
 }
 
-int SearchNode::get_max_body_tile_adjustment(Coord max_index_coord)
+int SearchNode::get_max_body_tile_adjustment(std::pair<std::pair<int, bool>, Coord> max_body_index_pair)
 {
     Coord entry_coord = get_entry_coord();
     if (node->is_one_dim || !node->has_body)
     {
         return 0;
     }
-    return path_parity_tile_adjustment(entry_coord, max_index_coord);
+    Coord max_index_coord = max_body_index_pair.second;
+    return path_parity_tile_adjustment(entry_coord, max_index_coord) - (max_body_index_pair.first.second ? 1 : 0);
 
 }
 
@@ -435,11 +440,11 @@ Coord SearchNode::get_entry_coord()
     }
 }
 
-std::pair<int, Coord> SearchNode::get_max_body_index_pair()
+std::pair<std::pair<int, bool>, Coord> SearchNode::get_max_body_index_pair()
 {
     if (node->body_tiles.empty())
     {
-        return std::make_pair(-1, Coord());
+        return std::make_pair(std::make_pair(-1, false), Coord());
     }
     if (node->tile_count == 1){
         return node->body_tiles[0];
@@ -448,7 +453,7 @@ std::pair<int, Coord> SearchNode::get_max_body_index_pair()
     auto it = std::find_if(
         node->body_tiles.begin(), 
         node->body_tiles.end(), 
-        [&](const std::pair<int, Coord> &pair){ return (
+        [&](const std::pair<std::pair<int, bool>, Coord> &pair){ return (
             ((entry_coord == pair.second) && visited_before() ? 
             get_coord_used_count(pair.second) < 2 : 
             get_coord_used_count(pair.second) < 1) &&
@@ -456,7 +461,7 @@ std::pair<int, Coord> SearchNode::get_max_body_index_pair()
         ); }
     );
     if (it == node->body_tiles.end()){
-        return std::make_pair(-1, Coord());
+        return std::make_pair(std::make_pair(-1, false), Coord());
     }
     return *it;
 }

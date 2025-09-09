@@ -58,9 +58,9 @@ def test_recurse_area_check(snake: SurvivorSnake, s_map, direction=Coord(1,0)):
         [tuple(coord) for coord in snake._body_coords],
         (tile.x, tile.y),
         snake._length,
-        1,
+        3,
         # 1.0,
-        SurvivorSnake.SAFE_MARGIN_FRAC
+        SurvivorSnake.SAFE_MARGIN_FRAC + 0.5,
     )
     print(f"Time recurse area check direction {direction}: {(time.time() - start_time) * 1000}")
     print(f"Direction: {direction}, Area check: {area_check}")
@@ -165,11 +165,11 @@ def run_tests(snake: SurvivorSnake, s_map):
     print("current tile: ", snake.get_head_coord())
     print("snake length: ", snake._length)
     # test_recurse_area_check(snake, s_map, Coord(1,0))
-    # test_make_choice(snake, s_map, state_dict['food'])
+    test_make_choice(snake, s_map, state_dict['food'])
     test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
-    # test_area_check_direction(snake, s_map, Coord(-1, 0))
-    # test_area_check_direction(snake, s_map, Coord(0, -1))
+    # test_area_check_direction(snake, s_map, Coord(1, 0))
+    test_area_check_direction(snake, s_map, Coord(-1, 0))
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_data.food_value, Coord(58, 61))
     # test_get_visitable_tiles(snake, s_map, snake.get_head_coord())
