@@ -31,6 +31,7 @@ def add_run_config_arguments(parser):
     parser.add_argument('--snake-count', type=int, help='Number of snakes to simulate')
     parser.add_argument('--grid-width', type=int, help='Width of the grid')
     parser.add_argument('--grid-height', type=int, help='Height of the grid')
+    parser.add_argument('--grid-size', type=int, help='Size of the grid square (overrides width and height)')
     parser.add_argument('--food', type=int, help='Number of food to spawn')
     parser.add_argument('--food-decay', type=int, help='Number of steps before food decays, 0 for no decay')
     parser.add_argument('--calc-timeout', type=int, help='Timeout for calculation')
@@ -49,6 +50,9 @@ def handle_args(args, config: DotDict):
     for key, value in vars(args).items():
         if value is not None:
             setattr(config, key, value)
+    if args.grid_size:
+        config.grid_width = args.grid_size
+        config.grid_height = args.grid_size
 
 
 def cli(argv, config: DotDict):
