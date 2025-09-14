@@ -13,8 +13,8 @@ from snake_sim.utils import print_map, distance
 from snake_sim.cpp_bindings.area_check import AreaChecker
 
 
-debug.activate_debug()
-debug.enable_debug_for("SurvivorSnake")
+# debug.activate_debug()
+# debug.enable_debug_for("SurvivorSnake")
 # debug.enable_debug_for("FoodSeeker")
 # debug.enable_debug_for("_next_step")
 
