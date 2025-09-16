@@ -21,23 +21,23 @@ class Message:
 
     def serialize(self) -> bytes:
         return pickle.dumps(self)
-    
+
     @staticmethod
     def deserialize(data: bytes) -> 'Message':
         return pickle.loads(data)
-    
+
 
 class Call(Message):
     def __init__(self, command: str, data: any):
         super().__init__(command, data)
-    
+
     def __str__(self):
         return f"Request(command={self.command}, data={self.data})"
-    
+
 class Return(Message):
     def __init__(self, command: str, data: any):
         super().__init__(command, data)
-    
+
     def __str__(self):
         return f"Response(command={self.command}, data={self.data})"
 
@@ -69,7 +69,7 @@ class SHMSnakeServer:
         data = self.socket.recv()
         rec = Call.deserialize(data)
         return rec
-    
+
     def _get_reader(self) -> SharedMemoryReader:
         if self._shm_reader is None:
             raise ValueError("SharedMemoryReader not initialized. Call set_reader_id and set_shm_name first.")
@@ -92,7 +92,7 @@ class SHMSnakeServer:
 
         if not isinstance(env_data, EnvData):
             raise ValueError("Expected EnvData as data for shm_update command")
-        
+
         # Update the EnvData with the new map from shared memory
         env_data.map = payload
         # Call the snake update method with EnvData and return the result
@@ -102,7 +102,7 @@ class SHMSnakeServer:
         except Exception as e:
             logging.exception("Snake update failed")
             return None
-    
+
     def serve(self):
         try:
             while not self.stop_event.is_set():
@@ -146,14 +146,14 @@ def import_snake_module(snake_module_file):
 
 def serve(
     target: str,
-    snake_module_file=None, 
-    snake_config: SnakeConfig=None, 
+    snake_module_file=None,
+    snake_config: SnakeConfig=None,
     stop_event: Optional[Event] = None,
     log_level=logging.INFO
 ):
     if platform.system() == "Windows":
         setup_logging(log_level)
-    
+
     global log
     log = logging.getLogger(f"{Path(__file__).stem}-{target}")
 
@@ -179,5 +179,5 @@ def serve(
     except Exception as e:
         log.error(e)
         log.debug("TRACE: ", exc_info=True)
-    
+
 

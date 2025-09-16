@@ -23,6 +23,15 @@ from snake_sim.snakes.grpc_proxy_snake import GRPCProxySnake
 from snake_sim.snakes.snake_base import SnakeBase
 
 
+from snake_sim.environment.snake_updaters.inproc_updater import InprocUpdater
+from snake_sim.environment.snake_updaters.shm_updater import SHMUpdater
+from snake_sim.environment.snake_updaters.concurrent_updater import ConcurrentUpdater
+from snake_sim.environment.interfaces.ISnakeUpdater import ISnakeUpdater
+from snake_sim.snakes.shm_proxy_snake import SHMProxySnake
+from snake_sim.snakes.grpc_proxy_snake import GRPCProxySnake
+from snake_sim.snakes.snake_base import SnakeBase
+
+
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = json.load(config_file)
 
@@ -72,7 +81,7 @@ class SnakeHandler(ISnakeHandler):
         decisions = {}
         timeout = default_config["decision_timeout_ms"] / 1000
         futures = [
-            self._executor.submit(updater.get_decisions, snakes, env_data, timeout) 
+            self._executor.submit(updater.get_decisions, snakes, env_data, timeout)
             for updater, (snakes, env_data) in updater_batches.items()
         ]
         for future in as_completed(futures):

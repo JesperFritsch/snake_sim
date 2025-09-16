@@ -1,5 +1,5 @@
 
-from typing import List, Set 
+from typing import List, Set
 import logging
 from pathlib import Path
 
@@ -46,4 +46,4 @@ class SHMUpdater(ConcurrentUpdater):
         )
         for snake in self._added_snakes:
             snake.set_shm_name(shm_name)
-    
+
