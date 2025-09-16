@@ -89,10 +89,10 @@ class SHMProxySnake(ISnake):
         # we dont send the map over zmq, because its in shared memory
         env_data.map = None
         return self.shm_update(env_data)
-    
+
     def __reduce__(self):
         return (self.__class__, (self._target))
-    
+
     def __del__(self):
         try:
             self.kill()
