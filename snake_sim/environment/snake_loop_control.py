@@ -129,6 +129,7 @@ class SnakeLoopControl:
             except Exception as e:
                 log.exception(e)
                 self._snake_handler.kill_snake(id)
+        self._snake_handler.finalize()
 
     @_loop_check
     def _initialize_inproc_snakes(self):
