@@ -5,7 +5,7 @@ from enum import Enum
 from importlib import resources
 from snake_sim.utils import SingletonMeta
 from snake_sim.snakes.snake_base import ISnake
-from snake_sim.snakes.remote_snake import RemoteSnake
+from snake_sim.snakes.grpc_proxy_snake import GRPCProxySnake
 from snake_sim.snakes.survivor_snake import SurvivorSnake
 from snake_sim.environment.snake_processes import ProcessPool
 from snake_sim.environment.types import DotDict, SnakeConfig
@@ -36,13 +36,13 @@ class SnakeFactory(metaclass=SingletonMeta):
 
     def _create_remote_snake_from_target(self, target: str) -> Tuple[int, ISnake]:
         id = self._get_next_id()
-        return id, RemoteSnake(target=target)
+        return id, GRPCProxySnake(target=target)
 
     def _create_remote_snake_from_config(self, snake_config: SnakeConfig) -> Tuple[int, ISnake]:
         id = self._get_next_id()
         ProcessPool().start(id, snake_config=snake_config)
         target = ProcessPool().get_target(id)
-        return id, RemoteSnake(target=target)
+        return id, GRPCProxySnake(target=target)
     
     def _create_inprocess_snake_from_config(self, snake_config: SnakeConfig) -> Tuple[int, ISnake]:
         id = self._get_next_id()
@@ -62,7 +62,7 @@ class SnakeFactory(metaclass=SingletonMeta):
         """ Creates a snake of the given type.
         If proc_type is REMOTE and target is None, a new process will be started for the snake.
         If proc_type is LOCAL, a new instance of the snake will be created in this process.
-        If proc_type is REMOTE and target is provided, a RemoteSnake will be created that connects to the given target.
+        If proc_type is REMOTE and target is provided, a GRPCProxySnake will be created that connects to the given target.
 
         Args:
             proc_type (SnakeProcType): The type of process to create the snake in.

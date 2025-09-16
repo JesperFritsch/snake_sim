@@ -7,9 +7,6 @@ from snake_sim.environment.interfaces.snake_interface import ISnake
 
 
 class ISnakeHandler(ABC):
-    @abstractmethod
-    def get_decision(self, id, env_data: EnvData) -> Coord:
-        pass
 
     @abstractmethod
     def get_decisions(self, batch_data: Dict[int, EnvData]) -> Dict[int, Coord]:
@@ -33,4 +30,8 @@ class ISnakeHandler(ABC):
 
     @abstractmethod
     def get_snakes(self) -> Dict[int, ISnake]:
+        pass
+
+    @abstractmethod
+    def finalize(self):
         pass
