@@ -1,5 +1,6 @@
 import json
 import logging
+import atexit
 import functools
 import threading
 from dataclasses import dataclass
@@ -17,13 +18,16 @@ from snake_sim.environment.interfaces.main_loop_interface import ILoopObserver
 from snake_sim.environment.interfaces.run_data_observer_interface import IRunDataObserver
 from snake_sim.environment.main_loop import SimLoop, GameLoop
 from snake_sim.environment.snake_handlers import SnakeHandler
-from snake_sim.environment.snake_factory import SnakeFactory
+from snake_sim.environment.snake_factory import SnakeFactory, SnakeProcType
 from snake_sim.environment.snake_env import SnakeEnv, EnvInitData
 from snake_sim.environment.food_handlers import FoodHandler
-from snake_sim.environment.snake_processes import SnakeProcessManager
-from snake_sim.environment.types import DotDict, SnakeConfig, SnakeProcType
+from snake_sim.environment.snake_processes import ProcessPool
+from snake_sim.environment.types import DotDict, SnakeConfig
 
 from snake_sim.utils import get_map_files_mapping, create_color_map
+
+from snake_sim.snakes.strategies.utils import apply_strategies
+
 
 with pkg_resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
@@ -62,7 +66,7 @@ class SnakeLoopControl:
             raise ValueError('Invalid configuration')
         self._loop = None
         self._config = config
-        self._snake_proc_mngr: SnakeProcessManager = SnakeProcessManager()
+        self.process_pool: ProcessPool = ProcessPool()
         self._snake_handler = SnakeHandler()
         self._snake_enviroment = SnakeEnv(
             config.width,
@@ -82,6 +86,7 @@ class SnakeLoopControl:
                 raise ValueError(f'Map {config.map} not found')
             self._snake_enviroment.load_map(map_files_mapping[config.map])
         self._is_shutdown = False
+        atexit.register(self.shutdown)
 
     def _loop_check(func):
         @functools.wraps(func)
@@ -113,66 +118,51 @@ class SnakeLoopControl:
     @_loop_check
     def _finalize_snakes(self):
         """ Finalize snakes """
-        snakes_dict = self._snake_handler.get_snakes().copy()
-        for id, snake in snakes_dict.items():
+        for id, snake in self._snake_handler.get_snakes().items():
             start_pos = self._snake_enviroment.add_snake(id, start_length=self._config.start_length)
             try:
                 log.debug(f"Snake {id} start position: {start_pos}")
                 snake.set_id(id)
                 snake.set_start_length(self._config.start_length)
                 snake.set_start_position(start_pos)
+                snake.set_init_data(self._snake_enviroment.get_init_data())
             except Exception as e:
                 log.exception(e)
                 self._snake_handler.kill_snake(id)
-
-        # Now that all snakes are added to the environment, we can finalize them with the init data
-        init_data = self._snake_enviroment.get_init_data()
-        for id, snake in snakes_dict.items():
-            snake.set_init_data(init_data)
-        self._snake_handler.finalize(init_data)
+        self._snake_handler.finalize()
 
     @_loop_check
     def _initialize_inproc_snakes(self):
         """ Initialize in-process snakes """
         snake_factory = SnakeFactory()
         inproc_snakes = snake_factory.create_many_snakes(
+            proc_type=SnakeProcType.LOCAL,
             snake_config=self._config.snake_config,
-            count=self._config.snake_count
+            count=self._config.snake_count - len(self._config.external_snake_targets)
         )
-        for snake in inproc_snakes:
-            self._snake_handler.add_snake(snake)
+        remote_snake_targets = self._config.external_snake_targets.copy()
+        for target in remote_snake_targets:
+            id, snake = snake_factory.create_snake(SnakeProcType.REMOTE, target=target)
+            self._snake_handler.add_snake(id, snake)
+
+        for id, snake in inproc_snakes.items():
+            self._snake_handler.add_snake(id, snake)
+            apply_strategies(snake, self._config.snake_config)
 
     @_loop_check
-    def _initialize_remote_grpcs(self):
+    def _initialize_remotes(self):
         """ Initialize remote snakes """
         snake_factory = SnakeFactory()
         remote_snake_targets = self._config.external_snake_targets.copy()
-        for target in remote_snake_targets:
-            try:
-                snake = snake_factory.create_snake(
-                    proc_type=SnakeProcType.GRPC,
-                    target=target
-                )
-                self._snake_handler.add_snake(snake)
-            except Exception as e:
-                log.exception(e)
+        remote_snake_configs = [self._config.snake_config] * (self._config.snake_count - len(remote_snake_targets))
 
-    @_loop_check
-    def _initialize_non_inproc_snakes(self):
-        snake_factory = SnakeFactory()
-        for _ in range(self._config.snake_count):
-            snake_id = self._snake_handler.get_next_snake_id()
-            self._snake_proc_mngr.start(
-                id=snake_id,
-                proc_type=SnakeProcType.SHM,
-                snake_config=self._config.snake_config
-            )
-            target = self._snake_proc_mngr.get_target(snake_id)
-            snake = snake_factory.create_snake(
-                proc_type=SnakeProcType.SHM,
-                target=target
-            )
-            self._snake_handler.add_snake(snake)
+        for config in remote_snake_configs:
+            id, snake = snake_factory.create_snake(SnakeProcType.REMOTE, snake_config=config)
+            self._snake_handler.add_snake(id, snake)
+
+        for target in remote_snake_targets:
+            id, snake = snake_factory.create_snake(SnakeProcType.REMOTE, target=target)
+            self._snake_handler.add_snake(id, snake)
 
     @_loop_check
     def add_observer(self, observer: ILoopObserver):
@@ -221,27 +211,27 @@ class SnakeLoopControl:
     @_loop_check
     def run(self, stop_event: Optional[threading.Event] = None):
         """ Starts the loop """
-        try:
-            if stop_event:
-                def wait_stop_event(stop_event):
-                    try:
-                        stop_event.wait()
-                    except (ConnectionResetError, BrokenPipeError):
-                        # Manager is already dead, just exit gracefully
-                        pass
-                    self._loop.stop()
-                threading.Thread(target=wait_stop_event, args=(stop_event,), daemon=True).start()
+        # If a stop event is provided, start a thread that waits for the event to be set
+        if stop_event:
+            def wait_stop_event(stop_event):
+                try:
+                    stop_event.wait()
+                except (ConnectionResetError, BrokenPipeError):
+                    # Manager is already dead, just exit gracefully
+                    pass
+                self.shutdown()
+            threading.Thread(target=wait_stop_event, args=(stop_event,), daemon=True).start()
 
-            if self._config.inproc_snakes:
-                self._initialize_inproc_snakes()
-            else:
-                self._initialize_non_inproc_snakes()
-            self._initialize_remote_grpcs()
-            self._finalize_snakes()
-            self._initialize_run_data_loop_observers() # This needs to be called after the snakes are added to the environment
+        if self._config.inproc_snakes:
+            self._initialize_inproc_snakes()
+        else:
+            self._initialize_remotes()
+        self._finalize_snakes()
+        self._initialize_run_data_loop_observers() # This needs to be called after the snakes are added to the environment
+        try:
             self._loop.start()
         except KeyboardInterrupt:
-            log.debug("KeyboardInterrupt received, shutting down loop")
+            pass
         except Exception as e:
             log.exception(e)
         finally:
@@ -249,15 +239,12 @@ class SnakeLoopControl:
 
     @_loop_check
     def shutdown(self):
-        """Shuts down the loop"""
         if self._is_shutdown:
             return
-        log.debug("Shutting down loop")
+        """Shuts down the loop"""
         self._is_shutdown = True
         self._loop.stop()
-        self._snake_proc_mngr.shutdown()
-        self._snake_handler.close()
-        log.debug("Loop shutdown complete")
+        self.process_pool.shutdown()
 
 
 def setup_loop(config) -> SnakeLoopControl:

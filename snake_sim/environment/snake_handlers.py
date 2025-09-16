@@ -2,21 +2,22 @@ import random
 import logging
 import json
 import random
+import time
 
 from typing import Dict, List, Tuple
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, wait, as_completed
 from importlib import resources
 
-from snake_sim.environment.snake_processes import SnakeProcessManager
+from snake_sim.environment.snake_processes import ProcessPool
 from snake_sim.environment.interfaces.snake_handler_interface import ISnakeHandler
 from snake_sim.environment.interfaces.snake_interface import ISnake
-from snake_sim.environment.types import Coord, EnvData, EnvInitData
+from snake_sim.environment.types import Coord, EnvData
 
 from snake_sim.environment.snake_updaters.inproc_updater import InprocUpdater
 from snake_sim.environment.snake_updaters.shm_updater import SHMUpdater
 from snake_sim.environment.snake_updaters.concurrent_updater import ConcurrentUpdater
-from snake_sim.environment.interfaces.snake_updater_interface import ISnakeUpdater
+from snake_sim.environment.interfaces.ISnakeUpdater import ISnakeUpdater
 from snake_sim.snakes.shm_proxy_snake import SHMProxySnake
 from snake_sim.snakes.grpc_proxy_snake import GRPCProxySnake
 from snake_sim.snakes.snake_base import SnakeBase
@@ -41,7 +42,6 @@ class SnakeHandler(ISnakeHandler):
         self._dead_snakes = set()
         self._executor = ThreadPoolExecutor(max_workers=len(SNAKE_UPDATER_MAP))
         self._updaters: Dict[type, ISnakeUpdater] = {}
-        self._finalized = False
 
     def _get_updater(self, snake: ISnake) -> ISnakeUpdater:
         for snake_type, updater in SNAKE_UPDATER_MAP.items():
@@ -49,15 +49,12 @@ class SnakeHandler(ISnakeHandler):
                 updater = self._updaters.setdefault(snake, updater())
                 return updater
 
-    def get_next_snake_id(self) -> int:
-        return len(self._snakes)
-
     def get_snakes(self) -> Dict[int, ISnake]:
         return self._snakes.copy()
 
     def kill_snake(self, id):
         log.debug(f"Killing snake with id {id}")
-        SnakeProcessManager().kill_snake_process(id)
+        ProcessPool().kill_snake_process(id)
         return self._dead_snakes.add(id)
 
     def _split_batch_by_updater(self, batch_data: Dict[int, EnvData]) -> Dict[ISnakeUpdater, Tuple[List[ISnake], EnvData]]:
@@ -72,7 +69,7 @@ class SnakeHandler(ISnakeHandler):
         decisions = {}
         timeout = default_config["decision_timeout_ms"] / 1000
         futures = [
-            self._executor.submit(updater.get_decisions, snakes, env_data, timeout)
+            self._executor.submit(updater.get_decisions, snakes, env_data, timeout) 
             for updater, (snakes, env_data) in updater_batches.items()
         ]
         for future in as_completed(futures):
@@ -83,9 +80,8 @@ class SnakeHandler(ISnakeHandler):
         updater_batches = self._split_batch_by_updater(batch_data)
         return self._gather_decisions(updater_batches)
 
-    def add_snake(self, snake: ISnake):
-        snake_id = self.get_next_snake_id()
-        self._snakes[snake_id] = snake
+    def add_snake(self, id, snake: ISnake):
+        self._snakes[id] = snake
         updater = self._get_updater(snake)
         updater.register_snake(snake)
 
@@ -122,16 +118,6 @@ class SnakeHandler(ISnakeHandler):
         random.shuffle(ids)
         return ids
 
-    def finalize(self, env_init_data: EnvInitData):
-        if self._finalized:
-            return
-        self._finalized = True
-        log.debug("Finalizing SnakeHandler")
+    def finalize(self):
         for updater in self._updaters.values():
-            updater.finalize(env_init_data)
-
-    def close(self):
-        log.debug("Closing SnakeHandler")
-        for updater in self._updaters.values():
-            updater.close()
-        self._executor.shutdown(wait=True)
+            updater.finalize()

@@ -4,7 +4,6 @@ import logging
 from pathlib import Path
 from typing import Optional
 from multiprocessing import shared_memory
-import os
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -43,12 +42,10 @@ class SharedMemoryReader:
         return self._reader_id
 
     def close(self):
-        log.debug("SharedMemoryReader.close name=%s pid=%s", self._shm.name, os.getpid())
         try:
             self._shm.close()
         except Exception:
-            # be tolerant on close
-            logging.exception("SharedMemoryReader.close failed")
+            pass
 
     def _read_seq(self) -> int:
         return struct.unpack_from('<Q', self._buf, SEQ_OFF)[0]
@@ -104,7 +101,6 @@ class SharedMemoryWriter:
         self._reader_count = int(reader_count)
         self._payload_capacity = int(payload_capacity)
         self._payload_offset = BASE_HEADER_SZ + self._reader_count * ACK_SLOT_SZ
-        self._unlinked = True
 
     @classmethod
     def create(cls, name: str, reader_count: int, payload_capacity: int, overwrite: bool = False):
@@ -124,44 +120,27 @@ class SharedMemoryWriter:
                 raise
 
         writer = cls(shm, reader_count, payload_capacity)
-        writer._unlinked = False
         # initialize header
         writer._write_seq(0)
         writer._write_payload_size(0)
-        struct.pack_into('<I', writer._buf, READER_COUNT_OFF, reader_count)
+        struct.pack_into('<I', writer.buf, READER_COUNT_OFF, reader_count)
         # zero ack slots
         for i in range(reader_count):
             slot_off = BASE_HEADER_SZ + i * ACK_SLOT_SZ
-            struct.pack_into('<Q', writer._buf, slot_off, 0)
+            struct.pack_into('<Q', writer.buf, slot_off, 0)
         return writer
 
     def close(self):
         try:
             self._shm.close()
         except Exception:
-            logging.exception("SharedMemoryWriter.close failed")
+            pass
 
     def unlink(self):
-        # idempotent unlink - best-effort
-        if getattr(self, '_unlinked', False):
-            return
-        name = getattr(self._shm, 'name', None)
         try:
             self._shm.unlink()
-            self._unlinked = True
-            log.debug("SharedMemoryWriter.unlink succeeded name=%s pid=%s", name, os.getpid())
-        except FileNotFoundError:
-            # already unlinked by someone else; treat as unlinked
-            self._unlinked = True
-            log.debug("SharedMemoryWriter.unlink FileNotFoundError name=%s pid=%s", name, os.getpid())
         except Exception:
-            # log at debug level and ignore - best-effort cleanup
-            logging.exception('Failed to unlink shared memory')
-            self._unlinked = True
-
-    def cleanup(self):
-        self.close()
-        self.unlink()
+            pass
 
     def _read_seq(self) -> int:
         return struct.unpack_from('<Q', self._buf, SEQ_OFF)[0]
