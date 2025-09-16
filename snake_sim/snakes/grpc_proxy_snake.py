@@ -15,35 +15,40 @@ def handle_connection_loss(func):
     return wrapper
 
 
-class RemoteSnake(ISnake):
+class GRPCProxySnake(ISnake):
     def __init__(self, target: str):
         super().__init__()
         self.target = target
         self.channel = grpc.insecure_channel(target)
         self.stub = remote_snake_pb2_grpc.RemoteSnakeStub(self.channel)
-        self._log = logging.getLogger(f"RemoteSnake-{target}")
+        self._log = logging.getLogger(f"{self.__class__.__name__}-{target}")
 
     @handle_connection_loss
     def kill(self):
+        super().kill()
         self._log.debug(f"got killed")
         self.stub.Kill(remote_snake_pb2.Empty())
         self.channel.close()
 
     @handle_connection_loss
     def set_id(self, id: int):
+        super().set_id(id)
         self.stub.SetId(remote_snake_pb2.SnakeId(id=id))
 
     @handle_connection_loss
     def set_start_length(self, start_length: int):
+        super().set_start_length(start_length)
         self.stub.SetStartLength(remote_snake_pb2.StartLength(length=start_length))
 
     @handle_connection_loss
     def set_start_position(self, start_position: Coord):
+        super().set_start_position(start_position)
         start_pos = remote_snake_pb2.StartPosition(start_position=remote_snake_pb2.Coord(x=start_position.x, y=start_position.y))
         self.stub.SetStartPosition(start_pos)
 
     @handle_connection_loss
     def set_init_data(self, env_init_data: EnvInitData):
+        super().set_init_data(env_init_data)
         env_init_data_proto = remote_snake_pb2.EnvInitData(
             height=env_init_data.height,
             width=env_init_data.width,
