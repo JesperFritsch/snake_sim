@@ -19,17 +19,15 @@ def handle_connection_loss(func):
 class SHMProxySnake(ISnake):
     def __init__(self, target: str):
         super().__init__()
-        self._log = logging.getLogger(f"{self.__class__.__name__}-{target}")
+        self._log = logging.getLogger(f"{self.__class__.__name__}-{self.get_id()}")
         self._target = target
         self._context = zmq.Context()
         self._socket = self._context.socket(zmq.REQ)
         self._socket.connect(target)
         self._reader_id: int = None
-        self._shm_name: str = None
 
     def zmq_msg_forwarder(func):
         def wrapper(self: 'SHMProxySnake', *args, **kwargs):
-            func(self, *args, **kwargs)
             self._send(Call(func.__name__, args[0] if args else None))
             response: Return = self._receive()
             if response.command != func.__name__:
@@ -44,15 +42,8 @@ class SHMProxySnake(ISnake):
         data = self._socket.recv()
         return Return.deserialize(data)
 
-    @handle_connection_loss
-    @zmq_msg_forwarder
     def set_reader_id(self, reader_id: int):
         self._reader_id = reader_id
-
-    @handle_connection_loss
-    @zmq_msg_forwarder
-    def set_shm_name(self, shm_name: str):
-        self._shm_name = shm_name
 
     @handle_connection_loss
     @zmq_msg_forwarder
@@ -80,16 +71,18 @@ class SHMProxySnake(ISnake):
         super().set_init_data(env_init_data)
 
     @handle_connection_loss
-    @zmq_msg_forwarder
-    def shm_update(self, env_data: EnvData):
-        # Define this method just to not duplicate logic.
-        pass
-
     def update(self, env_data: EnvData):
         # we dont send the map over zmq, because its in shared memory
+        if self._reader_id is None:
+            raise ValueError("Reader ID is not set. Cannot perform update.")
         env_data.map = None
-        return self.shm_update(env_data)
-    
+        data = {"env_data": env_data, "reader_id": self._reader_id}
+        self._send(Call("shm_update", data))
+        response: Return = self._receive()
+        if response.command != "update":
+            raise ConnectionError(f"Expected response for update, got {response.command}")
+        return response.data
+
     def __reduce__(self):
         return (self.__class__, (self._target))
     
