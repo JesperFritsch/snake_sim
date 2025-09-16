@@ -19,7 +19,7 @@ with resources.open_text('snake_sim.config', 'default_config.json') as config_fi
     default_config = DotDict(json.load(config_file))
 
 class SnakeFactory(metaclass=SingletonMeta):
-    """ Factory for creating snakes of different types 
+    """ Factory for creating snakes of different types
     Starts processes for remote snakes if no target is provided.
     """
     def __init__(self):
@@ -41,13 +41,13 @@ class SnakeFactory(metaclass=SingletonMeta):
         return snake
 
     def create_snake(
-            self, 
-            proc_type: SnakeProcType=None, 
-            snake_config: SnakeConfig=None, 
+            self,
+            proc_type: SnakeProcType=None,
+            snake_config: SnakeConfig=None,
             target: str=None
         ) -> ISnake:
         """
-        Creates a snake of the given type. If snake_config is provided, 
+        Creates a snake of the given type. If snake_config is provided,
         creates a local snake based on the config.
         If proc_type and target are provided, creates a proxy snake that connects to the given target.
         """
@@ -60,7 +60,7 @@ class SnakeFactory(metaclass=SingletonMeta):
             raise ValueError("Either snake_config or both proc_type and target must be provided")
 
     def create_many_snakes(
-            self, 
+            self,
             snake_config: SnakeConfig,
             count: int
         ) -> List[ISnake]:

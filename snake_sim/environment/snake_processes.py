@@ -78,7 +78,7 @@ class SnakeProcessManager(metaclass=SingletonMeta):
     def _generate_target(self, proc_type: SnakeProcType) -> str:
         if proc_type not in (SnakeProcType.GRPC, SnakeProcType.SHM):
             raise ValueError(f"Unsupported SnakeProcType: {proc_type}")
-        
+
         if platform.system() == "Windows":
             port = self._find_free_port()
             if proc_type == SnakeProcType.GRPC:
@@ -93,7 +93,7 @@ class SnakeProcessManager(metaclass=SingletonMeta):
                 return f"unix:{sock_file}"
             elif proc_type == SnakeProcType.SHM:
                 return f"ipc://{sock_file}"
-            
+
     def is_running(self, id: int) -> bool:
         return id in self._processes and self._processes[id].is_running()
 
@@ -111,10 +111,10 @@ class SnakeProcessManager(metaclass=SingletonMeta):
             raise ValueError(f"Unsupported SnakeProcType: {proc_type}")
 
     def start(
-            self, 
-            id: int, 
-            proc_type: SnakeProcType, 
-            snake_config: SnakeConfig=None, 
+            self,
+            id: int,
+            proc_type: SnakeProcType,
+            snake_config: SnakeConfig=None,
             module_path: str=None
         ) -> None:
 
@@ -124,8 +124,8 @@ class SnakeProcessManager(metaclass=SingletonMeta):
         target = self._generate_target(proc_type)
         stop_event = self._manager.Event()
         process = Process(
-            target=server_function, 
-            args=(target,), 
+            target=server_function,
+            args=(target,),
             kwargs={
                 "snake_module_file": module_path,
                 "snake_config": snake_config,

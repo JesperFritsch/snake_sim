@@ -116,7 +116,7 @@ class SnakeLoopControl:
     def _finalize_snakes(self):
         """ Finalize snakes """
         snakes_dict = self._snake_handler.get_snakes().copy()
-        
+
         for id, snake in snakes_dict.items():
             start_pos = self._snake_enviroment.add_snake(id, start_length=self._config.start_length)
             try:
@@ -127,6 +127,7 @@ class SnakeLoopControl:
             except Exception as e:
                 log.exception(e)
                 self._snake_handler.kill_snake(id)
+        self._snake_handler.finalize()
 
         # Now that all snakes are added to the environment, we can finalize them with the init data
         init_data = self._snake_enviroment.get_init_data()
@@ -159,7 +160,7 @@ class SnakeLoopControl:
                 self._snake_handler.add_snake(snake)
             except Exception as e:
                 log.exception(e)
-    
+
     @_loop_check
     def _initialize_non_inproc_snakes(self):
         snake_factory = SnakeFactory()
@@ -225,7 +226,6 @@ class SnakeLoopControl:
     def run(self, stop_event: Optional[threading.Event] = None):
         """ Starts the loop """
         # If a stop event is provided, start a thread that waits for the event to be set
-<<<<<<< HEAD
         if stop_event:
             def wait_stop_event(stop_event):
                 try:
@@ -244,8 +244,6 @@ class SnakeLoopControl:
             self._initialize_remotes()
         self._finalize_snakes()
         self._initialize_run_data_loop_observers() # This needs to be called after the snakes are added to the environment
-=======
->>>>>>> 8b936c4 (finalizing shared memory snakes)
         try:
             if stop_event:
                 def wait_stop_event(stop_event):
