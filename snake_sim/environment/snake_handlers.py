@@ -4,7 +4,7 @@ import json
 import random
 import time
 
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, wait, as_completed
 from importlib import resources
@@ -12,8 +12,16 @@ from importlib import resources
 from snake_sim.environment.snake_processes import ProcessPool
 from snake_sim.environment.interfaces.snake_handler_interface import ISnakeHandler
 from snake_sim.environment.interfaces.snake_interface import ISnake
-from snake_sim.snakes.remote_snake import RemoteSnake
 from snake_sim.environment.types import Coord, EnvData
+
+from snake_sim.environment.snake_updaters.inproc_updater import InprocUpdater
+from snake_sim.environment.snake_updaters.shm_updater import SHMUpdater
+from snake_sim.environment.snake_updaters.concurrent_updater import ConcurrentUpdater
+from snake_sim.environment.interfaces.ISnakeUpdater import ISnakeUpdater
+from snake_sim.snakes.shm_proxy_snake import SHMProxySnake
+from snake_sim.snakes.grpc_proxy_snake import GRPCProxySnake
+from snake_sim.snakes.snake_base import SnakeBase
+
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = json.load(config_file)
@@ -21,16 +29,25 @@ with resources.open_text('snake_sim.config', 'default_config.json') as config_fi
 log = logging.getLogger(Path(__file__).stem)
 
 
+SNAKE_UPDATER_MAP = {
+    SHMProxySnake: SHMUpdater,
+    GRPCProxySnake: ConcurrentUpdater,
+    SnakeBase: InprocUpdater,
+}
+
+
 class SnakeHandler(ISnakeHandler):
     def __init__(self):
         self._snakes: Dict[int, ISnake] = {}
         self._dead_snakes = set()
-        self._executor = None
+        self._executor = ThreadPoolExecutor(max_workers=len(SNAKE_UPDATER_MAP))
+        self._updaters: Dict[type, ISnakeUpdater] = {}
 
-    def _init_executor(self):
-        nr_snakes = len(self._snakes)
-        # max workers is the number of remote snakes, because a batch will never be bigger than the number of remote snakes
-        self._executor = ThreadPoolExecutor(max_workers=nr_snakes)
+    def _get_updater(self, snake: ISnake) -> ISnakeUpdater:
+        for snake_type, updater in SNAKE_UPDATER_MAP.items():
+            if isinstance(snake, snake_type):
+                updater = self._updaters.setdefault(snake, updater())
+                return updater
 
     def get_snakes(self) -> Dict[int, ISnake]:
         return self._snakes.copy()
@@ -40,50 +57,33 @@ class SnakeHandler(ISnakeHandler):
         ProcessPool().kill_snake_process(id)
         return self._dead_snakes.add(id)
 
-    def _process_batch_sync(self, batch_data: Dict[int, EnvData]) -> Dict[int, Coord]:
-        decisions = {}
+    def _split_batch_by_updater(self, batch_data: Dict[int, EnvData]) -> Dict[ISnakeUpdater, Tuple[List[ISnake], EnvData]]:
+        updater_batches: Dict[ISnakeUpdater, Tuple[List[ISnake], EnvData]] = {}
         for id, env_data in batch_data.items():
-            decisions[id] = self.get_decision(id, env_data)
-        return decisions
+            snake = self._snakes[id]
+            updater = self._get_updater(snake)
+            updater_batches.setdefault(updater, ([], env_data))[0].append(snake)
+        return updater_batches
 
-    def _process_batch_concurrent(self, batch_data: Dict[int, EnvData]) -> Dict[int, Coord]:
-        if not self._executor:
-            self._init_executor()
-        futures = {self._executor.submit(self.get_decision, id, env_data): id for id, env_data in batch_data.items()}
+    def _gather_decisions(self, updater_batches: Dict[ISnakeUpdater, Tuple[List[ISnake], EnvData]]) -> Dict[int, Coord]:
         decisions = {}
-        for future in as_completed(futures, timeout=default_config["decision_timeout_ms"] / 1000):
-            id = futures[future]
-            try:
-                if ProcessPool().is_running(id):
-                    decisions[id] = future.result()
-                    continue
-            except TimeoutError:
-                log.debug(f"Snake {id} timed out")
-            except ConnectionError:
-                log.debug(f"Error in snake {id}", exc_info=True)
-            self.kill_snake(id)
-            decisions[id] = None
+        timeout = default_config["decision_timeout_ms"] / 1000
+        futures = [
+            self._executor.submit(updater.get_decisions, snakes, env_data, timeout) 
+            for updater, (snakes, env_data) in updater_batches.items()
+        ]
+        for future in as_completed(futures):
+            decisions.update(future.result())
         return decisions
 
     def get_decisions(self, batch_data: Dict[int, EnvData]) -> Dict[int, Coord]:
-        if any(isinstance(self._snakes[snake_id], RemoteSnake) for snake_id in batch_data.keys()):
-            return self._process_batch_concurrent(batch_data)
-        return self._process_batch_sync(batch_data)
-
-    def get_decision(self, id, env_data: EnvData) -> Coord:
-        snake = self._snakes[id]
-        if isinstance(self._snakes[id], RemoteSnake) and not ProcessPool().is_running(id):
-            self.kill_snake(id)
-            return
-        decision = snake.update(env_data)
-        try:
-            decision_coord = Coord(*decision)
-        except:
-            return
-        return decision_coord
+        updater_batches = self._split_batch_by_updater(batch_data)
+        return self._gather_decisions(updater_batches)
 
     def add_snake(self, id, snake: ISnake):
         self._snakes[id] = snake
+        updater = self._get_updater(snake)
+        updater.register_snake(snake)
 
     def _create_in_range_map(self, position_data: Dict[int, Coord]) -> Dict[int, List[int]]: # Dict[id, List[id]]
         """ Creates a map of snakes that are in range of each other, meaning they can end up on the same tile in one move """
@@ -117,3 +117,7 @@ class SnakeHandler(ISnakeHandler):
         ids = [id for id in self._snakes.keys() if id not in self._dead_snakes]
         random.shuffle(ids)
         return ids
+
+    def finalize(self):
+        for updater in self._updaters.values():
+            updater.finalize()
