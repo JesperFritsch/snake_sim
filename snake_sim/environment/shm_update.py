@@ -4,10 +4,6 @@ import logging
 from pathlib import Path
 from typing import Optional
 from multiprocessing import shared_memory
-import os
-import atexit
-import signal
-import sys
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -46,12 +42,10 @@ class SharedMemoryReader:
         return self._reader_id
 
     def close(self):
-        log.debug("SharedMemoryReader.close name=%s pid=%s", self._shm.name, os.getpid())
         try:
             self._shm.close()
         except Exception:
-            # be tolerant on close
-            logging.exception("SharedMemoryReader.close failed")
+            pass
 
     def _read_seq(self) -> int:
         return struct.unpack_from('<Q', self._buf, SEQ_OFF)[0]
@@ -129,102 +123,24 @@ class SharedMemoryWriter:
         # initialize header
         writer._write_seq(0)
         writer._write_payload_size(0)
-        struct.pack_into('<I', writer._buf, READER_COUNT_OFF, reader_count)
+        struct.pack_into('<I', writer.buf, READER_COUNT_OFF, reader_count)
         # zero ack slots
         for i in range(reader_count):
             slot_off = BASE_HEADER_SZ + i * ACK_SLOT_SZ
-            struct.pack_into('<Q', writer._buf, slot_off, 0)
-
-        # mark ownership and register cleanup handlers so the creating process
-        # attempts deterministic cleanup on exit. This avoids leaving the
-        # resource registered in the multiprocessing resource_tracker.
-        try:
-            writer._owner = True
-            writer._unlinked = False
-            writer._creator_pid = os.getpid()
-            log.debug("SharedMemoryWriter.create name=%s pid=%s", name, writer._creator_pid)
-
-            def _cleanup_on_exit():
-                try:
-                    log.debug("SharedMemoryWriter.atexit cleanup name=%s pid=%s", name, os.getpid())
-                    writer.cleanup()
-                except Exception:
-                    logging.exception("SharedMemoryWriter cleanup in atexit failed")
-
-            atexit.register(_cleanup_on_exit)
-
-            # also register signal handlers for a best-effort cleanup on SIGINT/SIGTERM
-            for sig in (signal.SIGINT, signal.SIGTERM):
-                try:
-                    previous = signal.getsignal(sig)
-
-                    def _make_handler(prev_handler):
-                        def _handler(signum, frame):
-                            try:
-                                log.debug("SharedMemoryWriter.signal cleanup name=%s pid=%s signal=%s", name, os.getpid(), signum)
-                                writer.cleanup()
-                            except Exception:
-                                logging.exception("SharedMemoryWriter cleanup in signal handler failed")
-                            # call previous handler if it exists and is callable
-                            if prev_handler and prev_handler not in (signal.SIG_DFL, signal.SIG_IGN):
-                                try:
-                                    prev_handler(signum, frame)
-                                except Exception:
-                                    logging.exception("previous signal handler failed")
-                            else:
-                                # default behaviour: exit
-                                try:
-                                    sys.exit(0)
-                                except SystemExit:
-                                    os._exit(0)
-                        return _handler
-
-                    signal.signal(sig, _make_handler(previous))
-                except Exception:
-                    logging.exception("Failed to register signal handler for shared memory cleanup")
-        except Exception:
-            logging.exception("Failed to register atexit/signal cleanup for shared memory writer")
-
+            struct.pack_into('<Q', writer.buf, slot_off, 0)
         return writer
 
     def close(self):
         try:
             self._shm.close()
         except Exception:
-            logging.exception("SharedMemoryWriter.close failed")
+            pass
 
     def unlink(self):
-        # idempotent unlink - best-effort
-        if getattr(self, '_unlinked', False):
-            return
-        name = getattr(self._shm, 'name', None)
         try:
             self._shm.unlink()
-            self._unlinked = True
-            log.debug("SharedMemoryWriter.unlink succeeded name=%s pid=%s", name, os.getpid())
-        except FileNotFoundError:
-            # already unlinked by someone else; treat as unlinked
-            self._unlinked = True
-            log.debug("SharedMemoryWriter.unlink FileNotFoundError name=%s pid=%s", name, os.getpid())
         except Exception:
-            # log at debug level and ignore - best-effort cleanup
-            logging.exception('Failed to unlink shared memory')
-            self._unlinked = True
-
-        # try to unregister from resource_tracker so it won't try to unlink at shutdown
-        if name and getattr(self, '_owner', False):
-            try:
-                from multiprocessing import resource_tracker
-                resource_tracker.unregister(name, 'shared_memory')
-                log.debug("resource_tracker.unregister called for %s pid=%s", name, os.getpid())
-            except Exception:
-                # ignore unregister failures - races may occur
-                logging.debug('resource_tracker.unregister failed for %s', name)
-                pass
-
-    def cleanup(self):
-        self.close()
-        self.unlink()
+            pass
 
     def _read_seq(self) -> int:
         return struct.unpack_from('<Q', self._buf, SEQ_OFF)[0]
