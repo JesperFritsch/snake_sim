@@ -5,17 +5,18 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, wait, as_completed
 from typing import Tuple, List
 
-from snake_sim.environment.interfaces.ISnakeUpdater import ISnakeUpdater
+from snake_sim.environment.interfaces.snake_updater_interface import ISnakeUpdater
 from snake_sim.environment.interfaces.snake_interface import ISnake
-from snake_sim.environment.types import Coord, EnvData
+from snake_sim.environment.types import Coord, EnvData, EnvInitData
 
 log = logging.getLogger(Path(__file__).stem)
 
 class ConcurrentUpdater(ISnakeUpdater):
     def __init__(self):
+        super().__init__()
         self._executor: ThreadPoolExecutor = None
 
-    def get_decisions(self, snakes: List[ISnake], env_data: EnvData, timeout: int) -> dict[int, Coord]:
+    def get_decisions(self, snakes: List[ISnake], env_data: EnvData, timeout: float) -> dict[int, Coord]:
         futures = {self._executor.submit(snake.update, env_data): snake.get_id() for snake in snakes}
         decisions = {}
         for future in as_completed(futures, timeout=timeout):
@@ -32,6 +33,7 @@ class ConcurrentUpdater(ISnakeUpdater):
     def close(self):
         self._executor.shutdown(wait=True)
     
-    def finalize(self):
+    def finalize(self, env_init_data: EnvInitData):
+        super().finalize(env_init_data)
         if self._executor is None:
             self._executor = ThreadPoolExecutor(max_workers=self._snake_count)
