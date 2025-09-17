@@ -8,8 +8,9 @@ from typing import Dict, List
 from multiprocessing import Process, Manager
 
 from snake_sim.utils import SingletonMeta, rand_str
-from snake_sim.server.grpc_snake_server import serve
-from snake_sim.environment.types import SnakeConfig
+from snake_sim.server.grpc_snake_server import serve as serve_grpc
+from snake_sim.server.shm_snake_server import serve as serve_shm
+from snake_sim.environment.types import SnakeConfig, SnakeProcType
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -56,7 +57,7 @@ class SnakeProcess:
                 log.error(f"Could not remove socket file {self.target}: {e}")
 
 
-class ProcessPool(metaclass=SingletonMeta):
+class SnakeProcessManager(metaclass=SingletonMeta):
     def __init__(self):
         self._processes: Dict[int, SnakeProcess] = {}
         self._manager = Manager()
@@ -74,16 +75,25 @@ class ProcessPool(metaclass=SingletonMeta):
             s.close()
             return socket_address  # Return the assigned port
 
-    def _generate_target(self) -> str:
+    def _generate_target(self, proc_type: SnakeProcType) -> str:
+        if proc_type not in (SnakeProcType.GRPC, SnakeProcType.SHM):
+            raise ValueError(f"Unsupported SnakeProcType: {proc_type}")
+        
         if platform.system() == "Windows":
             port = self._find_free_port()
-            return f"localhost:{port}"
+            if proc_type == SnakeProcType.GRPC:
+                return f"localhost:{port}"
+            elif proc_type == SnakeProcType.SHM:
+                return f"tcp://localhost:{port}"
         else:
             sock_file = f"/tmp/snake_process_{rand_str(8)}.sock"
             while Path(sock_file).exists():
                 sock_file = f"/tmp/snake_process_{rand_str(8)}.sock"
-            return f"unix:{sock_file}"
-
+            if proc_type == SnakeProcType.GRPC:
+                return f"unix:{sock_file}"
+            elif proc_type == SnakeProcType.SHM:
+                return f"ipc://{sock_file}"
+            
     def is_running(self, id: int) -> bool:
         return id in self._processes and self._processes[id].is_running()
 
@@ -92,13 +102,29 @@ class ProcessPool(metaclass=SingletonMeta):
         if snake_process:
             snake_process.kill()
 
-    def start(self, id, snake_config: SnakeConfig=None, module_path: str=None) -> None:
+    def _get_server_function(self, proc_type: SnakeProcType):
+        if proc_type == SnakeProcType.GRPC:
+            return serve_grpc
+        elif proc_type == SnakeProcType.SHM:
+            return serve_shm
+        else:
+            raise ValueError(f"Unsupported SnakeProcType: {proc_type}")
+
+    def start(
+            self, 
+            id: int, 
+            proc_type: SnakeProcType, 
+            snake_config: SnakeConfig=None, 
+            module_path: str=None
+        ) -> None:
+
         if not bool(module_path) ^ bool(snake_config):
             raise ValueError("Either module_path or snake_config must be provided, but not both and not neither")
-        target = self._generate_target()
+        server_function = self._get_server_function(proc_type)
+        target = self._generate_target(proc_type)
         stop_event = self._manager.Event()
         process = Process(
-            target=serve, 
+            target=server_function, 
             args=(target,), 
             kwargs={
                 "snake_module_file": module_path,
