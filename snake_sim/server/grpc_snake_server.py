@@ -14,7 +14,7 @@ from typing import Optional
 
 from snake_proto_template.python import remote_snake_pb2, remote_snake_pb2_grpc
 from snake_sim.snakes.snake_base import ISnake
-from snake_sim.environment.types import Coord, EnvInitData, EnvData, SnakeConfig
+from snake_sim.environment.types import Coord, EnvInitData, EnvData, SnakeConfig, SnakeProcType
 from snake_sim.logging_setup import setup_logging
 
 import logging
@@ -109,14 +109,11 @@ def serve(
 
         elif snake_config:
             # Only import here to avoid letting snake_module_file see our environment and code.
-            from snake_sim.environment.snake_factory import SnakeFactory, SnakeProcType
-            from snake_sim.snakes.strategies.utils import apply_strategies
+            from snake_sim.environment.snake_factory import SnakeFactory
             factory = SnakeFactory()
-            _, snake_instance = factory.create_snake(
-                SnakeProcType.LOCAL,
-                snake_config
+            snake_instance = factory.create_snake(
+                snake_config=snake_config
             )
-            apply_strategies(snake_instance, snake_config)
 
         snake_servicer = RemoteSnakeServicer(snake_instance)
 
