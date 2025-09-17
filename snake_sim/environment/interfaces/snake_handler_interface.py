@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
-from snake_sim.environment.snake_env import EnvData
+from snake_sim.environment.snake_env import EnvData, EnvInitData
 from snake_sim.environment.types import Coord
 from snake_sim.environment.interfaces.snake_interface import ISnake
 
@@ -33,5 +33,5 @@ class ISnakeHandler(ABC):
         pass
 
     @abstractmethod
-    def finalize(self):
+    def finalize(self, env_init_data: EnvInitData):
         pass
