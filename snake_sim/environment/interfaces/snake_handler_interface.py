@@ -33,9 +33,5 @@ class ISnakeHandler(ABC):
         pass
 
     @abstractmethod
-<<<<<<< HEAD
     def finalize(self, env_init_data: EnvInitData):
-=======
-    def finalize(self):
->>>>>>> d511277 (implementing shm proxies and snake updaters)
         pass

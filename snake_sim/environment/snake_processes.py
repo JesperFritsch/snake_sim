@@ -78,7 +78,6 @@ class SnakeProcessManager(metaclass=SingletonMeta):
     def _generate_target(self, proc_type: SnakeProcType) -> str:
         if proc_type not in (SnakeProcType.GRPC, SnakeProcType.SHM):
             raise ValueError(f"Unsupported SnakeProcType: {proc_type}")
-
         if platform.system() == "Windows":
             port = self._find_free_port()
             if proc_type == SnakeProcType.GRPC:
@@ -93,7 +92,6 @@ class SnakeProcessManager(metaclass=SingletonMeta):
                 return f"unix:{sock_file}"
             elif proc_type == SnakeProcType.SHM:
                 return f"ipc://{sock_file}"
-
     def is_running(self, id: int) -> bool:
         return id in self._processes and self._processes[id].is_running()
 

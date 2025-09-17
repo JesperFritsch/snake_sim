@@ -46,4 +46,3 @@ class SHMUpdater(ConcurrentUpdater):
         )
         for snake in self._added_snakes:
             snake.set_shm_name(shm_name)
-
