@@ -14,7 +14,6 @@ log = logging.getLogger(Path(__file__).stem)
 class ConcurrentUpdater(ISnakeUpdater):
     def __init__(self):
         self._executor: ThreadPoolExecutor = None
-        self._snake_count = 0
 
     def get_decisions(self, snakes: List[ISnake], env_data: EnvData, timeout: int) -> dict[int, Coord]:
         futures = {self._executor.submit(snake.update, env_data): snake.get_id() for snake in snakes}
@@ -32,9 +31,6 @@ class ConcurrentUpdater(ISnakeUpdater):
 
     def close(self):
         self._executor.shutdown(wait=True)
-
-    def register_snake(self, snake: ISnake):
-        self._snake_count += 1
     
     def finalize(self):
         if self._executor is None:
