@@ -92,7 +92,6 @@ class SHMSnakeServer:
 
         if not isinstance(env_data, EnvData):
             raise ValueError("Expected EnvData as data for shm_update command")
-
         # Update the EnvData with the new map from shared memory
         env_data.map = payload
         # Call the snake update method with EnvData and return the result
@@ -179,5 +178,6 @@ def serve(
     except Exception as e:
         log.error(e)
         log.debug("TRACE: ", exc_info=True)
+
 
 
