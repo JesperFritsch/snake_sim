@@ -1,4 +1,5 @@
 import math
+from enum import Enum
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict
 import numpy as np
@@ -135,3 +136,6 @@ class SnakeConfig:
     strategies: Dict[int, StrategyConfig] = field(default_factory=dict)
      
 
+class SnakeProcType(Enum):
+    SHM = 'shm' # Running in a separate process on the same machine, communicating via shared memory
+    GRPC = 'grpc' # Running in a separate process or machine, communicating via gRPC
