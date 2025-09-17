@@ -12,7 +12,7 @@ class ISnakeUpdater(ABC):
 
     def __init__(self):
         self._snake_count = 0
-    
+
     @abstractmethod
     def get_decisions(self, snakes: List[ISnake], env_data: EnvData, timeout: float) -> Dict[int, Coord]: # -> dict of snake id to direction
         pass
