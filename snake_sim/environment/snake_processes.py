@@ -27,27 +27,29 @@ class SnakeProcess:
 
     def kill(self):
         if self.process.is_alive():
-            log.debug(f"Stopping process with id {self.id}")
+            log.debug(f"Stopping {self}")
             stopped_with_event = False
             if self.stop_event:
                 try:
-                    log.debug("Setting stop event for process")
+                    log.debug(f"Setting stop event for {self}")
                     self.stop_event.set()
                     stopped_with_event = True
                 except Exception as e:
                     log.debug(f"Error setting stop event: {e}")
             if not stopped_with_event:
-                log.debug("Could not stop with event, killing process")
+                log.debug(f"Could not stop with event, killing {self}")
                 if platform.system() == "Windows":
                     log.debug("Terminating process (Windows)")
                     self.process.terminate()
                 else:
                     log.debug("Killing process (Unix)")
                     self.process.kill()
-            log.debug(f"Joining process - {self.process.pid}")
+            log.debug(f"Joining process {self}")
             self.process.join()
+            log.debug(f"Process with {self} stopped")
         else:
-            log.debug(f"Process with id {self.id} already stopped")
+            log.debug(f"Process with {self} already stopped")
+
         if self.target.startswith("unix:"):
             try:
                 filename = self.target.split(':')[1]
@@ -55,6 +57,9 @@ class SnakeProcess:
                     os.remove(filename)
             except OSError as e:
                 log.error(f"Could not remove socket file {self.target}: {e}")
+
+    def __repr__(self):
+        return f"SnakeProcess(id={self.id}, pid={self.process.pid if self.process else None}, target={self.target}, running={self.is_running()})"
 
 
 class SnakeProcessManager(metaclass=SingletonMeta):
@@ -92,6 +97,7 @@ class SnakeProcessManager(metaclass=SingletonMeta):
                 return f"unix:{sock_file}"
             elif proc_type == SnakeProcType.SHM:
                 return f"ipc://{sock_file}"
+
     def is_running(self, id: int) -> bool:
         return id in self._processes and self._processes[id].is_running()
 
@@ -151,6 +157,8 @@ class SnakeProcessManager(metaclass=SingletonMeta):
                     if process in self._processes:
                         self.kill_snake_process(process)
             self._manager.shutdown()
+            log.debug("SnakeProcessManager shutdown complete")
+
 
     def __del__(self):
         self.shutdown()

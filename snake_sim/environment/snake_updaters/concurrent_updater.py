@@ -19,21 +19,24 @@ class ConcurrentUpdater(ISnakeUpdater):
     def get_decisions(self, snakes: List[ISnake], env_data: EnvData, timeout: float) -> dict[int, Coord]:
         futures = {self._executor.submit(snake.update, env_data): snake.get_id() for snake in snakes}
         decisions = {}
-        for future in as_completed(futures, timeout=timeout):
-            id = futures[future]
-            decisions[id] = None
-            try:
-                decisions[id] = future.result()
-            except TimeoutError:
-                log.debug(f"Snake {id} timed out")
-            except ConnectionError:
-                log.debug(f"Error in snake {id}", exc_info=True)
+        try:
+            for future in as_completed(futures, timeout=timeout):
+                id = futures[future]
+                decisions[id] = None
+                try:
+                    decisions[id] = future.result()
+                except ConnectionError:
+                    log.debug(f"Snake with id {id} disconnected.")
+        except TimeoutError:
+            pass
         return decisions
 
     def close(self):
         self._executor.shutdown(wait=True)
+        super().close()
 
     def finalize(self, env_init_data: EnvInitData):
         super().finalize(env_init_data)
         if self._executor is None:
             self._executor = ThreadPoolExecutor(max_workers=self._snake_count)
+

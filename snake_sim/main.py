@@ -3,6 +3,7 @@ import json
 import logging
 import platform
 import signal
+import os
 from multiprocessing import Pipe, Process, Manager
 from threading import Event
 from pathlib import Path
@@ -34,6 +35,7 @@ def start_snakes(config: DotDict, stop_event: Event, ipc_observer_pipe=None):
 
     signal.signal(signal.SIGINT, handle_termination)
     signal.signal(signal.SIGTERM, handle_termination)
+
     if platform.system() == "Windows":
         setup_logging(config.log_level)
     loop_control = setup_loop(config)
@@ -44,6 +46,7 @@ def start_snakes(config: DotDict, stop_event: Event, ipc_observer_pipe=None):
 
 def main():
     try:
+        p_manager = Manager()
         argv = sys.argv[1:]
         cfg_path = Path(__file__).parent / 'config/default_config.json'
         with open(cfg_path) as config_file:
@@ -60,7 +63,7 @@ def main():
 
         elif config.command == "stream" or config.command == "game":
             parent_conn, child_conn = Pipe()
-            stop_event = Manager().Event()
+            stop_event = p_manager.Event()
             loop_p = Process(target=start_snakes, args=(config, stop_event), kwargs={'ipc_observer_pipe': parent_conn})
             if config.command == "game":
                 render_p = Process(target=play_game, args=(child_conn, config.spm, config.sound))
@@ -82,6 +85,7 @@ def main():
             stop_event.set()
         except:
             pass
+        p_manager.shutdown()
 
 if __name__ == '__main__':
     main()
