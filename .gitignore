@@ -6,9 +6,10 @@ snake_venv*
 *.weights.h5
 *egg*
 logs/
+snake.log*
 *.log
 *.pyd
 build/
 dist/
 *.so
-snake_sim/test_bench/state_files*
+**test_bench/state_files*
