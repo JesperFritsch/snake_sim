@@ -2,11 +2,10 @@ import random
 import logging
 import json
 import random
-import time
 
 from typing import Dict, List, Tuple
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, wait, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from importlib import resources
 
 from snake_sim.environment.snake_processes import SnakeProcessManager
@@ -42,11 +41,12 @@ class SnakeHandler(ISnakeHandler):
         self._dead_snakes = set()
         self._executor = ThreadPoolExecutor(max_workers=len(SNAKE_UPDATER_MAP))
         self._updaters: Dict[type, ISnakeUpdater] = {}
+        self._finalized = False
 
     def _get_updater(self, snake: ISnake) -> ISnakeUpdater:
         for snake_type, updater in SNAKE_UPDATER_MAP.items():
             if isinstance(snake, snake_type):
-                updater = self._updaters.setdefault(snake, updater())
+                updater = self._updaters.setdefault(snake_type, updater())
                 return updater
 
     def get_next_snake_id(self) -> int:
@@ -72,7 +72,7 @@ class SnakeHandler(ISnakeHandler):
         decisions = {}
         timeout = default_config["decision_timeout_ms"] / 1000
         futures = [
-            self._executor.submit(updater.get_decisions, snakes, env_data, timeout) 
+            self._executor.submit(updater.get_decisions, snakes, env_data, timeout)
             for updater, (snakes, env_data) in updater_batches.items()
         ]
         for future in as_completed(futures):
@@ -123,11 +123,17 @@ class SnakeHandler(ISnakeHandler):
         return ids
 
     def finalize(self, env_init_data: EnvInitData):
+        if self._finalized:
+            return
+        self._finalized = True
         log.debug("Finalizing SnakeHandler")
+        log.debug(f"Finalizing {len(self._updaters)} updaters")
         for updater in self._updaters.values():
             updater.finalize(env_init_data)
 
     def close(self):
+        log.debug("Closing SnakeHandler")
         for updater in self._updaters.values():
+            log.debug(f"Closing updater {updater.__class__.__name__}")
             updater.close()
         self._executor.shutdown(wait=True)

@@ -5,7 +5,7 @@ import socket
 import threading
 from pathlib import Path
 from typing import Dict, List
-from multiprocessing import Process, Manager
+from multiprocessing import Process, Event
 
 from snake_sim.utils import SingletonMeta, rand_str
 from snake_sim.server.grpc_snake_server import serve as serve_grpc
@@ -27,27 +27,29 @@ class SnakeProcess:
 
     def kill(self):
         if self.process.is_alive():
-            log.debug(f"Stopping process with id {self.id}")
+            log.debug(f"Stopping {self}")
             stopped_with_event = False
             if self.stop_event:
                 try:
-                    log.debug("Setting stop event for process")
+                    log.debug(f"Setting stop event for {self}")
                     self.stop_event.set()
                     stopped_with_event = True
                 except Exception as e:
                     log.debug(f"Error setting stop event: {e}")
             if not stopped_with_event:
-                log.debug("Could not stop with event, killing process")
+                log.debug(f"Could not stop with event, killing {self}")
                 if platform.system() == "Windows":
                     log.debug("Terminating process (Windows)")
                     self.process.terminate()
                 else:
                     log.debug("Killing process (Unix)")
                     self.process.kill()
-            log.debug(f"Joining process - {self.process.pid}")
+            log.debug(f"Joining process {self}")
             self.process.join()
+            log.debug(f"Process with {self} stopped")
         else:
-            log.debug(f"Process with id {self.id} already stopped")
+            log.debug(f"Process with {self} already stopped")
+
         if self.target.startswith("unix:"):
             try:
                 filename = self.target.split(':')[1]
@@ -56,11 +58,12 @@ class SnakeProcess:
             except OSError as e:
                 log.error(f"Could not remove socket file {self.target}: {e}")
 
+    def __repr__(self):
+        return f"SnakeProcess(id={self.id}, pid={self.process.pid if self.process else None}, target={self.target}, running={self.is_running()})"
 
 class SnakeProcessManager(metaclass=SingletonMeta):
     def __init__(self):
         self._processes: Dict[int, SnakeProcess] = {}
-        self._manager = Manager()
         self._shutdown_lock = threading.Lock()
         self._shutdown = False
 
@@ -78,7 +81,6 @@ class SnakeProcessManager(metaclass=SingletonMeta):
     def _generate_target(self, proc_type: SnakeProcType) -> str:
         if proc_type not in (SnakeProcType.GRPC, SnakeProcType.SHM):
             raise ValueError(f"Unsupported SnakeProcType: {proc_type}")
-        
         if platform.system() == "Windows":
             port = self._find_free_port()
             if proc_type == SnakeProcType.GRPC:
@@ -93,7 +95,7 @@ class SnakeProcessManager(metaclass=SingletonMeta):
                 return f"unix:{sock_file}"
             elif proc_type == SnakeProcType.SHM:
                 return f"ipc://{sock_file}"
-            
+
     def is_running(self, id: int) -> bool:
         return id in self._processes and self._processes[id].is_running()
 
@@ -111,10 +113,10 @@ class SnakeProcessManager(metaclass=SingletonMeta):
             raise ValueError(f"Unsupported SnakeProcType: {proc_type}")
 
     def start(
-            self, 
-            id: int, 
-            proc_type: SnakeProcType, 
-            snake_config: SnakeConfig=None, 
+            self,
+            id: int,
+            proc_type: SnakeProcType,
+            snake_config: SnakeConfig=None,
             module_path: str=None
         ) -> None:
 
@@ -122,10 +124,10 @@ class SnakeProcessManager(metaclass=SingletonMeta):
             raise ValueError("Either module_path or snake_config must be provided, but not both and not neither")
         server_function = self._get_server_function(proc_type)
         target = self._generate_target(proc_type)
-        stop_event = self._manager.Event()
+        stop_event = Event()
         process = Process(
-            target=server_function, 
-            args=(target,), 
+            target=server_function,
+            args=(target,),
             kwargs={
                 "snake_module_file": module_path,
                 "snake_config": snake_config,
@@ -152,7 +154,8 @@ class SnakeProcessManager(metaclass=SingletonMeta):
                 for process in list(processes.keys()):
                     if process in self._processes:
                         self.kill_snake_process(process)
-            self._manager.shutdown()
+            log.debug("SnakeProcessManager shutdown complete")
+
 
     def __del__(self):
         self.shutdown()
