@@ -156,7 +156,6 @@ def serve(
 ):
     if platform.system() == "Windows":
         setup_logging(log_level)
-
     global log
     log = logging.getLogger(f"{Path(__file__).stem}-{target}")
 

@@ -61,7 +61,6 @@ class SnakeProcess:
     def __repr__(self):
         return f"SnakeProcess(id={self.id}, pid={self.process.pid if self.process else None}, target={self.target}, running={self.is_running()})"
 
-
 class SnakeProcessManager(metaclass=SingletonMeta):
     def __init__(self):
         self._processes: Dict[int, SnakeProcess] = {}

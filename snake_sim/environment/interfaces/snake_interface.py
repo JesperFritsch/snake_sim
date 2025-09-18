@@ -25,6 +25,9 @@ class ISnake(ABC):
 
     def set_id(self, id: int):
         self._id = id
+        
+    def get_id(self):
+        return self._id
 
     def get_id(self):
         return self._id
@@ -42,7 +45,7 @@ class ISnake(ABC):
         self._env_init_data = env_init_data
         self._head_value = self._env_init_data.snake_values[self._id]['head_value']
         self._body_value = self._env_init_data.snake_values[self._id]['body_value']
-
+    
     @abstractmethod
     def update(self, env_data: EnvData) -> Coord: # -> (int, int) as direction (1, 0) for right (-1, 0) for left
         pass

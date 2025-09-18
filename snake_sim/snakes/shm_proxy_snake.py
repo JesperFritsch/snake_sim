@@ -60,8 +60,6 @@ class SHMProxySnake(ISnake):
     @handle_connection_loss
     @zmq_msg_forwarder
     def kill(self):
-        self._socket.close(0)
-        self._context.term()
         super().kill()
 
     @handle_connection_loss
@@ -96,6 +94,7 @@ class SHMProxySnake(ISnake):
             self._socket.setsockopt(zmq.RCVTIMEO, 100)
             self._socket.setsockopt(zmq.SNDTIMEO, 100)
             self._short_timeout_set = True
+
         env_data.map = None
         return self.shm_update(env_data)
 

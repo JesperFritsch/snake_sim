@@ -39,4 +39,3 @@ class ConcurrentUpdater(ISnakeUpdater):
         super().finalize(env_init_data)
         if self._executor is None:
             self._executor = ThreadPoolExecutor(max_workers=self._snake_count)
-

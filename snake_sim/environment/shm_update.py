@@ -5,6 +5,12 @@ from pathlib import Path
 from typing import Optional
 from multiprocessing import shared_memory
 import os
+<<<<<<< HEAD
+=======
+import atexit
+import signal
+import sys
+>>>>>>> 5583dad4c0ae161511b3a62fa7baaf7da61f0bbd
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -104,7 +110,10 @@ class SharedMemoryWriter:
         self._reader_count = int(reader_count)
         self._payload_capacity = int(payload_capacity)
         self._payload_offset = BASE_HEADER_SZ + self._reader_count * ACK_SLOT_SZ
+<<<<<<< HEAD
         self._unlinked = True
+=======
+>>>>>>> 5583dad4c0ae161511b3a62fa7baaf7da61f0bbd
 
     @classmethod
     def create(cls, name: str, reader_count: int, payload_capacity: int, overwrite: bool = False):
@@ -124,7 +133,10 @@ class SharedMemoryWriter:
                 raise
 
         writer = cls(shm, reader_count, payload_capacity)
+<<<<<<< HEAD
         writer._unlinked = False
+=======
+>>>>>>> 5583dad4c0ae161511b3a62fa7baaf7da61f0bbd
         # initialize header
         writer._write_seq(0)
         writer._write_payload_size(0)
@@ -133,6 +145,60 @@ class SharedMemoryWriter:
         for i in range(reader_count):
             slot_off = BASE_HEADER_SZ + i * ACK_SLOT_SZ
             struct.pack_into('<Q', writer._buf, slot_off, 0)
+<<<<<<< HEAD
+=======
+
+        # mark ownership and register cleanup handlers so the creating process
+        # attempts deterministic cleanup on exit. This avoids leaving the
+        # resource registered in the multiprocessing resource_tracker.
+        try:
+            writer._owner = True
+            writer._unlinked = False
+            writer._creator_pid = os.getpid()
+            log.debug("SharedMemoryWriter.create name=%s pid=%s", name, writer._creator_pid)
+
+            def _cleanup_on_exit():
+                try:
+                    log.debug("SharedMemoryWriter.atexit cleanup name=%s pid=%s", name, os.getpid())
+                    writer.cleanup()
+                except Exception:
+                    logging.exception("SharedMemoryWriter cleanup in atexit failed")
+
+            atexit.register(_cleanup_on_exit)
+
+            # also register signal handlers for a best-effort cleanup on SIGINT/SIGTERM
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                try:
+                    previous = signal.getsignal(sig)
+
+                    def _make_handler(prev_handler):
+                        def _handler(signum, frame):
+                            try:
+                                log.debug("SharedMemoryWriter.signal cleanup name=%s pid=%s signal=%s", name, os.getpid(), signum)
+                                writer.cleanup()
+                            except Exception:
+                                logging.exception("SharedMemoryWriter cleanup in signal handler failed")
+                            # call previous handler if it exists and is callable
+                            if prev_handler and prev_handler not in (signal.SIG_DFL, signal.SIG_IGN):
+                                try:
+                                    prev_handler(signum, frame)
+                                except Exception:
+                                    logging.exception("previous signal handler failed")
+                            else:
+                                # default behaviour: exit
+                                try:
+                                    sys.exit(0)
+                                except SystemExit:
+                                    os._exit(0)
+                        return _handler
+
+                    signal.signal(sig, _make_handler(previous))
+                except Exception:
+                    logging.exception("Failed to register signal handler for shared memory cleanup")
+        except Exception:
+            logging.exception("Failed to register atexit/signal cleanup for shared memory writer")
+
+>>>>>>> 5583dad4c0ae161511b3a62fa7baaf7da61f0bbd
         return writer
 
     def close(self):
@@ -159,6 +225,20 @@ class SharedMemoryWriter:
             logging.exception('Failed to unlink shared memory')
             self._unlinked = True
 
+<<<<<<< HEAD
+=======
+        # try to unregister from resource_tracker so it won't try to unlink at shutdown
+        if name and getattr(self, '_owner', False):
+            try:
+                from multiprocessing import resource_tracker
+                resource_tracker.unregister(name, 'shared_memory')
+                log.debug("resource_tracker.unregister called for %s pid=%s", name, os.getpid())
+            except Exception:
+                # ignore unregister failures - races may occur
+                logging.debug('resource_tracker.unregister failed for %s', name)
+                pass
+
+>>>>>>> 5583dad4c0ae161511b3a62fa7baaf7da61f0bbd
     def cleanup(self):
         self.close()
         self.unlink()
