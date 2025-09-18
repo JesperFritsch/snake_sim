@@ -69,7 +69,6 @@ def main():
             render_p.start()
             loop_p.start()
             render_p.join()
-            log.debug("Render process ended, stopping loop")
             stop_event.set()
             loop_p.join()
 

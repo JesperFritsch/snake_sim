@@ -214,7 +214,9 @@ class SnakeLoopControl:
         if stop_event:
             def wait_stop_event(stop_event):
                 try:
+                    log.debug("Waiting for stop event")
                     stop_event.wait()
+                    log.debug("Stop event received")
                 except (ConnectionResetError, BrokenPipeError):
                     # Manager is already dead, just exit gracefully
                     pass
@@ -238,9 +240,10 @@ class SnakeLoopControl:
 
     @_loop_check
     def shutdown(self):
+        """Shuts down the loop"""
         if self._is_shutdown:
             return
-        """Shuts down the loop"""
+        log.debug("Shutting down loop")
         self._is_shutdown = True
         self._loop.stop()
         self.process_pool.shutdown()

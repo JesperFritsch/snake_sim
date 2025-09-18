@@ -135,7 +135,7 @@ class SimLoop(IMainLoop):
 
     def set_environment(self, env: ISnakeEnv):
         self._env = env
-    
+
 
 class GameLoop(SimLoop):
 
