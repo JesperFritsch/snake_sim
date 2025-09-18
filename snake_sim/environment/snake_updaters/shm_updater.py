@@ -31,6 +31,7 @@ class SHMUpdater(ConcurrentUpdater):
         return super().get_decisions(snakes, env_data, timeout)
 
     def close(self):
+        log.debug("Closing SHMUpdater")
         self._shm_writer.cleanup()
         super().close()
 

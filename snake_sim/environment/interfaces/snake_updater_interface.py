@@ -1,4 +1,5 @@
 import logging
+import sys
 from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import Tuple, List, Dict
@@ -20,6 +21,7 @@ class ISnakeUpdater(ABC):
 
     def close(self):
         log.debug(f"Closing updater {self.__class__.__name__} {id(self)}")
+        sys.stdout.flush()
 
     def register_snake(self, snake: ISnake):
         self._snake_count += 1

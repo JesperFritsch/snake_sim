@@ -121,7 +121,7 @@ class SHMSnakeServer:
                 response = Return(request.command, result)
                 self._send(response)
             log.debug("Stop event set, shutting down server")
-        except (BrokenPipeError, EOFError):
+        except (BrokenPipeError, EOFError, ConnectionError):
             log.debug("Client disconnected, shutting down server")
         except KeyboardInterrupt:
             pass
