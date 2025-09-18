@@ -11,7 +11,7 @@ def handle_connection_loss(func):
     def wrapper(self, *args, **kwargs):
         try:
             return func(self, *args, **kwargs)
-        except zmq.ZMQError as e:
+        except (zmq.ZMQError, zmq.Again) as e:
             raise ConnectionError
     return wrapper
 
@@ -23,6 +23,9 @@ class SHMProxySnake(ISnake):
         self._target = target
         self._context = zmq.Context()
         self._socket = self._context.socket(zmq.REQ)
+        self._socket.setsockopt(zmq.RCVTIMEO, 5000)
+        self._socket.setsockopt(zmq.SNDTIMEO, 5000)
+        self._short_timeout_set = False
         self._socket.connect(target)
         self._reader_id: int = None
         self._shm_name: str = None
@@ -57,6 +60,8 @@ class SHMProxySnake(ISnake):
     @handle_connection_loss
     @zmq_msg_forwarder
     def kill(self):
+        self._socket.close(0)
+        self._context.term()
         super().kill()
 
     @handle_connection_loss
@@ -87,6 +92,10 @@ class SHMProxySnake(ISnake):
 
     def update(self, env_data: EnvData):
         # we dont send the map over zmq, because its in shared memory
+        if not self._short_timeout_set:
+            self._socket.setsockopt(zmq.RCVTIMEO, 100)
+            self._socket.setsockopt(zmq.SNDTIMEO, 100)
+            self._short_timeout_set = True
         env_data.map = None
         return self.shm_update(env_data)
 
