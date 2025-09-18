@@ -17,20 +17,20 @@ namespace py = pybind11;
 
 
 Coord get_dir_to_tile(
-    uint8_t *s_map, 
-    int width, 
-    int height, 
-    Coord from_coord, 
+    uint8_t *s_map,
+    int width,
+    int height,
+    Coord from_coord,
     int tile_value,
     std::vector<int> visitable_values,
     bool clockwise = true
 );
 
 inline py::tuple py_get_dir_to_tile(
-    py::array_t<uint8_t> s_map, 
-    int width, 
-    int height, 
-    py::tuple from_coord, 
+    py::array_t<uint8_t> s_map,
+    int width,
+    int height,
+    py::tuple from_coord,
     int tile_value,
     std::vector<int> visitable_values,
     bool clockwise = true
@@ -43,18 +43,18 @@ inline py::tuple py_get_dir_to_tile(
 }
 
 std::vector<Coord> get_visitable_tiles(
-    uint8_t *s_map, 
-    int width, 
-    int height, 
-    Coord center_coord, 
+    uint8_t *s_map,
+    int width,
+    int height,
+    Coord center_coord,
     std::vector<int> visitable_values
 );
 
 inline py::tuple py_get_visitable_tiles(
-    py::array_t<uint8_t> s_map, 
-    int width, 
-    int height, 
-    py::tuple center_coord, 
+    py::array_t<uint8_t> s_map,
+    int width,
+    int height,
+    py::tuple center_coord,
     std::vector<int> visitable_values
 ){
     auto buf = s_map.request();
@@ -77,9 +77,9 @@ inline bool same_diagonal(Coord c1, Coord c2, bool dec){
 }
 
 bool is_free_diagonal(
-    const uint8_t __restrict *s_map, 
-    int width, 
-    Coord from_coord, 
-    Coord to_coord, 
+    const uint8_t* __restrict s_map,
+    int width,
+    Coord from_coord,
+    Coord to_coord,
     std::vector<int> visitable_values
 );

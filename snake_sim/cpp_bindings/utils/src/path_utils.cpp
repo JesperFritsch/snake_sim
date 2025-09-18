@@ -8,10 +8,10 @@ bool is_inside(int x, int y, int width, int height)
 
 
 Coord get_dir_to_tile(
-    uint8_t *s_map, 
-    int width, 
-    int height, 
-    Coord from_coord, 
+    uint8_t *s_map,
+    int width,
+    int height,
+    Coord from_coord,
     int tile_value,
     std::vector<int> visitable_values,
     bool clockwise
@@ -55,10 +55,10 @@ Coord get_dir_to_tile(
 
 
 std::vector<Coord> get_visitable_tiles(
-    uint8_t *s_map, 
-    int width, 
-    int height, 
-    Coord center_coord, 
+    uint8_t *s_map,
+    int width,
+    int height,
+    Coord center_coord,
     std::vector<int> visitable_values
 ){
     std::array<Coord, 4> directions = {Coord(1,0), Coord(0,1), Coord(-1,0), Coord(0,-1)};
@@ -75,7 +75,7 @@ std::vector<Coord> get_visitable_tiles(
     return result;
 }
 
-bool is_free_diagonal(const uint8_t __restrict *s_map, int width, Coord from_coord, Coord to_coord, std::vector<int> visitable_values)
+bool is_free_diagonal(const uint8_t* __restrict s_map, int width, Coord from_coord, Coord to_coord, std::vector<int> visitable_values)
 //assumes from_coord and to_coord are diagonal
 {
     if (to_coord.y < from_coord.y) {

@@ -279,5 +279,5 @@ def setup_loop(config) -> SnakeLoopControl:
         )
     if config.rate_meter:
         loop_control.add_observer(TqdmLoopObserver())
-    
+
     return loop_control
