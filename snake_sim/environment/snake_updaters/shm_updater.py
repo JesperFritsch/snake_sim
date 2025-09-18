@@ -31,12 +31,12 @@ class SHMUpdater(ConcurrentUpdater):
         return super().get_decisions(snakes, env_data, timeout)
 
     def close(self):
-        log.debug("Closing SHMUpdater and cleaning up SharedMemoryWriter")
         self._shm_writer.cleanup()
         super().close()
 
-    def finalize(self, env_init_data: EnvInitData):
-        super().finalize(env_init_data)
+    def _create_shm_writer(self, env_init_data: EnvInitData):
+        if self._shm_writer is not None:
+            return
         shm_name = str(uuid4())
         shm_reader_count = self._snake_count
         payload_size = env_init_data.width * env_init_data.height
@@ -46,3 +46,7 @@ class SHMUpdater(ConcurrentUpdater):
         )
         for snake in self._added_snakes:
             snake.set_shm_name(shm_name)
+
+    def finalize(self, env_init_data: EnvInitData):
+        super().finalize(env_init_data)
+        self._create_shm_writer(env_init_data)
