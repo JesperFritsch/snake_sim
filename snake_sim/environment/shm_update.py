@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Optional
 from multiprocessing import shared_memory
 import os
+import atexit
+import signal
+import sys
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -28,7 +31,31 @@ class SharedMemoryReader:
     """
 
     def __init__(self, shm_name: str, reader_id: int):
-        self._shm = shared_memory.SharedMemory(name=shm_name)
+        # Attach to existing shared memory without registering the name
+        # with multiprocessing.resource_tracker in this process. This
+        # keeps reader/server processes from appearing to 'own' the
+        # shared memory and emitting resource_tracker warnings at exit.
+        try:
+            from multiprocessing import resource_tracker
+            orig_register = getattr(resource_tracker, 'register', None)
+            if orig_register is not None:
+                # temporarily replace register with a no-op
+                resource_tracker.register = lambda name, rtype: None
+            try:
+                self._shm = shared_memory.SharedMemory(name=shm_name)
+            finally:
+                # restore original register implementation
+                if orig_register is not None:
+                    resource_tracker.register = orig_register
+                # Do NOT call resource_tracker.unregister here. We intentionally
+                # prevented local registration above; calling unregister when
+                # no registration exists can trigger KeyError traces in the
+                # resource_tracker process. Rely on the no-op register to keep
+                # reader processes unregistered.
+        except Exception:
+            # If resource_tracker is unavailable for any reason, fall back
+            # to a normal attach and tolerate possible tracker registration.
+            self._shm = shared_memory.SharedMemory(name=shm_name)
         self._buf = self._shm.buf
         self._reader_id = int(reader_id)
         # read reader_count from header
@@ -124,7 +151,9 @@ class SharedMemoryWriter:
                 raise
 
         writer = cls(shm, reader_count, payload_capacity)
+        # mark ownership: the creating process is responsible for unlinking
         writer._unlinked = False
+
         # initialize header
         writer._write_seq(0)
         writer._write_payload_size(0)
@@ -137,6 +166,7 @@ class SharedMemoryWriter:
 
     def close(self):
         try:
+            log.debug("SharedMemoryWriter.close name=%s pid=%s", self._shm.name, os.getpid())
             self._shm.close()
         except Exception:
             logging.exception("SharedMemoryWriter.close failed")
@@ -144,6 +174,7 @@ class SharedMemoryWriter:
     def unlink(self):
         # idempotent unlink - best-effort
         if getattr(self, '_unlinked', False):
+            log.debug("SharedMemoryWriter.unlink already unlinked name=%s pid=%s", self._shm.name, os.getpid())
             return
         name = getattr(self._shm, 'name', None)
         try:
@@ -160,6 +191,7 @@ class SharedMemoryWriter:
             self._unlinked = True
 
     def cleanup(self):
+        log.debug("SharedMemoryWriter.cleanup name=%s pid=%s", self._shm.name, os.getpid())
         self.close()
         self.unlink()
 

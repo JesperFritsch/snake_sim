@@ -255,8 +255,8 @@ class SnakeLoopControl:
         log.debug("Shutting down loop")
         self._is_shutdown = True
         self._loop.stop()
-        self._snake_proc_mngr.shutdown()
         self._snake_handler.close()
+        self._snake_proc_mngr.shutdown()
         log.debug("Loop shutdown complete")
 
 

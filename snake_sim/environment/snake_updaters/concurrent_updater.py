@@ -32,8 +32,8 @@ class ConcurrentUpdater(ISnakeUpdater):
         return decisions
 
     def close(self):
-        self._executor.shutdown(wait=True)
         super().close()
+        self._executor.shutdown(wait=True)
 
     def finalize(self, env_init_data: EnvInitData):
         super().finalize(env_init_data)
