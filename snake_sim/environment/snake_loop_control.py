@@ -1,6 +1,5 @@
 import json
 import logging
-import atexit
 import functools
 import threading
 from dataclasses import dataclass
@@ -83,7 +82,6 @@ class SnakeLoopControl:
                 raise ValueError(f'Map {config.map} not found')
             self._snake_enviroment.load_map(map_files_mapping[config.map])
         self._is_shutdown = False
-        atexit.register(self.shutdown)
 
     def _loop_check(func):
         @functools.wraps(func)
@@ -126,12 +124,6 @@ class SnakeLoopControl:
             except Exception as e:
                 log.exception(e)
                 self._snake_handler.kill_snake(id)
-
-        # Now that all snakes are added to the environment, we can finalize them with the init data
-        init_data = self._snake_enviroment.get_init_data()
-        for id, snake in snakes_dict.items():
-            snake.set_init_data(init_data)
-        self._snake_handler.finalize(init_data)
 
         # Now that all snakes are added to the environment, we can finalize them with the init data
         init_data = self._snake_enviroment.get_init_data()
@@ -237,7 +229,7 @@ class SnakeLoopControl:
                     except (ConnectionResetError, BrokenPipeError):
                         # Manager is already dead, just exit gracefully
                         pass
-                    self.shutdown()
+                    self._loop.stop()
                 threading.Thread(target=wait_stop_event, args=(stop_event,), daemon=True).start()
 
             if self._config.inproc_snakes:
@@ -249,7 +241,7 @@ class SnakeLoopControl:
             self._initialize_run_data_loop_observers() # This needs to be called after the snakes are added to the environment
             self._loop.start()
         except KeyboardInterrupt:
-            pass
+            log.debug("KeyboardInterrupt received, shutting down loop")
         except Exception as e:
             log.exception(e)
         finally:
@@ -265,6 +257,7 @@ class SnakeLoopControl:
         self._loop.stop()
         self._snake_proc_mngr.shutdown()
         self._snake_handler.close()
+        log.debug("Loop shutdown complete")
 
 
 def setup_loop(config) -> SnakeLoopControl:
