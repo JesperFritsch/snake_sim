@@ -2,7 +2,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
-#include <vector> 
+#include <vector>
 #include <deque>
 #include <stdexcept>
 #include <unordered_set>
@@ -27,13 +27,13 @@ class AreaChecker
 public:
     // Constructor to initialize food_value, free_value, and body_value
     AreaChecker(
-        uint8_t food_value, 
-        uint8_t free_value, 
-        uint8_t body_value, 
-        uint8_t head_value, 
-        int width, 
+        uint8_t food_value,
+        uint8_t free_value,
+        uint8_t body_value,
+        uint8_t head_value,
+        int width,
         int height
-    ) : 
+    ) :
         food_value(food_value),
         free_value(free_value),
         body_value(body_value),
@@ -49,16 +49,17 @@ public:
     void print_map(uint8_t *s_map);
 
     bool is_bad_gateway(uint8_t *s_map, Coord coord1, Coord coord2);
-    
-    int is_gate_way(uint8_t __restrict *s_map, Coord coord, Coord check_coord);
-    
-    bool is_jagged_edge_tile(uint8_t __restrict *s_map, Coord coord);
+
+
+    int is_gate_way(uint8_t* __restrict s_map, Coord coord, Coord check_coord);
+
+    bool is_jagged_edge_tile(uint8_t* __restrict s_map, Coord coord);
 
     std::vector<std::deque<Coord>> find_jagged_edges(std::vector<Coord> jagged_edge_tiles);
 
     std::unordered_set<Coord> get_overlapping_jagged_tiles(
-        const uint8_t __restrict *s_map,
-        std::deque<Coord> &tiles1, 
+        const uint8_t* __restrict s_map,
+        std::deque<Coord> &tiles1,
         std::deque<Coord> &tiles2);
 
     int calculate_jagged_edge_discount(const uint8_t *s_map, const std::vector<Coord> jagged_edge_tiles);
@@ -73,7 +74,7 @@ public:
             Coord(check_coord[0].cast<int>(), check_coord[1].cast<int>())
         );
     }
-        
+
     ExploreResults explore_area(
         uint8_t *s_map,
         std::vector<Coord> &body_coords,
@@ -84,7 +85,7 @@ public:
         int snake_length,
         int target_margin,
         int total_food_count);
-        
+
     AreaCheckResult area_check(
         uint8_t *s_map,
         std::vector<Coord> &body_coords,
@@ -93,7 +94,7 @@ public:
         bool food_check,
         bool complete_area,
         bool exhaustive);
-        
+
     py::dict py_area_check(
         py::array_t<uint8_t> s_map,
         py::list body_coords_py,

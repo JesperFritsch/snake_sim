@@ -20,7 +20,7 @@ X . 1 . X
     {
         throw std::invalid_argument("coord1 and coord2 must be adjacent");
     }
-    
+
     const Coord n_r1 = Coord(coord1.x + delta.y, coord1.y + delta.x);
     const Coord n_r2 = Coord(coord1.x + (delta.y * 2), coord1.y + (delta.x * 2));
     const Coord n_l1 = Coord(coord1.x - delta.y, coord1.y - delta.x);
@@ -43,7 +43,7 @@ X . 1 . X
 }
 
 
-bool AreaChecker::is_jagged_edge_tile(uint8_t __restrict *s_map, Coord coord)
+bool AreaChecker::is_jagged_edge_tile(uint8_t* __restrict s_map, Coord coord)
 {
     // loking for tiles by edges like this:
     // # #
@@ -103,7 +103,7 @@ std::vector<std::deque<Coord>> AreaChecker::find_jagged_edges(std::vector<Coord>
                 // this means they are diagonally adjacent
                 group.push_front(tile);
                 added = true;
-                break; 
+                break;
             }
             auto back_dist = tile.distance(back);
             if (back_dist < 2 && back_dist > 1){
@@ -135,17 +135,17 @@ std::vector<std::deque<Coord>> AreaChecker::find_jagged_edges(std::vector<Coord>
 
 /*
 Could not come up with a better name
-but this method takes two jagged edges and returns the tiles 
+but this method takes two jagged edges and returns the tiles
 that are not placed so that they are beside the other edge with nothing between.
-. . . . . . . . A . . . . . . . 
+. . . . . . . . A . . . . . . .
 . . . . . . . . . A . . . . . .
-N . . . . . . . . . A . . . . . 
-. N . . . . . . . . . A . . . . 
-. . N . . . . . . . . . N . . . 
-. . . B . . . . # . . . . N . . 
+N . . . . . . . . . A . . . . .
+. N . . . . . . . . . A . . . .
+. . N . . . . . . . . . N . . .
+. . . B . . . . # . . . . N . .
 . . . . B . . . . # . . . . . .
-. . . . . B . . . . # . . . . . 
-. . . . . . N . . . . . . . . . 
+. . . . . B . . . . # . . . . .
+. . . . . . N . . . . . . . . .
 . . . . . . . N . . . . . . . .
 . . . . . . . . N . . . . . . .
 . . . . . . . . . N . . . . . .
@@ -155,8 +155,8 @@ N . . . . . . . . . A . . . . .
 In the example all the tiles not marked 'O' would be returned
 */
 std::unordered_set<Coord> AreaChecker::get_overlapping_jagged_tiles(
-    const uint8_t __restrict *s_map,
-    std::deque<Coord> &jagged_edge1, 
+    const uint8_t* __restrict s_map,
+    std::deque<Coord> &jagged_edge1,
     std::deque<Coord> &jagged_edge2
 ){
 
@@ -164,12 +164,12 @@ std::unordered_set<Coord> AreaChecker::get_overlapping_jagged_tiles(
         // orientation = true means y decreases when x increases
         return !orientation ? coord.x + coord.y : (coord.x - coord.y) + width;
     };
-    
+
     if (jagged_edge1.front() - jagged_edge1[1] != jagged_edge2.front() - jagged_edge2[1])
     {
         throw std::invalid_argument("jagged edges must have the same orientation");
     }
-    
+
     std::unordered_set<Coord> overlapping_tiles;
     const bool orient = same_diagonal(jagged_edge1.front(), jagged_edge1[1], true);
     // orient = true means y decreases when x increases
@@ -190,7 +190,7 @@ std::unordered_set<Coord> AreaChecker::get_overlapping_jagged_tiles(
         diagonal_index(edge_1_back, orient) <
         diagonal_index(edge_2_back, orient)
     ) ? jagged_edge1 : jagged_edge2;
-    
+
     int h_s_d_index_i = diagonal_index(h_s_d_index.front(), orient);
     int l_e_d_index_i = diagonal_index(l_e_d_index.back(), orient);
 
@@ -207,9 +207,9 @@ std::unordered_set<Coord> AreaChecker::get_overlapping_jagged_tiles(
     auto s_index_delta = diagonal_index(h_s_d_index.front(), orient) - diagonal_index(l_s_d_index.front(), orient);
     auto s_index_delta_abs = std::abs(s_index_delta);
     auto check_index = s_index_delta_abs / 2;
-    
+
     int not_free_diag_count = 0;
-    
+
     // discount the tiles in the overplapping diagonals that has something between them.
     auto h_s_d_index_copy = h_s_d_index; // copy to avoid modifying the original during iteration
 
@@ -226,7 +226,7 @@ std::unordered_set<Coord> AreaChecker::get_overlapping_jagged_tiles(
             overlapping_tiles.insert(tile_2);
         }
     }
-    
+
     return overlapping_tiles;
 }
 
@@ -237,7 +237,7 @@ int AreaChecker::calculate_jagged_edge_discount(const uint8_t *s_map, const std:
     std::unordered_set<Coord> combined_tiles(jagged_edge_tiles.begin(), jagged_edge_tiles.end());
 
     DEBUG_PRINT(std::cout << "Found jagged edge groups: " << jagged_edges.size() << std::endl;);
-    DEBUG_PRINT(std::cout << "Group tiles: "; 
+    DEBUG_PRINT(std::cout << "Group tiles: ";
         for (const auto &group : jagged_edges) {
             std::cout << "[ ";
             for (const auto &tile : group) {
@@ -306,7 +306,7 @@ int AreaChecker::calculate_jagged_edge_discount(const uint8_t *s_map, const std:
 
     DEBUG_PRINT(std::cout << "tiles by parity: " << parity_counts[true] << ", " << parity_counts[false] << std::endl;);
 
-    // if any of the parities has 0 tiles then return 0, because its going to be accounted for by 
+    // if any of the parities has 0 tiles then return 0, because its going to be accounted for by
     // coord_parity_diff in the serach nodes.
     if (parity_counts[true] == 0 || parity_counts[false] == 0) {
         return 0;
@@ -319,7 +319,7 @@ int AreaChecker::calculate_jagged_edge_discount(const uint8_t *s_map, const std:
 
 }
 
-int AreaChecker::is_gate_way(uint8_t __restrict *s_map, Coord coord, Coord check_coord)
+int AreaChecker::is_gate_way(uint8_t* __restrict s_map, Coord coord, Coord check_coord)
 {
     // return code 2 is for a passage like:
     // x . .
@@ -371,7 +371,7 @@ int AreaChecker::is_gate_way(uint8_t __restrict *s_map, Coord coord, Coord check
         if ((!(c_NW <= free_value) && !(c_SE <= free_value) &&
             (c_N <= free_value) && (c_E <= free_value) &&
             (c_S <= free_value) && (c_W <= free_value) &&
-            (c_NE <= free_value) && (c_SW <= free_value)) || 
+            (c_NE <= free_value) && (c_SW <= free_value)) ||
             (!(c_NE <= free_value) && !(c_SW <= free_value) &&
             (c_N <= free_value) && (c_E <= free_value) &&
             (c_S <= free_value) && (c_W <= free_value) &&
@@ -434,7 +434,7 @@ int AreaChecker::is_gate_way(uint8_t __restrict *s_map, Coord coord, Coord check
         if ((!(c_NW <= free_value) && !(c_SE <= free_value) &&
             (c_N <= free_value) && (c_E <= free_value) &&
             (c_S <= free_value) && (c_W <= free_value) &&
-            (c_NE <= free_value) && (c_SW <= free_value)) || 
+            (c_NE <= free_value) && (c_SW <= free_value)) ||
             (!(c_NE <= free_value) && !(c_SW <= free_value) &&
             (c_N <= free_value) && (c_E <= free_value) &&
             (c_S <= free_value) && (c_W <= free_value) &&
@@ -541,7 +541,7 @@ ExploreResults AreaChecker::explore_area(
     connected_areas.reserve(100);
     jagged_edge_tiles.reserve(100);
     current_coords.push_back(start_coord);
-    
+
     if (
         s_map[start_coord.y * width + start_coord.x] > free_value ||
         checked[start_coord.y * width + start_coord.x] != unexplored_area_id
@@ -602,10 +602,10 @@ ExploreResults AreaChecker::explore_area(
                         const bool is_diag_gateway = (check_result == 2);
                         connected_areas.push_back(
                             ConnectedAreaInfo(
-                                checked_val, 
-                                curr_coord, 
-                                n_coord, 
-                                is_bad_gateway_from_here, 
+                                checked_val,
+                                curr_coord,
+                                n_coord,
+                                is_bad_gateway_from_here,
                                 is_bad_gateway_to_here,
                                 is_diag_gateway
                             )
@@ -678,20 +678,20 @@ ExploreResults AreaChecker::explore_area(
                 // std::cout << "Tile count: " << tile_count << std::endl;
                 // std::cout << "Food count: " << food_count << std::endl;
                 // std::cout << "prev_food count: " << total_food_count << std::endl;
-    
+
                 did_early_exit = true;
                 break;
             }
         }
     }
     return ExploreResults(
-        tile_count, 
-        food_count, 
+        tile_count,
+        food_count,
         coord_parity_diff,
-        did_early_exit, 
+        did_early_exit,
         has_tail,
         body_tiles,
-        connected_areas, 
+        connected_areas,
         to_explore,
         jagged_edge_tiles
     );
@@ -751,11 +751,11 @@ AreaCheckResult AreaChecker::area_check(
         int jagged_edge_discount = calculate_jagged_edge_discount(s_map, result.jagged_edge_tiles);
         // If an area has just one tile, no max index and only one area to explore, then we can just add the tile to the previous node
         if (
-            prev_node != nullptr && 
-            prev_node->is_one_dim && 
-            result.tile_count == 1 && 
+            prev_node != nullptr &&
+            prev_node->is_one_dim &&
+            result.tile_count == 1 &&
             result.body_tiles.size() == 0 &&
-            (prev_node->id != 0 ? 
+            (prev_node->id != 0 ?
                 result.connected_areas.size() + result.to_explore.size() == 2
                 : result.connected_areas.size() + result.to_explore.size() == 1
             )
@@ -778,7 +778,7 @@ AreaCheckResult AreaChecker::area_check(
             current_node->body_tiles = result.body_tiles;
             current_node->jagged_edge_discount = jagged_edge_discount;
             if (
-                current_node->tile_count == 1 && 
+                current_node->tile_count == 1 &&
                 (result.body_tiles.size() == 1 ? result.body_tiles[0].first.first == 0 : result.body_tiles.size() == 0) &&
                 (result.connected_areas.size() + result.to_explore.size() <= 2)
             )
@@ -794,7 +794,7 @@ AreaCheckResult AreaChecker::area_check(
             prev_node->has_only_head &&
             (prev_node->get_nr_connections() <= 2)
         )
-        { 
+        {
             // this is to propagate connection to head from the start to the first node with more than two connections
             // it is needed if the start is in a 1 tile narrow passage and leads to a juntion.
             current_node->has_only_head = true;
@@ -813,7 +813,7 @@ AreaCheckResult AreaChecker::area_check(
             areas_to_explore.push_back(ExploreData(area_start_coord, graph.next_id++, current_node));
         }
     }
-    
+
     DEBUG_PRINT(graph.print_nodes_debug());
 
     // return AreaCheckResult();
@@ -834,7 +834,7 @@ RecurseCheckResult AreaChecker::recurse_area_check(
     int target_margin,
     unsigned int max_depth,
     float safe_margin_frac
-){  
+){
 
     auto get_margin_frac = [&] (AreaCheckResult &result) -> float {
         if (result.total_steps == 0) return 0.0f;
@@ -888,24 +888,24 @@ RecurseCheckResult AreaChecker::recurse_area_check(
             return a.distance(search_first) > b.distance(search_first);
         });
     }
-    
+
     stack.push_back(first_frame);
-    
+
     while(!stack.empty()){
         auto& current_frame = stack.back();
         depth = stack.size() - 1;
         // the base coords are the next options from the head of the first frame
-        
+
         if (
-            depth >= max_depth && 
+            depth >= max_depth &&
             current_frame.best_margin_frac >= safe_margin_frac
         ){
             // we can stop searching this base coord, as we have found a safe margin fraction deep enough
             stack.clear();
             break;
         }
-    
-        if (!current_frame.setup_done && depth > 0){ 
+
+        if (!current_frame.setup_done && depth > 0){
             // apply the move of the current frame
             Coord curr_head = body_coords.front();
             Coord curr_tail = body_coords.back();
@@ -916,7 +916,7 @@ RecurseCheckResult AreaChecker::recurse_area_check(
             current_frame.old_tail = curr_tail;
             current_frame.did_grow = do_grow;
         }
-        
+
         if (!current_frame.to_visit.empty()){
             Coord &next_tile = current_frame.to_visit.back();
             current_frame.to_visit.pop_back();

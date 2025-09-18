@@ -4,6 +4,7 @@ import logging
 import platform
 import signal
 from multiprocessing import Pipe, Process, Manager
+from threading import Event
 from pathlib import Path
 from importlib import resources
 
@@ -22,7 +23,7 @@ with resources.open_text('snake_sim.config', 'default_config.json') as config_fi
 log = logging.getLogger(Path(__file__).stem)
 
 
-def start_snakes(loop_control, log_level, stop_event):
+def start_snakes(config: DotDict, stop_event: Event, ipc_observer_pipe=None):
     # set up logging
     # define signal handlers if the process needs to be killed on a linux system
     def handle_termination(s, h):
@@ -34,7 +35,10 @@ def start_snakes(loop_control, log_level, stop_event):
     signal.signal(signal.SIGINT, handle_termination)
     signal.signal(signal.SIGTERM, handle_termination)
     if platform.system() == "Windows":
-        setup_logging(log_level)
+        setup_logging(config.log_level)
+    loop_control = setup_loop(config)
+    if ipc_observer_pipe:
+        loop_control.add_run_data_observer(IPCRunDataObserver(ipc_observer_pipe))
     loop_control.run(stop_event)
 
 
@@ -56,10 +60,8 @@ def main():
 
         elif config.command == "stream" or config.command == "game":
             parent_conn, child_conn = Pipe()
-            loop_control = setup_loop(config)
-            loop_control.add_run_data_observer(IPCRunDataObserver(parent_conn))
             stop_event = Manager().Event()
-            loop_p = Process(target=start_snakes, args=(loop_control, config.log_level, stop_event))
+            loop_p = Process(target=start_snakes, args=(config, stop_event), kwargs={'ipc_observer_pipe': parent_conn})
             if config.command == "game":
                 render_p = Process(target=play_game, args=(child_conn, config.spm, config.sound))
             else:
@@ -67,6 +69,7 @@ def main():
             render_p.start()
             loop_p.start()
             render_p.join()
+            log.debug("Render process ended, stopping loop")
             stop_event.set()
             loop_p.join()
 
@@ -83,4 +86,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
