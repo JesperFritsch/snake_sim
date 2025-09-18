@@ -29,7 +29,7 @@ class build_proto(build_py):
         build_py.initialize_options(self)
         self.output_path = None
         self.proto_files = None
-        
+
     def finalize_options(self):
         build_py.finalize_options(self)
         config = configparser.ConfigParser()
@@ -38,7 +38,7 @@ class build_proto(build_py):
             self.output_path = config['build_proto']['output_path']
         if self.proto_files is None:
             self.proto_files = config['build_proto']['proto_files'].split()
-        
+
     def run(self):
         self.run_command("build_ext")
         print(f'Compiling proto files: {self.proto_files}')
@@ -49,7 +49,7 @@ class build_proto(build_py):
                 proto_files.extend(glob.glob(proto_file))
             else:
                 proto_files.append(proto_file)
-                
+
         for proto_file in proto_files:
             protoc.main([
                 'grpc_tools.protoc',
@@ -72,7 +72,7 @@ if debug_build:
         extra_compile_args.extend(['-O0', '-g', '-DDEBUG', '-DPYBIND11_DETAILED_ERROR_MESSAGES'])
 else:
     if os.name == 'nt':
-        extra_compile_args.extend(['/O2'])
+        extra_compile_args.extend(['/Ox'])
     else:
         extra_compile_args.extend(['-O3', '-march=native', '-flto'])
 
