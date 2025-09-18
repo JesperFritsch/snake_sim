@@ -257,7 +257,10 @@ class SnakeLoopControl:
         self._loop.stop()
         self._snake_proc_mngr.shutdown()
         self._snake_handler.close()
+<<<<<<< HEAD
         log.debug("Loop shutdown complete")
+=======
+>>>>>>> 5583dad4c0ae161511b3a62fa7baaf7da61f0bbd
 
 
 def setup_loop(config) -> SnakeLoopControl:
