@@ -1,6 +1,5 @@
 import json
 import logging
-import atexit
 import functools
 import threading
 from dataclasses import dataclass
@@ -83,7 +82,6 @@ class SnakeLoopControl:
                 raise ValueError(f'Map {config.map} not found')
             self._snake_enviroment.load_map(map_files_mapping[config.map])
         self._is_shutdown = False
-        atexit.register(self.shutdown)
 
     def _loop_check(func):
         @functools.wraps(func)
@@ -116,7 +114,6 @@ class SnakeLoopControl:
     def _finalize_snakes(self):
         """ Finalize snakes """
         snakes_dict = self._snake_handler.get_snakes().copy()
-        
         for id, snake in snakes_dict.items():
             start_pos = self._snake_enviroment.add_snake(id, start_length=self._config.start_length)
             try:
@@ -159,7 +156,7 @@ class SnakeLoopControl:
                 self._snake_handler.add_snake(snake)
             except Exception as e:
                 log.exception(e)
-    
+
     @_loop_check
     def _initialize_non_inproc_snakes(self):
         snake_factory = SnakeFactory()
@@ -224,7 +221,6 @@ class SnakeLoopControl:
     @_loop_check
     def run(self, stop_event: Optional[threading.Event] = None):
         """ Starts the loop """
-        # If a stop event is provided, start a thread that waits for the event to be set
         try:
             if stop_event:
                 def wait_stop_event(stop_event):
@@ -245,7 +241,7 @@ class SnakeLoopControl:
             self._initialize_run_data_loop_observers() # This needs to be called after the snakes are added to the environment
             self._loop.start()
         except KeyboardInterrupt:
-            pass
+            log.debug("KeyboardInterrupt received, shutting down loop")
         except Exception as e:
             log.exception(e)
         finally:
@@ -253,13 +249,15 @@ class SnakeLoopControl:
 
     @_loop_check
     def shutdown(self):
+        """Shuts down the loop"""
         if self._is_shutdown:
             return
-        """Shuts down the loop"""
+        log.debug("Shutting down loop")
         self._is_shutdown = True
         self._loop.stop()
         self._snake_proc_mngr.shutdown()
         self._snake_handler.close()
+        log.debug("Loop shutdown complete")
 
 
 def setup_loop(config) -> SnakeLoopControl:
@@ -295,5 +293,5 @@ def setup_loop(config) -> SnakeLoopControl:
         )
     if config.rate_meter:
         loop_control.add_observer(TqdmLoopObserver())
-    
+
     return loop_control
