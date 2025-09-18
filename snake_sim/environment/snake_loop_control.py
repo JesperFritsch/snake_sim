@@ -229,7 +229,7 @@ class SnakeLoopControl:
                     except (ConnectionResetError, BrokenPipeError):
                         # Manager is already dead, just exit gracefully
                         pass
-                    self._loop.stop()
+                    self.shutdown()
                 threading.Thread(target=wait_stop_event, args=(stop_event,), daemon=True).start()
 
             if self._config.inproc_snakes:
@@ -257,10 +257,7 @@ class SnakeLoopControl:
         self._loop.stop()
         self._snake_proc_mngr.shutdown()
         self._snake_handler.close()
-<<<<<<< HEAD
         log.debug("Loop shutdown complete")
-=======
->>>>>>> 5583dad4c0ae161511b3a62fa7baaf7da61f0bbd
 
 
 def setup_loop(config) -> SnakeLoopControl:
