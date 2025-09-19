@@ -34,7 +34,7 @@ class ConcurrentUpdater(ISnakeUpdater):
 
     def close(self):
         super().close()
-        self._executor.shutdown(wait=False)
+        self._executor.shutdown(wait=True)
 
     def finalize(self, env_init_data: EnvInitData):
         super().finalize(env_init_data)
