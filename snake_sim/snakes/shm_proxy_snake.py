@@ -11,7 +11,7 @@ def handle_connection_loss(func):
     def wrapper(self, *args, **kwargs):
         try:
             return func(self, *args, **kwargs)
-        except zmq.ZMQError as e:
+        except (zmq.ZMQError, zmq.Again) as e:
             raise ConnectionError
     return wrapper
 
