@@ -23,7 +23,10 @@ class SHMProxySnake(ISnake):
         self._target = target
         self._context = zmq.Context()
         self._socket = self._context.socket(zmq.REQ)
+        self._socket.setsockopt(zmq.HEARTBEAT_IVL, 10)  # 10 ms heartbeat interval
+        self._socket.setsockopt(zmq.HEARTBEAT_TIMEOUT, 100)  # 100 ms heartbeat timeout
         self._socket.connect(target)
+        self._short_timeout_set = False
         self._reader_id: int = None
         self._shm_name: str = None
 
@@ -36,6 +39,12 @@ class SHMProxySnake(ISnake):
                 raise ConnectionError(f"Expected response for {func.__name__}, got {response.command}")
             return response.data
         return wrapper
+
+    def _set_short_timeout(self):
+        if not self._short_timeout_set:
+            self._socket.setsockopt(zmq.RCVTIMEO, 500)
+            self._socket.setsockopt(zmq.SNDTIMEO, 10)
+            self._short_timeout_set = True
 
     def _send(self, message: Call) -> None:
         self._socket.send(message.serialize())
@@ -87,12 +96,13 @@ class SHMProxySnake(ISnake):
 
     def update(self, env_data: EnvData):
         # we dont send the map over zmq, because its in shared memory
+        self._set_short_timeout()
         env_data.map = None
         return self.shm_update(env_data)
-    
+
     def __reduce__(self):
         return (self.__class__, (self._target))
-    
+
     def __del__(self):
         try:
             self.kill()

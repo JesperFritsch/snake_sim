@@ -126,14 +126,12 @@ class SnakeHandler(ISnakeHandler):
         if self._finalized:
             return
         self._finalized = True
-        log.debug("Finalizing SnakeHandler")
-        log.debug(f"Finalizing {len(self._updaters)} updaters")
+        log.debug(f"Finalizing these updaters ({', '.join([type(u).__name__ for u in self._updaters.values()])})")
         for updater in self._updaters.values():
             updater.finalize(env_init_data)
 
     def close(self):
         log.debug("Closing SnakeHandler")
         for updater in self._updaters.values():
-            log.debug(f"Closing updater {updater.__class__.__name__}")
             updater.close()
         self._executor.shutdown(wait=True)

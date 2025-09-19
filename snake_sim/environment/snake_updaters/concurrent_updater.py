@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 
 from concurrent.futures import ThreadPoolExecutor, wait, as_completed
+from concurrent.futures import TimeoutError as concurrentTimeoutError
 from typing import Tuple, List
 
 from snake_sim.environment.interfaces.snake_updater_interface import ISnakeUpdater
@@ -27,13 +28,13 @@ class ConcurrentUpdater(ISnakeUpdater):
                     decisions[id] = future.result()
                 except ConnectionError:
                     log.debug(f"Snake with id {id} disconnected.")
-        except TimeoutError:
+        except concurrentTimeoutError:
             pass
         return decisions
 
     def close(self):
         super().close()
-        self._executor.shutdown(wait=True)
+        self._executor.shutdown(wait=False)
 
     def finalize(self, env_init_data: EnvInitData):
         super().finalize(env_init_data)

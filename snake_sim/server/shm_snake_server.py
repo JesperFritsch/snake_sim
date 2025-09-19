@@ -181,6 +181,3 @@ def serve(
     except Exception as e:
         log.error(e)
         log.debug("TRACE: ", exc_info=True)
-
-
-
