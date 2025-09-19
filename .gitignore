@@ -1,6 +1,9 @@
 **/runs/
 *.mp4
 snake_venv*
+snake_env*
+venv*
+env*
 **/__pycache__/
 *.pyc
 *.weights.h5
