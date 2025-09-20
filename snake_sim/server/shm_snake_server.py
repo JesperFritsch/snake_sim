@@ -1,5 +1,4 @@
 import zmq
-import platform
 import pickle
 import sys
 import logging
@@ -10,7 +9,7 @@ from pathlib import Path
 
 from snake_sim.logging_setup import setup_logging
 from snake_sim.environment.interfaces.snake_interface import ISnake
-from snake_sim.environment.types import EnvData, SnakeConfig, SnakeProcType
+from snake_sim.environment.types import EnvData, SnakeConfig
 from snake_sim.environment.shm_update import SharedMemoryReader
 
 
@@ -154,8 +153,9 @@ def serve(
     stop_event: Optional[Event] = None,
     log_level=logging.INFO
 ):
-    if platform.system() == "Windows":
+    if not logging.getLogger().hasHandlers():
         setup_logging(log_level)
+
     global log
     log = logging.getLogger(f"{Path(__file__).stem}-{target}")
 

@@ -34,9 +34,11 @@ class ConcurrentUpdater(ISnakeUpdater):
 
     def close(self):
         super().close()
-        self._executor.shutdown(wait=True)
+        if self._executor is not None:
+            self._executor.shutdown(wait=True)
 
     def finalize(self, env_init_data: EnvInitData):
         super().finalize(env_init_data)
         if self._executor is None:
+            log.debug(f"Creating ThreadPoolExecutor with {self._snake_count} workers")
             self._executor = ThreadPoolExecutor(max_workers=self._snake_count)
