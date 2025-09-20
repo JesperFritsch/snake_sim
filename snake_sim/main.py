@@ -1,11 +1,8 @@
 import sys
 import json
 import logging
-import platform
-import signal
-from multiprocessing import Pipe, Process
-from multiprocessing import Event as p_Event
-from threading import Event
+from multiprocessing import Pipe, Process, Event as p_Event
+from multiprocessing.synchronize import Event as MPEvent
 from pathlib import Path
 from importlib import resources
 
@@ -24,19 +21,9 @@ with resources.open_text('snake_sim.config', 'default_config.json') as config_fi
 log = logging.getLogger(Path(__file__).stem)
 
 
-def start_snakes(config: DotDict, stop_event: Event, ipc_observer_pipe=None):
-    # set up logging
-    # define signal handlers if the process needs to be killed on a linux system
-    def handle_termination(s, h):
-        try:
-            stop_event.set()
-        except:
-            log.debug("could not set stop_event")
-
-    signal.signal(signal.SIGINT, handle_termination)
-    signal.signal(signal.SIGTERM, handle_termination)
-
-    if platform.system() == "Windows":
+def start_snakes(config: DotDict, stop_event: MPEvent, ipc_observer_pipe=None):
+    # in linux the process is forked and inherits the loggers, but on windows we need to set it up again
+    if not logging.getLogger().hasHandlers():
         setup_logging(config.log_level)
     loop_control = setup_loop(config)
     if ipc_observer_pipe:
@@ -66,13 +53,13 @@ def main():
             stop_event = p_Event()
             loop_p = Process(target=start_snakes, args=(config, stop_event), kwargs={'ipc_observer_pipe': parent_conn})
             if config.command == "game":
-                render_p = Process(target=play_game, args=(child_conn, config.spm, config.sound))
+                render_p = Process(target=play_game, args=(child_conn, config.spm, config.sound, stop_event))
             else:
-                render_p = Process(target=play_stream, args=(child_conn, config.fps, config.sound))
+                render_p = Process(target=play_stream, args=(child_conn, config.fps, config.sound, stop_event))
             render_p.start()
             loop_p.start()
             render_p.join()
-            stop_event.set()
+            # stop_event.set()
             loop_p.join()
 
     except KeyboardInterrupt:

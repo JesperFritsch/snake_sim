@@ -5,7 +5,6 @@ os.environ["GRPC_VERBOSITY"] = "ERROR"
 import grpc
 import argparse
 import sys
-import platform
 
 from pathlib import Path
 from concurrent import futures
@@ -14,7 +13,7 @@ from typing import Optional
 
 from snake_proto_template.python import remote_snake_pb2, remote_snake_pb2_grpc
 from snake_sim.snakes.snake_base import ISnake
-from snake_sim.environment.types import Coord, EnvInitData, EnvData, SnakeConfig, SnakeProcType
+from snake_sim.environment.types import Coord, EnvInitData, EnvData, SnakeConfig
 from snake_sim.logging_setup import setup_logging
 
 import logging
@@ -81,7 +80,7 @@ def cli(argv):
     parser = argparse.ArgumentParser("Remote Snake Server")
     parser.add_argument('-t', '--target', type=str, required=True, help='Server address or socket path to bind to')
     parser.add_argument('-m', '--snake_module_file', type=str, required=True, default=None, help='Path to snake module for importing snake class')
-    parser.add_argument('--log_level', type=str, default='INFO', help='Logging level')
+    parser.add_argument('--log-level', type=str, default='INFO', help='Logging level')
     args = parser.parse_args(argv)
     return args
 
@@ -93,7 +92,7 @@ def serve(
         stop_event: Optional[Event] = None,
         log_level=logging.INFO):
     # set up logging if on Windows
-    if platform.system() == "Windows":
+    if not logging.getLogger().hasHandlers():
         setup_logging(log_level)
 
 
@@ -139,4 +138,5 @@ def serve(
 
 if __name__ == '__main__':
     args = cli(sys.argv[1:])
+    setup_logging(args.log_level)
     serve(args.target, args.snake_module_file, log_level=args.log_level)

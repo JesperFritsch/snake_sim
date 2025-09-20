@@ -7,8 +7,12 @@ import numpy as np
 import threading
 import time
 from pathlib import Path
+from typing import Union, Optional
 
 from importlib import resources
+from multiprocessing.synchronize import Event as MPEvent
+from threading import Event as TEvent
+
 
 from snake_sim.render import core
 # from snake_sim.snake_env import RunData, StepData
@@ -130,7 +134,17 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
     STREAM_IS_LIVE = False
 
 @catch_exceptions
-def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_height, fps_playback, sound_on=True, keep_up=False):
+def play_run(
+    frame_buffer, 
+    sound_buffer, 
+    run_data: RunData, 
+    grid_width, 
+    grid_height, 
+    fps_playback, 
+    sound_on=True, 
+    keep_up=False, 
+    stop_event: Optional[MPEvent] = None
+):
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
     surface = pygame.Surface(screen.get_size())
     surface = surface.convert()
@@ -145,14 +159,15 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
         right_sound.set_volume(1)
 
     drawGray(surface, grid_width, grid_height)
-    running = True
+    if not stop_event:
+        stop_event = TEvent()
     frame_counter = 0
     sim_step = 0
     play_direction = 1
     pause = False
     last_frame = None
     time_start = time.time()
-    while running:
+    while not stop_event.is_set():
         sim_step = (frame_counter // 2) + 1
         fps = fps_playback
         speed_up = 20
@@ -161,7 +176,7 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
         new_frame = not pause
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                stop_event.set() if stop_event else None
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     pause = not pause
@@ -220,7 +235,7 @@ def play_run(frame_buffer, sound_buffer, run_data: RunData, grid_width, grid_hei
     pygame.quit()
 
 
-def play_stream(stream_conn, fps=10, sound_on=True):
+def play_stream(stream_conn, fps=10, sound_on=True, stop_event: Optional[MPEvent] = None):
     sound_buffer = []
     frame_buffer = []
     run_data = RunData(0, 0, [], np.array([]),0,0,0,{},{}) # create this here so that the stream thread and the play thread can share the same object
@@ -228,9 +243,11 @@ def play_stream(stream_conn, fps=10, sound_on=True):
     stream_thread.daemon = True
     stream_thread.start()
     # wait for the stream thread to initialize the run data
-    while run_data.width == 0 and run_data.height == 0:
+    while run_data.width == 0 and run_data.height == 0 and (not stop_event.is_set() if stop_event else True):
         time.sleep(0.1)
-    play_run(frame_buffer, sound_buffer, run_data, run_data.width, run_data.height, sound_on=sound_on, fps_playback=fps)
+    if stop_event and stop_event.is_set():
+        return
+    play_run(frame_buffer, sound_buffer, run_data, run_data.width, run_data.height, sound_on=sound_on, fps_playback=fps, stop_event=stop_event)
 
 
 def play_frame_buffer(frame_buffer, grid_width, grid_height, fps=10):
@@ -254,7 +271,7 @@ def play_runfile(filepath=None, sound_on=True, fps=10):
     play_run(frame_buffer, sound_buffer, run_data, grid_width, grid_height, sound_on=sound_on, fps_playback=fps)
 
 
-def play_game(conn, spm, sound_on=True):
+def play_game(conn, spm, sound_on=True, stop_event: Optional[MPEvent] = None):
     fps = spm / 60 * 2
     sound_buffer = []
     frame_buffer = []
@@ -265,4 +282,4 @@ def play_game(conn, spm, sound_on=True):
     # wait for the stream thread to initialize the run data
     while run_data.width == 0 and run_data.height == 0:
         time.sleep(0.1)
-    play_run(frame_buffer, sound_buffer, run_data, run_data.width, run_data.height, sound_on=sound_on, keep_up=True, fps_playback=fps)
+    play_run(frame_buffer, sound_buffer, run_data, run_data.width, run_data.height, sound_on=sound_on, keep_up=True, fps_playback=fps, stop_event=stop_event)

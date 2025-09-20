@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Union, List, Optional
 from importlib import resources as pkg_resources
+from multiprocessing.synchronize import Event as MPEvent
 
 from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
 
@@ -219,7 +220,7 @@ class SnakeLoopControl:
         return self._snake_enviroment.get_init_data()
 
     @_loop_check
-    def run(self, stop_event: Optional[threading.Event] = None):
+    def run(self, stop_event: Optional[MPEvent] = None):
         """ Starts the loop """
         try:
             if stop_event:
@@ -229,16 +230,20 @@ class SnakeLoopControl:
                     except (ConnectionResetError, BrokenPipeError):
                         # Manager is already dead, just exit gracefully
                         pass
-                    self.shutdown()
+                    log.debug("Stop event set, stopping loop")
+                    self._loop.stop()
                 threading.Thread(target=wait_stop_event, args=(stop_event,), daemon=True).start()
-
-            if self._config.inproc_snakes:
-                self._initialize_inproc_snakes()
-            else:
-                self._initialize_non_inproc_snakes()
-            self._initialize_remote_grpcs()
-            self._finalize_snakes()
-            self._initialize_run_data_loop_observers() # This needs to be called after the snakes are added to the environment
+            try:
+                if self._config.inproc_snakes:
+                    self._initialize_inproc_snakes()
+                else:
+                    self._initialize_non_inproc_snakes()
+                self._initialize_remote_grpcs()
+                self._finalize_snakes()
+                self._initialize_run_data_loop_observers() # This needs to be called after the snakes are added to the environment
+            except:
+                stop_event.set() if stop_event else None
+                raise
             self._loop.start()
         except KeyboardInterrupt:
             log.debug("KeyboardInterrupt received, shutting down loop")

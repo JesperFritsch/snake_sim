@@ -25,6 +25,9 @@ class ISnakeUpdater(ABC):
 
     def register_snake(self, snake: ISnake):
         self._snake_count += 1
+    
+    def unregister_snake(self, snake: ISnake):
+        self._snake_count -= 1
 
     def finalize(self, env_init_data: EnvInitData):
         if self._finalized:

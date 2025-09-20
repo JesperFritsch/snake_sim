@@ -58,6 +58,10 @@ class SnakeHandler(ISnakeHandler):
     def kill_snake(self, id):
         log.debug(f"Killing snake with id {id}")
         SnakeProcessManager().kill_snake_process(id)
+        snake = self._snakes.get(id)
+        if snake is not None:
+            updater = self._get_updater(snake)
+            updater.unregister_snake(snake)
         return self._dead_snakes.add(id)
 
     def _split_batch_by_updater(self, batch_data: Dict[int, EnvData]) -> Dict[ISnakeUpdater, Tuple[List[ISnake], EnvData]]:
