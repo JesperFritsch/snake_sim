@@ -73,21 +73,32 @@ class SHMProxySnake(ISnake):
     def _wait_for_connection(self):
         self._log.debug("Waiting for connection to be established...")
         start_time = time.time()
-        while not self._poller.poll() or not self._check_connection():
+        while True:
+            ready_sockets = self._poller.poll(timeout=50)
+            if any(sock is self._monitor for sock, _ in ready_sockets):
+                try:
+                    evt = recv_monitor_message(self._monitor)
+                except Exception:
+                    continue
+                event = evt.get('event')
+                if event in (
+                    zmq.EVENT_CONNECTED,
+                ):
+                    break
             if time.time() - start_time > self._est_conn_timeout:
                 raise ConnectionError(f"Could not establish connection to server at {self._target} within {self._est_conn_timeout} seconds.")
-            time.sleep(0.002)
         self._log.debug("Connection established.")
 
 
-    def _check_connection(self):
+    def _check_connection_loss(self):
         ready_sockets = self._poller.poll()
         if any(sock is self._monitor for sock, _ in ready_sockets):
             try:
                 evt = recv_monitor_message(self._monitor)
+                self._log.debug(f"Monitor event: {evt}")
             except Exception:
                 self._log.debug("Error receiving monitor message, assuming connection lost")
-                return False
+                return True
             event = evt.get('event')
             if event in (
                 zmq.EVENT_DISCONNECTED,
@@ -95,8 +106,8 @@ class SHMProxySnake(ISnake):
                 zmq.EVENT_CLOSED,
             ):
                 self._log.debug(f"Broken connection detected: {evt}")
-                return False
-        return True
+                return True
+        return False
 
     def _check_resp_ready(self):
         ready_sockets = self._poller.poll()
@@ -114,7 +125,7 @@ class SHMProxySnake(ISnake):
         """Block until either we have data on the REQ socket or the monitor reports a disconnect.
         """
         while True:
-            if not self._check_connection():
+            if self._check_connection_loss():
                 raise ConnectionError
             if self._check_resp_ready():
                 return
