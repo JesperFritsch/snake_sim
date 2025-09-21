@@ -35,7 +35,7 @@ class SimLoop(IMainLoop):
         self._did_notify_start = False
         self._did_notify_end = False
 
-    @profile()
+    # @profile()
     def _loop(self):
         while self._is_running:
             snake_positions = self._env.get_head_positions()
