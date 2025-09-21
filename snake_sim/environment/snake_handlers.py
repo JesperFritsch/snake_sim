@@ -2,8 +2,9 @@ import random
 import logging
 import json
 import random
+import bisect
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Set
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from importlib import resources
@@ -93,27 +94,23 @@ class SnakeHandler(ISnakeHandler):
         updater = self._get_updater(snake)
         updater.register_snake(snake)
 
-    def _create_in_range_map(self, position_data: Dict[int, Coord]) -> Dict[int, List[int]]: # Dict[id, List[id]]
+    def _create_in_range_map(self, position_data: Dict[int, Coord]) -> Dict[int, Set[int]]: # Dict[id, List[id]]
         """ Creates a map of snakes that are in range of each other, meaning they can end up on the same tile in one move """
         in_range_map = {}
-        for id, pos in position_data.items():
-            in_range_map[id] = [id2 for id2, pos2 in position_data.items() if pos.distance(pos2) <= 2 and id != id2]
+        for pos_item in position_data.items():
+            s_id, pos = pos_item
+            in_range_map[s_id] = {s_id2 for s_id2, pos2 in position_data.items() if pos.distance(pos2) <= 2 and s_id != s_id2}
         return in_range_map
 
     def get_batch_order(self, position_data: Dict[int, Coord]) -> List[List[int]]:
         in_range_map = self._create_in_range_map(position_data)
-        def can_go_in_batch(batch, id):
-            for batch_id in batch:
-                if id in in_range_map[batch_id]:
-                    return False
-            return True
-        alive_snakes = [id for id in self._snakes.keys() if id not in self._dead_snakes]
-        ids_to_batch = list(alive_snakes)
+        ids_to_batch = list(position_data.keys())
         batches: List[List[int]] = []
         while ids_to_batch:
             current_id = ids_to_batch.pop()
+            in_range_to_current = in_range_map[current_id]
             for batch in batches:
-                if can_go_in_batch(batch, current_id):
+                if not any(batch_id in in_range_to_current for batch_id in batch):
                     batch.append(current_id)
                     break
             else:

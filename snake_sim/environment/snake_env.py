@@ -1,6 +1,7 @@
 import json
 import numpy as np
-from typing import Optional, Dict, Deque, Tuple
+import logging
+from typing import Optional, Dict, Deque, Tuple, Union
 from PIL import Image
 from pathlib import Path
 from importlib import resources
@@ -9,6 +10,10 @@ from collections import deque
 from snake_sim.environment.food_handlers import IFoodHandler
 from snake_sim.environment.interfaces.snake_env_interface import ISnakeEnv
 from snake_sim.environment.types import EnvData, EnvInitData, DotDict, Coord
+
+from snake_sim.utils import print_map
+
+log = logging.getLogger(Path(__file__).stem)
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     config = DotDict(json.load(config_file))
@@ -103,9 +108,9 @@ class SnakeEnv(ISnakeEnv):
         for x, y in snake_rep.body:
             self._map[y, x] = self._free_value
 
-    def move_snake(self, id: int, direction: Coord):
+    def move_snake(self, id: int, direction: Union[Coord, None]) -> Tuple[bool, bool]:
         # direction is expected to be a Coord like (1, 0) for right
-        # returns False if the move is invalid, otherwise True
+        # returns (alive, grew)
         snake_rep = self._snake_reps[id]
         if self._is_valid_move(id, direction):
             current_head = snake_rep.get_head()
@@ -145,6 +150,8 @@ class SnakeEnv(ISnakeEnv):
         return self._is_inside(coord) and self._map[y, x] == self._food_value
 
     def _is_valid_move(self, id: int, direction: Coord):
+        if direction is None:
+            return False
         next_tile = self._snake_reps[id].get_head() + direction
         return self._is_free_tile(next_tile) and direction in config.DIRS.values()
 
@@ -157,8 +164,8 @@ class SnakeEnv(ISnakeEnv):
     def get_food(self):
         return self._food_handler.get_food()
 
-    def get_head_positions(self) -> Dict[int, Coord]:
-        return {id: snake_rep.get_head() for id, snake_rep in self._snake_reps.items()}
+    def get_head_positions(self, only_alive: bool=True) -> Dict[int, Coord]:
+        return {id: snake_rep.get_head() for id, snake_rep in self._snake_reps.items() if (not only_alive or snake_rep.is_alive)}
 
     def get_env_data(self, for_id: Optional[int] = None) -> EnvData:
         # id is not used yet, but it is preparing for being able to send different data to different snakes
@@ -224,15 +231,11 @@ class SnakeEnv(ISnakeEnv):
             return 0
 
     def print_map(self):
-        for row in self._map:
-            print_row = []
-            for c in row:
-                if c == self._free_value:
-                    print_row.append(' . ')
-                elif c == self._food_value:
-                    print_row.append(' F ')
-                elif c == self._blocked_value:
-                    print_row.append(' # ')
-                else:
-                    print_row.append(f' x ')
-            print(''.join(print_row))
+        print_map(
+            self._map,
+            self._free_value,
+            self._food_value,
+            self._blocked_value,
+            300,
+            300
+        )
