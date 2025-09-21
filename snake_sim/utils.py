@@ -149,9 +149,9 @@ def print_map(s_map: np.ndarray, free_value: int, food_value: int, blocked_value
             elif c == body_value:
                 map_row.append('a')
             elif c % 2 == 0:
-                map_row.append(f'X')
+                map_row.append(f'b')
             else:
-                map_row.append(f'x')
+                map_row.append(f'H')
         map_row.append(h_nr_strings[i])
         map_rows.append(' '.join(map_row))
     for digit_row in digit_rows:

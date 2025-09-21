@@ -35,7 +35,7 @@ class SimLoop(IMainLoop):
         self._did_notify_start = False
         self._did_notify_end = False
 
-    # @profile()
+    @profile()
     def _loop(self):
         while self._is_running:
             snake_positions = self._env.get_head_positions()
@@ -59,10 +59,8 @@ class SimLoop(IMainLoop):
     def _apply_decisions(self, decisions: Dict[int, Coord]):
         for id, decision in decisions.items():
             if decision is None:
-                alive, grew = False, False
-                decision = Coord(0, 0) # no movement
-            else:
-                alive, grew = self._env.move_snake(id, decision)
+                decision = Coord(0, 0) # No move
+            alive, grew = self._env.move_snake(id, decision)
             if not alive:
                 self._snake_handler.kill_snake(id)
             self._current_step_data.snake_times[id] = 0 # TODO: Implement snake times
