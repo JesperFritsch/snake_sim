@@ -73,7 +73,7 @@ class SHMProxySnake(ISnake):
     def _wait_for_connection(self):
         self._log.debug("Waiting for connection to be established...")
         start_time = time.time()
-        while not self._check_connection():
+        while not self._poller.poll() or not self._check_connection():
             if time.time() - start_time > self._est_conn_timeout:
                 raise ConnectionError(f"Could not establish connection to server at {self._target} within {self._est_conn_timeout} seconds.")
             time.sleep(0.002)
