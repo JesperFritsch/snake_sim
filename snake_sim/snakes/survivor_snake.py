@@ -1,6 +1,7 @@
 from typing import Dict, Tuple, Union, List
 import numpy as np
 import math
+import time
 from functools import wraps
 
 import snake_sim.debugging as debug

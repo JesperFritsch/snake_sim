@@ -29,6 +29,8 @@ class FoodHandler(IFoodHandler):
     def _generate_new(self, s_map):
         empty_tiles = []
         self.newest_food = []
+        if len(self.locations) >= self.max_food:
+            return
         empty_tiles = get_locations(s_map, config.free_value, self.width, self.height)
         for _ in range(self.max_food - len(self.locations)):
             if empty_tiles:

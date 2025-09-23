@@ -42,4 +42,27 @@ inline py::list py_get_locations_with_value(py::array_t<uint8_t> s_map, int widt
     return result;
 }
 
+bool can_make_area_inaccessible(
+    uint8_t *s_map, 
+    int width, 
+    int height,
+    int free_value,
+    Coord head_pos,
+    Coord direction);
+
+inline bool py_can_make_area_inaccessible(
+    py::array_t<uint8_t> s_map, 
+    int width, 
+    int height,
+    int free_value,
+    py::tuple head_pos,
+    py::tuple direction
+){
+    auto buf = s_map.request();
+    uint8_t *ptr = static_cast<uint8_t *>(buf.ptr);
+    Coord head(head_pos[0].cast<int>(), head_pos[1].cast<int>());
+    Coord dir(direction[0].cast<int>(), direction[1].cast<int>());
+    return can_make_area_inaccessible(ptr, width, height, free_value, head, dir);
+};
+
 void print_map(uint8_t *s_map, int width, int height, int head_value, int body_value, int food_value);
