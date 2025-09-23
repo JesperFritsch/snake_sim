@@ -5,7 +5,7 @@ from snake_sim.environment.interfaces.snake_strategy_interface import ISnakeStra
 from snake_sim.utils import get_coord_parity
 
 import snake_sim.debugging as debug
-from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles
+from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles, can_make_area_inaccessible
 from snake_sim.cpp_bindings.area_check import AreaChecker
 
 
@@ -22,7 +22,8 @@ class FoodSeeker(ISnakeStrategy):
         food_dir_tile = self._get_food_dir_tile()
         if food_dir_tile is None:
             return None
-        food_map = self._get_future_available_food_map()
+        food_map = self._get_future_available_food_map() if self.can_close_area() else {}
+        debug.debug_print(f"food_map: {food_map}")
         if not food_map:
             return food_dir_tile
         best_food_tile = self._get_best_food_option(food_map, food_dir_tile)
@@ -46,9 +47,6 @@ class FoodSeeker(ISnakeStrategy):
             return None
         return self._snake.get_head_coord() + Coord(*dir_tuple)
     
-
-    # def _do_need_food_map(self):
-
     def _get_future_available_food_map(self):
         s_map = self._snake.get_map()
         env_init_data = self._snake.get_env_init_data()
@@ -100,6 +98,19 @@ class FoodSeeker(ISnakeStrategy):
         )
         debug.debug_print(f"Area check for {start_coord}: {result}")
         return result
+
+    def can_close_area(self) -> bool:
+        init_data = self._snake.get_env_init_data()
+        if self._snake._length < 10:
+            return False
+        return can_make_area_inaccessible(
+            self._snake.get_map(),
+            init_data.width,
+            init_data.height,
+            init_data.free_value,
+            self._snake.get_head_coord(),
+            self._snake.get_body_coords()[1]
+        )
 
     def _init_area_checker(self):
         env_init_data = self._snake.get_env_init_data()

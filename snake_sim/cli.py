@@ -50,9 +50,12 @@ def handle_args(args, config: DotDict):
     for key, value in vars(args).items():
         if value is not None:
             setattr(config, key, value)
-    if args.grid_size:
-        config.grid_width = args.grid_size
-        config.grid_height = args.grid_size
+    try:
+        if args.grid_size:
+            config.grid_width = args.grid_size
+            config.grid_height = args.grid_size
+    except:
+        pass
 
 
 def cli(argv, config: DotDict):

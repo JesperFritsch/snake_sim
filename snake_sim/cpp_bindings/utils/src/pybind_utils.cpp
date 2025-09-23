@@ -39,4 +39,14 @@ PYBIND11_MODULE(utils, m)
         py::arg("value"),
         py::return_value_policy::copy
     );
+
+    m.def("can_make_area_inaccessible", &py_can_make_area_inaccessible,
+        py::arg("s_map"),
+        py::arg("width"),
+        py::arg("height"),
+        py::arg("free_value"),
+        py::arg("head_pos"),
+        py::arg("direction"),
+        py::return_value_policy::copy
+    );
 }
