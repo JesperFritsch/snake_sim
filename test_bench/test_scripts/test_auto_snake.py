@@ -18,7 +18,8 @@ from snake_sim.environment.types import Coord, EnvData, EnvInitData
 from snake_sim.render import core
 from snake_sim.render.pygame_render import play_frame_buffer
 from snake_sim.debugging import enable_debug_for, activate_debug
-from snake_sim.utils import print_map, get_locations, profile
+from snake_sim.utils import get_locations, profile
+from snake_sim.map_utils.general import print_map
 
 from snake_sim.cpp_bindings.utils import (
     get_dir_to_tile, 
@@ -166,24 +167,15 @@ def test_get_visitable_tiles(snake: SurvivorSnake, s_map, center_coord):
 
 # @profile()
 def run_tests(snake: SurvivorSnake, s_map):
-    # test_recurse_area_check(snake, s_map, Coord(1,0))
+    test_recurse_area_check(snake, s_map, Coord(1,0))
     # test_make_choice(snake, s_map, state_dict['food'])
-    # test_area_check(snake, s_map)
+    test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
     # test_area_check_direction(snake, s_map, Coord(1, 0))
     # test_area_check_direction(snake, s_map, Coord(-1, 0))
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_data.food_value, Coord(58, 61))
     # test_get_visitable_tiles(snake, s_map, snake.get_head_coord())
-    res = can_make_area_inaccessible(
-        s_map,
-        snake.get_env_init_data().width,
-        snake.get_env_init_data().height,
-        snake.get_env_init_data().free_value,
-        snake.get_head_coord(),
-        snake._body_coords[1]
-    )
-    print(f"Can make area inaccessible: {res}")
     if RUN_STEPS:
         render_steps(RUN_STEPS)
 

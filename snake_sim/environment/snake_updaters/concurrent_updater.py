@@ -19,11 +19,10 @@ class ConcurrentUpdater(ISnakeUpdater):
 
     def get_decisions(self, snakes: List[ISnake], env_data: EnvData, timeout: float) -> dict[int, Coord]:
         futures = {self._executor.submit(snake.update, env_data): snake.get_id() for snake in snakes}
-        decisions = {}
+        decisions = {snake.get_id(): None for snake in snakes}
         try:
             for future in as_completed(futures, timeout=timeout):
                 id = futures[future]
-                decisions[id] = None
                 try:
                     decisions[id] = future.result()
                 except ConnectionError:

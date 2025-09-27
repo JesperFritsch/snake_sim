@@ -22,7 +22,10 @@ class FoodSeeker(ISnakeStrategy):
         food_dir_tile = self._get_food_dir_tile()
         if food_dir_tile is None:
             return None
-        food_map = self._get_future_available_food_map() if self.can_close_area() else {}
+        if self.can_close_area():
+            food_map = self._get_future_available_food_map()
+        else:
+            food_map = {}
         debug.debug_print(f"food_map: {food_map}")
         if not food_map:
             return food_dir_tile

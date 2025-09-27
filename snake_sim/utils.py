@@ -89,13 +89,6 @@ def coord_op(coord_left, coord_right, op):
         raise ValueError("Unsupported operation")
 
 
-def get_map_files_mapping():
-    files = list(resources.files('snake_sim.maps.map_images').iterdir())
-    mapping = {f.name.split('.')[0]: f for f in files if f.is_file()}
-    mapping.pop('__init__')
-    return mapping
-
-
 def rand_str(n):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
 
@@ -125,39 +118,3 @@ def profile(sort_by='cumtime'):
             return result
         return wrapper
     return decorator
-
-
-def print_map(s_map: np.ndarray, free_value: int, food_value: int, blocked_value: int, head_value: int, body_value: int):
-    width, height = s_map.shape
-    max_nr_digits_width = len(str(width))
-    max_nr_digits_height = len(str(height))
-    w_nr_strings = [str(i).rjust(max_nr_digits_width) for i in range(height)]
-    h_nr_strings = [str(i).rjust(max_nr_digits_height) for i in range(width)]
-    digit_rows = [' '.join([f"{nr_string[i]}" for nr_string in w_nr_strings]) for i in range(max_nr_digits_width)]
-    map_rows = []
-    for i, row in enumerate(s_map):
-        map_row = [h_nr_strings[i]]
-        for c in row:
-            if c == free_value:
-                map_row.append('.')
-            elif c == food_value:
-                map_row.append('F')
-            elif c == blocked_value:
-                map_row.append('#')
-            elif c == head_value:
-                map_row.append(f'A')
-            elif c == body_value:
-                map_row.append('a')
-            elif c % 2 == 0:
-                map_row.append(f'b')
-            else:
-                map_row.append(f'H')
-        map_row.append(h_nr_strings[i])
-        map_rows.append(' '.join(map_row))
-    for digit_row in digit_rows:
-        print(' ' * (max_nr_digits_height + 1) + digit_row)
-    for row in map_rows:
-        print(row)
-    for digit_row in digit_rows:
-        print(' ' * (max_nr_digits_height + 1) + digit_row)
-    sys.stdout.flush()

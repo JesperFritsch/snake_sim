@@ -55,7 +55,7 @@ class RunDataAdapter:
             # Grow has to be called before move
             if loop_step.snake_grew.get(snake_id, False):
                 snake_rep.grow()
-            self.snake_reps[snake_id].move(decision)
+            snake_rep.move(decision)
             step_data.add_snake_data(snake_id, snake_rep.body)
             self._run_data.add_step(step_data)
         return step_data

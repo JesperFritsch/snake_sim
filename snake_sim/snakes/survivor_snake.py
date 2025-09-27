@@ -1,7 +1,6 @@
 from typing import Dict, Tuple, Union, List
 import numpy as np
 import math
-import time
 from functools import wraps
 
 import snake_sim.debugging as debug
@@ -9,8 +8,6 @@ import snake_sim.debugging as debug
 from snake_sim.environment.interfaces.strategy_snake_interface import IStrategySnake
 from snake_sim.environment.types import Coord
 from snake_sim.snakes.snake_base import SnakeBase
-from snake_sim.utils import print_map, distance
-
 from snake_sim.cpp_bindings.area_check import AreaChecker
 
 
