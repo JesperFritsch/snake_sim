@@ -837,7 +837,7 @@ RecurseCheckResult AreaChecker::recurse_area_check(
 ){
 
     auto get_margin_frac = [&] (AreaCheckResult &result) -> float {
-        if (result.total_steps == 0) return 0.0f;
+        if (result.total_steps == 0) return std::numeric_limits<float>::lowest();
         if (result.has_tail) return std::numeric_limits<float>::infinity();
         return static_cast<float>(result.margin) / static_cast<float>(result.total_steps);
     };

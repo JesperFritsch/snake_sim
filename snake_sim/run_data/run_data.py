@@ -46,7 +46,10 @@ class StepData:
         return step
 
     def add_snake_data(self, snake_id: int, snake_coords: List[Coord]):
-        head_dir = snake_coords[0] - snake_coords[1]
+        if len(snake_coords) > 1:
+            head_dir = snake_coords[0] - snake_coords[1]
+        else:
+            head_dir = Coord(0, 0)
         did_eat = False
         turn = None
         if snake_coords[0] in self.food:

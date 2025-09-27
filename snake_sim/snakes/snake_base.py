@@ -1,11 +1,11 @@
 from abc import abstractmethod, ABC
 import numpy as np
-from typing import Deque, Tuple
+from typing import Deque
 from collections import deque
-from snake_sim.utils import coord_op
 from snake_sim.environment.types import Coord, EnvInitData, EnvData
 from snake_sim.environment.interfaces.snake_interface import ISnake
-from snake_sim.utils import distance, print_map
+from snake_sim.utils import distance
+from snake_sim.map_utils.general import print_map
 
 
 class NextStepNotImplemented(Exception):

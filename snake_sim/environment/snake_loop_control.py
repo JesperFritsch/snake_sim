@@ -24,7 +24,8 @@ from snake_sim.environment.food_handlers import FoodHandler
 from snake_sim.environment.snake_processes import SnakeProcessManager
 from snake_sim.environment.types import DotDict, SnakeConfig, SnakeProcType
 
-from snake_sim.utils import get_map_files_mapping, create_color_map
+from snake_sim.utils import create_color_map
+from snake_sim.map_utils.general import get_map_files_mapping
 
 with pkg_resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
@@ -65,7 +66,7 @@ class SnakeLoopControl:
         self._config = config
         self._snake_proc_mngr: SnakeProcessManager = SnakeProcessManager()
         self._snake_handler = SnakeHandler()
-        self._snake_enviroment = SnakeEnv(
+        self._snake_environment = SnakeEnv(
             config.width,
             config.height,
             default_config.free_value,
@@ -76,12 +77,12 @@ class SnakeLoopControl:
             config.height,
             config.food,
             config.food_decay)
-        self._snake_enviroment.set_food_handler(self._food_handler)
+        self._snake_environment.set_food_handler(self._food_handler)
         if config.map:
             map_files_mapping = get_map_files_mapping()
             if config.map not in map_files_mapping:
                 raise ValueError(f'Map {config.map} not found')
-            self._snake_enviroment.load_map(map_files_mapping[config.map])
+            self._snake_environment.load_map(map_files_mapping[config.map])
         self._is_shutdown = False
 
     def _loop_check(func):
@@ -103,20 +104,20 @@ class SnakeLoopControl:
             # Initialize simulation loop
             self._loop = SimLoop()
         self._loop.set_snake_handler(self._snake_handler)
-        self._loop.set_environment(self._snake_enviroment)
+        self._loop.set_environment(self._snake_environment)
         if default_config.max_steps is not None:
             self._loop.set_max_steps(default_config.max_steps)
         if default_config.max_no_food_steps is not None:
             self._loop.set_max_no_food_steps(default_config.max_no_food_steps)
         else:
-            self._loop.set_max_no_food_steps((self._snake_enviroment.get_init_data().height * self._snake_enviroment.get_init_data().width) // 2)
+            self._loop.set_max_no_food_steps((self._snake_environment.get_init_data().height * self._snake_environment.get_init_data().width) // 2)
 
     @_loop_check
     def _finalize_snakes(self):
         """ Finalize snakes """
         snakes_dict = self._snake_handler.get_snakes().copy()
         for id, snake in snakes_dict.items():
-            start_pos = self._snake_enviroment.add_snake(id, start_length=self._config.start_length)
+            start_pos = self._snake_environment.add_snake(id, start_length=self._config.start_length)
             try:
                 log.debug(f"Snake {id} start position: {start_pos}")
                 snake.set_id(id)
@@ -127,7 +128,7 @@ class SnakeLoopControl:
                 self._snake_handler.kill_snake(id)
 
         # Now that all snakes are added to the environment, we can finalize them with the init data
-        init_data = self._snake_enviroment.get_init_data()
+        init_data = self._snake_environment.get_init_data()
         for id, snake in snakes_dict.items():
             snake.set_init_data(init_data)
         self._snake_handler.finalize(init_data)
@@ -206,7 +207,7 @@ class SnakeLoopControl:
         observers = self._loop.get_observers()
         for observer in observers:
             if isinstance(observer, RunDataSource):
-                init_data = self._snake_enviroment.get_init_data()
+                init_data = self._snake_environment.get_init_data()
                 observer.set_adapter(
                     RunDataAdapter(
                         init_data,
@@ -217,7 +218,7 @@ class SnakeLoopControl:
     @_loop_check
     def get_init_data(self) -> EnvInitData:
         """Returns the initial data of the environment"""
-        return self._snake_enviroment.get_init_data()
+        return self._snake_environment.get_init_data()
 
     @_loop_check
     def run(self, stop_event: Optional[MPEvent] = None):

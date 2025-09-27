@@ -11,7 +11,7 @@ from snake_sim.environment.food_handlers import IFoodHandler
 from snake_sim.environment.interfaces.snake_env_interface import ISnakeEnv
 from snake_sim.environment.types import EnvData, EnvInitData, DotDict, Coord
 
-from snake_sim.utils import print_map
+from snake_sim.map_utils.general import print_map, convert_png_to_map
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -194,25 +194,16 @@ class SnakeEnv(ISnakeEnv):
         self._food_handler.resize(height, width)
 
     def load_map(self, map_img_path: str):
-        img_path = Path(map_img_path)
-        image = Image.open(img_path)
-        self.resize(*image.size)
-        image_matrix = np.array(image)
-        map_color_mapping = {
-            (0,0,0,0): self._free_value,
-            (255,0,0,255): self._food_value,
-            (0,0,0,255): self._blocked_value
-        }
-        for y in range(self._height):
-            for x in range(self._width):
-                color = tuple(image_matrix[y][x])
-                try:
-                    value = map_color_mapping[color]
-                    self._base_map[y, x] = value
-                    if value == self._food_value:
-                        self._food_handler.add_new((x, y))
-                except KeyError:
-                    print(f"Color '{color}' at (x={x}, y={y}) from image not found in color mapping")
+        base_map = convert_png_to_map(
+            map_img_path,
+            {
+                (0,0,0,0): self._free_value,
+                (255,0,0,255): self._food_value,
+                (0,0,0,255): self._blocked_value
+            },
+        )
+        self.resize(*base_map.shape)
+        self._base_map[:] = base_map
         self._map = self.get_base_map()
 
     def set_food_handler(self, food_handler: IFoodHandler):
