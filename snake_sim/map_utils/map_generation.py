@@ -1,12 +1,14 @@
 
 import argparse
 import numpy as np
+import json
 
 import cProfile
 
+from itertools import combinations
 from enum import Enum
 from PIL import Image
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Set
 from pathlib import Path
 from bitarray import bitarray
 
@@ -37,6 +39,8 @@ class BuildTile:
         self.tile_values = tile_values
         self.height, self.width = tile_values.shape
         self.shape = tile_values.shape
+        self.properties = None
+        self.find_properties()
 
     def __hash__(self):
         return hash(self.tile_values.tobytes())
@@ -62,6 +66,95 @@ class BuildTile:
     def print(self):
         for row in self.tile_values:
             print(' '.join('.' if cell == 0 else 'X' for cell in row))
+
+    def find_properties(self):
+        self.properties = {
+            'wall_connected_sides': self._wall_connected_sides()
+        }
+
+    def _follow_blocked(self, start_pos: Coord, visited: set) -> List[Coord]:
+        # Follow connected BLOCKED cells starting from start_pos
+        to_check = [start_pos]
+        blocked_cells = []
+        while to_check:
+            coord = to_check.pop()
+            if coord in visited:
+                continue
+            visited.add(coord)
+            if self.tile_values[coord.y, coord.x] == TileCellValue.BLOCKED.value:
+                blocked_cells.append(coord)
+                # Check neighbors (up, down, left, right)
+                neighbors = _neighbors(coord, self.height, self.width)
+                for n_coord in neighbors:
+                    if n_coord not in visited:
+                        to_check.append(n_coord)
+        return blocked_cells
+
+    def _wall_connected_sides(self) -> List[Tuple[int, int]]:
+        side_pairs = set()
+        visited = set()
+        for side in range(4):
+            for coord in self._side_coords(side):
+                if coord not in visited and self.tile_values[coord.y, coord.x] == TileCellValue.BLOCKED.value:
+                    blocked_cells = self._follow_blocked(coord, visited)
+                    sides = set()
+                    for cell in blocked_cells:
+                        sides.update(self._in_sides(cell))
+                    if len(sides) >= 2:
+                        for pair in combinations(sides, 2):
+                            side_pairs.add(pair)
+        return list(side_pairs)
+
+    def _in_sides(self, coord: Coord) -> List[int]:
+        sides = []
+        for side in range(4):
+            if coord in self._side_coords(side):
+                sides.append(side)
+        return sides
+
+    def _side_coords(self, side: int) -> Set[Coord]:
+        coords = set()
+        if side == 0:  # top
+            for x in range(self.width):
+                coords.add(Coord(x, 0))
+        elif side == 1:  # right
+            for y in range(self.height):
+                coords.add(Coord(self.width - 1, y))
+        elif side == 2:  # bottom
+            for x in range(self.width):
+                coords.add(Coord(x, self.height - 1))
+        elif side == 3:  # left
+            for y in range(self.height):
+                coords.add(Coord(0, y))
+        return coords
+
+    def get_side_layers(self, side: int, depth: int) -> List[np.ndarray]:
+        layers = []
+        for i in range(depth):
+            if side == 0:  # top
+                layers.append(self.tile_values[i, :])
+            elif side == 1:  # right
+                layers.append(self.tile_values[:, self.width - 1 - i])
+            elif side == 2:  # bottom
+                layers.append(self.tile_values[self.height - 1 - i, :])
+            elif side == 3:  # left
+                layers.append(self.tile_values[:, i])
+        return layers
+
+    def walls_connections_on_side(self, other: 'BuildTile', side: int) -> int:
+        # check if wall connects on given side with another tile
+        side_map = {
+            0: 2,  # top connects with bottom
+            1: 3,  # right connects with left
+            2: 0,  # bottom connects with top
+            3: 1   # left connects with right
+        }
+        opposite_side = other.get_side_layers(side_map[side], 1)[0]
+        self_side = self.get_side_layers(side, 1)[0]
+        return _overlapping_blocked(self_side, opposite_side)[0]
+
+    def has_blocked(self) -> bool:
+        return np.any(self.tile_values == TileCellValue.BLOCKED.value)
 
 
 class Domain:
@@ -183,32 +276,11 @@ def _check_side_compatibility(
 def _check_compatibility(tile1: BuildTile, tile2: BuildTile, side: int) -> bool:
     # tile1 is in the "center", tile2 is the neighbor to check
     # side: 0=top, 1=right, 2=bottom, 3=left
-    if side == 0:
-        # Check top compatibility
-        outer_side1 = tile1.tile_values[0, :]  # top row of tile1
-        inner_side1 = tile1.tile_values[1, :]  # second row of tile1
-        outer_side2 = tile2.tile_values[-1, :]  # bottom row of tile2
-        inner_side2 = tile2.tile_values[-2, :]  # second last row of
-    elif side == 1:
-        # Check right compatibility
-        outer_side1 = tile1.tile_values[:, -1]  # right column of tile1
-        inner_side1 = tile1.tile_values[:, -2]  # second last column of tile1
-        outer_side2 = tile2.tile_values[:, 0]  # left column of tile2
-        inner_side2 = tile2.tile_values[:, 1]  # second column of tile2
-    elif side == 2:
-        # Check bottom compatibility
-        outer_side1 = tile1.tile_values[-1, :]  # bottom row of tile1
-        inner_side1 = tile1.tile_values[-2, :]  # second last row of tile1
-        outer_side2 = tile2.tile_values[0, :]  # top row of tile2
-        inner_side2 = tile2.tile_values[1, :]  # second row of tile2
-    elif side == 3:
-        # Check left compatibility
-        outer_side1 = tile1.tile_values[:, 0]  # left column of tile1
-        inner_side1 = tile1.tile_values[:, 1]  # second column of tile1
-        outer_side2 = tile2.tile_values[:, -1]  # right column of tile2
-        inner_side2 = tile2.tile_values[:, -2]  # second last column of tile2
-    else:
+    if side < 0 or side > 3:
         raise ValueError("Side must be 0 (top), 1 (right), 2 (bottom), or 3 (left)")
+
+    outer_side1, inner_side1 = tile1.get_side_layers(side, 2)
+    outer_side2, inner_side2 = tile2.get_side_layers(side, 2)
 
     result = _check_side_compatibility(outer_side1, inner_side1, outer_side2, inner_side2)
     # print("###########\n")
@@ -319,15 +391,17 @@ def _in_bounds(pos: Coord, height: int, width: int) -> bool:
     return 0 <= y < height and 0 <= x < width
 
 
-def _neighbors(pos: Coord, height: int, width: int) -> List[Tuple[Coord, int]]:
+def _all_neighbors(pos: Coord) -> List[Coord]:
     x, y = pos
-    possible = [
-        (Coord(x, y - 1), 0),
-        (Coord(x + 1, y), 1),
-        (Coord(x, y + 1), 2),
-        (Coord(x - 1, y), 3)
-    ]
-    return [p for p in possible if _in_bounds(p[0], height, width)]
+    return [Coord(x, y - 1), Coord(x + 1, y), Coord(x, y + 1), Coord(x - 1, y)]
+
+
+def _neighbors(pos: Coord, height: int, width: int) -> List[Coord]:
+    return [p for p in _all_neighbors(pos) if _in_bounds(p, height, width)]
+
+
+def _neighbors_and_sides(pos: Coord, height: int, width: int) -> List[Tuple[Coord, int]]:
+    return [(p, i) for i, p in enumerate(_all_neighbors(pos)) if _in_bounds(p, height, width)]
 
 
 def _calculate_gridsize_and_offset(map_shape: Tuple[int, int], tile_shape: Tuple[int, int]) -> Tuple[Tuple[int, int], Tuple[int, int]]:
@@ -365,6 +439,7 @@ def _assemble_build_tiles(
             start_x = grid_x * tile_width + spacing * grid_x
             buffer[start_y:start_y + tile_height, start_x:start_x + tile_width] = tile.tile_values
     return buffer
+
 
 def _assemble_map_from_tiles(
         tile_grid: np.ndarray,
@@ -406,6 +481,7 @@ def _get_lowest_entropy_cell(grid: List[List[Domain]], rng: np.random.Generator)
                     min_positions.append(Coord(x, y))
     return min_positions[rng.integers(0, len(min_positions))]
 
+
 def _check_contradiction(grid: List[List[Domain]]) -> bool:
     for row in grid:
         for cell in row:
@@ -422,18 +498,6 @@ def _all_cells_collapsed(grid: List[List[Domain]]) -> bool:
     return True
 
 
-def _check_consistency(grid: List[List[Domain]], option_mapping: Dict[int, Dict[int, bitarray]]) -> bool:
-    for y in range(len(grid)):
-        for x in range(len(grid[0])):
-            domain = grid[y][x]
-            if domain.entropy() == 0:
-                return False
-            for (ny, nx), side in _neighbors((y, x), len(grid), len(grid[0])):
-                neighbor = grid[ny][nx]
-                if not neighbor.is_consistent_with(domain, side, option_mapping):
-                    return False
-    return True
-
 def _backtrack(grid: List[List[Domain]], stack: List[List[List[Domain]]]) -> Tuple[List[List[Domain]], bool]:
     while stack:
         grid = stack.pop()
@@ -449,7 +513,7 @@ def _propagate(queue: List[Coord], grid_domains, option_mapping) -> bool:
         d_coord = queue.pop(0)
         domain: Domain = grid_domains[d_coord.y][d_coord.x]
         domain_options = domain.possible_options()
-        for n_coord, side in _neighbors(d_coord, height, width):
+        for n_coord, side in _neighbors_and_sides(d_coord, height, width):
             neighbor: Domain = grid_domains[n_coord.y][n_coord.x]
             allowed = bitarray(neighbor._nr_options)
             allowed.setall(False)
@@ -463,9 +527,100 @@ def _propagate(queue: List[Coord], grid_domains, option_mapping) -> bool:
     return True
 
 
-def _get_collapse_choice(cell_to_collapse: Domain, rng: np.random.Generator):
+def _collapsed_neighbors(pos: Coord, grid: List[List[Domain]], height: int, width: int) -> List[Tuple[Coord, int]]:
+    result = []
+    for n_pos, side in _neighbors_and_sides(pos, height, width):
+        if grid[n_pos.y][n_pos.x].is_collapsed():
+            result.append((n_pos, side))
+    return result
+
+
+def _weight_based_choice(options: List[int], weights: Dict[int, float], rng: np.random.Generator) -> int:
+    total_weight = sum(weights[opt] for opt in options)
+    if total_weight <= 0:
+        return options[rng.integers(0, len(options))]
+    probabilities = [max(weights[opt] / total_weight, 0) for opt in options]
+    return rng.choice(options, p=probabilities)
+    # options = sorted(options, key=lambda opt: weights[opt], reverse=True)
+    # return options[0] if options else -1
+
+
+def _get_collapse_choice(
+        cell_to_collapse: Domain,
+        collapsed_nb: List[Tuple[BuildTile, Domain, int]],
+        idx_to_tile: Dict[int, BuildTile],
+        bad_choices: Set[int],
+        rng: np.random.Generator):
     options = cell_to_collapse.possible_options()
-    return options[rng.integers(0, len(options))]
+    good_options = list(set(options) - bad_choices)
+    weights = _calculate_tile_weights(good_options, idx_to_tile, collapsed_nb)
+    return _weight_based_choice(good_options, weights, rng)
+
+
+def _calculate_tile_weights(
+        possible_options: List[int],
+        idx_to_tile: Dict[int, BuildTile],
+        collapsed_nb: List[Tuple[BuildTile, Domain, int]]
+    ) -> Dict[int, float]:
+    weights = {opt: 0 for opt in possible_options}
+
+    for tile, domain, side in collapsed_nb:
+        print(f"Neighbor on side {side}:")
+        tile.print()
+
+    for opt in possible_options:
+        tile = idx_to_tile[opt]
+        print(f"Calculating weights for option {opt}:")
+        tile.print()
+        w_weight = _wall_connection_weight(tile, collapsed_nb, importance=200)
+        print("  wall connection weight:", w_weight)
+        free_weight = _free_tiles_weight(tile, collapsed_nb, importance=50)
+        wall_spawn_weight = _wall_spawn_weight(tile, collapsed_nb, importance=0.01)
+        weights[opt] += w_weight + free_weight + wall_spawn_weight
+
+    return weights
+
+
+def _wall_connection_weight(c_tile: BuildTile, neighbor_data: List[Tuple[BuildTile, Domain, int]], importance: float = 0.1) -> float:
+    any_blocked_neighbor = any(tile.has_blocked() for tile, _, _ in neighbor_data)
+    weight = 0.0
+    if any_blocked_neighbor and c_tile.has_blocked():
+        for n_tile, n_domain, side in neighbor_data:
+            connections = c_tile.walls_connections_on_side(n_tile, side)
+            print(f"  connections on side {side} with neighbor:", connections)
+            weight += (connections * importance)
+        for side in c_tile.properties['wall_connected_sides']:
+            weight += importance  # prefer tiles with walls connected on multiple sides
+    else:
+        weight = 0
+    return weight
+
+
+def _free_tiles_weight(c_tile: BuildTile, neighbor_data: List[Tuple[BuildTile, Domain, int]], importance: float = 0.1) -> float:
+    if not c_tile.has_blocked():
+        return sum(importance for n_tile, _, _ in neighbor_data if n_tile.has_blocked())
+    return 0.0
+
+
+def _wall_spawn_weight(c_tile: BuildTile, neighbor_data: List[Tuple[BuildTile, Domain, int]], importance: float = 0.1) -> float:
+    # prefer tiles that create enclosed areas for walls to spawn in
+    if c_tile.has_blocked():
+        return sum(importance for n_tile, _, _ in neighbor_data if not n_tile.has_blocked())
+    return 0.0
+
+def _collapsed_neighbor_data(
+        cell: Coord,
+        grid: List[List[Domain]],
+        idx_to_tile: Dict[int, BuildTile],
+        height: int,
+        width: int
+    ) -> List[Tuple[BuildTile, Domain, int]]:
+    result = []
+    for n_pos, side in _collapsed_neighbors(cell, grid, height, width):
+        n_domain = grid[n_pos.y][n_pos.x]
+        n_tile = idx_to_tile[n_domain.possible_options()[0]]
+        result.append((n_tile, n_domain, side))
+    return result
 
 
 def _copy_grid(grid: List[List[Domain]]) -> List[List[Domain]]:
@@ -482,7 +637,7 @@ def _wave_function_collapse(
     height, width = grid_size
     n_tiles = len(idx_to_tile)
     grid_domains: List[List[Domain]] = [[Domain(n_tiles) for _ in range(width)] for _ in range(height)]
-
+    bad_collapse_map: Dict[Coord, Set[int]] = {}
     rng = np.random.default_rng(seed)
 
     stack = []
@@ -495,22 +650,38 @@ def _wave_function_collapse(
         cell_to_collapse: Coord = _get_lowest_entropy_cell(grid_domains, rng)
         x = cell_to_collapse.x
         y = cell_to_collapse.y
-        domain = grid_domains[y][x]
-        choice = _get_collapse_choice(domain, rng)
+        cell_domain = grid_domains[y][x]
+
+        coll_neighbor_data = _collapsed_neighbor_data(
+            cell_to_collapse,
+            grid_domains,
+            idx_to_tile,
+            height,
+            width
+        )
+
+        print(f"Collapsing cell at {cell_to_collapse} with entropy {cell_domain.entropy()} and {len(coll_neighbor_data)} collapsed neighbors")
+
+        choice = _get_collapse_choice(
+            cell_domain,
+            coll_neighbor_data,
+            idx_to_tile,
+            bad_collapse_map.get(cell_to_collapse, set()),
+            rng
+        )
 
         state_snapshot = _copy_grid(grid_domains)
         stack.append((state_snapshot))
 
-        # print(f"collapsing cell {(y, x)} with options {domain.possible_options()} to {choice}")
-        # tile1 = idx_to_tile[choice]
-        # neighbor1 =
-
-        domain.collapse_to(choice)
+        cell_domain.collapse_to(choice)
         if not _propagate([Coord(x, y)], grid_domains, option_mapping):
+            bad_collapse_map.setdefault(cell_to_collapse, set()).add(choice)
             grid_state, successful = _backtrack(grid_domains, stack)
             grid_domains = grid_state
             if not successful:
                 raise RuntimeError("Wave Function Collapse failed: no valid tiling found with given tiles and constraints")
+        else:
+            bad_collapse_map = {}
 
     if not _all_cells_collapsed(grid_domains):
         raise RuntimeError("Cell not collapsed at end of WFC")
@@ -562,6 +733,12 @@ def print_option_mapping(option_mapping: Dict[int, Dict[int, bitarray]], idx_to_
 
 def main(args):
     base_tiles = _get_tiles_from_tileset_png(args.tileset_image)
+
+    for i, tile in enumerate(base_tiles):
+        print(f"Base Tile {i} (shape {tile.shape}):")
+        tile.print()
+        print()
+
     idx_to_tile = _generate_all_tile_variations(base_tiles)
     tile_shape = list(idx_to_tile.values())[0].shape
     grid_shape, offset = _calculate_gridsize_and_offset((args.height, args.width), tile_shape)
