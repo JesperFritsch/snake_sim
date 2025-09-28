@@ -10,6 +10,7 @@ from typing import Dict, Tuple, List
 from pathlib import Path
 from bitarray import bitarray
 
+from snake_sim.map_utils.general import print_map
 from snake_sim.environment.types import Coord
 
 TILESETS_FOLDER = Path(__file__).parent / 'tilesets'
@@ -35,6 +36,7 @@ class BuildTile:
     def __init__(self, tile_values: np.ndarray):
         self.tile_values = tile_values
         self.height, self.width = tile_values.shape
+        self.shape = tile_values.shape
 
     def __hash__(self):
         return hash(self.tile_values.tobytes())
@@ -72,10 +74,11 @@ class Domain:
         self._domain.setall(False)
         self._domain[option_index] = True
 
-    def set_options(self, option_indices: List[int]):
-        self._domain.setall(False)
-        for option_index in option_indices:
-            self._domain[option_index] = True
+    def copy(self) -> 'Domain':
+        """Return a deep copy of this Domain."""
+        new = Domain(self._nr_options)
+        new._domain = self._domain.copy()
+        return new
 
     def remove_option(self, option_index: int):
         self._domain[option_index] = False
@@ -85,6 +88,17 @@ class Domain:
 
     def entropy(self) -> int:
         return self._domain.count()
+
+    def intersect_with_bitarray(self, mask: bitarray) -> bool:
+        """Intersect domain with mask (bitarray). Return True if domain changed."""
+        if len(mask) != self._nr_options:
+            raise ValueError("Mask length does not match domain size")
+        old = self._domain.copy()
+        self._domain &= mask
+        return old != self._domain
+
+    def is_collapsed(self) -> bool:
+        return self.entropy() == 1
 
 
 ## Helper functions for _check_compatibility
@@ -99,6 +113,7 @@ def _overlapping_blocked(side1: np.ndarray, side2: np.ndarray) -> int:
     idxs = np.flatnonzero(mask)
     OVERLAP_CHECK_CACHE[key] = (int(idxs.size), idxs.tolist())
     return OVERLAP_CHECK_CACHE[key]
+
 
 def _diag_overlapping_blocked(side1: np.ndarray, side2: np.ndarray) -> int:
     # diagonal overlaps like this:
@@ -143,18 +158,25 @@ def _check_side_compatibility(
     if sum(outer_side1) == 0 and sum(outer_side2) == 0:
         return True
     overlap_count, overlap_idxs = _overlapping_blocked(outer_side1, outer_side2)
-    diag_overlap_count, diag_overlap_idxs = _diag_overlapping_blocked(outer_side1, outer_side2)
+    inner_overlap_count, inner_overlap_idxs = _overlapping_blocked(inner_side1, inner_side2)
+    diag_overlap_count1, diag_overlap_idxs1 = _diag_overlapping_blocked(outer_side1, outer_side2)
+    diag_overlap_count2, diag_overlap_idxs2 = _diag_overlapping_blocked(outer_side2, outer_side1)
     inner_to_outer_overlap1, inner_to_outer_overlap1_idxs = _overlapping_blocked(inner_side1, outer_side2)
     inner_to_outer_overlap2, inner_to_outer_overlap2_idxs = _overlapping_blocked(outer_side1, inner_side2)
-    # inner_to_outer_diag1, inner_to_outer_diag1_idxs = _diag_overlapping_blocked(inner_side1, outer_side2)
-    # inner_to_outer_diag2, inner_to_outer_diag2_idxs = _diag_overlapping_blocked(outer_side1, inner_side2)
+    inner_to_outer_diag1, inner_to_outer_diag1_idxs = _diag_overlapping_blocked(inner_side1, outer_side2)
+    inner_to_outer_diag2, inner_to_outer_diag2_idxs = _diag_overlapping_blocked(outer_side1, inner_side2)
     return (
         not _any_adjacent_indexes(overlap_idxs)
-        and (diag_overlap_count == 0 or set(diag_overlap_idxs) == set(overlap_idxs))
+        and not _any_adjacent_indexes(inner_overlap_idxs)
+        and (diag_overlap_count1 == 0 or (
+                set(diag_overlap_idxs1) == set(overlap_idxs)
+                or set(diag_overlap_idxs2) == set(overlap_idxs)
+            )
+        )
         and inner_to_outer_overlap1 <= overlap_count
         and inner_to_outer_overlap2 <= overlap_count
-        # and (inner_to_outer_diag1 == 0 or set(inner_to_outer_diag1_idxs) == set(overlap_idxs))
-        # and (inner_to_outer_diag2 == 0 or set(inner_to_outer_diag2_idxs) == set(overlap_idxs))
+        and (inner_to_outer_diag1 == 0 or set(inner_to_outer_diag1_idxs) == set(overlap_idxs))
+        and (inner_to_outer_diag2 == 0 or set(inner_to_outer_diag2_idxs) == set(overlap_idxs))
     )
 
 
@@ -188,22 +210,33 @@ def _check_compatibility(tile1: BuildTile, tile2: BuildTile, side: int) -> bool:
     else:
         raise ValueError("Side must be 0 (top), 1 (right), 2 (bottom), or 3 (left)")
 
-    return _check_side_compatibility(outer_side1, inner_side1, outer_side2, inner_side2)
+    result = _check_side_compatibility(outer_side1, inner_side1, outer_side2, inner_side2)
+    # print("###########\n")
+    # print(f"side: {side}")
+    # tile1.print()
+    # print()
+    # tile2.print()
+    # print(f"compatible: {result}\n")
+    return result
 
 
-def _build_option_mapping(index_to_tile: Dict[int, BuildTile]) -> Dict[BuildTile, Dict[int, bitarray]]:
-    option_mapping = {}
-    for i, tile1 in index_to_tile.items():
-        compatibility = option_mapping.get(tile1, {})
-        for j, tile2 in index_to_tile.items():
+def _build_option_mapping(idx_to_tile: Dict[int, BuildTile]) -> Dict[int, Dict[int, bitarray]]:
+    # Build a compatibility mapping keyed by tile index for faster lookup during propagation
+    n = len(idx_to_tile)
+    option_mapping: Dict[int, Dict[int, bitarray]] = {}
+    for i, tile1 in idx_to_tile.items():
+        compatibility: Dict[int, bitarray] = {}
+        for k in range(4):
+            bitarr = bitarray(n)
+            bitarr.setall(False)
+            compatibility[k] = bitarr
+        option_mapping[i] = compatibility
+
+    for i, tile1 in idx_to_tile.items():
+        for j, tile2 in idx_to_tile.items():
             for k in range(4):
-                bitarr = compatibility.get(k)
-                if bitarr is None:
-                    bitarr = bitarray(len(index_to_tile))
-                    bitarr.setall(False)
-                    compatibility[k] = bitarr
-                bitarr[j] = _check_compatibility(tile1, tile2, k)
-        option_mapping[tile1] = compatibility
+                option_mapping[i][k][j] = _check_compatibility(tile1, tile2, k)
+
     return option_mapping
 
 
@@ -270,7 +303,7 @@ def _get_tiles_from_tileset_png(img_path) -> List[BuildTile]:
     return tiles
 
 
-def _generate_all_tile_variations(tiles: List[BuildTile]) -> List[BuildTile]:
+def _generate_all_tile_variations(tiles: List[BuildTile]) -> Dict[int, BuildTile]:
     all_variations = set()
     for tile in tiles:
         for k in range(4):  # 4 rotations
@@ -278,49 +311,290 @@ def _generate_all_tile_variations(tiles: List[BuildTile]) -> List[BuildTile]:
             all_variations.add(rotated_tile)
             all_variations.add(rotated_tile.flipped(axis=0))  # vertical flip
             all_variations.add(rotated_tile.flipped(axis=1))  # horizontal flip
-    return list(all_variations)
+    return {i: tile for i, tile in enumerate(sorted(list(all_variations)))}
 
 
-def wave_function_collapse(tiles: List[BuildTile], grid_size: Tuple[int, int]) -> List[List[BuildTile]]:
-    tiles = sorted(tiles)
-    index_to_tile = {i: tile for i, tile in enumerate(tiles)}
-    tile_to_index = {tile: i for i, tile in index_to_tile.items()}
-    option_mapping = _build_option_mapping(index_to_tile)
+def _in_bounds(pos: Coord, height: int, width: int) -> bool:
+    x, y = pos
+    return 0 <= y < height and 0 <= x < width
+
+
+def _neighbors(pos: Coord, height: int, width: int) -> List[Tuple[Coord, int]]:
+    x, y = pos
+    possible = [
+        (Coord(x, y - 1), 0),
+        (Coord(x + 1, y), 1),
+        (Coord(x, y + 1), 2),
+        (Coord(x - 1, y), 3)
+    ]
+    return [p for p in possible if _in_bounds(p[0], height, width)]
+
+
+def _calculate_gridsize_and_offset(map_shape: Tuple[int, int], tile_shape: Tuple[int, int]) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+    map_height, map_width = map_shape
+    tile_height, tile_width = tile_shape
+    if map_height < 2 * tile_height or map_width < 2 * tile_width:
+        raise ValueError("Map dimensions must be at least 2 times tile dimensions")
+    grid_height = map_height // tile_height
+    grid_width = map_width // tile_width
+    offset_y = (map_height - (grid_height * tile_height)) // 2
+    offset_x = (map_width - (grid_width * tile_width)) // 2
+    return (grid_height, grid_width), (offset_y, offset_x)
+
+
+def _assemble_build_tiles(
+        tile_grid: np.ndarray,
+        idx_to_tile: Dict[int, BuildTile],
+        tile_shape: Tuple[int, int],
+        spacing: int = 0,
+        spacing_value: int = 255
+    ) -> np.ndarray:
+    tile_grid_height, tile_grid_width = tile_grid.shape
+    tile_height, tile_width = tile_shape
+    spacing_height = spacing * (tile_grid_height - 1)
+    spacing_width = spacing * (tile_grid_width - 1)
+    buffer = np.full((
+        tile_grid_height * tile_height + spacing_height,
+        tile_grid_width * tile_width + spacing_width
+    ), spacing_value, dtype=np.uint8)
+    for grid_y in range(tile_grid_height):
+        for grid_x in range(tile_grid_width):
+            tile_index = tile_grid[grid_y, grid_x]
+            tile = idx_to_tile[tile_index]
+            start_y = grid_y * tile_height + spacing * grid_y
+            start_x = grid_x * tile_width + spacing * grid_x
+            buffer[start_y:start_y + tile_height, start_x:start_x + tile_width] = tile.tile_values
+    return buffer
+
+def _assemble_map_from_tiles(
+        tile_grid: np.ndarray,
+        idx_to_tile: Dict[int, BuildTile],
+        tile_shape: Tuple[int, int],
+        map_shape: Tuple[int, int],
+        offset: Tuple[int, int],
+        free_value: int = TileCellValue.FREE.value,
+        blocked_value: int = TileCellValue.BLOCKED.value,
+        spacing: int = 0
+    ) -> np.ndarray:
+    map_height, map_width = map_shape
+    offset_y, offset_x = offset
+    final_map = np.full((map_height, map_width), TileCellValue.FREE.value, dtype=np.uint8)
+    assembled_tiles = _assemble_build_tiles(tile_grid, idx_to_tile, tile_shape)
+    # put assembled tiles into final map with offset
+    final_map[offset_y:offset_y + assembled_tiles.shape[0], offset_x:offset_x + assembled_tiles.shape[1]] = assembled_tiles
+    # replace tile cell values with desired free/blocked values
+    final_map[final_map == TileCellValue.FREE.value] = free_value
+    final_map[final_map == TileCellValue.BLOCKED.value] = blocked_value
+    return final_map
+
+# Helpers for wfc
+
+
+def _get_lowest_entropy_cell(grid: List[List[Domain]], rng: np.random.Generator) -> Coord:
+    min_entropy = None
+    min_positions: List[Coord] = []
+    height = len(grid)
+    width = len(grid[0]) if height > 0 else 0
+    for y in range(height):
+        for x in range(width):
+            e = grid[y][x].entropy()
+            if e > 1:
+                if min_entropy is None or e < min_entropy:
+                    min_entropy = e
+                    min_positions = [Coord(x, y)]
+                elif e == min_entropy:
+                    min_positions.append(Coord(x, y))
+    return min_positions[rng.integers(0, len(min_positions))]
+
+def _check_contradiction(grid: List[List[Domain]]) -> bool:
+    for row in grid:
+        for cell in row:
+            if cell.entropy() == 0:
+                return True
+    return False
+
+
+def _all_cells_collapsed(grid: List[List[Domain]]) -> bool:
+    for row in grid:
+        for cell in row:
+            if cell.entropy() != 1:
+                return False
+    return True
+
+
+def _check_consistency(grid: List[List[Domain]], option_mapping: Dict[int, Dict[int, bitarray]]) -> bool:
+    for y in range(len(grid)):
+        for x in range(len(grid[0])):
+            domain = grid[y][x]
+            if domain.entropy() == 0:
+                return False
+            for (ny, nx), side in _neighbors((y, x), len(grid), len(grid[0])):
+                neighbor = grid[ny][nx]
+                if not neighbor.is_consistent_with(domain, side, option_mapping):
+                    return False
+    return True
+
+def _backtrack(grid: List[List[Domain]], stack: List[List[List[Domain]]]) -> Tuple[List[List[Domain]], bool]:
+    while stack:
+        grid = stack.pop()
+        if not _check_contradiction(grid):
+            return grid, True
+    return grid, False
+
+
+def _propagate(queue: List[Coord], grid_domains, option_mapping) -> bool:
+    height = len(grid_domains)
+    width = len(grid_domains[0]) if height > 0 else 0
+    while queue:
+        d_coord = queue.pop(0)
+        domain: Domain = grid_domains[d_coord.y][d_coord.x]
+        domain_options = domain.possible_options()
+        for n_coord, side in _neighbors(d_coord, height, width):
+            neighbor: Domain = grid_domains[n_coord.y][n_coord.x]
+            allowed = bitarray(neighbor._nr_options)
+            allowed.setall(False)
+            for t_idx in domain_options:
+                allowed |= option_mapping[t_idx][side]
+            changed = neighbor.intersect_with_bitarray(allowed)
+            if changed:
+                if neighbor.entropy() == 0:
+                    return False  # contradiction
+                queue.append(n_coord)
+    return True
+
+
+def _get_collapse_choice(cell_to_collapse: Domain, rng: np.random.Generator):
+    options = cell_to_collapse.possible_options()
+    return options[rng.integers(0, len(options))]
+
+
+def _copy_grid(grid: List[List[Domain]]) -> List[List[Domain]]:
+    return [[cell.copy() for cell in row] for row in grid]
+
+
+def _wave_function_collapse(
+        idx_to_tile: Dict[int, BuildTile],
+        grid_size: Tuple[int, int],
+        option_mapping: Dict[int, Dict[int, bitarray]],
+        seed: int = None,
+    ) -> np.ndarray:
 
     height, width = grid_size
-    grid_domains = [[Domain(len(tiles)) for _ in range(width)] for _ in range(height)]
+    n_tiles = len(idx_to_tile)
+    grid_domains: List[List[Domain]] = [[Domain(n_tiles) for _ in range(width)] for _ in range(height)]
 
-    # print("Option mapping:")
-    # for tile, compatibility in option_mapping.items():
-    #     for side, bitarr in compatibility.items():
-    #         print("#########")
-    #         tile.print()
-    #         print(f"  Side {side}: {bitarr}")
-    #         print(f"Possible tiles: ")
-    #         for i in range(len(bitarr)):
-    #             if bitarr[i]:
-    #                 index_to_tile[i].print()
-    #                 print("")
+    rng = np.random.default_rng(seed)
 
-    # Placeholder for the WFC algorithm implementation
-    # This would involve selecting the cell with the lowest entropy,
-    # collapsing it to one of its possible tiles, and propagating constraints.
+    stack = []
 
-    # For demonstration, we'll just return a grid filled with the first tile
-    result_grid = np.full((height, width), tile_to_index[tiles[0]], dtype=int)
-    return result_grid
+    while True:
+
+        if _all_cells_collapsed(grid_domains):
+            break
+
+        cell_to_collapse: Coord = _get_lowest_entropy_cell(grid_domains, rng)
+        x = cell_to_collapse.x
+        y = cell_to_collapse.y
+        domain = grid_domains[y][x]
+        choice = _get_collapse_choice(domain, rng)
+
+        state_snapshot = _copy_grid(grid_domains)
+        stack.append((state_snapshot))
+
+        # print(f"collapsing cell {(y, x)} with options {domain.possible_options()} to {choice}")
+        # tile1 = idx_to_tile[choice]
+        # neighbor1 =
+
+        domain.collapse_to(choice)
+        if not _propagate([Coord(x, y)], grid_domains, option_mapping):
+            grid_state, successful = _backtrack(grid_domains, stack)
+            grid_domains = grid_state
+            if not successful:
+                raise RuntimeError("Wave Function Collapse failed: no valid tiling found with given tiles and constraints")
+
+    if not _all_cells_collapsed(grid_domains):
+        raise RuntimeError("Cell not collapsed at end of WFC")
+
+    result = np.zeros((height, width), dtype=int)
+    for y in range(height):
+        for x in range(width):
+            opts = grid_domains[y][x].possible_options()
+            result[y, x] = opts[0]
+
+    return result
+
+
+def print_tile_grid(idx_to_tile: Dict[int, BuildTile], grid: np.ndarray, tile_shape: Tuple[int, int]):
+    assembled_tiles = _assemble_build_tiles(
+        grid,
+        idx_to_tile,
+        tile_shape=tile_shape,
+        spacing=1
+    )
+    print_map(
+        assembled_tiles,
+        free_value=TileCellValue.FREE.value,
+        blocked_value=TileCellValue.BLOCKED.value,
+        food_value=255,
+        head_value=255,
+        body_value=255,
+    )
+
+
+def print_option_mapping(option_mapping: Dict[int, Dict[int, bitarray]], idx_to_tile: Dict[int, BuildTile]):
+    for tile_idx, sides in option_mapping.items():
+        tile = idx_to_tile[tile_idx]
+        print(f"Tile {tile_idx} (shape {tile.shape}):")
+        tile.print()
+        for side, bitarr in sides.items():
+            options = [i for i, bit in enumerate(bitarr) if bit]
+            side_name = ['top', 'right', 'bottom', 'left'][side]
+            print(f"Tile {tile_idx} (shape {tile.shape}):")
+            print(f"  {side_name}: {options}")
+            print()
+            for opt in options:
+                idx_to_tile[opt].print()
+                print()
+        print()
+
+
 
 
 def main(args):
     base_tiles = _get_tiles_from_tileset_png(args.tileset_image)
-    all_tiles = _generate_all_tile_variations(base_tiles)
-    new_map = wave_function_collapse(all_tiles, (10, 10))
-    print(new_map)
+    idx_to_tile = _generate_all_tile_variations(base_tiles)
+    tile_shape = list(idx_to_tile.values())[0].shape
+    grid_shape, offset = _calculate_gridsize_and_offset((args.height, args.width), tile_shape)
+    option_mapping = _build_option_mapping(idx_to_tile)
+
+    # print_option_mapping(option_mapping, idx_to_tile)
+
+    tile_grid = _wave_function_collapse(idx_to_tile, grid_shape, option_mapping, seed=args.seed)
+
+    print(tile_grid)
+
+    assembled_map = _assemble_map_from_tiles(tile_grid, idx_to_tile, tile_shape, (args.height, args.width), offset)
+    print_map(
+        assembled_map,
+        free_value=TileCellValue.FREE.value,
+        blocked_value=TileCellValue.BLOCKED.value,
+        food_value=255,
+        head_value=255,
+        body_value=255,
+    )
+    print_tile_grid(
+        idx_to_tile,
+        grid=tile_grid,
+        tile_shape=tile_shape
+    )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process tile images.")
     parser.add_argument("-t", "--tileset-image", type=str, help="Path to the input image file.", default=str(TILESETS_FOLDER / 'tileset1.png'))
+    parser.add_argument("-s", "--seed", type=int, help="Random seed (deterministic map)", default=10)
+    parser.add_argument("-W", "--width", type=int, help="Map width in tiles", default=32)
+    parser.add_argument("-H", "--height", type=int, help="Map height in tiles", default=32)
     args = parser.parse_args()
-    cProfile.run('main(args)', sort='cumtime')
-    # main(args)
+    # cProfile.run('main(args)', sort='cumtime')
+    main(args)

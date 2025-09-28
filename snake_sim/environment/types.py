@@ -31,7 +31,8 @@ class DotDict(dict):
 
 
 class Coord(tuple):
-
+    x: int
+    y: int
     def distance(self, other):
         return math.sqrt(math.pow(self.x - other[0], 2) + math.pow(self.y - other[1], 2))
 
@@ -57,7 +58,7 @@ class Coord(tuple):
                 self.x == other[0] and
                 self.y == other[1]
             )
-    
+
     def __iter__(self):
         yield self.x
         yield self.y
@@ -66,11 +67,11 @@ class Coord(tuple):
         return hash((self.x, self.y))
 
     @property
-    def x(self):
+    def x(self) -> int:
         return self[0]
 
     @property
-    def y(self):
+    def y(self) -> int:
         return self[1]
 
     def __repr__(self):
@@ -132,9 +133,9 @@ class StrategyConfig:
 @dataclass
 class SnakeConfig:
     type: str
-    # strategies is a dict of priority (int) -> StrategyConfig 
+    # strategies is a dict of priority (int) -> StrategyConfig
     strategies: Dict[int, StrategyConfig] = field(default_factory=dict)
-     
+
 
 class SnakeProcType(Enum):
     SHM = 'shm' # Running in a separate process on the same machine, communicating via shared memory
