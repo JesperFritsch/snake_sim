@@ -84,18 +84,6 @@ class Coord(tuple):
         return str(self).__format__(format_spec)
 
 
-@dataclass
-class LoopStepData:
-    # decisions, snake_grew and snake_times will only have values for alive snakes
-    step: int
-    total_time: Optional[float] = field(default_factory=float)
-    snake_times: Optional[Dict[int, float]] = field(default_factory=dict)
-    decisions: Optional[Dict[int, Coord]] = field(default_factory=dict)
-    snake_grew: Optional[Dict[int, bool]] = field(default_factory=dict)
-    lengths: Optional[Dict[int, int]] = field(default_factory=dict)
-    food: Optional[List[Coord]] = field(default_factory=list)
-
-
 class EnvData:
     def __init__(self, map: bytes, snakes: dict, food_locations: Optional[List[Coord]]):
         self.map = map
@@ -122,6 +110,28 @@ class EnvInitData:
         self.snake_values = snake_values
         self.start_positions = start_positions
         self.base_map = base_map
+
+
+@dataclass
+class LoopStartData:
+    env_init_data: EnvInitData
+
+
+@dataclass
+class LoopStepData:
+    # decisions, snake_grew and snake_times will only have values for alive snakes
+    step: int
+    total_time: Optional[float] = field(default_factory=float)
+    snake_times: Optional[Dict[int, float]] = field(default_factory=dict)
+    decisions: Optional[Dict[int, Coord]] = field(default_factory=dict)
+    snake_grew: Optional[Dict[int, bool]] = field(default_factory=dict)
+    lengths: Optional[Dict[int, int]] = field(default_factory=dict)
+    food: Optional[List[Coord]] = field(default_factory=list)
+
+
+@dataclass
+class LoopStopData:
+    pass
 
 
 @dataclass

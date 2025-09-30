@@ -2,9 +2,13 @@ from abc import ABC, abstractmethod
 from snake_sim.environment.interfaces.snake_handler_interface import ISnakeHandler
 from snake_sim.environment.interfaces.snake_env_interface import ISnakeEnv
 from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver
+from snake_sim.environment.interfaces.loop_observable_interface import ILoopObservable
 
 
-class IMainLoop(ABC):
+class IMainLoop(ABC, ILoopObservable):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__()
 
     @abstractmethod
     def start(self):
@@ -24,14 +28,6 @@ class IMainLoop(ABC):
 
     @abstractmethod
     def set_max_steps(self, steps):
-        pass
-
-    @abstractmethod
-    def add_observer(self, observer: ILoopObserver):
-        pass
-
-    @abstractmethod
-    def get_observers(self) -> ILoopObserver:
         pass
 
     @abstractmethod
