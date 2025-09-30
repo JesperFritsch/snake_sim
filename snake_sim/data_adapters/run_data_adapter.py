@@ -4,7 +4,7 @@ from importlib import resources
 from typing import Dict
 
 from snake_sim.environment.snake_env import EnvInitData, SnakeRep
-from snake_sim.environment.main_loop import LoopStepData
+from snake_sim.loop_observables.main_loop import LoopStepData
 from snake_sim.run_data.run_data import RunData, StepData
 from snake_sim.environment.types import DotDict, Coord
 

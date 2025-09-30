@@ -1,16 +1,16 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple, Dict
-from snake_sim.environment.types import Coord
+from snake_sim.environment.types import Coord, EnvInitData, EnvData
 from snake_sim.environment.interfaces.food_handler_interface import IFoodHandler
 
 
 class ISnakeEnv(ABC):
     @abstractmethod
-    def get_env_data(self, id: Optional[int]):
+    def get_env_data(self, id: Optional[int]=None) -> EnvData:
         pass
 
     @abstractmethod
-    def get_init_data(self):
+    def get_init_data(self) -> EnvInitData:
         pass
 
     @abstractmethod
