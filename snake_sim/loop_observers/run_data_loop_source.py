@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Set
 
 from snake_sim.environment.interfaces.main_loop_interface import ILoopObserver
-from snake_sim.environment.main_loop import LoopStepData
+from snake_sim.environment.main_loop import LoopStartData, LoopStepData, LoopStopData
 from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
 from snake_sim.environment.interfaces.run_data_observer_interface import IRunDataObserver
 
@@ -18,7 +18,7 @@ class RunDataSource(ILoopObserver):
         self._observers: Set[IRunDataObserver] = set()
         self._has_started = False
 
-    def notify_start(self):
+    def notify_start(self, start_data: LoopStartData):
         if not isinstance(self._adapter, RunDataAdapter):
             raise ValueError('Adapter not set')
         self._has_started = True
@@ -32,7 +32,7 @@ class RunDataSource(ILoopObserver):
         for observer in self._observers:
             observer.notify_step(step_data)
 
-    def notify_end(self):
+    def notify_end(self, stop_data: LoopStopData):
         if not self._has_started:
             return
         for observer in self._observers:

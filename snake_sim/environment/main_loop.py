@@ -12,7 +12,13 @@ from snake_sim.environment.interfaces.main_loop_interface import IMainLoop
 from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver
 from snake_sim.environment.snake_handlers import ISnakeHandler
 from snake_sim.environment.interfaces.snake_env_interface import ISnakeEnv
-from snake_sim.environment.types import LoopStepData, DotDict, Coord
+from snake_sim.environment.types import (
+    LoopStartData,
+    LoopStepData, 
+    LoopStopData,
+    DotDict, 
+    Coord
+)
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     config = DotDict(json.load(config_file))
@@ -23,8 +29,8 @@ log = logging.getLogger(Path(__file__).stem)
 class SimLoop(IMainLoop):
 
     def __init__(self):
+        super().__init__()
         self._snake_handler: ISnakeHandler = None
-        self._observers: List[ILoopObserver] = []
         self._env: ISnakeEnv = None
         self._max_no_food_steps = None
         self._max_steps = None
@@ -98,23 +104,16 @@ class SimLoop(IMainLoop):
         self._current_step_data.total_time = total_time
         self._notify_step()
 
-    def _notify_start(self):
-        if self._did_notify_start: return
-        log.debug('Loop started')
-        for observer in self._observers:
-            observer.notify_start()
-        self._did_notify_start = True
+    def _get_start_data(self) -> LoopStartData:
+        return LoopStartData(
+            env_init_data=self._env.get_init_data()
+        )
 
-    def _notify_step(self):
-        for observer in self._observers:
-            observer.notify_step(self._current_step_data)
+    def _get_step_data(self) -> LoopStepData:
+        return self._current_step_data
 
-    def _notify_end(self):
-        if self._did_notify_end: return
-        self._did_notify_end = True
-        log.debug('Loop ended')
-        for observer in self._observers:
-            observer.notify_end()
+    def _get_stop_data(self) -> LoopStepData:
+        return LoopStopData()
 
     def set_snake_handler(self, snake_handler: ISnakeHandler):
         self._snake_handler = snake_handler
@@ -124,12 +123,6 @@ class SimLoop(IMainLoop):
 
     def set_max_steps(self, steps):
         self._max_steps = steps
-
-    def add_observer(self, observer: ILoopObserver):
-        self._observers.append(observer)
-
-    def get_observers(self) -> List[ILoopObserver]:
-        return self._observers
 
     def set_environment(self, env: ISnakeEnv):
         self._env = env

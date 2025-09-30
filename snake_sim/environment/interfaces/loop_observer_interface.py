@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
-from snake_sim.environment.types import LoopStepData
+from snake_sim.environment.types import LoopStartData, LoopStepData, LoopStopData
 
 class ILoopObserver(ABC):
 
     @abstractmethod
-    def notify_start(self):
+    def notify_start(self, start_data: LoopStartData):
         pass
 
     @abstractmethod
@@ -12,5 +12,5 @@ class ILoopObserver(ABC):
         pass
 
     @abstractmethod
-    def notify_end(self):
+    def notify_end(self, stop_data: LoopStopData):
         pass
