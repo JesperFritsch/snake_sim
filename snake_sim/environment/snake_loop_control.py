@@ -16,7 +16,7 @@ from snake_sim.loop_observers.run_data_loop_source import RunDataSource
 from snake_sim.loop_observers.recorder_run_data_observer import RecorderRunDataObserver
 from snake_sim.environment.interfaces.main_loop_interface import ILoopObserver
 from snake_sim.environment.interfaces.run_data_observer_interface import IRunDataObserver
-from snake_sim.environment.main_loop import SimLoop, GameLoop
+from snake_sim.loop_observables.main_loop import SimLoop, GameLoop
 from snake_sim.environment.snake_handlers import SnakeHandler
 from snake_sim.environment.snake_factory import SnakeFactory
 from snake_sim.environment.snake_env import SnakeEnv, EnvInitData

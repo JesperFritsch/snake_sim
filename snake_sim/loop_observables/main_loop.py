@@ -112,7 +112,7 @@ class SimLoop(IMainLoop):
     def _get_step_data(self) -> LoopStepData:
         return self._current_step_data
 
-    def _get_stop_data(self) -> LoopStepData:
+    def _get_stop_data(self) -> LoopStopData:
         return LoopStopData()
 
     def set_snake_handler(self, snake_handler: ISnakeHandler):

@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Set
 
 from snake_sim.environment.interfaces.main_loop_interface import ILoopObserver
-from snake_sim.environment.main_loop import LoopStartData, LoopStepData, LoopStopData
+from snake_sim.loop_observables.main_loop import LoopStartData, LoopStepData, LoopStopData
 from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
 from snake_sim.environment.interfaces.run_data_observer_interface import IRunDataObserver
 
