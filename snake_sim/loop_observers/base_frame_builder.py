@@ -164,20 +164,20 @@ class BFBuilder(LoopDataConsumer):
         # reset frame from last step
         frames = []
         next_frame = self._current_int_frames[0].copy()
+        food_set = set(current_step.food)
         for s_id in self._head_coords:
             s_head = self._head_coords[s_id]
             s_tail = self._tail_coords[s_id]
             ex_head = self._ex_coord(s_head)
             ex_tail = self._ex_coord(s_tail)
             reset_head = ex_head + next_step.decisions[s_id]
-            next_frame[reset_head.y, reset_head.x] = init_data.free_value
+            next_frame[reset_head.y, reset_head.x] = init_data.free_value if reset_head not in food_set else init_data.food_value
             next_frame[ex_tail.y, ex_tail.x] = init_data.snake_values[s_id]['body_value']
             next_frame[ex_head.y, ex_head.x] = init_data.snake_values[s_id]['head_value']
         frames.append(next_frame.copy())
         if current_step is next_step:
             return frames
         # Now we need to create the intermediate frames for the current step
-        food_set = set(sorted([self._ex_coord(f) for f in current_step.food]))
         for i in range(1, self._expansion): # since we handled one frame we only need expansion-1 more
             for s_id in self._head_coords:
                 h_dir = current_step.decisions[s_id] * flip_dir
@@ -186,7 +186,7 @@ class BFBuilder(LoopDataConsumer):
                 curr_tail = self._ex_coord(self._tail_coords[s_id]) + (t_dir * (i, i))
                 curr_head = prev_head + h_dir
                 next_frame[*reversed(curr_tail)] = init_data.snake_values[s_id]['body_value']
-                next_frame[*reversed(prev_head)] = init_data.free_value if prev_head not in food_set else init_data.food_value
+                next_frame[*reversed(prev_head)] = init_data.free_value
                 next_frame[*reversed(curr_head)] = init_data.snake_values[s_id]['head_value']
             frames.append(next_frame.copy())
         frames.reverse() # we created them backwards, so reverse the list
