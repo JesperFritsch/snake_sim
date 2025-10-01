@@ -12,6 +12,7 @@ from snake_sim.render.pygame_render import play_runfile, play_stream, play_game
 from snake_sim.cli import cli
 from snake_sim.environment.snake_loop_control import setup_loop
 from snake_sim.loop_observers.ipc_run_data_observer import IPCRunDataObserver
+from snake_sim.loop_observers.base_frame_builder import BFBuilder
 
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
@@ -28,6 +29,7 @@ def start_snakes(config: DotDict, stop_event: MPEvent, ipc_observer_pipe=None):
     loop_control = setup_loop(config)
     if ipc_observer_pipe:
         loop_control.add_run_data_observer(IPCRunDataObserver(ipc_observer_pipe))
+    loop_control.add_observer(BFBuilder(2))
     loop_control.run(stop_event)
     sys.stdout.flush()
 

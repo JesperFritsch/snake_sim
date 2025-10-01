@@ -124,6 +124,7 @@ class LoopStepData:
     total_time: Optional[float] = field(default_factory=float)
     snake_times: Optional[Dict[int, float]] = field(default_factory=dict)
     decisions: Optional[Dict[int, Coord]] = field(default_factory=dict)
+    tail_directions: Optional[Dict[int, Coord]] = field(default_factory=dict)
     snake_grew: Optional[Dict[int, bool]] = field(default_factory=dict)
     lengths: Optional[Dict[int, int]] = field(default_factory=dict)
     food: Optional[List[Coord]] = field(default_factory=list)

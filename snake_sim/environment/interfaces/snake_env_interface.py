@@ -14,7 +14,7 @@ class ISnakeEnv(ABC):
         pass
 
     @abstractmethod
-    def move_snake(self, id: int, direction: Coord) -> Tuple[bool, bool]: #(alive, ate)
+    def move_snake(self, id: int, direction: Coord) -> Tuple[bool, bool, Coord]: #(alive, ate, tail_direction)
         pass
 
     @abstractmethod

@@ -108,7 +108,7 @@ class SnakeEnv(ISnakeEnv):
         for x, y in snake_rep.body:
             self._map[y, x] = self._free_value
 
-    def move_snake(self, id: int, direction: Union[Coord, None]) -> Tuple[bool, bool]:
+    def move_snake(self, id: int, direction: Union[Coord, None]) -> Tuple[bool, bool, Coord]:
         # direction is expected to be a Coord like (1, 0) for right
         # returns (alive, grew)
         snake_rep = self._snake_reps[id]
@@ -121,10 +121,11 @@ class SnakeEnv(ISnakeEnv):
             old_tail = snake_rep.get_tail()
             grow = snake_rep.move(direction)
             self._update_snake_on_map(id, old_tail)
-            return True, grow
+            tail_direction = snake_rep.get_tail() - old_tail
+            return True, grow, tail_direction
         else:
             snake_rep.kill()
-            return False, False
+            return False, False, Coord(0, 0)
 
     def _update_snake_on_map(self, id, old_tail):
         snake_rep = self._snake_reps[id]

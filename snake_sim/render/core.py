@@ -94,7 +94,6 @@ class FrameBuilder:
                                 ex_nx, ex_ny = coord_op((ex_x, ex_y), n, '+')
                                 self.last_frame[ex_ny, ex_nx] = self.color_mapping[self.blocked_value]
 
-
     def step_to_pixel_changes(self, step_data):
         # if step_data['step'] != self.last_handled_step + 1:
         #     raise OutOfSyncError(f"Step nr '{step_data['step']}' is not the next step in the sequence. Last handled step was '{self.last_handled_step}'")
