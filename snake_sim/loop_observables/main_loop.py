@@ -14,9 +14,9 @@ from snake_sim.environment.snake_handlers import ISnakeHandler
 from snake_sim.environment.interfaces.snake_env_interface import ISnakeEnv
 from snake_sim.environment.types import (
     LoopStartData,
-    LoopStepData, 
+    LoopStepData,
     LoopStopData,
-    DotDict, 
+    DotDict,
     Coord
 )
 

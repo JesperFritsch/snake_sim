@@ -29,7 +29,7 @@ def start_snakes(config: DotDict, stop_event: MPEvent, ipc_observer_pipe=None):
     loop_control = setup_loop(config)
     if ipc_observer_pipe:
         loop_control.add_run_data_observer(IPCRunDataObserver(ipc_observer_pipe))
-    loop_control.add_observer(BFBuilder(2))
+    loop_control.add_observer(BFBuilder(3))
     loop_control.run(stop_event)
     sys.stdout.flush()
 
