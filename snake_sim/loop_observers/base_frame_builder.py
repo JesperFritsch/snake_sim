@@ -7,8 +7,8 @@ from itertools import permutations
 
 from snake_sim.map_utils.general import print_map
 from snake_sim.environment.types import (
-    LoopStartData, 
-    LoopStepData, 
+    LoopStartData,
+    LoopStepData,
     Coord
 )
 
@@ -16,20 +16,18 @@ from snake_sim.loop_observers.loop_data_consumer import LoopDataConsumer
 
 
 class BFBuilder(LoopDataConsumer):
-    """ Receives loop data and can construct framebuffers of the simulation. does not keep all frames in memory, only the current one. 
+    """ Receives loop data and can construct framebuffers of the simulation. does not keep all frames in memory, only the current one.
     Creates new frames either next or previous from the current one, depending on the expansion rate. """
     def __init__(self, expansion=1):
         super().__init__()
         self._expansion = expansion
         # step_count and frame_count are to keep track of what frame to return on next_frame/previous_frame calls
-        self._curr_step_idx = 0
-        self._curr_frame_idx = 0
+        self._backing = False
+        self._curr_step_idx = -1
+        self._curr_frame_idx = -1
         # non-expanded snake positions in the current step
         self._head_coords: Dict[int, Coord] = {}
-        self._tails_coords: Dict[int, Coord] = {}
-        # directions of movement to get to where they are in the current step
-        self._head_directions: Dict[int, Coord] = {}
-        self._tail_directions: Dict[int, Coord] = {}
+        self._tail_coords: Dict[int, Coord] = {}
         self._current_int_frames: List[np.ndarray] = [] # only to keep intermediate frames if expansion > 1
 
     def notify_start(self, start_data: LoopStartData):
@@ -37,22 +35,17 @@ class BFBuilder(LoopDataConsumer):
         init_data = self._start_data.env_init_data
         for s_id, pos in init_data.start_positions.items():
             self._head_coords[s_id] = pos
-            self._tails_coords[s_id] = pos
-            self._head_directions[s_id] = Coord(0, 0)
-            self._tail_directions[s_id] = Coord(0, 0)
+            self._tail_coords[s_id] = pos
         first_frame = self._expand_frame(init_data.base_map.copy())
         # put the snakes on the map
         for s_id in self._head_coords:
             head = self._ex_coord(self._head_coords[s_id])
             first_frame[head.y, head.x] = init_data.snake_values[s_id]['head_value']
         self._current_int_frames = [first_frame]
-    
-    # def notify_step(self, step_data: LoopStepData):
-    #     super().notify_step(step_data)
-    
+
     def _ex_coord(self, coord: Coord) -> Coord:
         """ Expand a coordinate according to the expansion factor. """
-        return coord * Coord(self._expansion, self._expansion)
+        return Coord(*coord) * Coord(self._expansion, self._expansion)
 
     def _get_int_coords(self, start_coord: Coord, direction: Coord) -> Coord:
         """ Get all intermediate coordinates from start_coord to start_coord + direction, according to the expansion factor. """
@@ -68,8 +61,8 @@ class BFBuilder(LoopDataConsumer):
         blocked_value = self._start_data.env_init_data.blocked_value
         neighbors = [Coord(*c) for c in permutations([-1, 0, 1], 2) if abs(sum(c)) == 1]
         expanded_frame = np.full(
-            (frame.shape[0]*self._expansion, frame.shape[1]*self._expansion), 
-            free_value, 
+            (frame.shape[0]*self._expansion, frame.shape[1]*self._expansion),
+            free_value,
             dtype=frame.dtype
         )
         for y in range(height):
@@ -87,76 +80,116 @@ class BFBuilder(LoopDataConsumer):
                                 expanded_frame[ex_n_coord.y, ex_n_coord.x] = blocked_value
         return expanded_frame
 
-    def _check_at_end(self, idx_direction: int) -> bool:
-        at_buffer_end = self._check_at_buffers_end(idx_direction)
-        if idx_direction == 1:
+    def _check_at_end(self, forward: bool) -> bool:
+        at_buffer_end = self._check_at_buffers_end(forward)
+        if forward:
             return self._curr_step_idx >= len(self._steps) and at_buffer_end
         else:
-            return self._curr_step_idx <= 0 and at_buffer_end
+            return self._curr_step_idx < 0 and at_buffer_end
 
-    def _check_at_buffers_end(self, idx_direction: int) -> bool:
-        if idx_direction == 1:
+    def _check_at_buffers_end(self, forward: bool) -> bool:
+        if forward:
             return self._curr_frame_idx >= len(self._current_int_frames)
         else:
-            return self._curr_frame_idx <= 0
+            return self._curr_frame_idx < 0
 
-    def _get_frame(self, idx_direction: int) -> np.ndarray:
-        if self._check_at_end(idx_direction):
-            return None
-        if self._check_at_buffers_end(idx_direction):
-            self._current_int_frames = self._create_int_frames(idx_direction)
-            self._curr_step_idx += idx_direction
-            self._curr_frame_idx = 0 if idx_direction == 1 else len(self._current_int_frames) - 1
-        new_frame = self._current_int_frames[self._curr_frame_idx]
+    def _get_frame(self, forward: bool) -> np.ndarray:
+        idx_direction = 1 if forward else -1
         self._curr_frame_idx += idx_direction
+        if self._check_at_end(forward):
+            return None
+        if self._check_at_buffers_end(forward):
+            self._curr_step_idx += idx_direction
+            if forward:
+                self._current_int_frames = self._create_forward_frames()
+                self._curr_frame_idx = 0
+            else:
+                self._current_int_frames = self._create_backward_frames()
+                self._curr_frame_idx = len(self._current_int_frames) - 1
+        new_frame = self._current_int_frames[self._curr_frame_idx]
         return new_frame
-    
+
     def next_frame(self) -> np.ndarray:
         """ Get the next frame in the sequence. Returns None if there are no more frames. """
-        return self._get_frame(1)
-    
+        if self._curr_step_idx <= 10 and not self._backing:
+            print("forwards")
+            return self._get_frame(True)
+        else:
+            self._backing = True
+            print("backwards")
+            return self._get_frame(False)
+
     def previous_frame(self) -> np.ndarray:
         """ Get the previous frame in the sequence. Returns None if there are no more frames. """
-        return self._get_frame(-1)
+        return self._get_frame(False)
 
-    def _create_int_frames(self, idx_direction: int) -> List[np.ndarray]:
+    def _create_forward_frames(self) -> List[np.ndarray]:
         """ Create frames between current step and next step, according to the expansion factor. """
-        direction_flip = Coord(idx_direction, idx_direction) # to get the direction of movement right when going backwards
-        step_idx = self._curr_step_idx + idx_direction
+        step_idx = self._curr_step_idx
         step_data = self._steps[step_idx]
         init_data = self._start_data.env_init_data
-        current_frame = self._current_int_frames[-1] if idx_direction == 1 else self._current_int_frames[0]
-        next_frame = current_frame.copy()
+        next_frame = self._current_int_frames[-1].copy()
         frames = []
-        intermediate_heads = {s_id: self._ex_coord(self._head_coords[s_id]) for s_id in self._head_coords}
-        intermediate_tails = {s_id: self._ex_coord(self._tails_coords[s_id]) for s_id in self._tails_coords}
-        food_set = set(step_data.food)
-        for _ in range(self._expansion):
+        for food in step_data.food:
+            ex_food = self._ex_coord(food)
+            next_frame[ex_food.y, ex_food.x] = init_data.food_value
+        for i in range(1, self._expansion + 1):
             for s_id in self._head_coords:
-                int_head = intermediate_heads[s_id]
-                int_tail = intermediate_tails[s_id]
-                head_direction = self._head_directions[s_id] * direction_flip
-                tail_direction = self._tail_directions[s_id] * direction_flip
-                head_replace_value = init_data.snake_values[s_id]['body_value'] if idx_direction == 1 else init_data.free_value
-                tail_replace_value = init_data.free_value if idx_direction == 1 else init_data.snake_values[s_id]['body_value']
-                new_head_coord = int_head + head_direction
-                new_tail_coord = int_tail + tail_direction
-                next_frame[*reversed(new_head_coord)] = init_data.snake_values[s_id]['head_value']
-                next_frame[*reversed(new_tail_coord)] = init_data.snake_values[s_id]['body_value']
-                next_frame[*reversed(int_head)] = head_replace_value if head_replace_value not in food_set else init_data.food_value
-                next_frame[*reversed(int_tail)] = tail_replace_value
-                intermediate_heads[s_id] = new_head_coord
-                intermediate_tails[s_id] = new_tail_coord
-            frame_copy = next_frame.copy()
-            if idx_direction == 1:
-                frames.append(frame_copy)
-            else:
-                frames.insert(0, frame_copy)
+                h_dir = step_data.decisions[s_id]
+                t_dir = step_data.tail_directions[s_id]
+                curr_head = self._ex_coord(self._head_coords[s_id]) + (h_dir * ((i - 1), (i - 1)))
+                curr_tail = self._ex_coord(self._tail_coords[s_id]) + (t_dir * ((i - 1), (i - 1)))
+                next_head = curr_head + h_dir
+                if t_dir != Coord(0, 0): next_frame[*reversed(curr_tail)] = init_data.free_value
+                next_frame[*reversed(curr_head)] = init_data.snake_values[s_id]['body_value']
+                next_frame[*reversed(next_head)] = init_data.snake_values[s_id]['head_value']
+            frames.append(next_frame.copy())
         for s_id in step_data.decisions:
-            self._head_directions[s_id] = step_data.decisions[s_id]
-            self._tail_directions[s_id] = step_data.tail_directions[s_id]
-            self._head_coords[s_id] = self._head_coords[s_id] + self._head_directions[s_id]
-            self._tails_coords[s_id] = self._tails_coords[s_id] + self._tail_directions[s_id]
+            self._head_coords[s_id] += step_data.decisions[s_id]
+            self._tail_coords[s_id] += step_data.tail_directions[s_id]
+        return frames
+
+    def _create_backward_frames(self) -> List[np.ndarray]:
+        flip_dir = Coord(-1, -1)
+        # we need to reset from the next step to the current step (backwards)
+        # self._curr_step_idx is currently the step we want to go back to
+        next_step_idx = self._curr_step_idx + 1
+        next_step = self._steps[next_step_idx]
+        current_step = self._steps[self._curr_step_idx] if self._curr_step_idx >= 0 else next_step
+        init_data = self._start_data.env_init_data
+        # move all snakes back to their previous position
+        for s_id in self._head_coords:
+            self._head_coords[s_id] -= next_step.decisions[s_id]
+            self._tail_coords[s_id] -= next_step.tail_directions[s_id]
+        # reset frame from last step
+        frames = []
+        next_frame = self._current_int_frames[0].copy()
+        for s_id in self._head_coords:
+            s_head = self._head_coords[s_id]
+            s_tail = self._tail_coords[s_id]
+            ex_head = self._ex_coord(s_head)
+            ex_tail = self._ex_coord(s_tail)
+            reset_head = ex_head + next_step.decisions[s_id]
+            next_frame[reset_head.y, reset_head.x] = init_data.free_value
+            next_frame[ex_tail.y, ex_tail.x] = init_data.snake_values[s_id]['body_value']
+            next_frame[ex_head.y, ex_head.x] = init_data.snake_values[s_id]['head_value']
+        frames.append(next_frame.copy())
+        if current_step is next_step:
+            return frames
+        # Now we need to create the intermediate frames for the current step
+        food_set = set(sorted([self._ex_coord(f) for f in current_step.food]))
+        for i in range(1, self._expansion): # since we handled one frame we only need expansion-1 more
+            for s_id in self._head_coords:
+                h_dir = current_step.decisions[s_id] * flip_dir
+                t_dir = current_step.tail_directions[s_id] * flip_dir
+                prev_head = self._ex_coord(self._head_coords[s_id]) + (h_dir * (i - 1, i - 1))
+                curr_tail = self._ex_coord(self._tail_coords[s_id]) + (t_dir * (i, i))
+                curr_head = prev_head + h_dir
+                next_frame[*reversed(curr_tail)] = init_data.snake_values[s_id]['body_value']
+                next_frame[*reversed(prev_head)] = init_data.free_value if prev_head not in food_set else init_data.food_value
+                next_frame[*reversed(curr_head)] = init_data.snake_values[s_id]['head_value']
+            frames.append(next_frame.copy())
+        frames.reverse() # we created them backwards, so reverse the list
         return frames
 
 
