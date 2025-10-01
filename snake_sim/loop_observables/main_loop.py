@@ -66,11 +66,12 @@ class SimLoop(IMainLoop):
         for id, decision in decisions.items():
             if decision is None:
                 decision = Coord(0, 0) # No move
-            alive, grew = self._env.move_snake(id, decision)
+            alive, grew, tail_direction = self._env.move_snake(id, decision)
             if not alive:
                 self._snake_handler.kill_snake(id)
             self._current_step_data.snake_times[id] = 0 # TODO: Implement snake times
             self._current_step_data.decisions[id] = decision
+            self._current_step_data.tail_directions[id] = tail_direction
             self._current_step_data.snake_grew[id] = grew
 
     def start(self):
