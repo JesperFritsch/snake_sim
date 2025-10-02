@@ -1,14 +1,18 @@
 
 import time
+import logging
 
+from pathlib import Path
 from collections import deque
 from typing import Deque
 from threading import Thread
 from multiprocessing.connection import Connection
 
 from snake_sim.environment.types import LoopStartData, LoopStepData, LoopStopData
-from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver 
+from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver
 
+
+log = logging.getLogger(Path(__file__).stem)
 
 class IPCRepeaterObserver(ILoopObserver):
     def __init__(self, pipe_conn: Connection):
@@ -30,17 +34,18 @@ class IPCRepeaterObserver(ILoopObserver):
                 self.close()
                 self._disabled = True
 
+
     def notify_start(self, start_data: LoopStartData):
         if self._disabled:
             return
         self._buffer.append(("_notify_start", start_data))
 
-    def _notify_step(self, step_data: LoopStepData):
+    def notify_step(self, step_data: LoopStepData):
         if self._disabled:
             return
         self._buffer.append(("_notify_step", step_data))
 
-    def _notify_stop(self, stop_data: LoopStopData):
+    def notify_end(self, stop_data: LoopStopData):
         if self._disabled:
             return
         self._buffer.append(("_notify_stop", stop_data))
@@ -51,4 +56,4 @@ class IPCRepeaterObserver(ILoopObserver):
             self._pipe_conn.close()
         except:
             pass
-            
+

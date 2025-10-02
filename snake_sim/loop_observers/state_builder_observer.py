@@ -21,10 +21,10 @@ class StateBuilderObserver(ConsumerObserver):
     def notify_start(self, start_data: LoopStartData):
         super().notify_start(start_data)
         init_data = self._start_data.env_init_data
-        self._current_state: LoopStepState = LoopStepState(set(), deque())
+        self._current_state: LoopStepState = LoopStepState()
         for s_id, pos in init_data.start_positions.items():
-            self._current_state.snake_bodies[s_id].append(pos)
-    
+            self._current_state.snake_bodies[s_id] = deque([pos])
+
     def get_state(self, state_idx: int):
         self._goto_state(state_idx)
         return self.get_current_state()

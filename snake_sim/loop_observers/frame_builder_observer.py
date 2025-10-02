@@ -24,11 +24,10 @@ class FrameBuilderObserver(ConsumerObserver):
         self._head_coords: Dict[int, Coord] = {}
         self._tail_coords: Dict[int, Coord] = {}
         self._current_frame: np.ndarray = None
-        self._current_frame_idx = None
-        self._curr_step = None
+        self._current_frame_idx = 0
+        self._curr_step = 0
         self._curr_step_idx = 0
         self._backing = False
-
 
     def notify_start(self, start_data: LoopStartData):
         super().notify_start(start_data)
@@ -69,58 +68,73 @@ class FrameBuilderObserver(ConsumerObserver):
                                 expanded_frame[ex_n_coord.y, ex_n_coord.x] = blocked_value
         return expanded_frame
 
-    def _get_frame(self, forward: bool) -> np.ndarray:
-        if self._current_frame_idx is None:
-            self._current_frame_idx = 0
-            self._curr_step = self._steps[0]
-            return self._current_frame
-        if forward:
-            self._curr_step_idx = self._current_frame_idx // self._expansion
-            self._curr_step = self._steps[self._curr_step_idx]
-            self._current_frame_idx += 1 if forward else -1
-            if self._curr_step_idx >= len(self._steps) and self._stop_data is not None:
-                raise StopIteration("No more forward available")
-        else:
-            self._current_frame_idx += 1 if forward else -1
-            self._curr_step_idx = self._current_frame_idx // self._expansion
-            self._curr_step = self._steps[self._curr_step_idx]
-            if self._current_frame_idx < 0:
-                raise StopIteration("No more backward available")
-        self._create_next_frame() if forward else self._create_prev_frame()
+    def get_current_frame(self):
         return self._current_frame.copy()
 
-    def next_frame(self) -> np.ndarray:
-        """ Get the next frame in the sequence. Returns None if there are no more frames. """
-        return self._get_frame(True)    
+    def get_next_frame(self):
+        self._goto_next_frame()
+        return self._current_frame.copy()
 
-    def previous_frame(self) -> np.ndarray:
-        """ Get the previous frame in the sequence. Returns None if there are no more frames. """
-        return self._get_frame(False)
+    def get_prev_frame(self):
+        self._goto_prev_frame()
+        return self._current_frame.copy()
 
-    def _create_next_frame(self) -> List[np.ndarray]:
+    def get_frame(self, frame_idx: int):
+        self._goto_frame(frame_idx)
+        return self._current_frame.copy()
+
+    def get_frame_for_step(self, step_idx: int):
+        frame_idx = step_idx * self._expansion
+        return self.get_frame(frame_idx)
+
+    def _goto_frame(self, frame_idx: int):
+        idx_delta = frame_idx - self._current_frame_idx
+        while idx_delta != 0:
+            if idx_delta > 0:
+                self._goto_next_frame()
+                idx_delta -= 1
+            else:
+                self._goto_prev_frame()
+                idx_delta += 1
+
+    def _goto_next_frame(self) -> List[np.ndarray]:
         """ Create frames between current step and next step, according to the expansion factor. """
+        self._curr_step_idx = self._current_frame_idx // self._expansion
+        if self._curr_step_idx >= len(self._steps):
+            if self._stop_data is not None:
+                raise StopIteration("No more frames available")
+            else:
+                return
+        self._curr_step = self._steps[self._curr_step_idx]
+        self._current_frame_idx += 1
         step_data = self._curr_step
         init_data = self._start_data.env_init_data
-        for food in step_data.food:
+        for food in step_data.new_food:
             ex_food = self._ex_coord(food)
             self._current_frame[ex_food.y, ex_food.x] = init_data.food_value
-        for s_id in self._head_coords:
+        for s_id in step_data.decisions:
             curr_head = self._head_coords[s_id]
             curr_tail = self._tail_coords[s_id]
             self._head_coords[s_id] += step_data.decisions[s_id]
             self._tail_coords[s_id] += step_data.tail_directions[s_id]
             new_tail = self._tail_coords[s_id]
             new_head = self._head_coords[s_id]
-            if curr_tail.manhattan_distance(new_tail) != 0: 
+            if curr_tail.manhattan_distance(new_tail) != 0:
                 self._current_frame[*reversed(curr_tail)] = init_data.free_value
             self._current_frame[*reversed(curr_head)] = init_data.snake_values[s_id]['body_value']
             self._current_frame[*reversed(new_head)] = init_data.snake_values[s_id]['head_value']
 
-    def _create_prev_frame(self) -> List[np.ndarray]:
+    def _goto_prev_frame(self) -> List[np.ndarray]:
+        self._current_frame_idx -= 1
+        if self._current_frame_idx < 0:
+            self._current_frame_idx = 0
+            return
+        self._curr_step_idx = self._current_frame_idx // self._expansion
+        self._curr_step = self._steps[self._curr_step_idx]
         step_data = self._curr_step
         init_data = self._start_data.env_init_data
-        food_set = set([self._ex_coord(f) for f in step_data.food])
-        for s_id in self._head_coords:
+        food_set = set([self._ex_coord(f) for f in step_data.new_food])
+        for s_id in step_data.decisions:
             curr_head = self._head_coords[s_id]
             self._head_coords[s_id] -= step_data.decisions[s_id]
             self._tail_coords[s_id] -= step_data.tail_directions[s_id]

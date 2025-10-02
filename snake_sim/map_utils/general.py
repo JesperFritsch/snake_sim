@@ -10,8 +10,18 @@ def get_map_files_mapping():
     mapping.pop('__init__')
     return mapping
 
+def rgb_color_text(text, r, g, b):
+    return f"\033[48;2;{r};{g};{b}m{text}\033[0m"
 
-def print_map(s_map: np.ndarray, free_value: int, food_value: int, blocked_value: int, head_value: int, body_value: int) -> int: # number of lines printed
+def print_map(
+        s_map: np.ndarray,
+        free_value: int,
+        food_value: int,
+        blocked_value: int,
+        head_value: int=None,
+        body_value: int=None,
+        color_map: Dict[int, Tuple[int, int, int]]={}
+    ) -> int: # number of lines printed
     width, height = s_map.shape
     max_nr_digits_width = len(str(width))
     max_nr_digits_height = len(str(height))
@@ -22,34 +32,50 @@ def print_map(s_map: np.ndarray, free_value: int, food_value: int, blocked_value
     for i, row in enumerate(s_map):
         map_row = [h_nr_strings[i]]
         for c in row:
+            c_color = color_map.get(c)
             if c == free_value:
                 map_row.append('.')
             elif c == food_value:
-                map_row.append('F')
+                if c_color:
+                    map_row.append(rgb_color_text(' ', *c_color))
+                else:
+                    map_row.append('F')
             elif c == blocked_value:
                 map_row.append('#')
             elif c == head_value:
-                map_row.append(f'A')
+                if c_color:
+                    map_row.append(rgb_color_text(' ', *c_color))
+                else:
+                    map_row.append(f'A')
             elif c == body_value:
-                map_row.append('a')
+                if c_color:
+                    map_row.append(rgb_color_text(' ', *c_color))
+                else:
+                    map_row.append('a')
             elif c % 2 == 0:
-                map_row.append(f'b')
+                if c_color:
+                    map_row.append(rgb_color_text(' ', *c_color))
+                else:
+                    map_row.append(f'b')
             else:
-                map_row.append(f'H')
+                if c_color:
+                    map_row.append(rgb_color_text(' ', *c_color))
+                else:
+                    map_row.append(f'H')
         map_row.append(h_nr_strings[i])
         map_rows.append(' '.join(map_row))
     for digit_row in digit_rows:
-        print(' ' * (max_nr_digits_height + 1) + digit_row)
+        sys.stdout.write(' ' * (max_nr_digits_height + 1) + digit_row + '\n')
     for row in map_rows:
-        print(row)
+        sys.stdout.write(row + '\n')
     for digit_row in digit_rows:
-        print(' ' * (max_nr_digits_height + 1) + digit_row)
+        sys.stdout.write(' ' * (max_nr_digits_height + 1) + digit_row  + '\n')
     sys.stdout.flush()
     return len(digit_rows) * 2 + len(map_rows)
 
 
 def convert_png_to_map(
-        file_path: str, 
+        file_path: str,
         color_mapping: Dict[Tuple[int, int, int, int], int], # RGBA to map value
     ) -> np.ndarray:
 
@@ -64,12 +90,12 @@ def convert_png_to_map(
 def _validate_map_values(map_array: np.ndarray, color_mapping: Dict[Tuple[int, int, int, int], int]):
     valid_values = list(color_mapping.keys())
     invalid_mask = ~np.isin(map_array, valid_values)
-    
+
     if np.any(invalid_mask):
         invalid_positions = np.where(invalid_mask)
         invalid_values = np.unique(map_array[invalid_mask])
         positions = list(zip(invalid_positions[0], invalid_positions[1]))
-        
+
         raise ValueError(
             f"Map contains invalid values {invalid_values} not in color_mapping. "
             f"Found at positions: {positions[:5]}{'...' if len(positions) > 5 else ''}"
