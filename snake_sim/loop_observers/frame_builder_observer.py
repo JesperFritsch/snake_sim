@@ -15,7 +15,7 @@ from snake_sim.loop_observers.consumer_observer import ConsumerObserver
 
 class FrameBuilderObserver(ConsumerObserver):
     """ Receives loop data and can construct framebuffers of the simulation. does not keep all frames in memory, only the current one.
-    Creates new frames either next or previous from the current one, depending on the expansion rate. """
+    Creates new frames either next or previous from the current one. """
     def __init__(self, expansion=1):
         super().__init__()
         self._expansion = expansion
@@ -86,7 +86,7 @@ class FrameBuilderObserver(ConsumerObserver):
             self._curr_step = self._steps[self._curr_step_idx]
             if self._current_frame_idx < 0:
                 raise StopIteration("No more backward available")
-        self._create_forward_frame() if forward else self._create_backward_frames()
+        self._create_next_frame() if forward else self._create_prev_frame()
         return self._current_frame.copy()
 
     def next_frame(self) -> np.ndarray:
@@ -97,7 +97,7 @@ class FrameBuilderObserver(ConsumerObserver):
         """ Get the previous frame in the sequence. Returns None if there are no more frames. """
         return self._get_frame(False)
 
-    def _create_forward_frame(self) -> List[np.ndarray]:
+    def _create_next_frame(self) -> List[np.ndarray]:
         """ Create frames between current step and next step, according to the expansion factor. """
         step_data = self._curr_step
         init_data = self._start_data.env_init_data
@@ -116,7 +116,7 @@ class FrameBuilderObserver(ConsumerObserver):
             self._current_frame[*reversed(curr_head)] = init_data.snake_values[s_id]['body_value']
             self._current_frame[*reversed(new_head)] = init_data.snake_values[s_id]['head_value']
 
-    def _create_backward_frame(self) -> List[np.ndarray]:
+    def _create_prev_frame(self) -> List[np.ndarray]:
         step_data = self._curr_step
         init_data = self._start_data.env_init_data
         food_set = set([self._ex_coord(f) for f in step_data.food])

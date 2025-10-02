@@ -12,7 +12,11 @@ from snake_sim.render.pygame_render import play_runfile, play_stream, play_game
 from snake_sim.cli import cli
 from snake_sim.environment.snake_loop_control import setup_loop
 from snake_sim.loop_observers.ipc_run_data_observer import IPCRunDataObserver
+from snake_sim.loop_observers.ipc_repeater_observer import IPCRepeaterObserver
 from snake_sim.loop_observers.frame_builder_observer import FrameBuilderObserver
+from snake_sim.render.render_controller import KeyboardController
+import snake_sim.render.render_controller as rc
+from snake_sim.render.terminal_render import TerminalRenderer
 
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
@@ -29,6 +33,7 @@ def start_snakes(config: DotDict, stop_event: MPEvent, ipc_observer_pipe=None):
     loop_control = setup_loop(config)
     if ipc_observer_pipe:
         loop_control.add_run_data_observer(IPCRunDataObserver(ipc_observer_pipe))
+        # loop_control.add_observer(IPCRepeaterObserver(ipc_observer_pipe))
     loop_control.run(stop_event)
     sys.stdout.flush()
 
@@ -57,10 +62,13 @@ def main():
                 render_p = Process(target=play_game, args=(child_conn, config.spm, config.sound, stop_event))
             else:
                 render_p = Process(target=play_stream, args=(child_conn, config.fps, config.sound, stop_event))
+
+            t_render = TerminalRenderer(10)
+            render_controller = KeyboardController(renderer=t_render)
+            render_controller.start()
             render_p.start()
             loop_p.start()
             render_p.join()
-            # stop_event.set()
             loop_p.join()
 
     except KeyboardInterrupt:
@@ -69,6 +77,7 @@ def main():
         log.error(e)
         log.debug("TRACE: ", exc_info=True)
     finally:
+        render_controller.stop()
         try:
             stop_event.set()
         except:

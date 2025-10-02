@@ -164,6 +164,9 @@ class SnakeEnv(ISnakeEnv):
 
     def get_food(self):
         return self._food_handler.get_food()
+    
+    def get_food_diff(self):
+        return self._food_handler.get_food_diff()
 
     def get_head_positions(self, only_alive: bool=True) -> Dict[int, Coord]:
         return {id: snake_rep.get_head() for id, snake_rep in self._snake_reps.items() if (not only_alive or snake_rep.is_alive)}

@@ -20,15 +20,17 @@ class FoodHandler(IFoodHandler):
         self.decay_count = decay_count if decay_count else None
         self.locations: Set[Coord] = set()
         self.decay_counters = {}
-        self.newest_food = []
+        self.new_food = []
+        self.removed_food = []
 
     def update(self, s_map):
+        self.removed_food = []
         self._remove_old(s_map)
         self._generate_new(s_map)
 
     def _generate_new(self, s_map):
         empty_tiles = []
-        self.newest_food = []
+        self.new_food = []
         if len(self.locations) >= self.max_food:
             return
         empty_tiles = get_locations(s_map, config.free_value, self.width, self.height)
@@ -37,8 +39,8 @@ class FoodHandler(IFoodHandler):
                 new_food = random.choice(empty_tiles)
                 empty_tiles.remove(new_food)
                 self.add_new(new_food)
-                self.newest_food.append(new_food)
-        for location in self.newest_food:
+                self.new_food.append(new_food)
+        for location in self.new_food:
             x, y = location
             s_map[y, x] = config.food_value
 
@@ -60,6 +62,7 @@ class FoodHandler(IFoodHandler):
             s_map[y, x] = config.free_value
             del self.decay_counters[coord]
             self.locations.remove(coord)
+            self.removed_food.append(coord)
 
     def resize(self, width, height):
         self.width = width
@@ -71,5 +74,8 @@ class FoodHandler(IFoodHandler):
 
     def get_food(self, only_new=False):
         if only_new:
-            return self.newest_food
+            return self.new_food
         return list(self.locations)
+    
+    def get_food_diff(self):
+        return self.new_food, self.removed_food

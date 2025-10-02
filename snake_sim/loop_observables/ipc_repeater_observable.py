@@ -6,7 +6,7 @@ from snake_sim.environment.types import LoopStartData, LoopStepData, LoopStopDat
 from snake_sim.environment.interfaces.loop_observable_interface import ILoopObservable
 
 
-class IPCBridgeObservable(ILoopObservable):
+class IPCRepeaterObservable(ILoopObservable):
     def __init__(self, pipe: Connection):
         self._pipe = pipe
         self._current_data = None

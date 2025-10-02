@@ -26,3 +26,7 @@ class IFoodHandler(ABC):
     @abstractmethod
     def get_food(self, only_new=False):
         pass
+
+    @abstractmethod
+    def get_food_diff(self):
+        pass

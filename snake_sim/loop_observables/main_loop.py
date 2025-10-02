@@ -92,7 +92,9 @@ class SimLoop(IMainLoop):
     def _pre_update(self):
         self._env.update_food()
         self._current_step_data = LoopStepData(self._steps)
-        self._current_step_data.food = self._env.get_food()
+        new_food, removed_food = self._env.get_food_diff()
+        self._current_step_data.new_food = new_food
+        self._current_step_data.removed_food = removed_food
         self._step_start_time = time.time()
 
     def _post_update(self):
