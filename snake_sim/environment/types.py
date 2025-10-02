@@ -35,6 +35,9 @@ class Coord(tuple):
     y: int
     def distance(self, other):
         return math.sqrt(math.pow(self.x - other[0], 2) + math.pow(self.y - other[1], 2))
+    
+    def manhattan_distance(self, other):
+        return abs(self.x - other[0]) + abs(self.y - other[1])
 
     def __new__(cls, x, y):
         return super(Coord, cls).__new__(cls, (x, y))
