@@ -16,7 +16,7 @@ from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserv
 from snake_sim.environment.snake_env import SnakeRep
 
 
-class LoopDataConsumer(ILoopObserver):
+class ConsumerObserver(ILoopObserver):
     """ Base class for loop data consumers. Just stores all data in memory. """
     def __init__(self):
         self._start_data: LoopStartData = None
