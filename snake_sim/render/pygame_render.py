@@ -135,14 +135,14 @@ def handle_stream(stream_conn, frame_buffer: list, sound_buffer: list, run_data:
 
 @catch_exceptions
 def play_run(
-    frame_buffer, 
-    sound_buffer, 
-    run_data: RunData, 
-    grid_width, 
-    grid_height, 
-    fps_playback, 
-    sound_on=True, 
-    keep_up=False, 
+    frame_buffer,
+    sound_buffer,
+    run_data: RunData,
+    grid_width,
+    grid_height,
+    fps_playback,
+    sound_on=True,
+    keep_up=False,
     stop_event: Optional[MPEvent] = None
 ):
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)

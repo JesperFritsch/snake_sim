@@ -36,7 +36,7 @@ class Coord(tuple):
     y: int
     def distance(self, other):
         return math.sqrt(math.pow(self.x - other[0], 2) + math.pow(self.y - other[1], 2))
-    
+
     def manhattan_distance(self, other):
         return abs(self.x - other[0]) + abs(self.y - other[1])
 
@@ -142,11 +142,10 @@ class LoopStopData:
 
 @dataclass
 class LoopStepState:
-    # contains everything needed to recustruct the grid
-    food: Set[Coord]
+    food: Set[Coord] = field(default_factory=set)
     # heads are at index 0 in the deques
-    snake_bodies: Dict[int, Deque]
-    
+    snake_bodies: Dict[int, Deque] = field(default_factory=dict)
+
 
 @dataclass
 class StrategyConfig:

@@ -10,5 +10,17 @@ class IRenderer(ABC):
         super().__init__()
 
     @abstractmethod
-    def render(map_buffer: np.ndarray):
+    def render_step(self, step_idx: int):
+        pass
+
+    @abstractmethod
+    def render_frame(self, frame_idx: int):
+        pass
+
+    @abstractmethod
+    def get_current_step_idx(self) -> int:
+        pass
+
+    @abstractmethod
+    def get_current_frame_idx(self) -> int:
         pass

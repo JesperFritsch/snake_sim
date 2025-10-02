@@ -48,7 +48,7 @@ class RunDataAdapter:
             raise ValueError('loop_step must be of type LoopStepData')
         step_data = StepData(
             step=loop_step.step,
-            food=loop_step.food
+            food=loop_step.new_food
         )
         for snake_id, decision in loop_step.decisions.items():
             snake_rep = self.snake_reps[snake_id]

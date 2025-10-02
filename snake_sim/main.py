@@ -13,9 +13,10 @@ from snake_sim.cli import cli
 from snake_sim.environment.snake_loop_control import setup_loop
 from snake_sim.loop_observers.ipc_run_data_observer import IPCRunDataObserver
 from snake_sim.loop_observers.ipc_repeater_observer import IPCRepeaterObserver
+from snake_sim.loop_observables.ipc_repeater_observable import IPCRepeaterObservable
 from snake_sim.loop_observers.frame_builder_observer import FrameBuilderObserver
-from snake_sim.render.render_controller import KeyboardController
-import snake_sim.render.render_controller as rc
+from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
+from snake_sim.render.render_loop import RenderLoop, RenderConfig
 from snake_sim.render.terminal_render import TerminalRenderer
 
 
@@ -32,8 +33,8 @@ def start_snakes(config: DotDict, stop_event: MPEvent, ipc_observer_pipe=None):
         setup_logging(config.log_level)
     loop_control = setup_loop(config)
     if ipc_observer_pipe:
-        loop_control.add_run_data_observer(IPCRunDataObserver(ipc_observer_pipe))
-        # loop_control.add_observer(IPCRepeaterObserver(ipc_observer_pipe))
+        # loop_control.add_run_data_observer(IPCRunDataObserver(ipc_observer_pipe))
+        loop_control.add_observer(IPCRepeaterObserver(ipc_observer_pipe))
     loop_control.run(stop_event)
     sys.stdout.flush()
 
@@ -58,17 +59,34 @@ def main():
             parent_conn, child_conn = Pipe()
             stop_event = p_Event()
             loop_p = Process(target=start_snakes, args=(config, stop_event), kwargs={'ipc_observer_pipe': parent_conn})
-            if config.command == "game":
-                render_p = Process(target=play_game, args=(child_conn, config.spm, config.sound, stop_event))
-            else:
-                render_p = Process(target=play_stream, args=(child_conn, config.fps, config.sound, stop_event))
+            # if config.command == "game":
+            #     render_p = Process(target=play_game, args=(child_conn, config.spm, config.sound, stop_event))
+            # else:
+            #     render_p = Process(target=play_stream, args=(child_conn, config.fps, config.sound, stop_event))
 
-            t_render = TerminalRenderer(10)
-            render_controller = KeyboardController(renderer=t_render)
-            render_controller.start()
-            render_p.start()
+            frame_builder = FrameBuilderObserver(2)
+            state_builder = StateBuilderObserver()
+
+            loop_repeater = IPCRepeaterObservable(child_conn)
+            loop_repeater.add_observer(frame_builder)
+            loop_repeater.add_observer(state_builder)
+
             loop_p.start()
-            render_p.join()
+
+            render_config = RenderConfig(
+                fps=config.fps,
+                sound=False
+            )
+            t_render = TerminalRenderer(frame_builder)
+            render_loop = RenderLoop(
+                renderer=t_render,
+                config=render_config,
+                state_builder=state_builder,
+                stop_event=stop_event
+                )
+            # render_p.start()
+            render_loop.start()
+            # render_p.join()
             loop_p.join()
 
     except KeyboardInterrupt:
@@ -77,7 +95,10 @@ def main():
         log.error(e)
         log.debug("TRACE: ", exc_info=True)
     finally:
-        render_controller.stop()
+        try:
+            render_loop.stop()
+        except:
+            pass
         try:
             stop_event.set()
         except:
