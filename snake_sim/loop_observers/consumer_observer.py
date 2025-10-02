@@ -13,7 +13,6 @@ from snake_sim.environment.types import (
     Coord
 )
 from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver
-from snake_sim.environment.snake_env import SnakeRep
 
 
 class ConsumerObserver(ILoopObserver):

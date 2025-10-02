@@ -116,7 +116,7 @@ class FrameBuilderObserver(ConsumerObserver):
             self._current_frame[*reversed(curr_head)] = init_data.snake_values[s_id]['body_value']
             self._current_frame[*reversed(new_head)] = init_data.snake_values[s_id]['head_value']
 
-    def _create_backward_frames(self) -> List[np.ndarray]:
+    def _create_backward_frame(self) -> List[np.ndarray]:
         step_data = self._curr_step
         init_data = self._start_data.env_init_data
         food_set = set([self._ex_coord(f) for f in step_data.food])
