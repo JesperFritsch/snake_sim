@@ -20,7 +20,6 @@ class EnsureDirAction(argparse.Action):
         setattr(namespace, self.dest, path)
 
 def add_common_arguments(parser):
-    parser.add_argument('--sound', action='store_true', help='Play sound')
     parser.add_argument('--verbose', action='store_true', help='Print verbose output', default=False)
     parser.add_argument('--no-record', action='store_true', help='Do not record the run', default=False)
     parser.add_argument('--record-dir', type=Path, action=EnsureDirAction, help='where to put the recording file', default=Path(__file__).parent / 'runs')
@@ -44,6 +43,8 @@ def add_run_config_arguments(parser):
 
 def add_playback_arguments(parser):
     parser.add_argument('--fps', type=int, help='Frames per second')
+    parser.add_argument('--sound', action='store_true', help='Play sound')
+    parser.add_argument('--renderer', type=str, help='Renderer to use', choices=['window', 'terminal'], default='window')
 
 
 def handle_args(args, config: DotDict):

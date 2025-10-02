@@ -11,7 +11,7 @@ def get_map_files_mapping():
     return mapping
 
 
-def print_map(s_map: np.ndarray, free_value: int, food_value: int, blocked_value: int, head_value: int, body_value: int):
+def print_map(s_map: np.ndarray, free_value: int, food_value: int, blocked_value: int, head_value: int, body_value: int) -> int: # number of lines printed
     width, height = s_map.shape
     max_nr_digits_width = len(str(width))
     max_nr_digits_height = len(str(height))
@@ -45,6 +45,7 @@ def print_map(s_map: np.ndarray, free_value: int, food_value: int, blocked_value
     for digit_row in digit_rows:
         print(' ' * (max_nr_digits_height + 1) + digit_row)
     sys.stdout.flush()
+    return len(digit_rows) * 2 + len(map_rows)
 
 
 def convert_png_to_map(

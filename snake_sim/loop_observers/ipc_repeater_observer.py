@@ -10,7 +10,7 @@ from snake_sim.environment.types import LoopStartData, LoopStepData, LoopStopDat
 from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver 
 
 
-class IPCRunDataObserver(ILoopObserver):
+class IPCRepeaterObserver(ILoopObserver):
     def __init__(self, pipe_conn: Connection):
         self._pipe_conn = pipe_conn
         self._disabled = False
@@ -31,12 +31,18 @@ class IPCRunDataObserver(ILoopObserver):
                 self._disabled = True
 
     def notify_start(self, start_data: LoopStartData):
+        if self._disabled:
+            return
         self._buffer.append(("_notify_start", start_data))
 
     def _notify_step(self, step_data: LoopStepData):
+        if self._disabled:
+            return
         self._buffer.append(("_notify_step", step_data))
 
     def _notify_stop(self, stop_data: LoopStopData):
+        if self._disabled:
+            return
         self._buffer.append(("_notify_stop", stop_data))
         self.close()
 

@@ -1,7 +1,8 @@
 import math
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict
+from collections import deque
+from typing import Optional, List, Dict, Deque, Set
 import numpy as np
 
 
@@ -130,13 +131,22 @@ class LoopStepData:
     tail_directions: Optional[Dict[int, Coord]] = field(default_factory=dict)
     snake_grew: Optional[Dict[int, bool]] = field(default_factory=dict)
     lengths: Optional[Dict[int, int]] = field(default_factory=dict)
-    food: Optional[List[Coord]] = field(default_factory=list)
+    new_food: Optional[List[Coord]] = field(default_factory=list)
+    removed_food: Optional[List[Coord]] = field(default_factory=list)
 
 
 @dataclass
 class LoopStopData:
     pass
 
+
+@dataclass
+class LoopStepState:
+    # contains everything needed to recustruct the grid
+    food: Set[Coord]
+    # heads are at index 0 in the deques
+    snake_bodies: Dict[int, Deque]
+    
 
 @dataclass
 class StrategyConfig:

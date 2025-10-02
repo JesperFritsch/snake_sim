@@ -46,5 +46,9 @@ class ISnakeEnv(ABC):
         pass
 
     @abstractmethod
+    def get_food_diff(self):
+        pass
+
+    @abstractmethod
     def get_head_positions(self) -> Dict[int, Coord]:
         pass
