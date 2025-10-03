@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 import functools
 import threading
 from dataclasses import dataclass
@@ -7,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Union, List, Optional
 from importlib import resources as pkg_resources
-from multiprocessing.synchronize import Event as MPEvent
+from multiprocessing.sharedctypes import Synchronized
 
 from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
 
@@ -221,19 +222,16 @@ class SnakeLoopControl:
         return self._snake_environment.get_init_data()
 
     @_loop_check
-    def run(self, stop_event: Optional[MPEvent] = None):
+    def run(self, stop_flag: Optional[Synchronized] = None):
         """ Starts the loop """
         try:
-            if stop_event:
-                def wait_stop_event(stop_event):
-                    try:
-                        stop_event.wait()
-                    except (ConnectionResetError, BrokenPipeError):
-                        # Manager is already dead, just exit gracefully
-                        pass
-                    log.debug("Stop event set, stopping loop")
+            if stop_flag is not None:
+                def wait_stop_flag(stop_flag: Synchronized):
+                    while not stop_flag.value:
+                        time.sleep(0.01)
+                    log.debug("Stop flag set, stopping loop")
                     self._loop.stop()
-                threading.Thread(target=wait_stop_event, args=(stop_event,), daemon=True).start()
+                threading.Thread(target=wait_stop_flag, args=(stop_flag,), daemon=True).start()
             try:
                 if self._config.inproc_snakes:
                     self._initialize_inproc_snakes()
@@ -243,7 +241,8 @@ class SnakeLoopControl:
                 self._finalize_snakes()
                 self._initialize_run_data_loop_observers() # This needs to be called after the snakes are added to the environment
             except:
-                stop_event.set() if stop_event else None
+                if stop_flag is not None:
+                    stop_flag.value = True
                 raise
             self._loop.start()
         except KeyboardInterrupt:

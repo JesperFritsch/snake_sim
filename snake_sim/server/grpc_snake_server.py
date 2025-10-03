@@ -5,11 +5,12 @@ os.environ["GRPC_VERBOSITY"] = "ERROR"
 import grpc
 import argparse
 import sys
+import time
 
 from pathlib import Path
 from concurrent import futures
-from threading import Event
 from typing import Optional
+from multiprocessing.sharedctypes import Synchronized
 
 from snake_proto_template.python import remote_snake_pb2, remote_snake_pb2_grpc
 from snake_sim.snakes.snake_base import ISnake
@@ -89,7 +90,7 @@ def serve(
         target, 
         snake_module_file=None, 
         snake_config: SnakeConfig=None, 
-        stop_event: Optional[Event] = None,
+        stop_flag: Optional[Synchronized] = None,
         log_level=logging.INFO):
     # set up logging if on Windows
     if not logging.getLogger().hasHandlers():
@@ -120,12 +121,12 @@ def serve(
         remote_snake_pb2_grpc.add_RemoteSnakeServicer_to_server(snake_servicer, server)
         server.add_insecure_port(target)
         server.start()
-        if stop_event:
-            try:
-                stop_event.wait()
-            except:
-                # Manager is already dead, just exit gracefully
-                pass
+        if stop_flag is not None:
+            while not stop_flag.value:
+                try:
+                    time.sleep(0.01)
+                except:
+                    pass
         else:
             server.wait_for_termination()
 

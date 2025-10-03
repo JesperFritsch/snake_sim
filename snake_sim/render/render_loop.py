@@ -3,7 +3,7 @@ import time
 from dataclasses import dataclass
 from typing import Set, Iterable, Tuple
 
-from multiprocessing.synchronize import Event
+from multiprocessing.sharedctypes import Synchronized
 from snake_sim.render.interfaces.renderer_interface import IRenderer
 from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
 
@@ -34,9 +34,9 @@ class RenderLoop:
             renderer: IRenderer,
             config: RenderConfig,
             state_builder: StateBuilderObserver,
-            stop_event: Event
+            stop_flag: Synchronized
         ):
-        self._stop_event: Event = stop_event
+        self._stop_flag: Synchronized = stop_flag
         self._state_builder: StateBuilderObserver = state_builder
         self._renderer: IRenderer = renderer
         self._frame_step_direction = True # True for forward
@@ -71,7 +71,7 @@ class RenderLoop:
     def _loop(self):
         self._paused = False
         try:
-            while not self._stop_event.is_set() and self._running:
+            while not self._stop_flag.value and self._running:
                 if self._pressed(keys=self._quit_keys):
                     self._running = False
                 if self._down_event(key=self._toggel_paus_key):
@@ -127,6 +127,7 @@ class RenderLoop:
 
         finally:
             self.stop()
+            self._stop_flag.value = True
 
     def _handle_pressed(self, key):
         self._keys_pressed.add(key)

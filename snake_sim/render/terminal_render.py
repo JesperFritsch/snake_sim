@@ -32,7 +32,7 @@ class TerminalRenderer(IRenderer):
         self._current_frame = 0
         self._wait_thread = Thread(target=self._wait_for_builder, daemon=True)
         self._wait_thread.start()
-        self._wait_thread.join(timeout=2)
+        self._wait_thread.join()
         self._written_lines = 0
         if self._wait_thread.is_alive():
             raise RuntimeError("Frame builder never got start data")

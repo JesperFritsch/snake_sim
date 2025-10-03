@@ -3,9 +3,11 @@ import platform
 import logging
 import socket
 import threading
+import ctypes
 from pathlib import Path
 from typing import Dict, List
-from multiprocessing import Process, Event
+from multiprocessing import get_context, Process
+from multiprocessing.sharedctypes import Synchronized
 
 from snake_sim.utils import SingletonMeta, rand_str
 from snake_sim.server.grpc_snake_server import serve as serve_grpc
@@ -16,11 +18,11 @@ log = logging.getLogger(Path(__file__).stem)
 
 
 class SnakeProcess:
-    def __init__(self, id: int, target: str, process: Process, stop_event=None):
+    def __init__(self, id: int, target: str, process: Process, stop_flag: Synchronized=None):
         self.id = id
         self.target = target
         self.process = process
-        self.stop_event = stop_event
+        self.stop_flag = stop_flag
 
     def is_running(self) -> bool:
         return self.process.is_alive()
@@ -28,16 +30,16 @@ class SnakeProcess:
     def kill(self):
         if self.process.is_alive():
             log.debug(f"Stopping {self}")
-            stopped_with_event = False
-            if self.stop_event:
+            stopped_with_flag = False
+            if self.stop_flag is not None:
                 try:
-                    log.debug(f"Setting stop event for {self}")
-                    self.stop_event.set()
-                    stopped_with_event = True
+                    log.debug(f"Setting stop flag for {self}")
+                    self.stop_flag.value = True
+                    stopped_with_flag = True
                 except Exception as e:
-                    log.debug(f"Error setting stop event: {e}")
-            if not stopped_with_event:
-                log.debug(f"Could not stop with event, killing {self}")
+                    log.debug(f"Error setting stop flag: {e}")
+            if not stopped_with_flag:
+                log.debug(f"Could not stop with flag, killing {self}")
                 if platform.system() == "Windows":
                     log.debug("Terminating process (Windows)")
                     self.process.terminate()
@@ -66,6 +68,7 @@ class SnakeProcessManager(metaclass=SingletonMeta):
         self._processes: Dict[int, SnakeProcess] = {}
         self._shutdown_lock = threading.Lock()
         self._shutdown = False
+        self._mp_ctx = get_context("spawn")
 
     def get_running_processes(self) -> List[SnakeProcess]:
         return self._processes.values()
@@ -124,19 +127,19 @@ class SnakeProcessManager(metaclass=SingletonMeta):
             raise ValueError("Either module_path or snake_config must be provided, but not both and not neither")
         server_function = self._get_server_function(proc_type)
         target = self._generate_target(proc_type)
-        stop_event = Event()
-        process = Process(
+        stop_flag = self._mp_ctx.Value(ctypes.c_bool, False)
+        process = self._mp_ctx.Process(
             target=server_function,
             args=(target,),
             kwargs={
                 "snake_module_file": module_path,
                 "snake_config": snake_config,
-                "stop_event": stop_event,
+                "stop_flag": stop_flag,
                 "log_level": log.level
             }
         )
         process.start()
-        self._processes[id] = SnakeProcess(id, target, process, stop_event)
+        self._processes[id] = SnakeProcess(id, target, process, stop_flag)
 
     def get_target(self, id: int) -> str:
         if id in self._processes:
