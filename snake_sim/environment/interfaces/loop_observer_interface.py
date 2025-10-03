@@ -12,5 +12,5 @@ class ILoopObserver(ABC):
         pass
 
     @abstractmethod
-    def notify_end(self, stop_data: LoopStopData):
+    def notify_stop(self, stop_data: LoopStopData):
         pass

@@ -32,11 +32,11 @@ class RunDataSource(ILoopObserver):
         for observer in self._observers:
             observer.notify_step(step_data)
 
-    def notify_end(self, stop_data: LoopStopData):
+    def notify_stop(self, stop_data: LoopStopData):
         if not self._has_started:
             return
         for observer in self._observers:
-            observer.notify_end(self._adapter.get_run_data())
+            observer.notify_stop(self._adapter.get_run_data())
 
     def set_adapter(self, adapter: RunDataAdapter):
         if not isinstance(adapter, RunDataAdapter):

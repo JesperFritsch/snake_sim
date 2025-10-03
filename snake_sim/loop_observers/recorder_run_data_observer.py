@@ -16,6 +16,6 @@ class RecorderRunDataObserver(IRunDataObserver):
     def notify_step(self, step_data: StepData):
         pass
 
-    def notify_end(self, run_data: RunData):
+    def notify_stop(self, run_data: RunData):
         run_dir = Path(self.recording_dir).joinpath(f'grid_{run_data.width}x{run_data.height}')
         run_data.write_to_file(run_dir, filename=self.recording_file)

@@ -137,7 +137,7 @@ class LoopStepData:
 
 @dataclass
 class LoopStopData:
-    pass
+    final_step: int
 
 
 @dataclass

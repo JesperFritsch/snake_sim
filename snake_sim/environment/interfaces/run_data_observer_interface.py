@@ -13,5 +13,5 @@ class IRunDataObserver(ABC):
         pass
 
     @abstractmethod
-    def notify_end(self, run_data: RunData):
+    def notify_stop(self, run_data: RunData):
         pass

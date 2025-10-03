@@ -1,7 +1,7 @@
 from snake_sim.snake_env import SnakeEnv
 from snake_sim.snakes.dqn_snake import DqnSnake
 from multiprocessing import Pipe, Process
-from snake_sim.render.pygame_render import play_stream
+from snake_sim.render.pygame_render_old import play_stream
 
 GRID_WIDTH = 10
 GRID_HEIGHT = 10

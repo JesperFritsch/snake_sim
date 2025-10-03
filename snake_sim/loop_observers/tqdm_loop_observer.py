@@ -18,7 +18,7 @@ class TqdmLoopObserver(ILoopObserver):
         nr_alive = sum(1 for v in step_data.decisions)
         self._pbar.set_postfix(nr_alive=f"nr alive: {nr_alive}", longest=f"{longest_snake[0]} ({longest_snake[1]})")
 
-    def notify_end(self, stop_data: LoopStopData):
+    def notify_stop(self, stop_data: LoopStopData):
         if self._pbar is not None:
             self._pbar.close()
             sys.stdout.flush()

@@ -39,9 +39,10 @@ class ILoopObservable:
         for observer in self._observers:
             observer.notify_step(step_data)
 
-    def _notify_end(self):
-        if self._did_notify_end: return
-        self._did_notify_end = True
+    def _notify_stop(self):
+        if self._did_notify_stop: return
+        self._did_notify_stop = True
         stop_data = self._get_stop_data()
+        print("notifying stop", stop_data)
         for observer in self._observers:
-            observer.notify_end(stop_data)
+            observer.notify_stop(stop_data)

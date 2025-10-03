@@ -13,6 +13,14 @@ from snake_sim.environment.types import (
 from snake_sim.loop_observers.consumer_observer import ConsumerObserver
 
 
+class NoMoreSteps(Exception):
+    pass
+
+
+class CurrentIsFirst(Exception):
+    pass
+
+
 class FrameBuilderObserver(ConsumerObserver):
     """ Receives loop data and can construct framebuffers of the simulation. does not keep all frames in memory, only the current one.
     Creates new frames either next or previous from the current one. """
@@ -99,12 +107,11 @@ class FrameBuilderObserver(ConsumerObserver):
 
     def _goto_next_frame(self) -> List[np.ndarray]:
         """ Create frames between current step and next step, according to the expansion factor. """
-        self._curr_step_idx = self._current_frame_idx // self._expansion
-        if self._curr_step_idx >= len(self._steps):
+        if self._current_frame_idx // self._expansion >= len(self._steps):
             if self._stop_data is not None:
                 raise StopIteration("No more frames available")
-            else:
-                return
+            raise NoMoreSteps("Need to receive more steps to generate frames")
+        self._curr_step_idx = self._current_frame_idx // self._expansion
         self._curr_step = self._steps[self._curr_step_idx]
         self._current_frame_idx += 1
         step_data = self._curr_step
@@ -125,10 +132,10 @@ class FrameBuilderObserver(ConsumerObserver):
             self._current_frame[*reversed(new_head)] = init_data.snake_values[s_id]['head_value']
 
     def _goto_prev_frame(self) -> List[np.ndarray]:
-        self._current_frame_idx -= 1
-        if self._current_frame_idx < 0:
+        if self._current_frame_idx <= 0:
             self._current_frame_idx = 0
-            return
+            raise CurrentIsFirst("Current frame is the first frame")
+        self._current_frame_idx -= 1
         self._curr_step_idx = self._current_frame_idx // self._expansion
         self._curr_step = self._steps[self._curr_step_idx]
         step_data = self._curr_step

@@ -9,16 +9,16 @@ from importlib import resources
 
 from snake_sim.logging_setup import setup_logging
 from snake_sim.environment.types import DotDict
-from snake_sim.render.pygame_render import play_runfile, play_stream, play_game
+from snake_sim.render.pygame_render_old import play_runfile, play_stream, play_game
 from snake_sim.cli import cli
 from snake_sim.environment.snake_loop_control import setup_loop
-from snake_sim.loop_observers.ipc_run_data_observer import IPCRunDataObserver
 from snake_sim.loop_observers.ipc_repeater_observer import IPCRepeaterObserver
 from snake_sim.loop_observables.ipc_repeater_observable import IPCRepeaterObservable
 from snake_sim.loop_observers.frame_builder_observer import FrameBuilderObserver
 from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
 from snake_sim.render.render_loop import RenderLoop, RenderConfig
 from snake_sim.render.terminal_render import TerminalRenderer
+from snake_sim.render.pygame_render import PygameRenderer
 
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
@@ -75,9 +75,11 @@ def main():
                 fps=config.fps,
                 sound=False
             )
-            t_render = TerminalRenderer(frame_builder)
+            # renderer = TerminalRenderer(frame_builder)
+            renderer = PygameRenderer(frame_builder)
+            
             render_loop = RenderLoop(
-                renderer=t_render,
+                renderer=renderer,
                 config=render_config,
                 state_builder=state_builder,
                 stop_flag=stop_flag

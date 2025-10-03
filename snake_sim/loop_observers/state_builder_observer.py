@@ -9,6 +9,15 @@ from snake_sim.environment.types import (
 
 from snake_sim.loop_observers.consumer_observer import ConsumerObserver
 
+
+class NoMoreSteps(Exception):
+    pass
+
+
+class CurrentIsFirst(Exception):
+    pass
+
+
 class StateBuilderObserver(ConsumerObserver):
     """ Receives loop data and can construct framebuffers of the simulation. does not keep all frames in memory, only the current one.
     Creates new frames either next or previous from the current one. """
@@ -51,6 +60,10 @@ class StateBuilderObserver(ConsumerObserver):
                 idx_delta += 1
 
     def _goto_next_state(self):
+        if self._current_step_idx >= len(self._steps):
+            if self._stop_data is not None:
+                raise StopIteration("No more states available")
+            raise NoMoreSteps("Need to receive more steps to generate states")
         self._current_step_idx += 1
         step_data = self._steps[self._current_step_idx]
         self._current_state.food += step_data.new_food
@@ -64,6 +77,8 @@ class StateBuilderObserver(ConsumerObserver):
                 body.pop()
 
     def _goto_prev_state(self):
+        if self._current_step_idx <= 0:
+            raise CurrentIsFirst()
         curr_step_data = self._steps[self._current_step_idx]
         self._current_step_idx -= 1
         self._current_state.food -= curr_step_data.new_food

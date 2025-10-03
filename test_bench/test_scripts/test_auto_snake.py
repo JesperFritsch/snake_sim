@@ -16,7 +16,7 @@ from snake_sim.snakes.strategies.food_strategy import FoodSeeker
 from snake_sim.environment.snake_env import SnakeRep
 from snake_sim.environment.types import Coord, EnvData, EnvInitData
 from snake_sim.render import core
-from snake_sim.render.pygame_render import play_frame_buffer
+from snake_sim.render.pygame_render_old import play_frame_buffer
 from snake_sim.debugging import enable_debug_for, activate_debug
 from snake_sim.utils import get_locations, profile
 from snake_sim.map_utils.general import print_map

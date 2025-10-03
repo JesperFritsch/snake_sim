@@ -30,6 +30,6 @@ class ConsumerObserver(ILoopObserver):
             raise RuntimeError(f"Received out of order step data. Expected step {len(self.steps)}, got {step_data.step}")
         self._steps.append(step_data)
     
-    def notify_end(self, stop_data: LoopStopData):
+    def notify_stop(self, stop_data: LoopStopData):
         self._stop_data = stop_data
     
