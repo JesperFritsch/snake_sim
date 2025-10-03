@@ -39,7 +39,7 @@ class SimLoop(IMainLoop):
         self._step_start_time = None
         self._is_running = False
         self._did_notify_start = False
-        self._did_notify_end = False
+        self._did_notify_stop = False
 
     # @profile("cumtime")
     def _loop(self):
@@ -84,7 +84,7 @@ class SimLoop(IMainLoop):
             self._notify_start()
             self._loop()
         finally:
-            self._notify_end()
+            self._notify_stop()
 
     def stop(self):
         self._is_running = False
@@ -116,7 +116,7 @@ class SimLoop(IMainLoop):
         return self._current_step_data
 
     def _get_stop_data(self) -> LoopStopData:
-        return LoopStopData()
+        return LoopStopData(final_step=self._steps)
 
     def set_snake_handler(self, snake_handler: ISnakeHandler):
         self._snake_handler = snake_handler

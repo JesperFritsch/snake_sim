@@ -24,3 +24,7 @@ class IRenderer(ABC):
     @abstractmethod
     def get_current_frame_idx(self) -> int:
         pass
+
+    @abstractmethod
+    def close(self):
+        pass

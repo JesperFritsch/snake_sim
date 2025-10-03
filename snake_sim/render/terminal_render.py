@@ -9,7 +9,7 @@ from pathlib import Path
 from threading import Thread
 
 from snake_sim.render.interfaces.renderer_interface import IRenderer
-from snake_sim.loop_observers.frame_builder_observer import FrameBuilderObserver
+from snake_sim.loop_observers.frame_builder_observer import FrameBuilderObserver, NoMoreSteps, CurrentIsFirst
 from snake_sim.map_utils.general import print_map
 from snake_sim.utils import create_color_map
 
@@ -62,7 +62,7 @@ class TerminalRenderer(IRenderer):
             frame = self._frame_builder.get_frame_for_step(step_idx)
             self._render_frame(frame)
             self._current_step = step_idx
-        except StopIteration:
+        except (StopIteration, NoMoreSteps, CurrentIsFirst):
             pass
         return self._current_step
 
@@ -71,7 +71,7 @@ class TerminalRenderer(IRenderer):
             frame = self._frame_builder.get_frame(frame_idx)
             self._render_frame(frame)
             self._current_frame = frame_idx
-        except StopIteration:
+        except (StopIteration, NoMoreSteps, CurrentIsFirst):
             pass
         return self._current_frame
 
@@ -80,6 +80,9 @@ class TerminalRenderer(IRenderer):
 
     def get_current_step_idx(self):
         return self._current_step
+
+    def close(self):
+        pass
 
     def _move_cursor_up(self, lines: int):
         sys.stdout.write(f"{CSI}{lines}A")

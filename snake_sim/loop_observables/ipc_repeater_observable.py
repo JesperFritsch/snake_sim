@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 
 from multiprocessing.connection import Connection
-from threading import Thread
+from threading import Thread, Event
 
 from snake_sim.environment.types import LoopStartData, LoopStepData, LoopStopData
 from snake_sim.environment.interfaces.loop_observable_interface import ILoopObservable
@@ -15,7 +15,8 @@ class IPCRepeaterObservable(ILoopObservable):
         super().__init__()
         self._pipe = pipe
         self._current_data = None
-        self._thread = Thread(target=self._receiver_worker, daemon=True)
+        self._stop_event: Event = Event()
+        self._thread = Thread(target=self._receiver_worker)
         self._thread.start()
 
     def _handle_msg(self, msg):
@@ -25,7 +26,7 @@ class IPCRepeaterObservable(ILoopObservable):
         getattr(self, n_type)()
 
     def _receiver_worker(self):
-        while True:
+        while not self._stop_event.is_set():
             try:
                 msg = self._pipe.recv()
                 self._handle_msg(msg)
@@ -39,4 +40,5 @@ class IPCRepeaterObservable(ILoopObservable):
         return self._current_data
 
     def _get_stop_data(self) -> LoopStopData:
+        self._stop_event.set()
         return self._current_data

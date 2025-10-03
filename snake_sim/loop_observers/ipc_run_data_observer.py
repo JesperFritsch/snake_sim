@@ -59,7 +59,7 @@ class IPCRunDataObserver(IRunDataObserver):
     def notify_step(self, step_data: StepData):
         self._buffer.append(step_data.to_dict())
 
-    def notify_end(self, run_data):
+    def notify_stop(self, run_data):
         log.debug('Sending stopped signal')
         self._buffer.append('stopped')
         self.close()

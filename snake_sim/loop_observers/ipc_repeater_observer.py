@@ -45,11 +45,16 @@ class IPCRepeaterObserver(ILoopObserver):
             return
         self._buffer.append(("_notify_step", step_data))
 
-    def notify_end(self, stop_data: LoopStopData):
+    def notify_stop(self, stop_data: LoopStopData):
         if self._disabled:
             return
         self._buffer.append(("_notify_stop", stop_data))
+        self._wait_buffer_empty()
         self.close()
+
+    def _wait_buffer_empty(self):
+        while len(self._buffer) > 0:
+            time.sleep(0.002)
 
     def close(self):
         try:

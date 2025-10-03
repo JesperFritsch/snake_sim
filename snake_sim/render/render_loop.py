@@ -1,5 +1,8 @@
 
 import time
+import logging
+
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Set, Iterable, Tuple
 
@@ -9,6 +12,8 @@ from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
 
 # Use the same headless workaround as other controllers that use pynput
 from snake_sim.utils import is_headless
+
+log = logging.getLogger(Path(__file__).stem)
 
 if is_headless():
     # pynput may require a display; start a virtual one in headless environments
@@ -124,7 +129,6 @@ class RenderLoop:
                 else:
                     self._fps = self._base_fps
 
-
         finally:
             self.stop()
             self._stop_flag.value = True
@@ -191,11 +195,10 @@ class RenderLoop:
         if not self._running:
             return
         self._running = False
-        try:
-            if self._listener:
-                self._listener.stop()
-        except Exception:
-            pass
+        log.debug("Stopping render loop")
+        self._renderer.close()
+        if self._listener:
+            self._listener.stop()
 
     def join(self):
         self._listener.join()
