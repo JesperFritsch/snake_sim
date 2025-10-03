@@ -4,8 +4,9 @@ import sys
 import logging
 import numpy as np
 from typing import Optional
-from threading import Event
 from pathlib import Path
+
+from multiprocessing.sharedctypes import Synchronized
 
 from snake_sim.logging_setup import setup_logging
 from snake_sim.environment.interfaces.snake_interface import ISnake
@@ -42,9 +43,9 @@ class Return(Message):
 
 
 class SHMSnakeServer:
-    def __init__(self, target: str, snake_instance: ISnake, stop_event: Event):
+    def __init__(self, target: str, snake_instance: ISnake, stop_flag: Synchronized):
         self._snake_instance = snake_instance
-        self.stop_event = stop_event
+        self.stop_flag = stop_flag
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REP)
         self.socket.setsockopt(zmq.RCVTIMEO, 50)
@@ -103,7 +104,7 @@ class SHMSnakeServer:
 
     def serve(self):
         try:
-            while not self.stop_event.is_set():
+            while not self.stop_flag.value:
                 try:
                     request = self._receive()
                 except zmq.Again:
@@ -150,7 +151,7 @@ def serve(
     target: str,
     snake_module_file=None,
     snake_config: SnakeConfig=None,
-    stop_event: Optional[Event] = None,
+    stop_flag: Optional[Synchronized] = None,
     log_level=logging.INFO
 ):
     if not logging.getLogger().hasHandlers():
@@ -174,7 +175,7 @@ def serve(
             snake_instance = factory.create_snake(
                 snake_config=snake_config
             )
-        server = SHMSnakeServer(target, snake_instance, stop_event)
+        server = SHMSnakeServer(target, snake_instance, stop_flag)
         log.info(f"Starting SHM snake server on {target}")
         server.serve()
 

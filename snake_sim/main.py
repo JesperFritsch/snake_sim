@@ -1,8 +1,9 @@
 import sys
 import json
 import logging
-from multiprocessing import Pipe, Process, Event as p_Event
-from multiprocessing.synchronize import Event as MPEvent
+import multiprocessing as mp
+import ctypes
+from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 from importlib import resources
 
@@ -27,7 +28,7 @@ with resources.open_text('snake_sim.config', 'default_config.json') as config_fi
 log = logging.getLogger(Path(__file__).stem)
 
 
-def start_snakes(config: DotDict, stop_event: MPEvent, ipc_observer_pipe=None):
+def start_snakes(config: DotDict, stop_flag: Synchronized, ipc_observer_pipe=None):
     # in linux the process is forked and inherits the loggers, but on windows we need to set it up again
     if not logging.getLogger().hasHandlers():
         setup_logging(config.log_level)
@@ -35,7 +36,7 @@ def start_snakes(config: DotDict, stop_event: MPEvent, ipc_observer_pipe=None):
     if ipc_observer_pipe:
         # loop_control.add_run_data_observer(IPCRunDataObserver(ipc_observer_pipe))
         loop_control.add_observer(IPCRepeaterObserver(ipc_observer_pipe))
-    loop_control.run(stop_event)
+    loop_control.run(stop_flag)
     sys.stdout.flush()
 
 
@@ -56,13 +57,10 @@ def main():
                 loop_control.run()
 
         elif config.command == "stream" or config.command == "game":
-            parent_conn, child_conn = Pipe()
-            stop_event = p_Event()
-            loop_p = Process(target=start_snakes, args=(config, stop_event), kwargs={'ipc_observer_pipe': parent_conn})
-            # if config.command == "game":
-            #     render_p = Process(target=play_game, args=(child_conn, config.spm, config.sound, stop_event))
-            # else:
-            #     render_p = Process(target=play_stream, args=(child_conn, config.fps, config.sound, stop_event))
+            mp_ctx = mp.get_context("spawn")
+            parent_conn, child_conn = mp_ctx.Pipe()
+            stop_flag = mp_ctx.Value(ctypes.c_bool, False)
+            loop_p = mp_ctx.Process(target=start_snakes, args=(config, stop_flag), kwargs={'ipc_observer_pipe': parent_conn})
 
             frame_builder = FrameBuilderObserver(2)
             state_builder = StateBuilderObserver()
@@ -82,8 +80,8 @@ def main():
                 renderer=t_render,
                 config=render_config,
                 state_builder=state_builder,
-                stop_event=stop_event
-                )
+                stop_flag=stop_flag
+            )
             # render_p.start()
             render_loop.start()
             # render_p.join()
@@ -95,12 +93,9 @@ def main():
         log.error(e)
         log.debug("TRACE: ", exc_info=True)
     finally:
+        stop_flag.value = True
         try:
             render_loop.stop()
-        except:
-            pass
-        try:
-            stop_event.set()
         except:
             pass
 
