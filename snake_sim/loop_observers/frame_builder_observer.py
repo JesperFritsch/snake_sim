@@ -7,6 +7,7 @@ from itertools import permutations
 
 from snake_sim.environment.types import (
     LoopStartData,
+    LoopStepData,
     Coord
 )
 
@@ -29,8 +30,9 @@ class FrameBuilderObserver(ConsumerObserver):
         self._expansion = expansion
         # step_count and frame_count are to keep track of what frame to return on next_frame/previous_frame calls
         # expanded snake positions in the current step
+        self._ex_head_coords: Dict[int, Coord] = {}
+        self._ex_tail_coords: Dict[int, Coord] = {}
         self._head_coords: Dict[int, Coord] = {}
-        self._tail_coords: Dict[int, Coord] = {}
         self._current_frame: np.ndarray = None
         self._current_frame_idx = 0
         self._curr_step = 0
@@ -43,8 +45,9 @@ class FrameBuilderObserver(ConsumerObserver):
         self._current_frame = self._expand_frame(init_data.base_map.copy())
         for s_id, pos in init_data.start_positions.items():
             s_pos = self._ex_coord(pos)
-            self._head_coords[s_id] = s_pos
-            self._tail_coords[s_id] = s_pos
+            self._ex_head_coords[s_id] = s_pos
+            self._ex_tail_coords[s_id] = s_pos
+            self._head_coords[s_id] = pos
             self._current_frame[s_pos.y, s_pos.x] = init_data.snake_values[s_id]['head_value']
 
     def _ex_coord(self, coord: Coord) -> Coord:
@@ -116,20 +119,36 @@ class FrameBuilderObserver(ConsumerObserver):
         self._current_frame_idx += 1
         step_data = self._curr_step
         init_data = self._start_data.env_init_data
-        for food in step_data.new_food:
-            ex_food = self._ex_coord(food)
-            self._current_frame[ex_food.y, ex_food.x] = init_data.food_value
+
+        print("Step data:", step_data)
+        print("Current frame idx:", self._current_frame_idx, "Curr step idx:", self._curr_step_idx)
+        print("Head coords:", self._head_coords)
+
+        if ((self._current_frame_idx - 1) % self._expansion) == 0:
+            for s_id in step_data.decisions:
+                self._head_coords[s_id] += step_data.decisions[s_id]
+
+            for food in step_data.new_food:
+                ex_food = self._ex_coord(food)
+                self._current_frame[ex_food.y, ex_food.x] = init_data.food_value
+
+            for food in set(step_data.removed_food) - set(self._head_coords.values()):
+                ex_food = self._ex_coord(food)
+                self._current_frame[ex_food.y, ex_food.x] = init_data.free_value
+
         for s_id in step_data.decisions:
-            curr_head = self._head_coords[s_id]
-            curr_tail = self._tail_coords[s_id]
-            self._head_coords[s_id] += step_data.decisions[s_id]
-            self._tail_coords[s_id] += step_data.tail_directions[s_id]
-            new_tail = self._tail_coords[s_id]
-            new_head = self._head_coords[s_id]
+            curr_head = self._ex_head_coords[s_id]
+            curr_tail = self._ex_tail_coords[s_id]
+            decision = step_data.decisions[s_id]
+            self._ex_head_coords[s_id] += decision
+            self._ex_tail_coords[s_id] += step_data.tail_directions[s_id]
+            new_tail = self._ex_tail_coords[s_id]
+            new_head = self._ex_head_coords[s_id]
             if curr_tail.manhattan_distance(new_tail) != 0:
                 self._current_frame[*reversed(curr_tail)] = init_data.free_value
             self._current_frame[*reversed(curr_head)] = init_data.snake_values[s_id]['body_value']
             self._current_frame[*reversed(new_head)] = init_data.snake_values[s_id]['head_value']
+
 
     def _goto_prev_frame(self) -> List[np.ndarray]:
         if self._current_frame_idx <= 0:
@@ -140,13 +159,25 @@ class FrameBuilderObserver(ConsumerObserver):
         self._curr_step = self._steps[self._curr_step_idx]
         step_data = self._curr_step
         init_data = self._start_data.env_init_data
-        food_set = set([self._ex_coord(f) for f in step_data.new_food])
+
+        if (self._current_frame_idx % self._expansion) == 0:
+            for s_id in step_data.decisions:
+                self._head_coords[s_id] -= step_data.decisions[s_id]
+
+            for food in step_data.new_food:
+                ex_food = self._ex_coord(food)
+                self._current_frame[ex_food.y, ex_food.x] = init_data.free_value
+
+            for food in step_data.removed_food:
+                ex_food = self._ex_coord(food)
+                self._current_frame[ex_food.y, ex_food.x] = init_data.food_value
+
         for s_id in step_data.decisions:
-            curr_head = self._head_coords[s_id]
-            self._head_coords[s_id] -= step_data.decisions[s_id]
-            self._tail_coords[s_id] -= step_data.tail_directions[s_id]
-            new_head = self._head_coords[s_id]
-            new_tail = self._tail_coords[s_id]
-            self._current_frame[curr_head.y, curr_head.x] = init_data.free_value if curr_head not in food_set else init_data.food_value
+            curr_head = self._ex_head_coords[s_id]
+            self._ex_head_coords[s_id] -= step_data.decisions[s_id]
+            self._ex_tail_coords[s_id] -= step_data.tail_directions[s_id]
+            new_head = self._ex_head_coords[s_id]
+            new_tail = self._ex_tail_coords[s_id]
+            self._current_frame[curr_head.y, curr_head.x] = init_data.free_value# if curr_head not in food_set else init_data.food_value
             self._current_frame[new_tail.y, new_tail.x] = init_data.snake_values[s_id]['body_value']
             self._current_frame[new_head.y, new_head.x] = init_data.snake_values[s_id]['head_value']

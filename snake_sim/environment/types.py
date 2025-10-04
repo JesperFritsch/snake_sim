@@ -2,6 +2,7 @@ import math
 from enum import Enum
 from dataclasses import dataclass, field
 from collections import deque
+from collections.abc import Iterable
 from typing import Optional, List, Dict, Deque, Set
 import numpy as np
 
@@ -47,13 +48,36 @@ class Coord(tuple):
         return (self.__class__, (self[0], self[1]))
 
     def __add__(self, other):
-        return Coord(self.x + other[0], self.y + other[1])
+        if isinstance(other, Iterable):
+            return Coord(self.x + other[0], self.y + other[1])
+        elif isinstance(other, int):
+            return Coord(self.x + other, self.y + other)
+        else:
+            raise ValueError(f"Can't add {self} and {other}")
 
     def __sub__(self, other):
-        return Coord(self.x - other[0], self.y - other[1])
+        if isinstance(other, Iterable):
+            return Coord(self.x - other[0], self.y - other[1])
+        elif isinstance(other, int):
+            return Coord(self.x - other, self.y - other)
+        else:
+            raise ValueError(f"Can't sub {self} and {other}")
 
     def __mul__(self, other):
-        return Coord(self.x * other[0], self.y * other[1])
+        if isinstance(other, Iterable):
+            return Coord(self.x * other[0], self.y * other[1])
+        elif isinstance(other, int):
+            return Coord(self.x * other, self.y * other)
+        else:
+            raise ValueError(f"Can't mult {self} and {other}")
+
+    def __floordiv__(self, other):
+        if isinstance(other, Iterable):
+            return Coord(self.x // other[0], self.y // other[1])
+        elif isinstance(other, int):
+            return Coord(self.x // other, self.y // other)
+        else:
+            raise ValueError(f"Can't floordiv {self} and {other}")
 
     def __eq__(self, other):
         return (
