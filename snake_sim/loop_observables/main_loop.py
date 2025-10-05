@@ -91,7 +91,18 @@ class SimLoop(IMainLoop):
 
     def _pre_update(self):
         self._env.update_food()
-        self._current_step_data = LoopStepData(self._steps)
+        self._current_step_data = DotDict(
+            step=0,
+            total_time=0,
+            snake_times={},
+            decisions={},
+            tail_directions={},
+            snake_grew={},
+            lengths={},
+            new_food=[],
+            removed_food=[]
+        )
+        self._current_step_data.step = self._steps
         new_food, removed_food = self._env.get_food_diff()
         self._current_step_data.new_food = new_food
         self._current_step_data.removed_food = removed_food
@@ -113,7 +124,7 @@ class SimLoop(IMainLoop):
         )
 
     def _get_step_data(self) -> LoopStepData:
-        return self._current_step_data
+        return LoopStepData(**self._current_step_data)
 
     def _get_stop_data(self) -> LoopStopData:
         return LoopStopData(final_step=self._steps)

@@ -45,7 +45,8 @@ def add_playback_arguments(parser):
     parser.add_argument('--fps', type=int, help='Frames per second')
     parser.add_argument('--sound', action='store_true', help='Play sound')
     parser.add_argument('--renderer', type=str, help='Renderer to use', choices=['window', 'terminal'], default='window')
-
+    parser.add_argument('--expansion', type=int, help='Expansion factor for rendering', default=2)
+    parser.add_argument('--no-render', action='store_true', help='Do not render the simulation', default=False)
 
 def handle_args(args, config: DotDict):
     for key, value in vars(args).items():
@@ -69,14 +70,8 @@ def cli(argv, config: DotDict):
     add_common_arguments(play_file_parser)
     add_playback_arguments(play_file_parser)
 
-    # Subparser for compute
-    compute_parser = subparsers.add_parser('compute', help='Compute a run file')
-    compute_parser.add_argument('--nr-runs', type=positive_int, default=1, help='Number of runs to generate')
-    add_common_arguments(compute_parser)
-    add_run_config_arguments(compute_parser)
-
     # Subparser for stream
-    stream_parser = subparsers.add_parser('stream', help='Compute and live-stream the run')
+    stream_parser = subparsers.add_parser('compute', help='Compute and live-stream the run')
     add_common_arguments(stream_parser)
     add_run_config_arguments(stream_parser)
     add_playback_arguments(stream_parser)

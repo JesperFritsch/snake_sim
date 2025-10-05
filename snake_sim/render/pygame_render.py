@@ -6,7 +6,7 @@ import logging
 import pygame
 
 from pathlib import Path
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 
 from snake_sim.render.interfaces.renderer_interface import IRenderer
 from snake_sim.loop_observers.frame_builder_observer import FrameBuilderObserver, NoMoreSteps, CurrentIsFirst
@@ -24,26 +24,36 @@ class PygameRenderer(IRenderer):
         self._screen_w = screen_w
         self._current_step = 0
         self._current_frame = 0
-        self._wait_thread = Thread(target=self._wait_for_builder, daemon=True)
+        self._wait_thread = Thread(target=self._finish_init, daemon=True)
         self._wait_thread.start()
-        self._wait_thread.join()
-        if self._wait_thread.is_alive():
-            raise RuntimeError("Frame builder never got start data")
-        self._env_init_data = self._frame_builder._start_data.env_init_data
-        self._color_map = create_color_map(self._env_init_data.snake_values)
-        self._free_value = self._env_init_data.free_value
-        self._food_value = self._env_init_data.food_value
-        self._blocked_value = self._env_init_data.blocked_value
+        self._env_init_data = None
+        self._color_map = None
+        self._free_value = None
+        self._food_value = None
+        self._blocked_value = None
+        self._init_finished = False
         self._flip_event: Event = Event()
         self._close_event: Event = Event()
         self._pygame_thread = Thread(target=self._pygame_loop)
         self._pygame_thread.start()
 
-    def _wait_for_builder(self):
+    def _finish_init(self):
         while self._frame_builder._start_data is None:
             time.sleep(0.005)
+        self._env_init_data = self._frame_builder._start_data.env_init_data
+        self._color_map = create_color_map(self._env_init_data.snake_values)
+        self._free_value = self._env_init_data.free_value
+        self._food_value = self._env_init_data.food_value
+        self._blocked_value = self._env_init_data.blocked_value
+        self._init_finished = True
+
+    def is_init_finished(self):
+        return self._init_finished
 
     def _render_frame(self, frame: np.ndarray):
+        if not self.is_init_finished():
+            log.debug("Skipping render frame; init not finished")
+            return
         unique_ids, dense_labels = np.unique(frame, return_inverse=True)
         lut = np.array([self._color_map[i] for i in unique_ids], dtype=np.uint8)
         color_frame = lut[dense_labels].reshape(*frame.shape, 3)
@@ -73,6 +83,9 @@ class PygameRenderer(IRenderer):
     def get_current_step_idx(self):
         return self._current_step
 
+    def is_running(self) -> bool:
+        return not self._close_event.is_set()
+
     def _pygame_loop(self):
         # Continuously poll events so the OS considers the window responsive.
         # Run in a daemon thread; keep the loop light-weight so it doesn't hog CPU.
@@ -98,6 +111,8 @@ class PygameRenderer(IRenderer):
             pass
         finally:
             try:
+                # we can not quit pygame while we are drawing a frame
+                self._close_event.set()
                 log.debug("Quitting pygame")
                 pygame.quit()
             except:
@@ -105,6 +120,9 @@ class PygameRenderer(IRenderer):
                 log.debug("TRACE: ", exc_info=True)
 
     def draw_frame(self, frame_buffer):
+        # we can not draw frames while we are shutting down
+        if self._close_event.is_set():
+            return
         # frame buffer is expected to be of shape (h, w, 3) with rgb values
         frame_buffer = np.rot90(np.fliplr(frame_buffer))
         buffer_surface = pygame.surfarray.make_surface(frame_buffer)

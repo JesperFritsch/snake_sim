@@ -26,5 +26,9 @@ class IRenderer(ABC):
         pass
 
     @abstractmethod
+    def is_running(self) -> bool:
+        pass
+
+    @abstractmethod
     def close(self):
         pass

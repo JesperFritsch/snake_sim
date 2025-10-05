@@ -98,6 +98,12 @@ class FrameBuilderObserver(ConsumerObserver):
         frame_idx = step_idx * self._expansion
         return self.get_frame(frame_idx)
 
+    def get_current_frame_idx(self):
+        return self._current_frame_idx
+
+    def get_current_step_idx(self):
+        return self._curr_step_idx
+
     def _goto_frame(self, frame_idx: int):
         idx_delta = frame_idx - self._current_frame_idx
         while idx_delta != 0:
@@ -119,10 +125,6 @@ class FrameBuilderObserver(ConsumerObserver):
         self._current_frame_idx += 1
         step_data = self._curr_step
         init_data = self._start_data.env_init_data
-
-        print("Step data:", step_data)
-        print("Current frame idx:", self._current_frame_idx, "Curr step idx:", self._curr_step_idx)
-        print("Head coords:", self._head_coords)
 
         if ((self._current_frame_idx - 1) % self._expansion) == 0:
             for s_id in step_data.decisions:

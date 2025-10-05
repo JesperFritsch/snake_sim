@@ -1,5 +1,6 @@
 import json
 import logging
+import sys
 import time
 import functools
 import threading
@@ -10,13 +11,9 @@ from typing import Union, List, Optional
 from importlib import resources as pkg_resources
 from multiprocessing.sharedctypes import Synchronized
 
-from snake_sim.data_adapters.run_data_adapter import RunDataAdapter
-
+from snake_sim.loop_observers.ipc_repeater_observer import IPCRepeaterObserver
 from snake_sim.loop_observers.tqdm_loop_observer import TqdmLoopObserver
-from snake_sim.loop_observers.run_data_loop_source import RunDataSource
-from snake_sim.loop_observers.recorder_run_data_observer import RecorderRunDataObserver
 from snake_sim.environment.interfaces.main_loop_interface import ILoopObserver
-from snake_sim.environment.interfaces.run_data_observer_interface import IRunDataObserver
 from snake_sim.loop_observables.main_loop import SimLoop, GameLoop
 from snake_sim.environment.snake_handlers import SnakeHandler
 from snake_sim.environment.snake_factory import SnakeFactory
@@ -24,8 +21,7 @@ from snake_sim.environment.snake_env import SnakeEnv, EnvInitData
 from snake_sim.environment.food_handlers import FoodHandler
 from snake_sim.environment.snake_processes import SnakeProcessManager
 from snake_sim.environment.types import DotDict, SnakeConfig, SnakeProcType
-
-from snake_sim.utils import create_color_map
+from snake_sim.logging_setup import setup_logging
 from snake_sim.map_utils.general import get_map_files_mapping
 
 with pkg_resources.open_text('snake_sim.config', 'default_config.json') as config_file:
@@ -185,38 +181,6 @@ class SnakeLoopControl:
         self._loop.add_observer(observer)
 
     @_loop_check
-    def add_run_data_observer(self, observer: IRunDataObserver):
-        """Adds a an observer to a RunDataSource"""
-        if not isinstance(observer, IRunDataObserver):
-            raise ValueError('Observer must be an instance of IRunDataObserver')
-
-        observers = self._loop.get_observers()
-        # if a RunDataSource already exists, add the observer to it
-        try:
-            run_data_observer = next(o for o in observers if isinstance(o, RunDataSource))
-        except StopIteration:
-            # if no RunDataSource exists, create one and add the observer to it
-            run_data_observer = RunDataSource()
-            self._loop.add_observer(run_data_observer)
-        run_data_observer.add_observer(observer)
-
-    @_loop_check
-    def _initialize_run_data_loop_observers(self):
-        """Initializes the run data loop observers
-        This is used to initialize the DataAdapters for the RunDataSources
-        It needs to happend after the snakes are added to the environment"""
-        observers = self._loop.get_observers()
-        for observer in observers:
-            if isinstance(observer, RunDataSource):
-                init_data = self._snake_environment.get_init_data()
-                observer.set_adapter(
-                    RunDataAdapter(
-                        init_data,
-                        create_color_map(init_data.snake_values)
-                    )
-                )
-
-    @_loop_check
     def get_init_data(self) -> EnvInitData:
         """Returns the initial data of the environment"""
         return self._snake_environment.get_init_data()
@@ -239,7 +203,6 @@ class SnakeLoopControl:
                     self._initialize_non_inproc_snakes()
                 self._initialize_remote_grpcs()
                 self._finalize_snakes()
-                self._initialize_run_data_loop_observers() # This needs to be called after the snakes are added to the environment
             except:
                 if stop_flag is not None:
                     stop_flag.value = True
@@ -288,15 +251,16 @@ def setup_loop(config) -> SnakeLoopControl:
         )
     loop_control = SnakeLoopControl(sim_config)
     loop_control.init_loop()
-    if not config.no_record:
-        recording_file = config.record_file if config.record_file else None
-        loop_control.add_run_data_observer(
-            RecorderRunDataObserver(
-                recording_dir=config.record_dir,
-                recording_file=recording_file,
-            )
-        )
     if config.rate_meter:
         loop_control.add_observer(TqdmLoopObserver())
 
     return loop_control
+
+def start_loop(config: DotDict, stop_flag: Synchronized, ipc_observer_pipe=None):
+    if not logging.getLogger().hasHandlers():
+        setup_logging(config.log_level)
+    loop_control = setup_loop(config)
+    if ipc_observer_pipe:
+        loop_control.add_observer(IPCRepeaterObserver(ipc_observer_pipe))
+    loop_control.run(stop_flag)
+    sys.stdout.flush()

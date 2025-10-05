@@ -14,6 +14,7 @@ import cProfile
 import pstats
 from io import StringIO
 
+from pathlib import Path
 from importlib import resources
 
 from snake_sim.cpp_bindings.utils import get_locations_with_value

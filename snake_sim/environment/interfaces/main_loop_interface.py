@@ -11,14 +11,6 @@ class IMainLoop(ABC, ILoopObservable):
         super().__init__()
 
     @abstractmethod
-    def start(self):
-        pass
-
-    @abstractmethod
-    def stop(self):
-        pass
-
-    @abstractmethod
     def set_snake_handler(self, snake_handler: ISnakeHandler):
         pass
 

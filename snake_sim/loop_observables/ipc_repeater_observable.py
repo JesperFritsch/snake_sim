@@ -17,7 +17,6 @@ class IPCRepeaterObservable(ILoopObservable):
         self._current_data = None
         self._stop_event: Event = Event()
         self._thread = Thread(target=self._receiver_worker)
-        self._thread.start()
 
     def _handle_msg(self, msg):
         # example msg ("_notify_start", LoopStartData)
@@ -32,6 +31,10 @@ class IPCRepeaterObservable(ILoopObservable):
                 self._handle_msg(msg)
             except EOFError:
                 break
+        try:
+            self._pipe.close()
+        except:
+            pass
 
     def _get_start_data(self) -> LoopStartData:
         return self._current_data
@@ -42,3 +45,10 @@ class IPCRepeaterObservable(ILoopObservable):
     def _get_stop_data(self) -> LoopStopData:
         self._stop_event.set()
         return self._current_data
+
+    def start(self):
+        self._thread.start()
+
+    def stop(self):
+        self._stop_event.set()
+        self._thread.join()
