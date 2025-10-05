@@ -1,0 +1,53 @@
+syntax = "proto3";
+package simrun;
+
+message Coord {
+  sint32 x = 1;  // sint32 uses zigzag (small negatives compress well)
+  sint32 y = 2;
+}
+
+message SnakeValues {
+    int32 head_value = 1;
+    int32 body_value = 2;
+}
+
+message EnvInitData {
+    int32 height = 1;
+    int32 width = 2;
+    int32 free_value = 3;
+    int32 blocked_value = 4;
+    int32 food_value = 5;
+    map<int32, SnakeValues> snake_values = 6;
+    map<int32, Coord> start_positions = 7;
+    bytes base_map = 8;
+    string base_map_dtype = 9; // e.g. "<u2" for little-endian uint16
+}
+
+message LoopStartData {
+    EnvInitData env_init_data = 1;
+}
+
+message LoopStepData {
+  uint32 step = 1;
+  double total_time = 2;
+
+  map<uint32, double> snake_times     = 3;  // id -> seconds
+  map<uint32, Coord>  decisions       = 4;  // id -> move
+  map<uint32, Coord>  tail_directions = 5;  // id -> tail dir
+  map<uint32, bool>   snake_grew      = 6;  // id -> grew
+  map<uint32, uint32> lengths         = 7;  // id -> length
+
+  repeated Coord new_food     = 8;  // repeated primitives/msgs are compact
+  repeated Coord removed_food = 9;
+}
+
+message LoopStopData {
+  uint32 final_step = 1;
+}
+
+// For a simple file: start, many steps, stop.
+message RunRecord {
+  LoopStartData start = 1;
+  repeated LoopStepData steps = 2;
+  LoopStopData stop = 3;
+}

@@ -3,41 +3,30 @@ import json
 import logging
 import multiprocessing as mp
 import ctypes
-from multiprocessing.sharedctypes import Synchronized
+import cProfile
+
 from pathlib import Path
 from importlib import resources
+from threading import Thread
 
 from snake_sim.logging_setup import setup_logging
 from snake_sim.environment.types import DotDict
-from snake_sim.render.pygame_render_old import play_runfile, play_stream, play_game
 from snake_sim.cli import cli
-from snake_sim.environment.snake_loop_control import setup_loop
-from snake_sim.loop_observers.ipc_repeater_observer import IPCRepeaterObserver
+from snake_sim.environment.snake_loop_control import start_loop, setup_loop
+from snake_sim.environment.interfaces.loop_observable_interface import ILoopObservable
 from snake_sim.loop_observables.ipc_repeater_observable import IPCRepeaterObservable
+from snake_sim.loop_observables.file_reader_observable import FileRepeaterObservable
 from snake_sim.loop_observers.frame_builder_observer import FrameBuilderObserver
 from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
+from snake_sim.loop_observers.file_persist_observer import FilePersistObserver
 from snake_sim.render.render_loop import RenderLoop, RenderConfig
-from snake_sim.render.terminal_render import TerminalRenderer
-from snake_sim.render.pygame_render import PygameRenderer
-
+from snake_sim.render.renderer_factory import renderer_factory
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
 
 
 log = logging.getLogger(Path(__file__).stem)
-
-
-def start_snakes(config: DotDict, stop_flag: Synchronized, ipc_observer_pipe=None):
-    # in linux the process is forked and inherits the loggers, but on windows we need to set it up again
-    if not logging.getLogger().hasHandlers():
-        setup_logging(config.log_level)
-    loop_control = setup_loop(config)
-    if ipc_observer_pipe:
-        # loop_control.add_run_data_observer(IPCRunDataObserver(ipc_observer_pipe))
-        loop_control.add_observer(IPCRepeaterObserver(ipc_observer_pipe))
-    loop_control.run(stop_flag)
-    sys.stdout.flush()
 
 
 def main():
@@ -48,46 +37,52 @@ def main():
             config = DotDict(json.load(config_file))
         config = cli(argv, config)
         setup_logging(config.log_level)
+
+        loop_repeater: ILoopObservable = None
+        mp_ctx = mp.get_context("spawn")
+        stop_flag = mp_ctx.Value(ctypes.c_bool, False)
+
         if config.command == "play-file":
-            play_runfile(filepath=Path(config.filepath), sound_on=config.sound, fps=config.fps)
+            loop_repeater = FileRepeaterObservable(filepath=config.filepath)
 
         elif config.command == "compute":
-            for _ in range(config.nr_runs):
-                loop_control = setup_loop(config)
-                loop_control.run()
-
-        elif config.command == "stream" or config.command == "game":
-            mp_ctx = mp.get_context("spawn")
             parent_conn, child_conn = mp_ctx.Pipe()
-            stop_flag = mp_ctx.Value(ctypes.c_bool, False)
-            loop_p = mp_ctx.Process(target=start_snakes, args=(config, stop_flag), kwargs={'ipc_observer_pipe': parent_conn})
-
-            frame_builder = FrameBuilderObserver(2)
-            state_builder = StateBuilderObserver()
-
             loop_repeater = IPCRepeaterObservable(child_conn)
+            if not config.no_record:
+                store_dir = Path(config.record_dir) / f"grid_{config.grid_height}x{config.grid_width}"
+                file_persist = FilePersistObserver(store_dir=store_dir, filename=config.record_file)
+                loop_repeater.add_observer(file_persist)
+            loop_p = mp_ctx.Process(target=start_loop, args=(config, stop_flag), kwargs={'ipc_observer_pipe': parent_conn})
+            loop_p.start()
+            Thread(target=loop_p.join).start()
+
+        elif config.command == "game":
+            raise NotImplementedError("Game mode not implemented yet")
+
+
+        if not config.no_render:
+            frame_builder = FrameBuilderObserver(config.expansion)
+            state_builder = StateBuilderObserver()
             loop_repeater.add_observer(frame_builder)
             loop_repeater.add_observer(state_builder)
-
-            loop_p.start()
-
             render_config = RenderConfig(
                 fps=config.fps,
                 sound=False
             )
-            # renderer = TerminalRenderer(frame_builder)
-            renderer = PygameRenderer(frame_builder)
-            
+            renderer = renderer_factory(config.renderer, frame_builder)
             render_loop = RenderLoop(
                 renderer=renderer,
                 config=render_config,
                 state_builder=state_builder,
                 stop_flag=stop_flag
             )
-            # render_p.start()
             render_loop.start()
-            # render_p.join()
-            loop_p.join()
+
+        loop_repeater.start()
+        try:
+            render_loop.join()
+        except NameError:
+            pass
 
     except KeyboardInterrupt:
         pass
@@ -95,7 +90,10 @@ def main():
         log.error(e)
         log.debug("TRACE: ", exc_info=True)
     finally:
-        stop_flag.value = True
+        try:
+            stop_flag.value = True
+        except:
+            pass
         try:
             render_loop.stop()
         except:
@@ -103,3 +101,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    # cProfile.run('main()', sort='cumtime')

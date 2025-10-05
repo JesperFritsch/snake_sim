@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Set, Iterable, Tuple
+from threading import Thread, Event
 
 from multiprocessing.sharedctypes import Synchronized
 from snake_sim.render.interfaces.renderer_interface import IRenderer
@@ -38,12 +39,14 @@ class RenderLoop:
     def __init__(self,
             renderer: IRenderer,
             config: RenderConfig,
-            state_builder: StateBuilderObserver,
-            stop_flag: Synchronized
+            stop_flag: Synchronized = None,
+            state_builder: StateBuilderObserver = None
         ):
         self._stop_flag: Synchronized = stop_flag
         self._state_builder: StateBuilderObserver = state_builder
         self._renderer: IRenderer = renderer
+        self._stop_event: Event = Event()
+        self._loop_thread: Thread = Thread(target=self._loop)
         self._frame_step_direction = True # True for forward
         self._frame_step_size = 1
         self._base_fps = config.fps
@@ -58,7 +61,7 @@ class RenderLoop:
         self._forward_key = Key.right
         self._backwards_key = Key.left
         self._fast_key = Key.ctrl_l
-        self._super_fast_keys = [Key.shift_l, self._fast_key]
+        self._multi_steps_key = Key.shift_l
         self._toggel_paus_key = Key.space
         self._save_state_key = Key.enter
         self._quit_keys = [Key.ctrl_l, KeyCode.from_char('c')]
@@ -66,7 +69,7 @@ class RenderLoop:
             self._forward_key,
             self._backwards_key,
             self._fast_key,
-            self._super_fast_keys,
+            self._multi_steps_key,
             self._toggel_paus_key,
             self._save_state_key,
             self._quit_keys
@@ -76,13 +79,26 @@ class RenderLoop:
     def _loop(self):
         self._paused = False
         try:
-            while not self._stop_flag.value and self._running:
+            while ((not (self._stop_flag and self._stop_flag.value))
+                    and self._running
+                    and self._renderer.is_running()
+                    and not self._stop_event.is_set()):
+
+                time.sleep(0.001) # dont use all CPU
+
                 if self._pressed(keys=self._quit_keys):
-                    self._running = False
+                    print("Quit keys pressed, stopping render loop")
+                    self._stop_event.set()
                 if self._down_event(key=self._toggel_paus_key):
                     self._paused = not self._paused
                 if self._down_event(key=self._save_state_key):
-                    print("Statesave not implemented")
+                    if self._state_builder is not None:
+                        step_idx = self._renderer.get_current_step_idx()
+                        print(f"Saving state at step {step_idx}")
+                        state = self._state_builder.get_state(step_idx)
+                        log.info("Current state:\n%s", state)
+                    else:
+                        log.warning("No state builder attached, cannot save state")
 
                 if self._down_event(self._forward_key):
                     self._render_frame = True
@@ -95,17 +111,16 @@ class RenderLoop:
                 forward_pressed = self._pressed(self._forward_key)
                 backward_pressed = self._pressed(self._backwards_key)
 
+                if self._pressed(key=self._multi_steps_key):
+                    self._frame_step_size = 10
+                else:
+                    self._frame_step_size = 1
+
                 if forward_pressed or backward_pressed:
-                    if self._pressed(keys=self._super_fast_keys):
+                    if self._pressed(key=self._fast_key):
+                        self._fps = self._base_fps * 20
                         if backward_pressed:
                             self._frame_step_direction = False
-                        self._fps = self._base_fps * 20
-                        self._frame_step_size = 5
-                    elif self._pressed(key=self._fast_key):
-                        if backward_pressed:
-                            self._frame_step_direction = False
-                        self._fps = self._base_fps * 20
-                        self._frame_step_size = 1
 
                 if self._render_frame:
                     current_frame_idx = self._renderer.get_current_frame_idx()
@@ -121,8 +136,6 @@ class RenderLoop:
                     fps_duration = 1 / self._fps
                     if time.time() - self._last_render_time > fps_duration:
                         self._render_frame = True
-                else:
-                    time.sleep(0.01) # dont use all CPU
 
                 if self._paused:
                     self._fps = 0
@@ -131,7 +144,8 @@ class RenderLoop:
 
         finally:
             self.stop()
-            self._stop_flag.value = True
+            if self._stop_flag is not None:
+                self._stop_flag.value = True
 
     def _handle_pressed(self, key):
         self._keys_pressed.add(key)
@@ -188,7 +202,7 @@ class RenderLoop:
         self._listener = keyboard.Listener(on_press=self._handle_pressed, on_release=self._handle_released)
         # run the listener in a dedicated thread
         self._listener.start()
-        self._loop()
+        self._loop_thread.start()
 
     def stop(self) -> None:
         """Stop the listener and mark controller as stopped."""
@@ -199,6 +213,32 @@ class RenderLoop:
         self._renderer.close()
         if self._listener:
             self._listener.stop()
+        self._stop_event.set()
 
     def join(self):
-        self._listener.join()
+        """Wait for the render loop thread to finish.
+
+        This join implementation uses short-time joins so a KeyboardInterrupt
+        (Ctrl+C) in the main thread will be delivered promptly. On
+        KeyboardInterrupt we attempt to stop the loop and re-raise the
+        exception so callers (for example `main`) can handle it.
+        """
+        # If a timeout is provided by callers in the future, they can still
+        # call thread.join(timeout) directly. Here we implement the
+        # interruption-friendly no-timeout join.
+        try:
+            while self._loop_thread.is_alive():
+                try:
+                    # join in short slices so KeyboardInterrupt can be handled
+                    self._loop_thread.join(timeout=0.1)
+                except KeyboardInterrupt:
+                    log.info("KeyboardInterrupt received in join(); stopping render loop")
+                    # Best-effort stop and propagate the exception to caller
+                    try:
+                        self.stop()
+                    except Exception:
+                        pass
+                    raise
+        except KeyboardInterrupt:
+            # Re-raise to let callers (like main) handle cleanup
+            raise

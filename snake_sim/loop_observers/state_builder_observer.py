@@ -4,7 +4,7 @@ from collections import deque
 from snake_sim.environment.types import (
     LoopStartData,
     Coord,
-    LoopStepState
+    CompleteStepState
 )
 
 from snake_sim.loop_observers.consumer_observer import ConsumerObserver
@@ -25,12 +25,16 @@ class StateBuilderObserver(ConsumerObserver):
         super().__init__()
         self._snake_bodies: Dict[int, Deque] = {}
         self._current_step_idx = 0
-        self._current_state: LoopStepState = None
+        self._current_state: CompleteStepState = None
 
     def notify_start(self, start_data: LoopStartData):
         super().notify_start(start_data)
         init_data = self._start_data.env_init_data
-        self._current_state: LoopStepState = LoopStepState()
+        self._current_state: CompleteStepState = CompleteStepState(
+            env_init_data=init_data,
+            food=set(),
+            snake_bodies={}
+        )
         for s_id, pos in init_data.start_positions.items():
             self._current_state.snake_bodies[s_id] = deque([pos])
 
@@ -66,8 +70,8 @@ class StateBuilderObserver(ConsumerObserver):
             raise NoMoreSteps("Need to receive more steps to generate states")
         self._current_step_idx += 1
         step_data = self._steps[self._current_step_idx]
-        self._current_state.food += step_data.new_food
-        self._current_state.food -= step_data.removed_food
+        self._current_state.food |= set(step_data.new_food)
+        self._current_state.food -= set(step_data.removed_food)
         for s_id, dir in step_data.decisions.items():
             body = self._current_state.snake_bodies[s_id]
             new_head = body[0] + dir
@@ -81,8 +85,8 @@ class StateBuilderObserver(ConsumerObserver):
             raise CurrentIsFirst()
         curr_step_data = self._steps[self._current_step_idx]
         self._current_step_idx -= 1
-        self._current_state.food -= curr_step_data.new_food
-        self._current_state.food += curr_step_data.removed_food
+        self._current_state.food -= set(curr_step_data.new_food)
+        self._current_state.food |= set(curr_step_data.removed_food)
         for s_id, dir in curr_step_data.decisions:
             body = self._current_state.snake_bodies[s_id]
             body.popleft()

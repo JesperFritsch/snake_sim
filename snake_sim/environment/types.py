@@ -8,7 +8,8 @@ import numpy as np
 
 
 class DotDict(dict):
-    def __init__(self, other_dict={}):
+    def __init__(self, other_dict={}, **kwargs):
+        super().__init__(**kwargs)
         for k, v in other_dict.items():
             if isinstance(v, dict):
                 v = DotDict(v)
@@ -149,14 +150,14 @@ class LoopStartData:
 class LoopStepData:
     # decisions, snake_grew and snake_times will only have values for alive snakes
     step: int
-    total_time: Optional[float] = field(default_factory=float)
-    snake_times: Optional[Dict[int, float]] = field(default_factory=dict)
-    decisions: Optional[Dict[int, Coord]] = field(default_factory=dict)
-    tail_directions: Optional[Dict[int, Coord]] = field(default_factory=dict)
-    snake_grew: Optional[Dict[int, bool]] = field(default_factory=dict)
-    lengths: Optional[Dict[int, int]] = field(default_factory=dict)
-    new_food: Optional[List[Coord]] = field(default_factory=list)
-    removed_food: Optional[List[Coord]] = field(default_factory=list)
+    total_time: float
+    snake_times: Dict[int, float]
+    decisions: Dict[int, Coord]
+    tail_directions: Dict[int, Coord]
+    snake_grew: Dict[int, bool]
+    lengths: Dict[int, int]
+    new_food: List[Coord]
+    removed_food: List[Coord]
 
 
 @dataclass
@@ -165,10 +166,11 @@ class LoopStopData:
 
 
 @dataclass
-class LoopStepState:
-    food: Set[Coord] = field(default_factory=set)
+class CompleteStepState:
+    env_init_data: EnvInitData
+    food: Set[Coord]
     # heads are at index 0 in the deques
-    snake_bodies: Dict[int, Deque] = field(default_factory=dict)
+    snake_bodies: Dict[int, Deque]
 
 
 @dataclass
