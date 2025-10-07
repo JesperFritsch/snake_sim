@@ -7,7 +7,7 @@ from typing import List, Dict
 from multiprocessing import Event
 
 from snake_sim.utils import profile
-from snake_sim.environment.snake_env import EnvData
+from snake_sim.environment.snake_env import EnvStepData
 from snake_sim.environment.interfaces.main_loop_interface import IMainLoop
 from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver
 from snake_sim.environment.snake_handlers import ISnakeHandler
@@ -54,8 +54,8 @@ class SimLoop(IMainLoop):
             self._steps += 1
             self._post_update()
 
-    def _prepare_batch(self, batch: List[int]) -> Dict[int, EnvData]:
-        return {id: self._env.get_env_data(id) for id in batch}
+    def _prepare_batch(self, batch: List[int]) -> Dict[int, EnvStepData]:
+        return {id: self._env.get_env_step_data(id) for id in batch}
 
     def _update_batch(self, batch: List[int]):
         batch_data = self._prepare_batch(batch)
@@ -114,13 +114,13 @@ class SimLoop(IMainLoop):
         if self._max_steps is not None and self._steps > self._max_steps:
             self.stop()
         total_time = time.time() - self._step_start_time
-        self._current_step_data.lengths = {id: snake['length'] for id, snake in self._env.get_env_data().snakes.items()}
+        self._current_step_data.lengths = {id: snake['length'] for id, snake in self._env.get_env_step_data().snakes.items()}
         self._current_step_data.total_time = total_time
         self._notify_step()
 
     def _get_start_data(self) -> LoopStartData:
         return LoopStartData(
-            env_init_data=self._env.get_init_data()
+            env_meta_data=self._env.get_init_data()
         )
 
     def _get_step_data(self) -> LoopStepData:

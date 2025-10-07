@@ -99,7 +99,7 @@ message PixelData {
 
 // MESSAGES BETWEEN SNAKE AND ENVIRONMENT ######################################
 
-message EnvData {
+message EnvStepData {
     int32 width = 1;
     int32 height = 2;
     bytes map = 3;

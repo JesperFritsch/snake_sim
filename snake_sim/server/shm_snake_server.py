@@ -10,7 +10,7 @@ from multiprocessing.sharedctypes import Synchronized
 
 from snake_sim.logging_setup import setup_logging
 from snake_sim.environment.interfaces.snake_interface import ISnake
-from snake_sim.environment.types import EnvData, SnakeConfig
+from snake_sim.environment.types import EnvStepData, SnakeConfig
 from snake_sim.environment.shm_update import SharedMemoryReader
 
 
@@ -83,20 +83,20 @@ class SHMSnakeServer:
         self._shm_name = shm_name
         self._init_shm_reader()
 
-    def shm_update(self, env_data: EnvData):
+    def shm_update(self, env_step_data: EnvStepData):
         reader = self._get_reader()
         payload = reader.read_frame()
         if payload is None:
             log.error("No payload received from shared memory reader")
             return None
 
-        if not isinstance(env_data, EnvData):
-            raise ValueError("Expected EnvData as data for shm_update command")
-        # Update the EnvData with the new map from shared memory
-        env_data.map = payload
-        # Call the snake update method with EnvData and return the result
+        if not isinstance(env_step_data, EnvStepData):
+            raise ValueError("Expected EnvStepData as data for shm_update command")
+        # Update the EnvStepData with the new map from shared memory
+        env_step_data.map = payload
+        # Call the snake update method with EnvStepData and return the result
         try:
-            result = self._snake_instance.update(env_data)
+            result = self._snake_instance.update(env_step_data)
             return result
         except Exception as e:
             logging.exception("Snake update failed")

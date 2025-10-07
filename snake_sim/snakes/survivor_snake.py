@@ -33,8 +33,8 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
         self._current_map_copy: np.ndarray = None
         self._current_strategy_tile: Coord = None
 
-    def set_init_data(self, env_init_data):
-        super().set_init_data(env_init_data)
+    def set_init_data(self, env_meta_data):
+        super().set_init_data(env_meta_data)
         self._init_area_checker()
 
     def _step_calc_wrapper(func):
@@ -58,7 +58,7 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
         best_option = self._get_best_option(margin_fracs)
         debug.debug_print(f"best_option: {best_option}")
         return best_option
-        
+
     def _get_margin_fracs(self, search_first: Coord) -> Dict[Coord, Dict[int, float]]:
         target_margin = max(10, math.ceil(self.SAFE_MARGIN_FRAC * len(self._body_coords)))
         result = self._area_checker.recurse_area_check(
@@ -72,7 +72,7 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
         converted = {Coord(*coord): res for coord, res in result.items()}
         debug.debug_print(f"margin_fracs: {converted}")
         return converted
-    
+
     def _get_best_option(self, margin_fracs: Dict[Coord, Dict[int, float]]) -> Union[Coord, None]:
         max_depth = max([len(depths) for depths in margin_fracs.values()]) if len(margin_fracs) > 0 else 0
         debug.debug_print(f"max_depth found: {max_depth}")
@@ -94,12 +94,12 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
 
     def _init_area_checker(self):
         self._area_checker = AreaChecker(
-            self._env_init_data.food_value,
-            self._env_init_data.free_value,
+            self._env_meta_data.food_value,
+            self._env_meta_data.free_value,
             self._body_value,
             self._head_value,
-            self._env_init_data.width,
-            self._env_init_data.height)
+            self._env_meta_data.width,
+            self._env_meta_data.height)
 
     def _pre_step_calc(self):
         self._current_map_copy = self._map.copy()

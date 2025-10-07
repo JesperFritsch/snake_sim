@@ -19,7 +19,7 @@ from importlib import resources
 
 from snake_sim.cpp_bindings.utils import get_locations_with_value
 
-from snake_sim.environment.types import DotDict, Coord
+from snake_sim.environment.types import DotDict, Coord, CompleteStepState
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = json.load(config_file)
@@ -119,3 +119,11 @@ def profile(sort_by='cumtime'):
             return result
         return wrapper
     return decorator
+
+def save_step_state(step_state: CompleteStepState):
+    """ Save the step state to a json file. """
+    file_path = Path(__file__).parent.parent / "test_bench" / "state_files" / f"step_{rand_str(10)}.json"
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    state_dict = step_state.to_dict()
+    with open(file_path, 'w') as f:
+        json.dump(state_dict, f, indent=4)

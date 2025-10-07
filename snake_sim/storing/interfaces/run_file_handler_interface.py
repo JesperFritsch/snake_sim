@@ -48,5 +48,5 @@ class IRunFileHandler(ABC):
     def _default_filename(self) -> str:
         start_data = self.get_start_data()
         stop_data = self.get_stop_data()
-        nr_snakes = len(start_data.env_init_data.start_positions)
-        return f"run_{start_data.env_init_data.width}x{start_data.env_init_data.height}_{nr_snakes}snakes_{stop_data.final_step}steps{self._get_file_format()}"
+        nr_snakes = len(start_data.env_meta_data.start_positions)
+        return f"run_{start_data.env_meta_data.width}x{start_data.env_meta_data.height}_{nr_snakes}snakes_{stop_data.final_step}steps{self._get_file_format()}"

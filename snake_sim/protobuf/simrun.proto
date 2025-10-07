@@ -11,7 +11,7 @@ message SnakeValues {
     int32 body_value = 2;
 }
 
-message EnvInitData {
+message EnvMetaData {
     int32 height = 1;
     int32 width = 2;
     int32 free_value = 3;
@@ -24,7 +24,7 @@ message EnvInitData {
 }
 
 message LoopStartData {
-    EnvInitData env_init_data = 1;
+    EnvMetaData env_meta_data = 1;
 }
 
 message LoopStepData {

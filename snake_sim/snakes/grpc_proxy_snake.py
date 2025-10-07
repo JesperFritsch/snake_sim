@@ -2,7 +2,7 @@ import grpc
 import json
 from snake_proto_template.python import remote_snake_pb2, remote_snake_pb2_grpc
 from snake_sim.environment.interfaces.snake_interface import ISnake
-from snake_sim.environment.types import Coord, EnvInitData, EnvData
+from snake_sim.environment.types import Coord, EnvMetaData, EnvStepData
 
 import logging
 
@@ -47,29 +47,29 @@ class GRPCProxySnake(ISnake):
         self.stub.SetStartPosition(start_pos)
 
     @handle_connection_loss
-    def set_init_data(self, env_init_data: EnvInitData):
-        super().set_init_data(env_init_data)
-        env_init_data_proto = remote_snake_pb2.EnvInitData(
-            height=env_init_data.height,
-            width=env_init_data.width,
-            free_value=env_init_data.free_value,
-            blocked_value=env_init_data.blocked_value,
-            food_value=env_init_data.food_value,
-            snake_values={k: remote_snake_pb2.SnakeValues(head_value=v["head_value"], body_value=v["body_value"]) for k, v in env_init_data.snake_values.items()},
-            start_positions={k: remote_snake_pb2.Coord(x=v.x, y=v.y) for k, v in env_init_data.start_positions.items()},
-            base_map=env_init_data.base_map.tobytes()
+    def set_init_data(self, env_meta_data: EnvMetaData):
+        super().set_init_data(env_meta_data)
+        env_meta_data_proto = remote_snake_pb2.EnvMetaData(
+            height=env_meta_data.height,
+            width=env_meta_data.width,
+            free_value=env_meta_data.free_value,
+            blocked_value=env_meta_data.blocked_value,
+            food_value=env_meta_data.food_value,
+            snake_values={k: remote_snake_pb2.SnakeValues(head_value=v["head_value"], body_value=v["body_value"]) for k, v in env_meta_data.snake_values.items()},
+            start_positions={k: remote_snake_pb2.Coord(x=v.x, y=v.y) for k, v in env_meta_data.start_positions.items()},
+            base_map=env_meta_data.base_map.tobytes()
         )
-        self.stub.SetInitData(env_init_data_proto)
+        self.stub.SetInitData(env_meta_data_proto)
 
     @handle_connection_loss
-    def update(self, env_data: EnvData):
+    def update(self, env_step_data: EnvStepData):
         # print(f"{self.target}: Updating")
-        env_data_proto = remote_snake_pb2.EnvData(
-            map=env_data.map,
-            snakes={k: remote_snake_pb2.SnakeRep(is_alive=v["is_alive"], length=v["length"]) for k, v in env_data.snakes.items()},
-            food_locations=[remote_snake_pb2.Coord(x=coord[0], y=coord[1]) for coord in env_data.food_locations] if env_data.food_locations else []
+        env_step_data_proto = remote_snake_pb2.EnvStepData(
+            map=env_step_data.map,
+            snakes={k: remote_snake_pb2.SnakeRep(is_alive=v["is_alive"], length=v["length"]) for k, v in env_step_data.snakes.items()},
+            food_locations=[remote_snake_pb2.Coord(x=coord[0], y=coord[1]) for coord in env_step_data.food_locations] if env_step_data.food_locations else []
         )
-        response_iterator = self.stub.Update(iter([env_data_proto]))
+        response_iterator = self.stub.Update(iter([env_step_data_proto]))
         for response in response_iterator:
             if not response.HasField("direction"):
                 return None
@@ -78,7 +78,7 @@ class GRPCProxySnake(ISnake):
 
     def __reduce__(self):
         return (self.__class__, (self.target))
-    
+
     def __del__(self):
         try:
             self.kill()

@@ -35,13 +35,11 @@ class FrameBuilderObserver(ConsumerObserver):
         self._head_coords: Dict[int, Coord] = {}
         self._current_frame: np.ndarray = None
         self._current_frame_idx = 0
-        self._curr_step = 0
-        self._curr_step_idx = 0
         self._backing = False
 
     def notify_start(self, start_data: LoopStartData):
         super().notify_start(start_data)
-        init_data = self._start_data.env_init_data
+        init_data = self._start_data.env_meta_data
         self._current_frame = self._expand_frame(init_data.base_map.copy())
         for s_id, pos in init_data.start_positions.items():
             s_pos = self._ex_coord(pos)
@@ -56,8 +54,8 @@ class FrameBuilderObserver(ConsumerObserver):
 
     def _expand_frame(self, frame: np.ndarray):
         height, width = frame.shape
-        free_value = self._start_data.env_init_data.free_value
-        blocked_value = self._start_data.env_init_data.blocked_value
+        free_value = self._start_data.env_meta_data.free_value
+        blocked_value = self._start_data.env_meta_data.blocked_value
         neighbors = [Coord(*c) for c in permutations([-1, 0, 1], 2) if abs(sum(c)) == 1]
         expanded_frame = np.full(
             (frame.shape[0]*self._expansion, frame.shape[1]*self._expansion),
@@ -102,7 +100,7 @@ class FrameBuilderObserver(ConsumerObserver):
         return self._current_frame_idx
 
     def get_current_step_idx(self):
-        return self._curr_step_idx
+        return self._current_frame_idx // self._expansion
 
     def _goto_frame(self, frame_idx: int):
         idx_delta = frame_idx - self._current_frame_idx
@@ -116,15 +114,14 @@ class FrameBuilderObserver(ConsumerObserver):
 
     def _goto_next_frame(self) -> List[np.ndarray]:
         """ Create frames between current step and next step, according to the expansion factor. """
-        if self._current_frame_idx // self._expansion >= len(self._steps):
+        curr_step_idx = self.get_current_step_idx()
+        if curr_step_idx >= len(self._steps):
             if self._stop_data is not None:
                 raise StopIteration("No more frames available")
             raise NoMoreSteps("Need to receive more steps to generate frames")
-        self._curr_step_idx = self._current_frame_idx // self._expansion
-        self._curr_step = self._steps[self._curr_step_idx]
+        step_data = self._steps[curr_step_idx]
         self._current_frame_idx += 1
-        step_data = self._curr_step
-        init_data = self._start_data.env_init_data
+        init_data = self._start_data.env_meta_data
 
         if ((self._current_frame_idx - 1) % self._expansion) == 0:
             for s_id in step_data.decisions:
@@ -157,10 +154,19 @@ class FrameBuilderObserver(ConsumerObserver):
             self._current_frame_idx = 0
             raise CurrentIsFirst("Current frame is the first frame")
         self._current_frame_idx -= 1
-        self._curr_step_idx = self._current_frame_idx // self._expansion
-        self._curr_step = self._steps[self._curr_step_idx]
-        step_data = self._curr_step
-        init_data = self._start_data.env_init_data
+        curr_step_idx = self.get_current_step_idx()
+        step_data = self._steps[curr_step_idx]
+        init_data = self._start_data.env_meta_data
+
+        for s_id in step_data.decisions:
+            curr_head = self._ex_head_coords[s_id]
+            self._ex_head_coords[s_id] -= step_data.decisions[s_id]
+            self._ex_tail_coords[s_id] -= step_data.tail_directions[s_id]
+            new_head = self._ex_head_coords[s_id]
+            new_tail = self._ex_tail_coords[s_id]
+            self._current_frame[curr_head.y, curr_head.x] = init_data.free_value# if curr_head not in food_set else init_data.food_value
+            self._current_frame[new_tail.y, new_tail.x] = init_data.snake_values[s_id]['body_value']
+            self._current_frame[new_head.y, new_head.x] = init_data.snake_values[s_id]['head_value']
 
         if (self._current_frame_idx % self._expansion) == 0:
             for s_id in step_data.decisions:
@@ -173,13 +179,3 @@ class FrameBuilderObserver(ConsumerObserver):
             for food in step_data.removed_food:
                 ex_food = self._ex_coord(food)
                 self._current_frame[ex_food.y, ex_food.x] = init_data.food_value
-
-        for s_id in step_data.decisions:
-            curr_head = self._ex_head_coords[s_id]
-            self._ex_head_coords[s_id] -= step_data.decisions[s_id]
-            self._ex_tail_coords[s_id] -= step_data.tail_directions[s_id]
-            new_head = self._ex_head_coords[s_id]
-            new_tail = self._ex_tail_coords[s_id]
-            self._current_frame[curr_head.y, curr_head.x] = init_data.free_value# if curr_head not in food_set else init_data.food_value
-            self._current_frame[new_tail.y, new_tail.x] = init_data.snake_values[s_id]['body_value']
-            self._current_frame[new_head.y, new_head.x] = init_data.snake_values[s_id]['head_value']

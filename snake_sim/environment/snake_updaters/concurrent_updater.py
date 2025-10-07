@@ -8,7 +8,7 @@ from typing import Tuple, List
 
 from snake_sim.environment.interfaces.snake_updater_interface import ISnakeUpdater
 from snake_sim.environment.interfaces.snake_interface import ISnake
-from snake_sim.environment.types import Coord, EnvData, EnvInitData
+from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -17,8 +17,8 @@ class ConcurrentUpdater(ISnakeUpdater):
         super().__init__()
         self._executor: ThreadPoolExecutor = None
 
-    def get_decisions(self, snakes: List[ISnake], env_data: EnvData, timeout: float) -> dict[int, Coord]:
-        futures = {self._executor.submit(snake.update, env_data): snake.get_id() for snake in snakes}
+    def get_decisions(self, snakes: List[ISnake], env_step_data: EnvStepData, timeout: float) -> dict[int, Coord]:
+        futures = {self._executor.submit(snake.update, env_step_data): snake.get_id() for snake in snakes}
         decisions = {snake.get_id(): None for snake in snakes}
         try:
             for future in as_completed(futures, timeout=timeout):
@@ -36,8 +36,8 @@ class ConcurrentUpdater(ISnakeUpdater):
         if self._executor is not None:
             self._executor.shutdown(wait=True)
 
-    def finalize(self, env_init_data: EnvInitData):
-        super().finalize(env_init_data)
+    def finalize(self, env_meta_data: EnvMetaData):
+        super().finalize(env_meta_data)
         if self._executor is None:
             log.debug(f"Creating ThreadPoolExecutor with {self._snake_count} workers")
             self._executor = ThreadPoolExecutor(max_workers=self._snake_count)

@@ -14,7 +14,7 @@ from multiprocessing.sharedctypes import Synchronized
 
 from snake_proto_template.python import remote_snake_pb2, remote_snake_pb2_grpc
 from snake_sim.snakes.snake_base import ISnake
-from snake_sim.environment.types import Coord, EnvInitData, EnvData, SnakeConfig
+from snake_sim.environment.types import Coord, EnvMetaData, EnvStepData, SnakeConfig
 from snake_sim.logging_setup import setup_logging
 
 import logging
@@ -38,7 +38,7 @@ class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
         return remote_snake_pb2.Empty()
 
     def SetInitData(self, request, context):
-        init_data = EnvInitData(
+        init_data = EnvMetaData(
             request.height,
             request.width,
             request.free_value,
@@ -52,13 +52,13 @@ class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
         return remote_snake_pb2.Empty()
 
     def Update(self, request_iterator, context):
-        for env_data_proto in request_iterator:
-            env_data = EnvData(
-                map=env_data_proto.map,
-                snakes={k: {"is_alive": v.is_alive, "length": v.length} for k, v in env_data_proto.snakes.items()},
-                food_locations=[Coord(x=coord.x, y=coord.y) for coord in env_data_proto.food_locations]
+        for env_step_data_proto in request_iterator:
+            env_step_data = EnvStepData(
+                map=env_step_data_proto.map,
+                snakes={k: {"is_alive": v.is_alive, "length": v.length} for k, v in env_step_data_proto.snakes.items()},
+                food_locations=[Coord(x=coord.x, y=coord.y) for coord in env_step_data_proto.food_locations]
             )
-            direction = self._snake_instance.update(env_data)
+            direction = self._snake_instance.update(env_step_data)
             if direction is None:
                 yield remote_snake_pb2.UpdateResponse()
             else:
@@ -87,9 +87,9 @@ def cli(argv):
 
 
 def serve(
-        target, 
-        snake_module_file=None, 
-        snake_config: SnakeConfig=None, 
+        target,
+        snake_module_file=None,
+        snake_config: SnakeConfig=None,
         stop_flag: Optional[Synchronized] = None,
         log_level=logging.INFO):
     # set up logging if on Windows

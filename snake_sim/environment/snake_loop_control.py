@@ -17,7 +17,7 @@ from snake_sim.environment.interfaces.main_loop_interface import ILoopObserver
 from snake_sim.loop_observables.main_loop import SimLoop, GameLoop
 from snake_sim.environment.snake_handlers import SnakeHandler
 from snake_sim.environment.snake_factory import SnakeFactory
-from snake_sim.environment.snake_env import SnakeEnv, EnvInitData
+from snake_sim.environment.snake_env import SnakeEnv, EnvMetaData
 from snake_sim.environment.food_handlers import FoodHandler
 from snake_sim.environment.snake_processes import SnakeProcessManager
 from snake_sim.environment.types import DotDict, SnakeConfig, SnakeProcType
@@ -181,7 +181,7 @@ class SnakeLoopControl:
         self._loop.add_observer(observer)
 
     @_loop_check
-    def get_init_data(self) -> EnvInitData:
+    def get_init_data(self) -> EnvMetaData:
         """Returns the initial data of the environment"""
         return self._snake_environment.get_init_data()
 

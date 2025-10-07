@@ -9,7 +9,7 @@ from collections import deque
 
 from snake_sim.environment.food_handlers import IFoodHandler
 from snake_sim.environment.interfaces.snake_env_interface import ISnakeEnv
-from snake_sim.environment.types import EnvData, EnvInitData, DotDict, Coord
+from snake_sim.environment.types import EnvStepData, EnvMetaData, DotDict, Coord
 
 from snake_sim.map_utils.general import print_map, convert_png_to_map
 
@@ -164,23 +164,23 @@ class SnakeEnv(ISnakeEnv):
 
     def get_food(self):
         return self._food_handler.get_food()
-    
+
     def get_food_diff(self):
         return self._food_handler.get_food_diff()
 
     def get_head_positions(self, only_alive: bool=True) -> Dict[int, Coord]:
         return {id: snake_rep.get_head() for id, snake_rep in self._snake_reps.items() if (not only_alive or snake_rep.is_alive)}
 
-    def get_env_data(self, for_id: Optional[int] = None) -> EnvData:
+    def get_env_step_data(self, for_id: Optional[int] = None) -> EnvStepData:
         # id is not used yet, but it is preparing for being able to send different data to different snakes
-        return EnvData(
+        return EnvStepData(
             self.get_map().tobytes(),
             {id: {'is_alive': snake_rep.is_alive, 'length': len(snake_rep.body)} for id, snake_rep in self._snake_reps.items()},
             self.get_food()
         )
 
-    def get_init_data(self) -> EnvInitData:
-        return EnvInitData(
+    def get_init_data(self) -> EnvMetaData:
+        return EnvMetaData(
             self._height,
             self._width,
             self._free_value,
