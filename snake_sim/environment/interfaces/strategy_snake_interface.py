@@ -6,7 +6,7 @@ from typing import Tuple, Deque, Dict
 # commeted because of circular import
 # from snake_sim.environment.interfaces.snake_strategy_interface import ISnakeStrategy
 from snake_sim.environment.interfaces.snake_interface import ISnake
-from snake_sim.environment.types import Coord, EnvInitData, EnvData
+from snake_sim.environment.types import Coord, EnvMetaData, EnvStepData
 
 
 class IStrategySnake(ISnake, ABC):
@@ -29,12 +29,12 @@ class IStrategySnake(ISnake, ABC):
                 return tile
         return Coord(0,0)
 
-    def get_env_init_data(self) -> EnvInitData:
-        return self._env_init_data
-    
-    def get_env_data(self) -> EnvData:
-        return self._env_data
-    
+    def get_env_meta_data(self) -> EnvMetaData:
+        return self._env_meta_data
+
+    def get_env_step_data(self) -> EnvStepData:
+        return self._env_step_data
+
     def get_self_map_values(self) -> Tuple[int, int]: # head_value, body_value
         return self._head_value, self._body_value
 

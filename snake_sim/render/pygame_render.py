@@ -22,11 +22,9 @@ class PygameRenderer(IRenderer):
         self._frame_builder = frame_builder
         self._screen_h = screen_h
         self._screen_w = screen_w
-        self._current_step = 0
-        self._current_frame = 0
         self._wait_thread = Thread(target=self._finish_init, daemon=True)
         self._wait_thread.start()
-        self._env_init_data = None
+        self._env_meta_data = None
         self._color_map = None
         self._free_value = None
         self._food_value = None
@@ -40,11 +38,11 @@ class PygameRenderer(IRenderer):
     def _finish_init(self):
         while self._frame_builder._start_data is None:
             time.sleep(0.005)
-        self._env_init_data = self._frame_builder._start_data.env_init_data
-        self._color_map = create_color_map(self._env_init_data.snake_values)
-        self._free_value = self._env_init_data.free_value
-        self._food_value = self._env_init_data.food_value
-        self._blocked_value = self._env_init_data.blocked_value
+        self._env_meta_data = self._frame_builder._start_data.env_meta_data
+        self._color_map = create_color_map(self._env_meta_data.snake_values)
+        self._free_value = self._env_meta_data.free_value
+        self._food_value = self._env_meta_data.food_value
+        self._blocked_value = self._env_meta_data.blocked_value
         self._init_finished = True
 
     def is_init_finished(self):
@@ -63,25 +61,21 @@ class PygameRenderer(IRenderer):
         try:
             frame = self._frame_builder.get_frame_for_step(step_idx)
             self._render_frame(frame)
-            self._current_step = step_idx
         except (StopIteration, NoMoreSteps, CurrentIsFirst):
             pass
-        return self._current_step
 
     def render_frame(self, frame_idx: int):
         try:
             frame = self._frame_builder.get_frame(frame_idx)
             self._render_frame(frame)
-            self._current_frame = frame_idx
         except (StopIteration, NoMoreSteps, CurrentIsFirst):
             pass
-        return self._current_frame
 
     def get_current_frame_idx(self):
-        return self._current_frame
+        return self._frame_builder.get_current_frame_idx()
 
     def get_current_step_idx(self):
-        return self._current_step
+        return self._frame_builder.get_current_step_idx()
 
     def is_running(self) -> bool:
         return not self._close_event.is_set()

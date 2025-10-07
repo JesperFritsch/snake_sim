@@ -113,7 +113,7 @@ class Coord(tuple):
         return str(self).__format__(format_spec)
 
 
-class EnvData:
+class EnvStepData:
     def __init__(self, map: bytes, snakes: dict, food_locations: Optional[List[Coord]]):
         self.map = map
         self.snakes = snakes
@@ -121,7 +121,7 @@ class EnvData:
 
 
 
-class EnvInitData:
+class EnvMetaData:
     def __init__(self,
                 height: int,
                 width: int,
@@ -143,7 +143,7 @@ class EnvInitData:
 
 @dataclass
 class LoopStartData:
-    env_init_data: EnvInitData
+    env_meta_data: EnvMetaData
 
 
 @dataclass
@@ -167,11 +167,27 @@ class LoopStopData:
 
 @dataclass
 class CompleteStepState:
-    env_init_data: EnvInitData
+
+    env_meta_data: EnvMetaData
     food: Set[Coord]
     # heads are at index 0 in the deques
-    snake_bodies: Dict[int, Deque]
+    snake_bodies: Dict[int, Deque[Coord]]
 
+    def to_dict(self):
+        return {
+            'env_meta_data': {
+                'height': self.env_meta_data.height,
+                'width': self.env_meta_data.width,
+                'free_value': self.env_meta_data.free_value,
+                'blocked_value': self.env_meta_data.blocked_value,
+                'food_value': self.env_meta_data.food_value,
+                'snake_values': self.env_meta_data.snake_values,
+                'start_positions': {k: tuple([*v]) for k, v in self.env_meta_data.start_positions.items()},
+                'base_map': self.env_meta_data.base_map.tolist()
+            },
+            'food': [(f.x, f.y) for f in self.food],
+            'snake_bodies': {k: [tuple([*pos]) for pos in v] for k, v in self.snake_bodies.items()}
+        }
 
 @dataclass
 class StrategyConfig:

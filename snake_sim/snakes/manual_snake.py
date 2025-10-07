@@ -13,8 +13,8 @@ class ManualSnake(SnakeBase):
         self.last_direction_coord = (0, 0)
         self.next_direction = (0, -1)
 
-    def update(self, env_data):
-        super().update(env_data)
+    def update(self, env_step_data):
+        super().update(env_step_data)
         current_direction = coord_op(self.coord, self.body_coords[1], "-")
         new_direction = self.next_direction
         # print(f"Current direction: {current_direction}")
@@ -83,6 +83,6 @@ class ManualSnake(SnakeBase):
             self.set_direction_explicit(direction)
         elif control_type == "implicit":
             self.set_direction_implicit(direction)
-    
+
 
 

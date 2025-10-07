@@ -5,7 +5,7 @@ import time
 from functools import wraps
 from zmq.utils.monitor import recv_monitor_message
 from snake_sim.environment.interfaces.snake_interface import ISnake
-from snake_sim.environment.types import Coord, EnvInitData, EnvData
+from snake_sim.environment.types import Coord, EnvMetaData, EnvStepData
 from snake_sim.server.shm_snake_server import Call, Return
 
 
@@ -120,7 +120,7 @@ class SHMProxySnake(ISnake):
         if self._monitor is not None:
             self._poller.register(self._monitor, zmq.POLLIN)
         self._poller.register(self._socket, zmq.POLLIN)
-    
+
     def _wait_for_message(self):
         """Block until either we have data on the REQ socket or the monitor reports a disconnect.
         """
@@ -129,7 +129,7 @@ class SHMProxySnake(ISnake):
                 raise ConnectionError
             if self._check_resp_ready():
                 return
-            
+
     def _create_monitor(self):
         """Create a monitor socket and a poller that watches both the monitor and the main socket.
         """
@@ -172,18 +172,18 @@ class SHMProxySnake(ISnake):
         super().set_start_position(start_position)
 
     @zmq_msg_forwarder
-    def set_init_data(self, env_init_data: EnvInitData):
-        super().set_init_data(env_init_data)
+    def set_init_data(self, env_meta_data: EnvMetaData):
+        super().set_init_data(env_meta_data)
 
     @zmq_msg_forwarder
-    def shm_update(self, env_data: EnvData):
+    def shm_update(self, env_step_data: EnvStepData):
         # Define this method just to not duplicate logic by wrapping it with zmq_msg_forwarder
         pass
 
-    def update(self, env_data: EnvData):
+    def update(self, env_step_data: EnvStepData):
         # we dont send the map over zmq, because its in shared memory
-        env_data.map = None
-        return self.shm_update(env_data)
+        env_step_data.map = None
+        return self.shm_update(env_step_data)
 
     def __reduce__(self):
         return (self.__class__, (self._target))

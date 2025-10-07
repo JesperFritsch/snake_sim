@@ -2,7 +2,7 @@ from abc import abstractmethod, ABC
 import numpy as np
 from typing import Deque
 from collections import deque
-from snake_sim.environment.types import Coord, EnvInitData, EnvData
+from snake_sim.environment.types import Coord, EnvMetaData, EnvStepData
 from snake_sim.environment.interfaces.snake_interface import ISnake
 from snake_sim.utils import distance
 from snake_sim.map_utils.general import print_map
@@ -26,13 +26,13 @@ class SnakeBase(ISnake, ABC):
         self._head_coord = None
         self._map = None
         self._length = self._start_length
-        self._env_init_data: EnvInitData = None
-        self._env_data: EnvData = None
+        self._env_meta_data: EnvMetaData = None
+        self._env_step_data: EnvStepData = None
 
     # from abstract class
-    def update(self, env_data: EnvData):
-        self._env_data = env_data
-        self._update_map(self._env_data.map)
+    def update(self, env_step_data: EnvStepData):
+        self._env_step_data = env_step_data
+        self._update_map(self._env_step_data.map)
         next_step = self._next_step()
         if next_step is None:
             return
@@ -46,7 +46,7 @@ class SnakeBase(ISnake, ABC):
 
     def _is_inside(self, coord):
         x, y = coord
-        return (0 <= x < self._env_init_data.width and 0 <= y < self._env_init_data.height)
+        return (0 <= x < self._env_meta_data.width and 0 <= y < self._env_meta_data.height)
 
     def _set_new_head(self, coord: Coord):
         """ Just return if the coord is invalid, the snake will be killed if it tries to move outside the map """
@@ -57,7 +57,7 @@ class SnakeBase(ISnake, ABC):
         self.x, self.y = coord
         self._head_coord = coord
         grow = False
-        if self._map[self.y, self.x] == self._env_init_data.food_value:
+        if self._map[self.y, self.x] == self._env_meta_data.food_value:
             self._length += 1
             grow = True
         self._move_forward(self._head_coord, self._body_coords, grow)
@@ -73,14 +73,14 @@ class SnakeBase(ISnake, ABC):
             body_coords.append(old_tail)
 
     def _update_map(self, map: bytes):
-        self._map = np.frombuffer(map, dtype=np.uint8).reshape(self._env_init_data.height, self._env_init_data.width)
+        self._map = np.frombuffer(map, dtype=np.uint8).reshape(self._env_meta_data.height, self._env_meta_data.width)
 
     def _print_map(self, s_map=None):
         print_map(
             s_map if s_map is not None else self._map,
-            self._env_init_data.free_value,
-            self._env_init_data.food_value,
-            self._env_init_data.blocked_value,
+            self._env_meta_data.free_value,
+            self._env_meta_data.food_value,
+            self._env_meta_data.blocked_value,
             self._head_value,
             self._body_value
         )

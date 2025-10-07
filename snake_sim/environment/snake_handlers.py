@@ -12,7 +12,7 @@ from importlib import resources
 from snake_sim.environment.snake_processes import SnakeProcessManager
 from snake_sim.environment.interfaces.snake_handler_interface import ISnakeHandler
 from snake_sim.environment.interfaces.snake_interface import ISnake
-from snake_sim.environment.types import Coord, EnvData, EnvInitData
+from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData
 
 from snake_sim.environment.snake_updaters.inproc_updater import InprocUpdater
 from snake_sim.environment.snake_updaters.shm_updater import SHMUpdater
@@ -65,26 +65,26 @@ class SnakeHandler(ISnakeHandler):
             updater.unregister_snake(snake)
         return self._dead_snakes.add(id)
 
-    def _split_batch_by_updater(self, batch_data: Dict[int, EnvData]) -> Dict[ISnakeUpdater, Tuple[List[ISnake], EnvData]]:
-        updater_batches: Dict[ISnakeUpdater, Tuple[List[ISnake], EnvData]] = {}
-        for id, env_data in batch_data.items():
+    def _split_batch_by_updater(self, batch_data: Dict[int, EnvStepData]) -> Dict[ISnakeUpdater, Tuple[List[ISnake], EnvStepData]]:
+        updater_batches: Dict[ISnakeUpdater, Tuple[List[ISnake], EnvStepData]] = {}
+        for id, env_step_data in batch_data.items():
             snake = self._snakes[id]
             updater = self._get_updater(snake)
-            updater_batches.setdefault(updater, ([], env_data))[0].append(snake)
+            updater_batches.setdefault(updater, ([], env_step_data))[0].append(snake)
         return updater_batches
 
-    def _gather_decisions(self, updater_batches: Dict[ISnakeUpdater, Tuple[List[ISnake], EnvData]]) -> Dict[int, Coord]:
+    def _gather_decisions(self, updater_batches: Dict[ISnakeUpdater, Tuple[List[ISnake], EnvStepData]]) -> Dict[int, Coord]:
         decisions = {}
         timeout = default_config["decision_timeout_ms"] / 1000
         futures = [
-            self._executor.submit(updater.get_decisions, snakes, env_data, timeout)
-            for updater, (snakes, env_data) in updater_batches.items()
+            self._executor.submit(updater.get_decisions, snakes, env_step_data, timeout)
+            for updater, (snakes, env_step_data) in updater_batches.items()
         ]
         for future in as_completed(futures):
             decisions.update(future.result())
         return decisions
 
-    def get_decisions(self, batch_data: Dict[int, EnvData]) -> Dict[int, Coord]:
+    def get_decisions(self, batch_data: Dict[int, EnvStepData]) -> Dict[int, Coord]:
         updater_batches = self._split_batch_by_updater(batch_data)
         return self._gather_decisions(updater_batches)
 
@@ -123,13 +123,13 @@ class SnakeHandler(ISnakeHandler):
         random.shuffle(ids)
         return ids
 
-    def finalize(self, env_init_data: EnvInitData):
+    def finalize(self, env_meta_data: EnvMetaData):
         if self._finalized:
             return
         self._finalized = True
         log.debug(f"Finalizing these updaters ({', '.join([type(u).__name__ for u in self._updaters.values()])})")
         for updater in self._updaters.values():
-            updater.finalize(env_init_data)
+            updater.finalize(env_meta_data)
 
     def close(self):
         log.debug("Closing SnakeHandler")

@@ -15,7 +15,7 @@ from snake_sim.protobuf.simrun_pb2 import (
     LoopStepData as ProtoLoopStepData,
     LoopStopData as ProtoLoopStopData,
     Coord as ProtoCoord,
-    EnvInitData as ProtoEnvInitData,
+    EnvMetaData as ProtoEnvMetaData,
     SnakeValues as ProtoSnakeValues
 )
 
@@ -23,7 +23,7 @@ from snake_sim.environment.types import (
     LoopStartData,
     LoopStepData,
     LoopStopData,
-    EnvInitData,
+    EnvMetaData,
     Coord
 )
 
@@ -104,8 +104,8 @@ class ProtoRunFileHandler(IRunFileHandler):
         p.y = int(coord[1])
         return p
 
-    def _envinit_to_proto(self, env: EnvInitData) -> run_proto.EnvInitData:
-        p = run_proto.EnvInitData()
+    def _envinit_to_proto(self, env: EnvMetaData) -> run_proto.EnvMetaData:
+        p = run_proto.EnvMetaData()
         p.height = int(env.height)
         p.width = int(env.width)
         p.free_value = int(env.free_value)
@@ -125,7 +125,7 @@ class ProtoRunFileHandler(IRunFileHandler):
 
     def _start_to_proto(self, start_data: LoopStartData) -> run_proto.LoopStartData:
         start_proto = run_proto.LoopStartData()
-        start_proto.env_init_data.CopyFrom(self._envinit_to_proto(start_data.env_init_data))
+        start_proto.env_meta_data.CopyFrom(self._envinit_to_proto(start_data.env_meta_data))
         return start_proto
 
     def _step_to_proto(self, step_data: LoopStepData) -> run_proto.LoopStepData:
@@ -170,10 +170,10 @@ class ProtoRunFileHandler(IRunFileHandler):
     def _proto_to_coord(self, p: ProtoCoord) -> Coord:
         return Coord(p.x, p.y)
 
-    def _proto_to_envinit(self, p: ProtoEnvInitData) -> EnvInitData:
+    def _proto_to_envinit(self, p: ProtoEnvMetaData) -> EnvMetaData:
         snake_values = {sid: {'head_value': sv.head_value, 'body_value': sv.body_value} for sid, sv in p.snake_values.items()}
         start_positions = {sid: self._proto_to_coord(c) for sid, c in p.start_positions.items()}
-        return EnvInitData(
+        return EnvMetaData(
             height=p.height,
             width=p.width,
             free_value=p.free_value,
@@ -186,7 +186,7 @@ class ProtoRunFileHandler(IRunFileHandler):
 
     def _proto_to_start(self, p: ProtoLoopStartData) -> LoopStartData:
         return LoopStartData(
-            env_init_data=self._proto_to_envinit(p.env_init_data)
+            env_meta_data=self._proto_to_envinit(p.env_meta_data)
         )
 
     def _proto_to_step(self, p: ProtoLoopStepData) -> LoopStepData:

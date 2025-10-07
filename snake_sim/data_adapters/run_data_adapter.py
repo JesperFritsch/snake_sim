@@ -3,7 +3,7 @@ import json
 from importlib import resources
 from typing import Dict
 
-from snake_sim.environment.snake_env import EnvInitData, SnakeRep
+from snake_sim.environment.snake_env import EnvMetaData, SnakeRep
 from snake_sim.loop_observables.main_loop import LoopStepData
 from snake_sim.run_data.run_data import RunData, StepData
 from snake_sim.environment.types import DotDict, Coord
@@ -12,29 +12,29 @@ with resources.open_text('snake_sim.config', 'default_config.json') as config_fi
     config = DotDict(json.load(config_file))
 
 class RunDataAdapter:
-    def __init__(self, env_init_data: EnvInitData, color_mapping: dict):
-        if not isinstance(env_init_data, EnvInitData):
-            raise ValueError('env_init_data must be of type EnvInitData')
-        self._env_init_data = env_init_data
+    def __init__(self, env_meta_data: EnvMetaData, color_mapping: dict):
+        if not isinstance(env_meta_data, EnvMetaData):
+            raise ValueError('env_meta_data must be of type EnvMetaData')
+        self._env_meta_data = env_meta_data
         self._run_data = None
         self.snake_reps: Dict[int, SnakeRep] = {}
-        self.initialize(env_init_data, color_mapping)
+        self.initialize(env_meta_data, color_mapping)
 
-    def initialize(self, env_init_data: EnvInitData, color_mapping: dict):
+    def initialize(self, env_meta_data: EnvMetaData, color_mapping: dict):
         self._run_data = RunData(
-            height=env_init_data.height,
-            width=env_init_data.width,
+            height=env_meta_data.height,
+            width=env_meta_data.width,
             color_mapping=color_mapping,
-            base_map=env_init_data.base_map,
-            food_value=env_init_data.food_value,
-            free_value=env_init_data.free_value,
-            blocked_value=env_init_data.blocked_value,
-            snake_ids=list(env_init_data.snake_values.keys()),
-            snake_values=env_init_data.snake_values
+            base_map=env_meta_data.base_map,
+            food_value=env_meta_data.food_value,
+            free_value=env_meta_data.free_value,
+            blocked_value=env_meta_data.blocked_value,
+            snake_ids=list(env_meta_data.snake_values.keys()),
+            snake_values=env_meta_data.snake_values
         )
         self.snake_reps: Dict[int, SnakeRep] = {}
-        for id, snake_data in env_init_data.snake_values.items():
-            start_pos = env_init_data.start_positions[id]
+        for id, snake_data in env_meta_data.snake_values.items():
+            start_pos = env_meta_data.start_positions[id]
             self.snake_reps[id] = SnakeRep(id, snake_data['head_value'], snake_data['body_value'], start_pos)
 
     def get_run_data(self):
