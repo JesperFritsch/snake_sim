@@ -73,7 +73,7 @@ class SnakeBase(ISnake, ABC):
             body_coords.append(old_tail)
 
     def _update_map(self, map: bytes):
-        self._map = np.frombuffer(map, dtype=np.uint8).reshape(self._env_meta_data.height, self._env_meta_data.width)
+        self._map = np.frombuffer(map, dtype=self._env_meta_data.base_map_dtype).reshape(self._env_meta_data.height, self._env_meta_data.width)
 
     def _print_map(self, s_map=None):
         print_map(

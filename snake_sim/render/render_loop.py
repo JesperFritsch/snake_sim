@@ -8,7 +8,7 @@ from typing import Set, Iterable, Tuple
 from threading import Thread, Event
 from multiprocessing.sharedctypes import Synchronized
 
-from snake_sim.utils import save_step_state
+from snake_sim.storing.state_storer import save_step_state
 from snake_sim.render.interfaces.renderer_interface import IRenderer
 from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
 
@@ -97,7 +97,6 @@ class RenderLoop:
                         step_idx = self._renderer.get_current_step_idx()
                         state = self._state_builder.get_state(step_idx)
                         save_step_state(state)
-                        print(f"Saved state at step {step_idx}")
                     else:
                         log.warning("No state builder attached, cannot save state")
 

@@ -112,34 +112,46 @@ class Coord(tuple):
     def __format__(self, format_spec):
         return str(self).__format__(format_spec)
 
-
+@dataclass
 class EnvStepData:
-    def __init__(self, map: bytes, snakes: dict, food_locations: Optional[List[Coord]]):
-        self.map = map
-        self.snakes = snakes
-        self.food_locations = food_locations
+    map: bytes
+    snakes: dict
+    food_locations: Optional[List[Coord]]
 
 
-
+@dataclass
 class EnvMetaData:
-    def __init__(self,
-                height: int,
-                width: int,
-                free_value: int,
-                blocked_value: int,
-                food_value: int,
-                snake_values: Dict[int, Dict[str, int]],
-                start_positions: Dict[int, Coord],
-                base_map: np.ndarray):
-        self.height = height
-        self.width = width
-        self.free_value = free_value
-        self.blocked_value = blocked_value
-        self.food_value = food_value
-        self.snake_values = snake_values
-        self.start_positions = start_positions
-        self.base_map = base_map
+    height: int
+    width: int
+    free_value: int
+    blocked_value: int
+    food_value: int
+    snake_values: Dict[int, Dict[str, int]]
+    start_positions: Dict[int, Coord]
+    base_map: np.ndarray
+    base_map_dtype: np.dtype = field(default=np.dtype(np.uint8)) # default to uint8
 
+    def to_dict(self):
+        meta_dict = self.__dict__.copy()
+        meta_dict['base_map'] = self.base_map.tolist()
+        meta_dict['start_positions'] = {k: (v.x, v.y) for k, v in self.start_positions.items()}
+        meta_dict['base_map_dtype'] = str(self.base_map_dtype)
+        return meta_dict
+
+    @classmethod
+    def from_dict(cls, meta_dict):
+        dtype = np.dtype(meta_dict['base_map_dtype'])
+        return cls(
+            height=meta_dict['height'],
+            width=meta_dict['width'],
+            free_value=meta_dict['free_value'],
+            blocked_value=meta_dict['blocked_value'],
+            food_value=meta_dict['food_value'],
+            snake_values={int(k): v for k, v in meta_dict['snake_values'].items()},
+            start_positions={int(k): Coord(*v) for k, v in meta_dict['start_positions'].items()},
+            base_map=np.array(meta_dict['base_map'], dtype=dtype),
+            base_map_dtype=dtype
+        )
 
 @dataclass
 class LoopStartData:
@@ -172,22 +184,24 @@ class CompleteStepState:
     food: Set[Coord]
     # heads are at index 0 in the deques
     snake_bodies: Dict[int, Deque[Coord]]
+    state_idx: int = field(default=0)
 
     def to_dict(self):
-        return {
-            'env_meta_data': {
-                'height': self.env_meta_data.height,
-                'width': self.env_meta_data.width,
-                'free_value': self.env_meta_data.free_value,
-                'blocked_value': self.env_meta_data.blocked_value,
-                'food_value': self.env_meta_data.food_value,
-                'snake_values': self.env_meta_data.snake_values,
-                'start_positions': {k: tuple([*v]) for k, v in self.env_meta_data.start_positions.items()},
-                'base_map': self.env_meta_data.base_map.tolist()
-            },
-            'food': [(f.x, f.y) for f in self.food],
-            'snake_bodies': {k: [tuple([*pos]) for pos in v] for k, v in self.snake_bodies.items()}
-        }
+        state_dict = self.__dict__.copy()
+        state_dict['env_meta_data'] = self.env_meta_data.to_dict()
+        state_dict['food'] = [(f.x, f.y) for f in self.food]
+        state_dict['snake_bodies'] = {k: [tuple([*pos]) for pos in v] for k, v in self.snake_bodies.items()}
+        return state_dict
+
+    @classmethod
+    def from_dict(cls, state_dict):
+        instance = cls(
+            env_meta_data=EnvMetaData.from_dict(state_dict['env_meta_data']),
+            food=set([Coord(*f) for f in state_dict['food']]),
+            snake_bodies={int(k): deque([Coord(*pos) for pos in v]) for k, v in state_dict['snake_bodies'].items()}
+        )
+        instance.state_idx = state_dict['state_idx']
+        return instance
 
 @dataclass
 class StrategyConfig:
