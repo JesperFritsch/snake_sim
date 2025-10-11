@@ -173,6 +173,7 @@ class ProtoRunFileHandler(IRunFileHandler):
     def _proto_to_envinit(self, p: ProtoEnvMetaData) -> EnvMetaData:
         snake_values = {sid: {'head_value': sv.head_value, 'body_value': sv.body_value} for sid, sv in p.snake_values.items()}
         start_positions = {sid: self._proto_to_coord(c) for sid, c in p.start_positions.items()}
+        base_map = self._read_base_map(p)
         return EnvMetaData(
             height=p.height,
             width=p.width,
@@ -181,7 +182,8 @@ class ProtoRunFileHandler(IRunFileHandler):
             food_value=p.food_value,
             snake_values=snake_values,
             start_positions=start_positions,
-            base_map=self._read_base_map(p)
+            base_map=base_map,
+            base_map_dtype=base_map.dtype
         )
 
     def _proto_to_start(self, p: ProtoLoopStartData) -> LoopStartData:
@@ -209,28 +211,15 @@ class ProtoRunFileHandler(IRunFileHandler):
             removed_food=removed_food
         )
 
-    def _write_base_map(self, proto_env, arr: np.ndarray):
-        # For 1-byte dtypes (itemsize == 1) endianness is not applicable
-        # and numpy represents them with a '|' byteorder marker (e.g. '|u1').
-        # Prepending '<' to that form produces invalid strings like '<|u1'.
-        # For multi-byte dtypes, canonicalize to little-endian using
-        # dtype.newbyteorder('<') so the dtype string is acceptable to
-        # np.dtype(...) on read.
-        dt = arr.dtype
-        if dt.itemsize == 1:
-            target_dtype = dt
-        else:
-            try:
-                target_dtype = dt.newbyteorder('<')
-            except Exception:
-                target_dtype = dt
-
+    def _write_base_map(self, proto_env, env_data: EnvMetaData):
+        arr = env_data.base_map
+        target_dtype = env_data.base_map_dtype
         arr2 = arr.astype(target_dtype, copy=False)
         arr2 = np.ascontiguousarray(arr2)
         proto_env.base_map = arr2.tobytes(order='C')
         proto_env.base_map_dtype = arr2.dtype.str
 
-    def _read_base_map(self, proto_env):
+    def _read_base_map(self, proto_env: ProtoEnvMetaData) -> np.ndarray:
         dtype = np.dtype(proto_env.base_map_dtype) if proto_env.base_map_dtype else np.uint8
         arr = np.frombuffer(proto_env.base_map, dtype=dtype)
         arr = arr.reshape((proto_env.height, proto_env.width), order='C')
