@@ -69,6 +69,7 @@ class StateBuilderObserver(ConsumerObserver):
             if self._stop_data is not None:
                 raise StopIteration("No more states available")
             raise NoMoreSteps("Need to receive more steps to generate states")
+        self._current_state.state_idx += 1
         step_data = self._steps[self._current_step_idx]
         self._current_step_idx += 1
         self._current_state.food.update(step_data.new_food)
@@ -85,6 +86,7 @@ class StateBuilderObserver(ConsumerObserver):
         self._current_step_idx -= 1
         if self._current_step_idx < 0:
             raise CurrentIsFirst()
+        self._current_state.state_idx -= 1
         curr_step_data = self._steps[self._current_step_idx]
         self._current_state.food.difference_update(curr_step_data.new_food)
         self._current_state.food.update(curr_step_data.removed_food)

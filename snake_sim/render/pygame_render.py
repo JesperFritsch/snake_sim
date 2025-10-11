@@ -10,7 +10,7 @@ from threading import Thread, Event, Lock
 
 from snake_sim.render.interfaces.renderer_interface import IRenderer
 from snake_sim.loop_observers.frame_builder_observer import FrameBuilderObserver, NoMoreSteps, CurrentIsFirst
-from snake_sim.utils import create_color_map
+from snake_sim.render.utils import create_color_map
 
 log = logging.getLogger(Path(__file__).stem)
 

@@ -2,28 +2,18 @@ import random
 import string
 import os
 import platform
-import sys
 import math
 import numpy as np
-import json
-from importlib import resources
 from time import time
-from typing import Dict, Tuple, List
+from typing import List
 
 import cProfile
 import pstats
 from io import StringIO
 
-from pathlib import Path
-from importlib import resources
-
 from snake_sim.cpp_bindings.utils import get_locations_with_value
 
-from snake_sim.environment.types import DotDict, Coord, CompleteStepState
-
-with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
-    default_config = json.load(config_file)
-
+from snake_sim.environment.types import Coord
 
 class SingletonMeta(type):
     _instances = {}
@@ -36,7 +26,6 @@ class SingletonMeta(type):
     @classmethod
     def reset(cls):
         cls._instances.clear()
-
 
 
 def exec_time(func):
@@ -94,17 +83,6 @@ def rand_str(n):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
 
 
-def create_color_map(snake_values: dict) -> Dict[int, Tuple[int, int, int]]:
-    """ snake_values is a dictionary with snake id as key and a dictionary with 'head_value' and 'body_value' as value """
-    config = DotDict(default_config)
-    color_map = {config[key]: value for key, value in config.color_mapping.items()}
-    color_len = len(config.snake_colors)
-    for i, snake_value_dict in enumerate(snake_values.values()):
-        color_map[snake_value_dict["head_value"]] = config.snake_colors[i % color_len]["head_color"]
-        color_map[snake_value_dict["body_value"]] = config.snake_colors[i % color_len]["body_color"]
-    return color_map
-
-
 def profile(sort_by='cumtime'):
     def decorator(func):
         def wrapper(*args, **kwargs):
@@ -119,11 +97,3 @@ def profile(sort_by='cumtime'):
             return result
         return wrapper
     return decorator
-
-def save_step_state(step_state: CompleteStepState):
-    """ Save the step state to a json file. """
-    file_path = Path(__file__).parent.parent / "test_bench" / "state_files" / f"step_{rand_str(10)}.json"
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    state_dict = step_state.to_dict()
-    with open(file_path, 'w') as f:
-        json.dump(state_dict, f, indent=4)
