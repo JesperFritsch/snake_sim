@@ -120,7 +120,7 @@ class ProtoRunFileHandler(IRunFileHandler):
             c = p.start_positions[int(sid)]
             c.x = int(coord[0])
             c.y = int(coord[1])
-        self._write_base_map(p, env.base_map)
+        self._write_base_map(p, env)
         return p
 
     def _start_to_proto(self, start_data: LoopStartData) -> run_proto.LoopStartData:
