@@ -22,7 +22,7 @@
     "record_file": "snake_run.json",
     "record_dir": "C:\\temp",
     "blocked_value": 2,
-    "max_no_food_steps": null,
+    "max_no_food_steps": 100000000000,
     "max_steps": null,
     "norm_head": 3,
     "norm_body": 4,
@@ -31,7 +31,19 @@
     "snake_config": {
         "type": "survivor",
         "strategies" : {
-            "1": "food_seeker"
+            "2": {
+                "type": "food_seeker",
+                "params": {}
+            },
+            "1": { 
+                "type": "deep_strategy", 
+                "params": {
+                    "training": true,
+                    "model_path": "models/deep_strategy.pt",
+                    "epsilon_start": 0.15,
+                    "epsilon_min": 0.05
+                }
+            }
         }
     },
     "log_level": "DEBUG",

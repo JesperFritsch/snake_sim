@@ -208,12 +208,27 @@ class StrategyConfig:
     type: str
     params: dict = field(default_factory=dict)
 
+    @classmethod
+    def from_dict(cls, config_dict):
+        return cls(
+            type=config_dict['type'],
+            params=config_dict.get('params', {})
+        )
+
 
 @dataclass
 class SnakeConfig:
     type: str
     # strategies is a dict of priority (int) -> StrategyConfig
     strategies: Dict[int, StrategyConfig] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, config_dict):
+        strategies = {
+            int(k): StrategyConfig(**v)
+            for k, v in config_dict.get('strategies', {}).items()
+        }
+        return cls(type=config_dict['type'], strategies=strategies)
 
 
 class SnakeProcType(Enum):

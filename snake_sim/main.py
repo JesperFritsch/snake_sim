@@ -19,6 +19,7 @@ from snake_sim.loop_observables.file_reader_observable import FileRepeaterObserv
 from snake_sim.loop_observers.frame_builder_observer import FrameBuilderObserver
 from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
 from snake_sim.loop_observers.file_persist_observer import FilePersistObserver
+from snake_sim.loop_observers.waitable_observer import WaitableObserver
 from snake_sim.render.render_loop import RenderLoop, RenderConfig
 from snake_sim.render.renderer_factory import renderer_factory
 
@@ -78,11 +79,18 @@ def main():
             )
             render_loop.start()
 
+        waitable_observer = WaitableObserver()
+        loop_repeater.add_observer(waitable_observer)
+
         loop_repeater.start()
-        try:
-            render_loop.join()
-        except NameError:
-            pass
+        if config.no_render:
+            waitable_observer.wait_until_finished()
+            print("Loop finished.")
+        else:
+            try:
+                render_loop.join()
+            except NameError:
+                pass
 
     except KeyboardInterrupt:
         pass
@@ -93,11 +101,13 @@ def main():
         try:
             stop_flag.value = True
         except:
-            pass
+            log.debug("No stop flag to set.")
+            raise
         try:
             render_loop.stop()
         except:
-            pass
+            log.debug("No render loop to stop.")
+            raise
 
 if __name__ == '__main__':
     main()

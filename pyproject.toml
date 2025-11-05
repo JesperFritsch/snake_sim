@@ -1,3 +1,57 @@
 [build-system]
-requires = ["setuptools", "pybind11", "protobuf", "grpcio-tools"]
+requires = ["setuptools>=45", "wheel", "pybind11>=2.5.0", "protobuf", "grpcio-tools"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "snake_sim"
+version = "0.1.0" 
+description = "Just a hobby project"
+readme = "README.md"
+authors = [{name = "Jesper Fritsch"}]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+requires-python = ">=3.9"
+
+dependencies = [
+    "pillow",
+    "numpy", 
+    "opencv-python", 
+    "pygame",
+    "pynput",
+    "pybind11",
+    "pyvirtualdisplay",
+    "protobuf",
+    "tqdm",
+    "grpcio-tools",
+    "pyzmq",
+    "bitarray", 
+    "networkx",
+    "zstandard",
+    "torch",
+    "torchvision",
+    "snake_proto_template @ git+ssh://git@github.com/JesperFritsch/snake_proto_template.git@main"
+]
+
+[project.scripts]
+snake-sim = "snake_sim.main:main"
+
+[project.urls]
+Homepage = "https://github.com/JesperFritsch/snake_sim"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["snake_sim*"]
+
+[tool.setuptools.package-data]
+snake_sim = [
+    "config/*",
+    "maps/map_images/*",
+    "protobuf/*", 
+    "render/sounds/*"
+]
+
+[tool.build_proto]
+proto_files = ["snake_sim/protobuf/*.proto"]
+output_path = "./"

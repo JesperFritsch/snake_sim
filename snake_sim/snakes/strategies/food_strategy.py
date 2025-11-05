@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from snake_sim.environment.types import Coord
+from snake_sim.environment.types import Coord, StrategyConfig
 from snake_sim.environment.interfaces.snake_strategy_interface import ISnakeStrategy
 from snake_sim.utils import get_coord_parity
 
@@ -12,8 +12,8 @@ from snake_sim.cpp_bindings.area_check import AreaChecker
 class FoodSeeker(ISnakeStrategy):
     """ A simple strategy that tries to get to the closest food """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, config: StrategyConfig):
+        super().__init__(config)
         self._area_checker = None
 
     def get_wanted_tile(self) -> Coord:

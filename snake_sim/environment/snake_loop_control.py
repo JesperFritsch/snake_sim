@@ -241,7 +241,7 @@ def setup_loop(config) -> SnakeLoopControl:
         start_length=config.start_length,
         external_snake_targets=config.external_snake_targets,
         inproc_snakes=config.inproc_snakes,
-        snake_config=config.snake_config,
+        snake_config=SnakeConfig.from_dict(config.snake_config),
     )
     if config.command == "game":
         sim_config = GameConfig(
