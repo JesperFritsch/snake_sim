@@ -2,7 +2,7 @@ from setuptools import setup, Extension
 from setuptools.command.build_py import build_py
 import os
 import sys
-import configparser
+import tomllib
 from grpc_tools import protoc
 import glob
 
@@ -32,12 +32,13 @@ class build_proto(build_py):
 
     def finalize_options(self):
         build_py.finalize_options(self)
-        config = configparser.ConfigParser()
-        config.read('setup.cfg')
+        with open('pyproject.toml', 'rb') as f:
+            config = tomllib.load(f)
+        build_proto_config = config['tool']['build_proto']
         if self.output_path is None:
-            self.output_path = config['build_proto']['output_path']
+            self.output_path = build_proto_config['output_path']
         if self.proto_files is None:
-            self.proto_files = config['build_proto']['proto_files'].split()
+            self.proto_files = build_proto_config['proto_files']
 
     def run(self):
         self.run_command("build_ext")
