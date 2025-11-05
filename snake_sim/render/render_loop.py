@@ -18,7 +18,6 @@ from snake_sim.render.input_provider import (
     TerminalInputProvider,
 )
 from snake_sim.render.terminal_render import TerminalRenderer
-from snake_sim.utils import is_headless
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -96,19 +95,11 @@ class RenderLoop:
                     chosen = "dummy (terminal fallback)"
             else:
                 # Try pygame first if not headless
-                if not is_headless():
-                    try:
-                        self._input = PygameInputProvider()
-                        chosen = "pygame"
-                    except Exception:
-                        chosen = None
-                if chosen is None:
-                    if sys.stdin.isatty():
-                        try:
-                            self._input = TerminalInputProvider()
-                            chosen = "terminal (tty)"
-                        except Exception:
-                            chosen = None
+                try:
+                    self._input = PygameInputProvider()
+                    chosen = "pygame"
+                except Exception:
+                    chosen = None
                 if chosen is None:
                     self._input = DummyInputProvider()
                     chosen = "dummy"
