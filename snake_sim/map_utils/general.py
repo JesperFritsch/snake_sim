@@ -64,13 +64,38 @@ def print_map(
                     map_row.append(f'H')
         map_row.append(h_nr_strings[i])
         map_rows.append(' '.join(map_row))
+    def _safe_write(s: str):
+        # Attempt write; if BlockingIOError, retry a few short times
+        import time
+        attempts = 0
+        while attempts < 5:
+            try:
+                sys.stdout.write(s)
+                return
+            except BlockingIOError:
+                time.sleep(0.01)
+                attempts += 1
+        # Final attempt without swallow; may raise
+        sys.stdout.write(s)
+
     for digit_row in digit_rows:
-        sys.stdout.write(' ' * (max_nr_digits_height + 1) + digit_row + '\n')
+        _safe_write(' ' * (max_nr_digits_height + 1) + digit_row + '\n')
     for row in map_rows:
-        sys.stdout.write(row + '\n')
+        _safe_write(row + '\n')
     for digit_row in digit_rows:
-        sys.stdout.write(' ' * (max_nr_digits_height + 1) + digit_row  + '\n')
-    sys.stdout.flush()
+        _safe_write(' ' * (max_nr_digits_height + 1) + digit_row  + '\n')
+    try:
+        sys.stdout.flush()
+    except BlockingIOError:
+        # Retry flush briefly
+        import time
+        for _ in range(5):
+            time.sleep(0.01)
+            try:
+                sys.stdout.flush()
+                break
+            except BlockingIOError:
+                continue
     return len(digit_rows) * 2 + len(map_rows)
 
 

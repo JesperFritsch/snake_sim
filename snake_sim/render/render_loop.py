@@ -4,31 +4,23 @@ import logging
 
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Set, Iterable, Tuple
+from typing import Iterable
 from threading import Thread, Event
 from multiprocessing.sharedctypes import Synchronized
 
 from snake_sim.storing.state_storer import save_step_state
 from snake_sim.render.interfaces.renderer_interface import IRenderer
 from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
-
-# Use the same headless workaround as other controllers that use pynput
+from snake_sim.render.input_provider import (
+    BaseInputProvider,
+    DummyInputProvider,
+    PygameInputProvider,
+    TerminalInputProvider,
+)
+from snake_sim.render.terminal_render import TerminalRenderer
 from snake_sim.utils import is_headless
 
 log = logging.getLogger(Path(__file__).stem)
-
-if is_headless():
-    # pynput may require a display; start a virtual one in headless environments
-    try:
-        from pyvirtualdisplay import Display
-        _display = Display(visible=False, size=(1024, 768))
-        _display.start()
-    except Exception:
-        # If this fails, listeners may still work or tests will handle it
-        _display = None
-
-from pynput import keyboard
-from pynput.keyboard import Key, KeyCode
 
 @dataclass
 class RenderConfig:
@@ -37,94 +29,158 @@ class RenderConfig:
 
 
 class RenderLoop:
-    def __init__(self,
-            renderer: IRenderer,
-            config: RenderConfig,
-            stop_flag: Synchronized = None,
-            state_builder: StateBuilderObserver = None
-        ):
+    """Main render control loop with cross-platform window-focused input.
+
+    Key bindings (window must be focused):
+        RIGHT Arrow  : step/render forward continuously while held
+        LEFT Arrow   : step/render backward continuously while held
+        CTRL         : when held with an arrow, fast mode (higher FPS multiplier)
+        SHIFT        : increases frame step size to 10 while held
+        SPACE        : toggle pause (freeze auto rendering; manual stepping allowed)
+        ENTER        : save current state (if state builder attached)
+        CTRL + C     : quit render loop (mirrors previous global shortcut)
+
+    On Wayland and Windows this uses Pygame's event system instead of global
+    hooks, avoiding failure modes of pynput/keyboard libraries under Wayland.
+    """
+
+    def __init__(
+        self,
+        renderer: IRenderer,
+        config: RenderConfig,
+        stop_flag: Synchronized = None,
+        state_builder: StateBuilderObserver = None,
+        input_provider: BaseInputProvider | None = None,
+    ):
         self._stop_flag: Synchronized = stop_flag
         self._state_builder: StateBuilderObserver = state_builder
         self._renderer: IRenderer = renderer
         self._stop_event: Event = Event()
         self._loop_thread: Thread = Thread(target=self._loop)
-        self._frame_step_direction = True # True for forward
+        self._frame_step_direction = True  # True for forward
         self._frame_step_size = 1
         self._base_fps = config.fps
         self._fps = self._base_fps
-        self._keys_pressed: Set[keyboard.Key | keyboard.KeyCode] = set()
-        # Tracks combos that have already reported a down-event until released
-        self._reported_downs: Set[Tuple[keyboard.Key | keyboard.KeyCode]] = set()
-        self._paused = False # stepping frames
-        self._running = False # loop running
+        self._paused = False  # stepping frames
+        self._running = False  # loop running
         self._render_frame = False
         self._last_render_time = time.time()
-        self._forward_key = Key.right
-        self._backwards_key = Key.left
-        self._fast_key = Key.ctrl_l
-        self._multi_steps_key = Key.shift_l
-        self._toggel_paus_key = Key.space
-        self._save_state_key = Key.enter
-        self._quit_keys = [Key.ctrl_l, KeyCode.from_char('c')]
-        self._key_combs = [
-            self._forward_key,
-            self._backwards_key,
-            self._fast_key,
-            self._multi_steps_key,
-            self._toggel_paus_key,
-            self._save_state_key,
-            self._quit_keys
-        ]
-        self._listener = None
+
+        # Key identifiers (mapped inside provider)
+        self._forward_key = "RIGHT"
+        self._backwards_key = "LEFT"
+        self._fast_key = "CTRL"
+        self._multi_steps_key = "SHIFT"
+        self._toggel_paus_key = "SPACE"
+        self._save_state_key = "ENTER"
+        self._quit_combo = ("CTRL", "C")
+
+        # Choose input provider
+        if input_provider is not None:
+            self._input = input_provider
+            log.debug("RenderLoop input provider explicitly supplied: %s", type(self._input).__name__)
+        else:
+            # Selection priority based on renderer instance:
+            # 1. TerminalRenderer -> TerminalInputProvider (TTY interaction)
+            # 2. PygameRenderer   -> PygameInputProvider
+            # 3. Fallback order: TerminalInputProvider (if TTY) else Dummy
+            import sys
+            chosen = None
+            if isinstance(self._renderer, TerminalRenderer):
+                try:
+                    self._input = TerminalInputProvider()
+                    chosen = "terminal (forced by renderer type)"
+                except Exception as e:
+                    log.warning("TerminalInputProvider failed (%s); falling back", e)
+                    self._input = DummyInputProvider()
+                    chosen = "dummy (terminal fallback)"
+            else:
+                # Try pygame first if not headless
+                if not is_headless():
+                    try:
+                        self._input = PygameInputProvider()
+                        chosen = "pygame"
+                    except Exception:
+                        chosen = None
+                if chosen is None:
+                    if sys.stdin.isatty():
+                        try:
+                            self._input = TerminalInputProvider()
+                            chosen = "terminal (tty)"
+                        except Exception:
+                            chosen = None
+                if chosen is None:
+                    self._input = DummyInputProvider()
+                    chosen = "dummy"
+            log.debug("RenderLoop input provider selected: %s", chosen)
 
     def _loop(self):
         self._paused = False
         try:
-            while ((not (self._stop_flag and self._stop_flag.value))
-                    and self._running
-                    and self._renderer.is_running()
-                    and not self._stop_event.is_set()):
+            while (
+                (not (self._stop_flag and self._stop_flag.value))
+                and self._running
+                and self._renderer.is_running()
+                and not self._stop_event.is_set()
+            ):
+                time.sleep(0.005)  # light sleep to reduce CPU
+                # Update input state
+                self._input.pump()
 
-                time.sleep(0.001) # dont use all CPU
+                # Quit detection
+                if isinstance(self._input, TerminalInputProvider):
+                    # Terminal quit: 'q' or ESC
+                    if self._input.down_event("QUIT") or self._input.down_event("ESC"):
+                        log.info("Terminal quit key pressed; stopping render loop")
+                        self._stop_event.set()
+                else:
+                    if all(self._input.is_pressed(k) for k in self._quit_combo):
+                        log.info("Quit combo pressed; stopping render loop")
+                        self._stop_event.set()
 
-                if self._pressed(keys=self._quit_keys):
-                    print("Quit keys pressed, stopping render loop")
-                    self._stop_event.set()
-                if self._down_event(key=self._toggel_paus_key):
+                # Toggle pause
+                if self._input.down_event(self._toggel_paus_key):
                     self._paused = not self._paused
-                if self._down_event(key=self._save_state_key):
+
+                # Save state
+                if self._input.down_event(self._save_state_key):
                     if self._state_builder is not None:
                         step_idx = self._renderer.get_current_step_idx()
                         state = self._state_builder.get_state(step_idx)
                         save_step_state(state)
                     else:
-                        log.warning("No state builder attached, cannot save state")
+                        log.warning("No state builder attached; cannot save state")
 
-                if self._down_event(self._forward_key):
+                # Frame step triggers (edge)
+                if self._input.down_event(self._forward_key):
                     self._render_frame = True
                     self._fps = self._base_fps
-                elif self._down_event(self._backwards_key):
+                elif self._input.down_event(self._backwards_key):
                     self._render_frame = True
                     self._frame_step_direction = False
                     self._fps = self._base_fps
 
-                forward_pressed = self._pressed(self._forward_key)
-                backward_pressed = self._pressed(self._backwards_key)
+                forward_pressed = self._input.is_pressed(self._forward_key)
+                backward_pressed = self._input.is_pressed(self._backwards_key)
 
-                if self._pressed(key=self._multi_steps_key):
+                # Multi-step modifier
+                if self._input.is_pressed(self._multi_steps_key):
                     self._frame_step_size = 10
                 else:
                     self._frame_step_size = 1
 
-                if forward_pressed or backward_pressed:
-                    if self._pressed(key=self._fast_key):
-                        self._fps = self._base_fps * 20
-                        if backward_pressed:
-                            self._frame_step_direction = False
+                # Fast modifier
+                if (forward_pressed or backward_pressed) and self._input.is_pressed(self._fast_key):
+                    self._fps = self._base_fps * 20
+                    if backward_pressed:
+                        self._frame_step_direction = False
 
+                # Execute render frame if scheduled
                 if self._render_frame:
                     current_frame_idx = self._renderer.get_current_frame_idx()
-                    next_frame_idx = current_frame_idx + (self._frame_step_size * (1 if self._frame_step_direction else -1))
+                    next_frame_idx = current_frame_idx + (
+                        self._frame_step_size * (1 if self._frame_step_direction else -1)
+                    )
                     next_frame_idx = max(next_frame_idx, 0)
                     self._renderer.render_frame(next_frame_idx)
                     self._last_render_time = time.time()
@@ -132,87 +188,47 @@ class RenderLoop:
                     self._frame_step_direction = True
                     self._frame_step_size = 1
 
-                if self._fps > 0:
+                # Auto render timing
+                if not self._paused and self._fps > 0:
                     fps_duration = 1 / self._fps
                     if time.time() - self._last_render_time > fps_duration:
                         self._render_frame = True
 
+                # If paused disable auto FPS
                 if self._paused:
                     self._fps = 0
                 else:
                     self._fps = self._base_fps
 
+                # Advance edge detection state if provider supports it
+                end_frame = getattr(self._input, "end_frame", None)
+                if callable(end_frame):
+                    end_frame()
         finally:
             self.stop()
             if self._stop_flag is not None:
                 self._stop_flag.value = True
 
-    def _handle_pressed(self, key):
-        self._keys_pressed.add(key)
-
-    def _handle_released(self, key):
-        # Remove from currently pressed
-        self._keys_pressed.discard(key)
-        # Any reported combos that include this key must be cleared so they
-        # can report again on the next press
-        to_remove = []
-        for combo in self._reported_downs:
-            if key in combo:
-                to_remove.append(combo)
-        for combo in to_remove:
-            self._reported_downs.discard(combo)
-
-    def _pressed(self, key: Key | KeyCode = None, keys: Iterable[Key | KeyCode] = None):
-        # will return true as long as the key combination is pressed
-        if keys is not None:
-            result = all(k in self._keys_pressed for k in keys)
-        else:
-            result = key in self._keys_pressed
-        return result
-
-    def _down_event(self, key: Key | KeyCode = None, keys: Iterable[Key | KeyCode] = None):
-        # Normalize parameters into a tuple representing the combo
-        if keys is not None:
-            try:
-                combo = tuple(keys)
-            except TypeError:
-                combo = (keys,)
-        elif key is not None:
-            combo = (key,)
-        else:
-            return False
-
-        # If combo currently pressed and not yet reported, report and mark it
-        if all(k in self._keys_pressed for k in combo):
-            if combo not in self._reported_downs:
-                self._reported_downs.add(combo)
-                return True
-            return False
-
-        # Combo not pressed -> ensure it's not marked as reported
-        if combo in self._reported_downs:
-            self._reported_downs.discard(combo)
-        return False
+    # Legacy internal methods removed; input handling now delegated to provider.
 
     def start(self) -> None:
-        """Start the pynput listener in a background thread."""
+        """Start render loop thread."""
         if self._running:
             return
         self._running = True
-        self._listener = keyboard.Listener(on_press=self._handle_pressed, on_release=self._handle_released)
-        # run the listener in a dedicated thread
-        self._listener.start()
         self._loop_thread.start()
 
     def stop(self) -> None:
-        """Stop the listener and mark controller as stopped."""
+        """Stop the loop and cleanup."""
         if not self._running:
             return
         self._running = False
         log.debug("Stopping render loop")
         self._renderer.close()
-        if self._listener:
-            self._listener.stop()
+        try:
+            self._input.stop()
+        except Exception:
+            pass
         self._stop_event.set()
 
     def join(self):
