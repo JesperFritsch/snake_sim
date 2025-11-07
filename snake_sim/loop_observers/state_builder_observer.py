@@ -42,7 +42,7 @@ class StateBuilderObserver(ConsumerObserver):
         self._goto_state(state_idx)
         return self.get_current_state()
 
-    def get_current_state(self):
+    def get_current_state(self) -> CompleteStepState:
         self._current_state.food = set(map(lambda f: Coord(*f), self._current_state.food))
         return self._current_state
 
