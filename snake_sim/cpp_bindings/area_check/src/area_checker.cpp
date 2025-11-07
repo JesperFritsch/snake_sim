@@ -495,7 +495,9 @@ py::dict AreaChecker::py_area_check(
             py::arg("total_steps") = result.total_steps,
             py::arg("food_count") = result.food_count,
             py::arg("has_tail") = result.has_tail,
-            py::arg("margin") = result.margin);
+            py::arg("margin") = result.margin,
+            py::arg("needed_steps") = result.needed_steps
+        );
     } catch (const std::exception& e) {
         PyErr_SetString(PyExc_RuntimeError, e.what());
         throw py::error_already_set();

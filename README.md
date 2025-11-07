@@ -1,6 +1,6 @@
 # Snake Sim
 
-A snake simulation environment with support for deep learning strategies.
+A snake simulation environment with support for deep learning snakes.
 
 ## Installation
 

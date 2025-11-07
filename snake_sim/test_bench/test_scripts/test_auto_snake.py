@@ -11,9 +11,9 @@ import pstats
 from importlib import resources
 
 from snake_sim.snakes.survivor_snake import SurvivorSnake
-from snake_sim.snakes.strategies.food_strategy import FoodSeeker
+from snake_sim.environment.snake_strategy_factory import SnakeStrategyFactory
 from snake_sim.environment.snake_env import SnakeRep
-from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData, CompleteStepState
+from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData, CompleteStepState, StrategyConfig, AreaCheckResult
 from snake_sim.debugging import enable_debug_for, activate_debug
 from snake_sim.utils import get_locations, profile
 from snake_sim.render.utils import create_color_map
@@ -103,6 +103,7 @@ def test_area_check(snake: SurvivorSnake, s_map):
         )
         print(f"Time area check: {(time.time() - time_start) * 1000}")
         print(f"Tile: {tile}, Area check: {area_check}")
+        print(f"AreaCheckResult: {AreaCheckResult(**area_check)}")
 
 
 def test_area_check_performace(snake: SurvivorSnake, s_map, iterations=1000, direction=Coord(1,0)):
@@ -156,7 +157,7 @@ def run_tests(snake: SurvivorSnake, s_map):
 
 def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, env_meta_data: EnvMetaData):
     snake = SurvivorSnake()
-    snake.set_strategy(1, FoodSeeker())
+    snake.set_strategy(1, SnakeStrategyFactory().create_strategy("food_seeker", StrategyConfig("food_seeker")))
     # snake = SurvivorSnake(calc_timeout=1500)
     snake.set_id(id)
     snake.set_start_length(1)

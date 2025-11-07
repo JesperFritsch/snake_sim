@@ -112,6 +112,31 @@ class Coord(tuple):
     def __format__(self, format_spec):
         return str(self).__format__(format_spec)
 
+
+@dataclass 
+class AreaCheckResult:
+    is_clear: bool
+    tile_count: int
+    total_steps: int
+    food_count: int
+    has_tail: bool
+    margin: int
+    needed_steps: int
+
+
+@dataclass
+class RecurseCheckResult:
+    best_margin_fracs_at_depth: dict[Coord, dict[int, float]]  # tile -> depth -> margin_frac
+
+    def from_dict(cls, data: dict) -> 'RecurseCheckResult':
+        return cls(
+            best_margin_fracs_at_depth={
+                Coord(*k): {int(depth): float(margin_frac) for depth, margin_frac in v.items()}
+                for k, v in data['best_margin_fracs_at_depth'].items()
+            }
+        )
+
+
 @dataclass
 class EnvStepData:
     map: bytes
