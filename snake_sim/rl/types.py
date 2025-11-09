@@ -6,6 +6,19 @@ from dataclasses import dataclass, field
 import uuid
 
 
+class State:
+    """Container for snake state representation used in RL.
+
+    Fields:
+        map: np.ndarray representing the environment state (e.g., channels x height x width).
+        ctx: Optional[np.ndarray] representing additional context (e.g., snake length ratio).
+    """
+    def __init__(self, map: np.ndarray, ctx: Optional[np.ndarray] = None):
+        self.map = map
+        self.ctx = ctx
+        self.meta: dict[str, Any] = {}  # Additional metadata if needed
+
+
 class RLMetaData:
     """Base class for RL meta data associated with transitions."""
     pass
@@ -35,13 +48,20 @@ class RLTransitionData:
     (e.g., advantage, return) without mutating the meta object.
     """
     transition_id: str = field(default_factory=lambda: uuid.uuid4().hex)
-    step_nr: int
-    state_buffer: np.ndarray
+    transition_nr: int
+    state: State
     action_index: int
-    next_state_buffer: np.ndarray
     reward: float
+    snake_id: int
+    meta: RLMetaData
     done: bool = False
-    snake_id: Optional[str] = None
+    next_state: Optional[State] = None
     episode_id: Optional[str] = None
-    meta: Optional[RLMetaData] = None
 
+@dataclass
+class PendingTransition:
+    state: State
+    action_index: int
+    meta: PPOMetaData
+    transition_nr: int
+    snake_id: int

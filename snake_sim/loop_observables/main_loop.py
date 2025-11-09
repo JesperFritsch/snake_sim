@@ -165,3 +165,4 @@ class GameLoop(SimLoop):
 
     def set_steps_per_min(self, spm):
         self._steps_per_min = spm
+

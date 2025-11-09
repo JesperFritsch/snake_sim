@@ -1,23 +1,49 @@
-from typing import Dict, Tuple, Union, List
-import numpy as np
-import math
-from functools import wraps
+
+from abc import abstractmethod
 
 import snake_sim.debugging as debug
 
-from snake_sim.environment.types import Coord
+from snake_sim.rl.rl_data_queue import RLMetaDataQueue
+
+from snake_sim.environment.types import Coord, EnvStepData
 from snake_sim.snakes.snake_base import SnakeBase
-from snake_sim.cpp_bindings.area_check import AreaChecker
+from snake_sim.rl.types import State
+from snake_sim.rl.state_builder import (
+    BaseStateBuilder, 
+    CompleteStateBuilder, 
+    DirectionHintsAdapter,
+    SnakeContext
+)
 
 class RLSnakeBase(SnakeBase):
     """ Base class for RL controlled snakes. """
 
     def __init__(self):
         super().__init__()
-        self._area_checker = None # type AreaChecker, will be initialized in set_init_data
-        self._current_direction: Coord = None
-        self._current_map_copy: np.ndarray = None
+        self._state_builder = CompleteStateBuilder(
+            BaseStateBuilder(),
+            adapters=[DirectionHintsAdapter()]
+        )
 
-    def set_init_data(self, env_meta_data):
-        super().set_init_data(env_meta_data)
-        self._init_area_checker()
+    def _get_state(self, step_data: EnvStepData) -> State:
+        snake_ctx = SnakeContext(
+            snake_id=self._id,
+            head=self._head_coord,
+            body_coords=self._body_coords,
+            length=self._length
+        ) 
+        return self._state_builder.build(
+            self._env_meta_data,
+            step_data,
+            snake_ctx
+        )
+
+    def _next_step(self) -> Coord:
+        state = self._get_state(self._env_step_data)
+        debug.debug_print(f"RL Snake: {self._id} state ctx: {state.ctx}, meta: {state.meta}")
+        return self._next_step_for_state(state)
+
+    @abstractmethod
+    def _next_step_for_state(self, state: State) -> Coord:
+        """ To be implemented by subclasses. Given a state, return the next step coordinate. """
+        pass
