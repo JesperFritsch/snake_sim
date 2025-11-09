@@ -2,18 +2,17 @@
 import logging
 from pathlib import Path
 from dataclasses import dataclass
-from typing import List, Dict, Iterable, Tuple, Callable, Optional
+from typing import List, Dict, Tuple, Callable, Optional
 import threading
 import time
-import math
-import random
+# (removed unused imports math, random)
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 
 from snake_sim.rl.rl_data_queue import RLMetaDataQueue
-from snake_sim.rl.types import RLTransitionData, PPOMetaData
+from snake_sim.rl.types import RLTransitionData, PPOMetaData, State
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -41,22 +40,22 @@ class PPOTrainerConfig:
 class PPOTrainer:
     """Minimal PPO trainer operating on RLTransitionData objects.
 
-    Model contract (flexible):
-      - model.forward(state_batch) -> (logits, value) OR a dict with keys 'logits','value'
-      - model has separate optimizers: self.policy_optimizer, self.value_optimizer
-        If not present we fall back to single self.optimizer updating all params.
+    Model contract:
+      - model.forward(map_batch) -> (logits, value)
+      - OR model.forward({'map': map_batch, 'ctx': ctx_batch}) when context present.
+      - Output may also be a dict with keys 'logits' & 'value'.
 
-    State collation: expects each transition.state_buffer to be either
-      a numpy array or dictionary of arrays with matching first dimension after stacking.
-    This is intentionally lightweight – adapt _collate_states for custom encodings.
+    State collation: only new State objects (no legacy arrays). Each State:
+      - map: np.ndarray (C,H,W)
+      - ctx: optional np.ndarray (K,)
+    All-or-none rule for ctx in a batch; mixed presence raises ValueError.
     """
 
     def __init__(self, model_or_path=None, config: PPOTrainerConfig = None, model_factory: Optional[Callable[[], torch.nn.Module]] = None, snapshot_manager=None):
         """Initialize trainer.
 
         model_or_path: either a constructed model (nn.Module) OR a path (file or directory).
-        If path provided, model_factory must be a callable returning an uninitialized model instance
-        whose state_dict matches saved snapshots.
+        If path provided, model_factory must produce an uninitialized model whose state_dict matches snapshots.
         """
         self._update_counter = 0
         self.cfg = config or PPOTrainerConfig()
@@ -64,11 +63,10 @@ class PPOTrainer:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         else:
             self.device = torch.device(self.cfg.device)
-        self.model: torch.nn.Module
         self._model_factory = model_factory
         self._snapshot_manager = snapshot_manager
+        # Model creation / loading
         if snapshot_manager is not None:
-            # SnapshotManager handles model creation and loading
             if model_factory is None:
                 raise ValueError("model_factory must be provided when using snapshot_manager")
             self.model = snapshot_manager.init_or_load(self.device)
@@ -79,12 +77,11 @@ class PPOTrainer:
                     raise ValueError("model_factory must be provided when initializing from path")
                 from snake_sim.rl.model_snapshot import find_latest_snapshot
                 path = Path(model_or_path)
+                self.model = model_factory().to(self.device)
                 if path.is_file():
-                    self.model = model_factory().to(self.device)
                     self._load_snapshot(path)
                     self.cfg.snapshot_dir = str(path.parent)
                 else:
-                    self.model = model_factory().to(self.device)
                     latest = find_latest_snapshot(path)
                     if latest:
                         self._load_snapshot(latest.path)
@@ -96,17 +93,15 @@ class PPOTrainer:
                     self.model = model_factory().to(self.device)
                 else:
                     self.model = model_or_path.to(self.device)
-        # Create optimizers if model doesn't provide them
+        # Optimizers
         if not hasattr(self.model, 'policy_optimizer') and not hasattr(self.model, 'optimizer'):
             self.model.policy_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.cfg.policy_lr)
         if not hasattr(self.model, 'value_optimizer') and not hasattr(self.model, 'optimizer'):
             self.model.value_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.cfg.value_lr)
-        # Internal store: transition_id -> (advantage, return)
-        self._adv_returns: Dict[str, Tuple[float, float]] = {}
+        self._adv_returns = {}
         self._train_lock = threading.Lock()
-        self._bg_thread: Optional[threading.Thread] = None
+        self._bg_thread = None
         self._bg_running = False
-        # Persistent accumulation buffer to avoid losing transitions when below threshold
         log.info(f"PPOTrainer initialized device={self.device}")
 
     def train(self):
@@ -125,7 +120,7 @@ class PPOTrainer:
                 episode_id = t.episode_id or 'episode'
                 traj_map.setdefault((snake_id, episode_id), []).append(t)
             for k in traj_map:
-                traj_map[k].sort(key=lambda x: x.step_nr)
+                traj_map[k].sort(key=lambda x: x.transition_nr)
             all_trajs = list(traj_map.values())
             for traj in all_trajs:
                 self._compute_gae(traj)
@@ -165,28 +160,18 @@ class PPOTrainer:
         for t, adv, ret in zip(trajectory, advantages, returns):
             self._adv_returns[t.transition_id] = (float(adv), float(ret))
 
-    def _collate_states(self, states: List):
-        """Stack raw states (numpy arrays or torch tensors) into a batch tensor.
-
-        Assumes each transition.state_buffer is exactly what the model expects per user contract.
-        """
-        s0 = states[0]
-        if isinstance(s0, np.ndarray):
-            return torch.from_numpy(np.stack(states)).float().to(self.device)
-        if torch.is_tensor(s0):
-            return torch.stack(states).to(self.device)
-        raise TypeError(f"Unsupported state_buffer type: {type(s0)}; expected numpy array or torch Tensor")
+    # (legacy _collate_states removed)
 
     def _collate_batch(self, transitions: List[RLTransitionData]):
-        states = [t.state_buffer for t in transitions]
-        next_states = [t.next_state_buffer for t in transitions]
+        # Use new State container; next_state not used for PPO update currently (GAE uses stored value_estimates)
+        states = [t.state for t in transitions]
         actions = torch.tensor([t.action_index for t in transitions], dtype=torch.long, device=self.device)
         old_log_probs = torch.tensor([t.meta.log_prob for t in transitions], dtype=torch.float32, device=self.device)  # type: ignore
         advantages = torch.tensor([self._adv_returns[t.transition_id][0] for t in transitions], dtype=torch.float32, device=self.device)
         returns = torch.tensor([self._adv_returns[t.transition_id][1] for t in transitions], dtype=torch.float32, device=self.device)
+        state_batch = self._collate_states(states)
         batch = {
-            'states': self._collate_states(states),
-            'next_states': self._collate_states(next_states),
+            'states': state_batch,
             'actions': actions,
             'old_log_probs': old_log_probs,
             'advantages': advantages,
@@ -194,14 +179,37 @@ class PPOTrainer:
         }
         return batch
 
-    def _forward(self, states):
-        out = self.model(states)
+    def _collate_states(self, states: List[State]):
+        """Collate a list of State objects into batched torch tensors.
+
+        Returns torch.Tensor (B,C,H,W) if no ctx present; otherwise dict {'map': map_batch, 'ctx': ctx_batch}.
+        Mixed presence of ctx is not allowed.
+        """
+        maps_np = [s.map for s in states]
+        map_batch = torch.from_numpy(np.stack(maps_np)).float().to(self.device)
+        ctx_all = [s.ctx for s in states]
+        any_ctx = any(c is not None for c in ctx_all)
+        all_ctx = all(c is not None for c in ctx_all)
+        if any_ctx and not all_ctx:
+            raise ValueError("Mixed presence of ctx in batch; ensure all or none have context")
+        if not any_ctx:
+            return map_batch
+        # consistent dims
+        k = ctx_all[0].shape[0]
+        for c in ctx_all:
+            if c.shape[0] != k:
+                raise ValueError("Inconsistent ctx dimensions")
+        ctx_batch = torch.from_numpy(np.stack(ctx_all)).float().to(self.device)
+        return {'map': map_batch, 'ctx': ctx_batch}
+    # ---- Forward & Update ----
+    def _forward(self, state_batch):
+        out = self.model(state_batch)
         if isinstance(out, dict):
             logits = out['logits']
-            values = out['value']
+            value = out['value']
         else:
-            logits, values = out
-        return logits, values.squeeze(-1)
+            logits, value = out
+        return logits, value.squeeze(-1)
 
     def _ppo_update(self, batch: Dict):
         states = batch['states']
@@ -212,43 +220,32 @@ class PPOTrainer:
 
         logits, values = self._forward(states)
         dist = torch.distributions.Categorical(logits=logits)
-        new_log_probs = dist.log_prob(actions)
+        log_probs = dist.log_prob(actions)
         entropy = dist.entropy().mean()
-        # Ratio
-        ratio = torch.exp(new_log_probs - old_log_probs)
-        surr1 = ratio * advantages
-        surr2 = torch.clamp(ratio, 1.0 - self.cfg.clip_range, 1.0 + self.cfg.clip_range) * advantages
-        policy_loss = -torch.min(surr1, surr2).mean()
-        value_loss = F.mse_loss(values, returns)
-        loss = policy_loss + self.cfg.value_coef * value_loss - self.cfg.entropy_coef * entropy
 
-        # Optimize (single optimizer or split)
-        if hasattr(self.model, 'optimizer'):
-            self.model.optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.max_grad_norm)
-            self.model.optimizer.step()
-        else:
-            # Policy + value separate
+        ratio = torch.exp(log_probs - old_log_probs)
+        surr1 = ratio * advantages
+        surr2 = torch.clamp(ratio, 1 - self.cfg.clip_range, 1 + self.cfg.clip_range) * advantages
+        policy_loss = -torch.mean(torch.min(surr1, surr2))
+        value_loss = F.mse_loss(values, returns)
+
+        if hasattr(self.model, 'policy_optimizer') and hasattr(self.model, 'value_optimizer'):
             self.model.policy_optimizer.zero_grad()
-            loss.backward(retain_graph=True)
+            (policy_loss - self.cfg.entropy_coef * entropy).backward(retain_graph=True)
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.max_grad_norm)
             self.model.policy_optimizer.step()
             self.model.value_optimizer.zero_grad()
-            value_loss.backward()
+            (self.cfg.value_coef * value_loss).backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.max_grad_norm)
             self.model.value_optimizer.step()
+        else:
+            optimizer = getattr(self.model, 'optimizer')
+            optimizer.zero_grad()
+            total_loss = policy_loss + self.cfg.value_coef * value_loss - self.cfg.entropy_coef * entropy
+            total_loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.max_grad_norm)
+            optimizer.step()
 
-        stats = {
-            'policy_loss': float(policy_loss.detach().cpu()),
-            'value_loss': float(value_loss.detach().cpu()),
-            'entropy': float(entropy.detach().cpu()),
-            'batch_size': int(actions.shape[0])
-        }
-        log.info(f"PPO update: policy={stats['policy_loss']:.4f} value={stats['value_loss']:.4f} entropy={stats['entropy']:.4f} size={stats['batch_size']}")
-        # Clear advantage/return store after use to prevent memory leak / stale reuse.
-        self._adv_returns.clear()
-        # Snapshot saving
         self._update_counter += 1
         if self._snapshot_manager and (self._update_counter % self.cfg.save_every_updates == 0):
             self._snapshot_manager.save(step=self._update_counter, model=self.model, optimizers={
@@ -257,7 +254,15 @@ class PPOTrainer:
             })
         elif self.cfg.snapshot_dir and (self._update_counter % self.cfg.save_every_updates == 0):
             self._save_snapshot()
-        return stats
+
+        return {
+            'policy_loss': float(policy_loss.item()),
+            'value_loss': float(value_loss.item()),
+            'entropy': float(entropy.item()),
+            'update': self._update_counter,
+            'advantages_mean': float(advantages.mean().item()),
+            'returns_mean': float(returns.mean().item())
+        }
 
     # Future: implement minibatch epochs (currently single pass for simplicity)
     # This can be extended by slicing batch tensors and re-forwarding per epoch/minibatch.
