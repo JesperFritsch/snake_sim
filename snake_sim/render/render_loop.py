@@ -168,7 +168,7 @@ class RenderLoop:
 
                 # Execute render frame if scheduled
                 if self._render_frame:
-                    current_frame_idx = self._renderer.get_current_frame_idx()
+                    current_frame_idx = self._renderer.get_current_map_idx()
                     next_frame_idx = current_frame_idx + (
                         self._frame_step_size * (1 if self._frame_step_direction else -1)
                     )

@@ -16,7 +16,7 @@ from snake_sim.environment.snake_loop_control import start_loop, setup_loop
 from snake_sim.environment.interfaces.loop_observable_interface import ILoopObservable
 from snake_sim.loop_observables.ipc_repeater_observable import IPCRepeaterObservable
 from snake_sim.loop_observables.file_reader_observable import FileRepeaterObservable
-from snake_sim.loop_observers.frame_builder_observer import FrameBuilderObserver
+from snake_sim.loop_observers.map_builder_observer import MapBuilderObserver
 from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
 from snake_sim.loop_observers.file_persist_observer import FilePersistObserver
 from snake_sim.loop_observers.waitable_observer import WaitableObserver
@@ -62,15 +62,15 @@ def main():
 
 
         if not config.no_render:
-            frame_builder = FrameBuilderObserver(config.expansion)
+            map_builder = MapBuilderObserver(config.expansion)
             state_builder = StateBuilderObserver()
-            loop_repeater.add_observer(frame_builder)
+            loop_repeater.add_observer(map_builder)
             loop_repeater.add_observer(state_builder)
             render_config = RenderConfig(
                 fps=config.fps,
                 sound=False
             )
-            renderer = renderer_factory(config.renderer, frame_builder)
+            renderer = renderer_factory(config.renderer, map_builder)
             render_loop = RenderLoop(
                 renderer=renderer,
                 config=render_config,
