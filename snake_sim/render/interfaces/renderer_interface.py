@@ -22,7 +22,7 @@ class IRenderer(ABC):
         pass
 
     @abstractmethod
-    def get_current_frame_idx(self) -> int:
+    def get_current_map_idx(self) -> int:
         pass
 
     @abstractmethod
