@@ -92,8 +92,8 @@ class StateBuilderObserver(ConsumerObserver):
         self._current_state.food.update(curr_step_data.removed_food)
         for s_id, tail_dir in curr_step_data.tail_directions.items():
             body = self._current_state.snake_bodies[s_id]
-            body.popleft()
+            popped_tile = body.popleft()
             if tail_dir != (0, 0):
-                old_tail = body[-1] - tail_dir
+                old_tail = body[-1] - tail_dir if len(body) > 1 else popped_tile - tail_dir
                 body.append(old_tail)
 

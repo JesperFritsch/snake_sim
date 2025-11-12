@@ -35,3 +35,7 @@ class ISnakeHandler(ABC):
     @abstractmethod
     def finalize(self, env_meta_data: EnvMetaData):
         pass
+
+    @abstractmethod
+    def reset(self):
+        pass

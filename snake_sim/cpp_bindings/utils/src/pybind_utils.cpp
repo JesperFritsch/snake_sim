@@ -23,6 +23,26 @@ PYBIND11_MODULE(utils, m)
         py::return_value_policy::copy
     );
 
+    m.def("distance_to_tile_with_value", &py_distance_to_tile_with_value,
+        py::arg("s_map"),
+        py::arg("width"),
+        py::arg("height"),
+        py::arg("from_coord"),
+        py::arg("tile_value"),
+        py::arg("visitable_values"),
+        py::return_value_policy::copy
+    );
+
+    m.def("distance_to_coord", &py_distance_to_coord,
+        py::arg("s_map"),
+        py::arg("width"),
+        py::arg("height"),
+        py::arg("from_coord"),
+        py::arg("to_coord"),
+        py::arg("visitable_values"),
+        py::return_value_policy::copy
+    );
+
     m.def("get_visitable_tiles", &py_get_visitable_tiles,
         py::arg("s_map"),
         py::arg("width"),

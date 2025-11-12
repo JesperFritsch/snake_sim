@@ -2,7 +2,7 @@
 import logging
 from pathlib import Path
 from dataclasses import dataclass
-from typing import List, Dict, Tuple, Callable, Optional
+from typing import List, Dict, Tuple, Optional
 import threading
 import time
 # (removed unused imports math, random)
@@ -13,6 +13,7 @@ import torch.nn.functional as F
 
 from snake_sim.rl.rl_data_queue import RLMetaDataQueue
 from snake_sim.rl.types import RLTransitionData, PPOMetaData, State
+from snake_sim.rl.snapshot_manager import SnapshotManager
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -34,75 +35,164 @@ class PPOTrainerConfig:
     device: str = 'auto'
     snapshot_dir: Optional[str] = None  # directory of model snapshots
     snapshot_base_name: str = 'ppo_model'
-    save_every_updates: int = 1  # save snapshot after this many successful updates
+    save_every_updates: int = 10  # save snapshot after this many successful updates
 
 
 class PPOTrainer:
-    """Minimal PPO trainer operating on RLTransitionData objects.
+    """Minimal PPO trainer that creates its own model lazily from first batch of data."""
 
-    Model contract:
-      - model.forward(map_batch) -> (logits, value)
-      - OR model.forward({'map': map_batch, 'ctx': ctx_batch}) when context present.
-      - Output may also be a dict with keys 'logits' & 'value'.
-
-    State collation: only new State objects (no legacy arrays). Each State:
-      - map: np.ndarray (C,H,W)
-      - ctx: optional np.ndarray (K,)
-    All-or-none rule for ctx in a batch; mixed presence raises ValueError.
-    """
-
-    def __init__(self, model_or_path=None, config: PPOTrainerConfig = None, model_factory: Optional[Callable[[], torch.nn.Module]] = None, snapshot_manager=None):
-        """Initialize trainer.
-
-        model_or_path: either a constructed model (nn.Module) OR a path (file or directory).
-        If path provided, model_factory must produce an uninitialized model whose state_dict matches snapshots.
-        """
+    def __init__(self, config: PPOTrainerConfig = None, snapshot_dir: str = None):
+        """Initialize trainer. Model is created lazily from first batch."""
         self._update_counter = 0
         self.cfg = config or PPOTrainerConfig()
         if self.cfg.device == 'auto':
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         else:
             self.device = torch.device(self.cfg.device)
-        self._model_factory = model_factory
-        self._snapshot_manager = snapshot_manager
-        # Model creation / loading
-        if snapshot_manager is not None:
-            if model_factory is None:
-                raise ValueError("model_factory must be provided when using snapshot_manager")
-            self.model = snapshot_manager.init_or_load(self.device)
-            self.cfg.snapshot_dir = str(snapshot_manager.dir)
-        else:
-            if isinstance(model_or_path, (str, Path)):
-                if model_factory is None:
-                    raise ValueError("model_factory must be provided when initializing from path")
-                from snake_sim.rl.model_snapshot import find_latest_snapshot
-                path = Path(model_or_path)
-                self.model = model_factory().to(self.device)
-                if path.is_file():
-                    self._load_snapshot(path)
-                    self.cfg.snapshot_dir = str(path.parent)
-                else:
-                    latest = find_latest_snapshot(path)
-                    if latest:
-                        self._load_snapshot(latest.path)
-                    self.cfg.snapshot_dir = str(path)
-            else:
-                if model_or_path is None:
-                    if model_factory is None:
-                        raise ValueError("Either model_or_path or model_factory must be provided")
-                    self.model = model_factory().to(self.device)
-                else:
-                    self.model = model_or_path.to(self.device)
-        # Optimizers
-        if not hasattr(self.model, 'policy_optimizer') and not hasattr(self.model, 'optimizer'):
-            self.model.policy_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.cfg.policy_lr)
-        if not hasattr(self.model, 'value_optimizer') and not hasattr(self.model, 'optimizer'):
-            self.model.value_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.cfg.value_lr)
+        
+        self.model = None
+        self.policy_optimizer = None
+        self.value_optimizer = None
+        self._snapshot_dir = snapshot_dir
+        self._snapshot_manager = None
         self._adv_returns = {}
         self._train_lock = threading.Lock()
         self._bg_thread = None
         self._bg_running = False
+        
+        # Training metrics tracking
+        self._metrics_history = {
+            'policy_loss': [],
+            'value_loss': [], 
+            'entropy': [],
+            'returns_mean': [],
+            'advantages_mean': [],
+            'batch_size': []
+        }
+        self._window_size = 20  # Rolling average window
+        
         log.info(f"PPOTrainer initialized device={self.device}")
+
+    def _ensure_model(self, first_state: State):
+        """Create model lazily from first state to determine input dimensions."""
+        if self.model is not None:
+            return
+        
+        from snake_sim.rl.models.ppo_model import SnakePPONet
+        ctx_dim = 0 if first_state.ctx is None else first_state.ctx.shape[0]
+        in_channels = first_state.map.shape[0]
+        self.model = SnakePPONet(in_channels, ctx_dim).to(self.device)
+        
+        # Create optimizers
+        self.policy_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.cfg.policy_lr)
+        self.value_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.cfg.value_lr)
+        
+        # Setup snapshot manager if directory provided
+        if self._snapshot_dir:
+            def model_factory():
+                return SnakePPONet(in_channels, ctx_dim)
+            self._snapshot_manager = SnapshotManager(
+                dir=self._snapshot_dir,
+                base_name=self.cfg.snapshot_base_name,
+                factory=model_factory
+            )
+            # Try to load latest snapshot
+            self._try_load_latest_snapshot()
+        
+        log.info(f"PPOTrainer created model: {in_channels} channels, {ctx_dim} context dims")
+
+    def _update_metrics_history(self, stats: dict):
+        """Update training metrics history and compute running averages."""
+        for key, value in stats.items():
+            if key in self._metrics_history:
+                self._metrics_history[key].append(value)
+                # Keep only recent history (strict limit to prevent memory growth)
+                max_history = self._window_size * 3  # Allow some buffer but cap growth
+                if len(self._metrics_history[key]) > max_history:
+                    self._metrics_history[key] = self._metrics_history[key][-self._window_size:]
+
+    def _compute_running_averages(self) -> dict:
+        """Compute running averages for recent training metrics."""
+        averages = {}
+        for key, values in self._metrics_history.items():
+            if values:
+                recent_values = values[-self._window_size:]
+                averages[f'{key}_avg'] = sum(recent_values) / len(recent_values)
+                if len(values) >= 2:
+                    # Compute trend (recent vs older values)
+                    mid = len(values) // 2
+                    older_avg = sum(values[:mid]) / mid if mid > 0 else values[0]
+                    recent_avg = sum(values[mid:]) / (len(values) - mid)
+                    trend = recent_avg - older_avg
+                    averages[f'{key}_trend'] = trend
+        return averages
+
+    def _log_detailed_metrics(self, stats: dict):
+        """Log detailed training metrics with trends and running averages."""
+        self._update_metrics_history(stats)
+        
+        if self._update_counter % 5 == 0:  # Every 5 updates
+            averages = self._compute_running_averages()
+            
+            # Performance indicators
+            policy_loss_avg = averages.get('policy_loss_avg', 0)
+            value_loss_avg = averages.get('value_loss_avg', 0) 
+            entropy_avg = averages.get('entropy_avg', 0)
+            returns_avg = averages.get('returns_mean_avg', 0)
+            
+            # Trends
+            policy_trend = averages.get('policy_loss_trend', 0)
+            value_trend = averages.get('value_loss_trend', 0)
+            returns_trend = averages.get('returns_mean_trend', 0)
+            
+            # Performance assessment
+            policy_direction = "↓" if policy_trend < -0.001 else "↑" if policy_trend > 0.001 else "→"
+            value_direction = "↓" if value_trend < -0.001 else "↑" if value_trend > 0.001 else "→"
+            returns_direction = "↑" if returns_trend > 0.001 else "↓" if returns_trend < -0.001 else "→"
+            
+            log.info(f"Training Metrics (Update {self._update_counter}):")
+            log.info(f"  Policy Loss: {policy_loss_avg:.4f} {policy_direction} | Value Loss: {value_loss_avg:.4f} {value_direction}")
+            log.info(f"  Entropy: {entropy_avg:.4f} | Returns: {returns_avg:.4f} {returns_direction}")
+            
+            # Learning indicators
+            if returns_trend > 0.01:
+                log.info("  🚀 Snakes showing improvement in returns!")
+            elif returns_trend < -0.01:
+                log.info("  📉 Returns declining - possible overfitting or poor exploration")
+            
+            if entropy_avg < 0.5:
+                log.info("  ⚠️  Low entropy - snakes may be too deterministic")
+            elif entropy_avg > 1.5:
+                log.info("  🎲 High entropy - snakes exploring actively")
+
+    def _try_load_latest_snapshot(self):
+        """Try to load latest snapshot using SnapshotManager."""
+        if not self._snapshot_manager:
+            return
+        try:
+            success = self._snapshot_manager.reload_into(self.model)
+            if success and self._snapshot_manager._last_loaded:
+                loaded_info = self._snapshot_manager._last_loaded
+                self._update_counter = loaded_info.step
+                log.info(f"📁 Loaded snapshot from {loaded_info.path}, resuming from step {self._update_counter}")
+                # Also load optimizer states if available
+                data = torch.load(loaded_info.path, map_location=self.device)
+                if isinstance(data, dict):
+                    if 'optimizer_policy' in data and self.policy_optimizer:
+                        self.policy_optimizer.load_state_dict(data['optimizer_policy'])
+                    if 'optimizer_value' in data and self.value_optimizer:
+                        self.value_optimizer.load_state_dict(data['optimizer_value'])
+                    log.info("📈 Restored optimizer states")
+        except Exception as e:
+            log.warning(f"Failed to load snapshot: {e}")
+
+    def get_queue_size(self):
+        """Get current transition queue size."""
+        return rl_data_queue.size()
+
+    def get_update_count(self):
+        """Get current number of training updates performed."""
+        return self._update_counter
 
     def train(self):
         """Run one PPO training cycle if enough data accumulated.
@@ -110,10 +200,15 @@ class PPOTrainer:
         Returns training stats dict or None if insufficient data.
         """
         with self._train_lock:
-            # Add any newly ingested transitions to persistent buffer
             if rl_data_queue.size() < self.cfg.minibatch_size:
                 return None  # Not enough yet – keep accumulating
             transitions = rl_data_queue.get_transitions()
+            if not transitions:
+                return None
+            
+            # Initialize model lazily from first transition
+            self._ensure_model(transitions[0].state)
+            
             traj_map: Dict[Tuple[str, str], List[RLTransitionData]] = {}
             for t in transitions:
                 snake_id = t.snake_id or 'snake'
@@ -127,7 +222,6 @@ class PPOTrainer:
             processed = [t for traj in all_trajs for t in traj]
             batch = self._collate_batch(processed)
             stats = self._ppo_update(batch)
-            # Clear buffer only after successful training step
             return stats
 
     # ---- Core Steps ----
@@ -228,41 +322,43 @@ class PPOTrainer:
         surr2 = torch.clamp(ratio, 1 - self.cfg.clip_range, 1 + self.cfg.clip_range) * advantages
         policy_loss = -torch.mean(torch.min(surr1, surr2))
         value_loss = F.mse_loss(values, returns)
-
-        if hasattr(self.model, 'policy_optimizer') and hasattr(self.model, 'value_optimizer'):
-            self.model.policy_optimizer.zero_grad()
-            (policy_loss - self.cfg.entropy_coef * entropy).backward(retain_graph=True)
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.max_grad_norm)
-            self.model.policy_optimizer.step()
-            self.model.value_optimizer.zero_grad()
-            (self.cfg.value_coef * value_loss).backward()
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.max_grad_norm)
-            self.model.value_optimizer.step()
-        else:
-            optimizer = getattr(self.model, 'optimizer')
-            optimizer.zero_grad()
-            total_loss = policy_loss + self.cfg.value_coef * value_loss - self.cfg.entropy_coef * entropy
+        
+        # Combined loss update to avoid retain_graph issues
+        total_loss = policy_loss + self.cfg.value_coef * value_loss - self.cfg.entropy_coef * entropy
+        
+        try:
+            self.policy_optimizer.zero_grad()
+            self.value_optimizer.zero_grad()
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.max_grad_norm)
-            optimizer.step()
+            self.policy_optimizer.step()
+            self.value_optimizer.step()
+        except RuntimeError as e:
+            if "inplace operation" in str(e):
+                log.warning(f"Gradient computation failed due to inplace operation, skipping update: {e}")
+                return None
+            else:
+                raise
 
         self._update_counter += 1
+        # Save snapshot periodically
         if self._snapshot_manager and (self._update_counter % self.cfg.save_every_updates == 0):
-            self._snapshot_manager.save(step=self._update_counter, model=self.model, optimizers={
-                'policy': getattr(self.model, 'policy_optimizer', None),
-                'value': getattr(self.model, 'value_optimizer', None)
-            })
-        elif self.cfg.snapshot_dir and (self._update_counter % self.cfg.save_every_updates == 0):
             self._save_snapshot()
 
-        return {
+        stats = {
             'policy_loss': float(policy_loss.item()),
             'value_loss': float(value_loss.item()),
             'entropy': float(entropy.item()),
             'update': self._update_counter,
             'advantages_mean': float(advantages.mean().item()),
-            'returns_mean': float(returns.mean().item())
+            'returns_mean': float(returns.mean().item()),
+            'batch_size': len(actions)
         }
+        
+        # Log detailed metrics with trends
+        self._log_detailed_metrics(stats)
+        
+        return stats
 
     # Future: implement minibatch epochs (currently single pass for simplicity)
     # This can be extended by slicing batch tensors and re-forwarding per epoch/minibatch.
@@ -282,11 +378,45 @@ class PPOTrainer:
 
         def _runner():
             log.info("Background PPO training thread started")
+            last_stats_time = time.time()
+            stats_interval = 10.0  # Print stats every 10 seconds
+            
             while self._bg_running:
-                stats = self.train()
+                try:
+                    stats = self.train()
+                except Exception as e:
+                    log.error(f"Training error: {e}", exc_info=True)
+                    stats = None
+                
+                # Log brief stats when we get them (every update)
+                if stats:
+                    try:
+                        current_time = time.time()
+                        
+                        # Brief update log
+                        log.info(f"Update {stats['update']}: "
+                               f"P_Loss={stats['policy_loss']:.3f}, "
+                               f"V_Loss={stats['value_loss']:.3f}, "
+                               f"Return={stats['returns_mean']:.3f}, "
+                               f"Batch={stats['batch_size']}")
+                        
+                        # Detailed stats less frequently 
+                        if current_time - last_stats_time >= stats_interval:
+                            queue_size = rl_data_queue.size()
+                            log.info(f"📊 Training Overview (Update {stats['update']}):")
+                            log.info(f"   Queue Size: {queue_size} | Batch Size: {stats['batch_size']}")
+                            log.info(f"   Policy Loss: {stats['policy_loss']:.4f} | Value Loss: {stats['value_loss']:.4f}")
+                            log.info(f"   Entropy: {stats['entropy']:.4f} | Avg Return: {stats['returns_mean']:.4f}")
+                            last_stats_time = current_time
+                    except Exception as e:
+                        log.error(f"Logging error: {e}")
+                
                 # If we trained, maybe data flush; if not, poll faster until buffer fills
                 sleep_time = interval_sec if stats else min(interval_sec * 0.5, 0.5)
-                time.sleep(sleep_time)
+                try:
+                    time.sleep(sleep_time)
+                except Exception:
+                    break  # Exit gracefully on interruption
             log.info("Background PPO training thread stopped")
 
         self._bg_thread = threading.Thread(target=_runner, name="ppo_trainer_bg", daemon=True)
@@ -301,25 +431,23 @@ class PPOTrainer:
             self._bg_thread.join(timeout=timeout)
             self._bg_thread = None
 
-    def _load_snapshot(self, path: Path):
-        try:
-            data = torch.load(path, map_location=self.device)
-            if isinstance(data, dict) and 'policy_state' in data:
-                self.model.load_state_dict(data['policy_state'])
-                log.info(f"Loaded snapshot {path}")
-            else:
-                # Assume entire state_dict
-                self.model.load_state_dict(data)
-                log.info(f"Loaded raw state_dict snapshot {path}")
-        except Exception as e:
-            log.warning(f"Failed loading snapshot {path}: {e}")
-
     def _save_snapshot(self):
-        from snake_sim.rl.model_snapshot import atomic_save
+        """Save model snapshot using SnapshotManager."""
+        if not self._snapshot_manager:
+            return
         try:
-            payload = {'policy_state': self.model.state_dict(), 'update': self._update_counter}
-            path = atomic_save(payload, self.cfg.snapshot_dir, self.cfg.snapshot_base_name, step=self._update_counter)
+            optimizers = {
+                'policy': self.policy_optimizer,
+                'value': self.value_optimizer
+            }
+            path = self._snapshot_manager.save(
+                step=self._update_counter,
+                model=self.model,
+                optimizers=optimizers
+            )
             log.info(f"Saved snapshot {path}")
+            # Prune old snapshots (keep last 5)
+            self._snapshot_manager.prune(keep_last=5)
         except Exception as e:
             log.warning(f"Failed saving snapshot: {e}")
 

@@ -62,6 +62,11 @@ class GRPCProxySnake(ISnake):
         self.stub.SetInitData(env_meta_data_proto)
 
     @handle_connection_loss
+    def reset(self):
+        super().reset()
+        self.stub.Reset(remote_snake_pb2.Empty())
+
+    @handle_connection_loss
     def update(self, env_step_data: EnvStepData):
         # print(f"{self.target}: Updating")
         env_step_data_proto = remote_snake_pb2.EnvStepData(

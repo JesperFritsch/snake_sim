@@ -139,7 +139,7 @@ class RecurseCheckResult:
 
 @dataclass
 class EnvStepData:
-    map: bytes
+    map: np.ndarray
     snakes: dict
     food_locations: Optional[List[Coord]]
 
@@ -259,3 +259,26 @@ class SnakeConfig:
 class SnakeProcType(Enum):
     SHM = 'shm' # Running in a separate process on the same machine, communicating via shared memory
     GRPC = 'grpc' # Running in a separate process or machine, communicating via gRPC
+
+
+@dataclass
+class SimConfig:
+    map: str
+    food: int
+    height: int
+    width: int
+    food_decay: int
+    snake_count: int
+    calc_timeout: int
+    verbose: bool
+    start_length: int
+    external_snake_targets: List[str]
+    inproc_snakes: bool
+    snake_config: SnakeConfig
+
+
+@dataclass
+class GameConfig(SimConfig):
+    player_count: int
+    spm: int
+    snake_game_config: SnakeConfig

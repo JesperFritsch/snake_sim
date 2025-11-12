@@ -93,7 +93,7 @@ class SHMSnakeServer:
         if not isinstance(env_step_data, EnvStepData):
             raise ValueError("Expected EnvStepData as data for shm_update command")
         # Update the EnvStepData with the new map from shared memory
-        env_step_data.map = payload
+        env_step_data.map = np.frombuffer(payload, dtype=self._snake_instance._env_meta_data.base_map_dtype).reshape(self._snake_instance._env_meta_data.height, self._snake_instance._env_meta_data.width)
         # Call the snake update method with EnvStepData and return the result
         try:
             result = self._snake_instance.update(env_step_data)

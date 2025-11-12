@@ -180,6 +180,10 @@ class SHMProxySnake(ISnake):
         # Define this method just to not duplicate logic by wrapping it with zmq_msg_forwarder
         pass
 
+    @zmq_msg_forwarder
+    def reset(self):
+        super().reset()
+
     def update(self, env_step_data: EnvStepData):
         # we dont send the map over zmq, because its in shared memory
         env_step_data.map = None

@@ -35,7 +35,7 @@ class SHMUpdater(ConcurrentUpdater):
     def get_decisions(self, snakes: List[SHMProxySnake], env_step_data: EnvStepData, timeout: float) -> dict[int, Coord]:
         if any(not isinstance(snake, SHMProxySnake) for snake in snakes):
             raise TypeError("All snakes must be instances of SHMProxySnake.")
-        self._shm_writer.write_frame(env_step_data.map)
+        self._shm_writer.write_frame(env_step_data.map.tobytes())
         return super().get_decisions(snakes, env_step_data, timeout)
 
     def close(self):
