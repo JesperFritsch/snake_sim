@@ -96,6 +96,18 @@ class SnapshotManager:
                 payload[f'optimizer_{name}'] = opt.state_dict()
         return atomic_save(payload, self.dir, self.base_name, step=step)
 
+    # ---- Information ----
+    def get_latest_info(self) -> Optional[LoadedSnapshot]:
+        """Get information about the latest available snapshot."""
+        latest = find_latest_snapshot(self.dir)
+        if latest:
+            return LoadedSnapshot(path=latest.path, step=latest.step, timestamp=time.time())
+        return None
+    
+    def get_last_loaded_info(self) -> Optional[LoadedSnapshot]:
+        """Get information about the last successfully loaded snapshot."""
+        return self._last_loaded
+
     # ---- Retention ----
     def prune(self, keep_last: int = 5):
         if keep_last <= 0:

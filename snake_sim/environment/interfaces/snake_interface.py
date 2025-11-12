@@ -46,9 +46,15 @@ class ISnake(ABC):
         self._head_value = self._env_meta_data.snake_values[self._id]['head_value']
         self._body_value = self._env_meta_data.snake_values[self._id]['body_value']
 
+    def reset(self):
+        self._alive = True
+        self._length = self._start_length
+        self._body_coords = deque([self._head_coord] * self._length)
+
     @abstractmethod
     def update(self, env_step_data: EnvStepData) -> Coord: # -> (int, int) as direction (1, 0) for right (-1, 0) for left
         pass
+
 
     def __repr__(self):
         return f"{self.__class__.__name__}(id={self._id})"

@@ -52,3 +52,6 @@ class ISnakeEnv(ABC):
     @abstractmethod
     def get_head_positions(self) -> Dict[int, Coord]:
         pass
+
+    def reset(self):
+        pass

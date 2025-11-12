@@ -17,27 +17,17 @@ class SnakeBase(ISnake, ABC):
     But it is a useful superclass for other snake implementations because it handles the map and data provided for each step"""
     def __init__(self):
         super().__init__()
-        self._id = None
-        self._start_length = None
-        self._alive = True
-        self._body_value = None
-        self._head_value = None
-        self._body_coords: Deque[Coord] = deque()
-        self._head_coord = None
-        self._map = None
-        self._length = self._start_length
-        self._env_meta_data: EnvMetaData = None
-        self._env_step_data: EnvStepData = None
 
     # from abstract class
     def update(self, env_step_data: EnvStepData):
         self._env_step_data = env_step_data
         self._update_map(self._env_step_data.map)
         next_step = self._next_step()
-        if next_step is None:
+        validated_step = self._validate_coord(next_step) if next_step is not None else None
+        if validated_step is None:
             return
-        next_direction = next_step - self._head_coord
-        self._set_new_head(next_step)
+        next_direction = validated_step - self._head_coord
+        self._set_new_head(validated_step)
         return next_direction
 
     @abstractmethod
@@ -48,12 +38,15 @@ class SnakeBase(ISnake, ABC):
         x, y = coord
         return (0 <= x < self._env_meta_data.width and 0 <= y < self._env_meta_data.height)
 
+    def _validate_coord(self, coord: Coord):
+        if not self._is_inside(coord):
+            return None
+        if distance(self._head_coord, coord) != 1:
+            return None
+        return coord
+
     def _set_new_head(self, coord: Coord):
         """ Just return if the coord is invalid, the snake will be killed if it tries to move outside the map """
-        if not self._is_inside(coord):
-            raise ValueError(f"Snake: {self._id} head at: {self._head_coord} tried to set its new head outside the map at: {coord}")
-        if distance(self._head_coord, coord) != 1:
-            raise ValueError(f"Snake: {self._id} head at: {self._head_coord} tried to set its new head not ajacent to head at: {coord}")
         self.x, self.y = coord
         self._head_coord = coord
         grow = False
@@ -72,8 +65,8 @@ class SnakeBase(ISnake, ABC):
         if not shrink:
             body_coords.append(old_tail)
 
-    def _update_map(self, map: bytes):
-        self._map = np.frombuffer(map, dtype=self._env_meta_data.base_map_dtype).reshape(self._env_meta_data.height, self._env_meta_data.width)
+    def _update_map(self, map: np.ndarray):
+        self._map = map
 
     def _print_map(self, s_map=None):
         print_map(

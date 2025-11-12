@@ -3,8 +3,6 @@ from abc import abstractmethod
 
 import snake_sim.debugging as debug
 
-from snake_sim.rl.rl_data_queue import RLMetaDataQueue
-
 from snake_sim.environment.types import Coord, EnvStepData
 from snake_sim.snakes.snake_base import SnakeBase
 from snake_sim.rl.types import State
@@ -29,7 +27,7 @@ class RLSnakeBase(SnakeBase):
         snake_ctx = SnakeContext(
             snake_id=self._id,
             head=self._head_coord,
-            body_coords=self._body_coords,
+            body_coords=list(self._body_coords),
             length=self._length
         ) 
         return self._state_builder.build(

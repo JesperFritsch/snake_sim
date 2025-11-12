@@ -7,12 +7,14 @@ from snake_sim.snakes.snake_base import ISnake
 from snake_sim.snakes.grpc_proxy_snake import GRPCProxySnake
 from snake_sim.snakes.shm_proxy_snake import SHMProxySnake
 from snake_sim.snakes.survivor_snake import SurvivorSnake
+from snake_sim.rl.snakes.ppo_snake import PPOSnake
 from snake_sim.environment.types import DotDict, SnakeConfig, SnakeProcType
 from snake_sim.snakes.strategies.utils import apply_strategies
 
 
 TYPENAME_TO_CLASS = {
     'survivor': SurvivorSnake,
+    'ppo_ai': PPOSnake,
 }
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:

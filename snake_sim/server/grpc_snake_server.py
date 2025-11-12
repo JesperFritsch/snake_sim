@@ -6,6 +6,7 @@ import grpc
 import argparse
 import sys
 import time
+import numpy as np
 
 from pathlib import Path
 from concurrent import futures
@@ -29,7 +30,6 @@ class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
 
     def SetStartLength(self, request, context):
         self._snake_instance.set_start_length(request.length)
-
         return remote_snake_pb2.Empty()
 
     def SetStartPosition(self, request, context):
@@ -54,7 +54,7 @@ class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
     def Update(self, request_iterator, context):
         for env_step_data_proto in request_iterator:
             env_step_data = EnvStepData(
-                map=env_step_data_proto.map,
+                map=np.frombuffer(env_step_data_proto.map, dtype=self._snake_instance._env_meta_data.base_map_dtype).reshape(self._snake_instance._env_meta_data.height, self._snake_instance._env_meta_data.width),
                 snakes={k: {"is_alive": v.is_alive, "length": v.length} for k, v in env_step_data_proto.snakes.items()},
                 food_locations=[Coord(x=coord.x, y=coord.y) for coord in env_step_data_proto.food_locations]
             )
@@ -63,6 +63,14 @@ class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
                 yield remote_snake_pb2.UpdateResponse()
             else:
                 yield remote_snake_pb2.UpdateResponse(direction=remote_snake_pb2.Coord(x=direction.x, y=direction.y))
+    
+    def Kill(self, request, context):
+        self._snake_instance.kill()
+        return remote_snake_pb2.Empty()
+
+    def Reset(self, request, context):
+        self._snake_instance.reset()
+        return remote_snake_pb2.Empty()
 
 
 def import_snake_module(snake_module_file):

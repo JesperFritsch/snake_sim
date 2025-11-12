@@ -148,7 +148,7 @@ class DirectionHintsAdapter:
         if self._area_checker is None:
             self._init_area_checker(snake_ctx, env_meta)
 
-        area_checks = self._get_area_checks(step_data.map, env_meta, snake_ctx)
+        area_checks = self._get_area_checks(step_data.map, env_meta, step_data, snake_ctx)
         area_ctx = self._create_area_ctx(area_checks)
         close_food_ctx = self._create_close_food_ctx(env_meta, step_data, snake_ctx)
         # Append to state context
@@ -156,7 +156,7 @@ class DirectionHintsAdapter:
         # Update meta
         state.meta['context_order'] += ['area_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
         state.meta['context_order'] += ['close_food_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
-        state.meta['context_size'] += [area_ctx.shape[0], close_food_ctx.shape[0]]
+        state.meta['context_size'] += (area_ctx.shape[0] + close_food_ctx.shape[0])
 
     def _get_area_checks(self, s_map: np.ndarray, env_meta: EnvMetaData, step_data: EnvStepData, ctx: SnakeContext) -> Dict[Coord, AreaCheckResult]:
         head_coord = ctx.head
@@ -167,9 +167,8 @@ class DirectionHintsAdapter:
             head_coord,
             [env_meta.free_value, env_meta.food_value]
         )
-        
         return {
-            d_coord: self._get_area_check(d_coord, step_data, ctx) if d_coord in visitable_tiles else None
+            d_coord: self._get_area_check(d_coord, step_data, ctx) if head_coord + d_coord in visitable_tiles else None
             for d_coord in consts.ACTION_ORDER
         }
         
@@ -196,7 +195,9 @@ class DirectionHintsAdapter:
     def _create_area_ctx(self, area_checks: dict[Coord, AreaCheckResult]) -> np.ndarray:
         ctx = self._clean_dir_ctx()
         for coord, ac in area_checks.items():
-            if ac.has_tail:
+            if ac is None:
+                margin_frac = -1.0
+            elif ac.has_tail:
                 margin_frac = 1.0
             else:
                 margin_frac = min(-1.0, max(1.0, ac.margin / max(1, ac.total_steps)))

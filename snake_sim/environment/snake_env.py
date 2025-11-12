@@ -21,6 +21,7 @@ with resources.open_text('snake_sim.config', 'default_config.json') as config_fi
 
 class SnakeRep:
     def __init__(self, id: int, h_value: int, b_value: int, start_position: Coord, start_length: int=1):
+        self._start_length = start_length
         self.move_count = 0
         self.last_ate = 0
         self.id = id
@@ -57,6 +58,13 @@ class SnakeRep:
 
     def get_tail(self) -> Coord:
         return self.body[-1]
+
+    def reset(self, start_position: Coord):
+        self.move_count = 0
+        self.last_ate = 0
+        self._length = self._start_length
+        self.body = deque([start_position])
+        self.is_alive = True
 
 
 class SnakeEnv(ISnakeEnv):
@@ -102,7 +110,7 @@ class SnakeEnv(ISnakeEnv):
 
     def _place_snake_on_map(self, snake_rep: SnakeRep):
         for i, (x, y) in enumerate(snake_rep.body):
-            self._map[y, x] = snake_rep.id + (0 if i == 0 else 1)
+            self._map[y, x] = snake_rep.head_value if i == 0 else snake_rep.body_value
 
     def _remove_snake_from_map(self, snake_rep: SnakeRep):
         for x, y in snake_rep.body:
@@ -130,10 +138,10 @@ class SnakeEnv(ISnakeEnv):
     def _update_snake_on_map(self, id, old_tail):
         snake_rep = self._snake_reps[id]
         new_head = snake_rep.get_head()
-        old_head = snake_rep.body[1]
+        old_head = snake_rep.body[1] if len(snake_rep.body) > 1 else old_tail
         new_tail = snake_rep.get_tail()
-        self._map[new_head[1], new_head[0]] = snake_rep.head_value
         self._map[old_head[1], old_head[0]] = snake_rep.body_value
+        self._map[new_head[1], new_head[0]] = snake_rep.head_value
         self._map[new_tail[1], new_tail[0]] = snake_rep.body_value
         if old_tail != new_tail:
             self._map[old_tail[1], old_tail[0]] = self._free_value
@@ -174,7 +182,7 @@ class SnakeEnv(ISnakeEnv):
     def get_env_step_data(self, for_id: Optional[int] = None) -> EnvStepData:
         # id is not used yet, but it is preparing for being able to send different data to different snakes
         return EnvStepData(
-            self.get_map().tobytes(),
+            self.get_map(),
             {id: {'is_alive': snake_rep.is_alive, 'length': len(snake_rep.body)} for id, snake_rep in self._snake_reps.items()},
             self.get_food()
         )

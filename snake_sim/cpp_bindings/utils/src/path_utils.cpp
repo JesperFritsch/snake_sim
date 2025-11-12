@@ -54,6 +54,77 @@ Coord get_dir_to_tile(
 }
 
 
+int distance_to_tile_with_value(
+    uint8_t *s_map,
+    int width,
+    int height,
+    Coord from_coord,
+    int tile_value,
+    std::vector<int> visitable_values
+){
+    std::vector<bool> visited(width * height, false);
+    std::deque<std::pair<Coord, int>> coords_to_visit; // Pair of Coord and distance
+    visited[from_coord.y * width + from_coord.x] = true;
+    coords_to_visit.push_back(std::make_pair(from_coord, 0));
+
+    while (!coords_to_visit.empty()){
+        auto current_pair = coords_to_visit.front();
+        coords_to_visit.pop_front();
+        Coord current = current_pair.first;
+        int current_distance = current_pair.second;
+        int current_index = current.y * width + current.x;
+        if (s_map[current_index] == tile_value){
+            return current_distance;
+        }
+        auto visitable_tiles = get_visitable_tiles(s_map, width, height, current, visitable_values);
+        for (const auto& valid_coord : visitable_tiles){
+            int neighbor_index = valid_coord.y * width + valid_coord.x;
+            if (!visited[neighbor_index]){
+                visited[neighbor_index] = true;
+                coords_to_visit.push_back(std::make_pair(valid_coord, current_distance + 1));
+            }
+        }
+    }
+
+    return -1; // Return -1 if no path found
+}
+
+
+int distance_to_coord(
+    uint8_t *s_map,
+    int width,
+    int height,
+    Coord from_coord,
+    Coord to_coord,
+    std::vector<int> visitable_values
+){
+    std::vector<bool> visited(width * height, false);
+    std::deque<std::pair<Coord, int>> coords_to_visit; // Pair of Coord and distance
+    visited[from_coord.y * width + from_coord.x] = true;
+    coords_to_visit.push_back(std::make_pair(from_coord, 0));
+
+    while (!coords_to_visit.empty()){
+        auto current_pair = coords_to_visit.front();
+        coords_to_visit.pop_front();
+        Coord current = current_pair.first;
+        int current_distance = current_pair.second;
+        if (current == to_coord){
+            return current_distance;
+        }
+        auto visitable_tiles = get_visitable_tiles(s_map, width, height, current, visitable_values);
+        for (const auto& valid_coord : visitable_tiles){
+            int neighbor_index = valid_coord.y * width + valid_coord.x;
+            if (!visited[neighbor_index]){
+                visited[neighbor_index] = true;
+                coords_to_visit.push_back(std::make_pair(valid_coord, current_distance + 1));
+            }
+        }
+    }
+
+    return -1; // Return -1 if no path found
+}
+
+
 std::vector<Coord> get_visitable_tiles(
     uint8_t *s_map,
     int width,

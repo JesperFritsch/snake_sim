@@ -2,14 +2,12 @@ from typing import Dict
 
 from snake_sim.environment.types import SnakeConfig, StrategyConfig
 from snake_sim.snakes.strategies.food_strategy import FoodSeeker
-from snake_sim.snakes.strategies.deep_strategy import DeepStrategy
 from snake_sim.environment.interfaces.snake_strategy_interface import ISnakeStrategy
 
 
 class SnakeStrategyFactory:
     _strategy_classes = {
         'food_seeker': FoodSeeker,
-        'deep_strategy': DeepStrategy,
     }
 
     def create_strategy(self, strategy_name: str, strategy_config: StrategyConfig) -> ISnakeStrategy:

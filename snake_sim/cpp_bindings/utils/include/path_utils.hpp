@@ -26,6 +26,7 @@ Coord get_dir_to_tile(
     bool clockwise = true
 );
 
+
 inline py::tuple py_get_dir_to_tile(
     py::array_t<uint8_t> s_map,
     int width,
@@ -42,6 +43,58 @@ inline py::tuple py_get_dir_to_tile(
     return py::make_tuple(result.x, result.y);
 }
 
+
+int distance_to_tile_with_value(
+    uint8_t *s_map,
+    int width,
+    int height,
+    Coord from_coord,
+    int tile_value,
+    std::vector<int> visitable_values
+);
+
+
+inline int py_distance_to_tile_with_value(
+    py::array_t<uint8_t> s_map,
+    int width,
+    int height,
+    py::tuple from_coord,
+    int tile_value,
+    std::vector<int> visitable_values
+){
+    auto buf = s_map.request();
+    uint8_t *ptr = static_cast<uint8_t *>(buf.ptr);
+    Coord head(from_coord[0].cast<int>(), from_coord[1].cast<int>());
+    return distance_to_tile_with_value(ptr, width, height, head, tile_value, visitable_values);
+}
+
+
+int distance_to_coord(
+    uint8_t *s_map,
+    int width,
+    int height,
+    Coord from_coord,
+    Coord to_coord,
+    std::vector<int> visitable_values
+);
+
+
+inline int py_distance_to_coord(
+    py::array_t<uint8_t> s_map,
+    int width,
+    int height,
+    py::tuple from_coord,
+    py::tuple to_coord,
+    std::vector<int> visitable_values
+){
+    auto buf = s_map.request();
+    uint8_t *ptr = static_cast<uint8_t *>(buf.ptr);
+    Coord from(from_coord[0].cast<int>(), from_coord[1].cast<int>());
+    Coord to(to_coord[0].cast<int>(), to_coord[1].cast<int>());
+    return distance_to_coord(ptr, width, height, from, to, visitable_values);
+}
+
+
 std::vector<Coord> get_visitable_tiles(
     uint8_t *s_map,
     int width,
@@ -49,6 +102,7 @@ std::vector<Coord> get_visitable_tiles(
     Coord center_coord,
     std::vector<int> visitable_values
 );
+
 
 inline py::tuple py_get_visitable_tiles(
     py::array_t<uint8_t> s_map,
@@ -68,6 +122,7 @@ inline py::tuple py_get_visitable_tiles(
     return py_result;
 }
 
+
 inline bool same_diagonal(Coord c1, Coord c2, bool dec){
     // dec = true when y decreases when x increases
     // . . X
@@ -75,6 +130,7 @@ inline bool same_diagonal(Coord c1, Coord c2, bool dec){
     // X . .
     return (c1.x - c2.x) == (!dec ? (c1.y - c2.y) : (c2.y - c1.y));
 }
+
 
 bool is_free_diagonal(
     const uint8_t* __restrict s_map,

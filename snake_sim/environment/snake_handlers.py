@@ -131,6 +131,13 @@ class SnakeHandler(ISnakeHandler):
         for updater in self._updaters.values():
             updater.finalize(env_meta_data)
 
+    def reset(self, start_positions: Dict[int, Coord]):
+        log.debug("Resetting SnakeHandler")
+        for snake_id, snake in self._snakes.items():
+            snake.reset()
+            snake.set_start_position(start_positions[snake_id])
+        self._dead_snakes.clear()
+
     def close(self):
         log.debug("Closing SnakeHandler")
         for updater in self._updaters.values():

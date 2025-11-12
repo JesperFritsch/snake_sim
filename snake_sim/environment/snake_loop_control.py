@@ -20,7 +20,7 @@ from snake_sim.environment.snake_factory import SnakeFactory
 from snake_sim.environment.snake_env import SnakeEnv, EnvMetaData
 from snake_sim.environment.food_handlers import FoodHandler
 from snake_sim.environment.snake_processes import SnakeProcessManager
-from snake_sim.environment.types import DotDict, SnakeConfig, SnakeProcType
+from snake_sim.environment.types import DotDict, SnakeConfig, SnakeProcType, SimConfig, GameConfig
 from snake_sim.logging_setup import setup_logging
 from snake_sim.map_utils.general import get_map_files_mapping
 
@@ -29,29 +29,6 @@ with pkg_resources.open_text('snake_sim.config', 'default_config.json') as confi
 
 
 log = logging.getLogger(Path(__file__).stem)
-
-
-@dataclass
-class SimConfig:
-    map: str
-    food: int
-    height: int
-    width: int
-    food_decay: int
-    snake_count: int
-    calc_timeout: int
-    verbose: bool
-    start_length: int
-    external_snake_targets: List[str]
-    inproc_snakes: bool
-    snake_config: SnakeConfig
-
-
-@dataclass
-class GameConfig(SimConfig):
-    player_count: int
-    spm: int
-    snake_game_config: SnakeConfig
 
 
 class SnakeLoopControl:
