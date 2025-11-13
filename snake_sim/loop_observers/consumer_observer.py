@@ -27,3 +27,8 @@ class ConsumerObserver(ILoopObserver):
 
     def notify_stop(self, stop_data: LoopStopData):
         self._stop_data = stop_data
+    
+    def reset(self):
+        self._start_data = None
+        self._steps = []
+        self._stop_data = None

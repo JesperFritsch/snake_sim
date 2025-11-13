@@ -33,10 +33,17 @@ class StateBuilderObserver(ConsumerObserver):
         self._current_state: CompleteStepState = CompleteStepState(
             env_meta_data=init_data,
             food=set(),
+            snake_alive={},
             snake_bodies={}
         )
         for s_id, pos in init_data.start_positions.items():
             self._current_state.snake_bodies[s_id] = deque([pos])
+
+    def reset(self):
+        self._snake_bodies.clear()
+        self._current_step_idx = 0
+        self._current_state = None
+        return super().reset()
 
     def get_state(self, state_idx: int):
         self._goto_state(state_idx)
@@ -44,7 +51,7 @@ class StateBuilderObserver(ConsumerObserver):
 
     def get_current_state(self) -> CompleteStepState:
         self._current_state.food = set(map(lambda f: Coord(*f), self._current_state.food))
-        return self._current_state
+        return self._current_state.copy()
 
     def get_next_state(self):
         self._goto_next_state()
@@ -73,6 +80,7 @@ class StateBuilderObserver(ConsumerObserver):
         step_data = self._steps[self._current_step_idx]
         self._current_step_idx += 1
         self._current_state.food.update(step_data.new_food)
+        self._current_state.snake_alive.update(step_data.alive_states)
         self._current_state.food.difference_update(step_data.removed_food)
         for s_id, dir in step_data.decisions.items():
             body = self._current_state.snake_bodies[s_id]
@@ -88,6 +96,7 @@ class StateBuilderObserver(ConsumerObserver):
             raise CurrentIsFirst()
         self._current_state.state_idx -= 1
         curr_step_data = self._steps[self._current_step_idx]
+        self._current_state.snake_alive.update(curr_step_data.alive_states)
         self._current_state.food.difference_update(curr_step_data.new_food)
         self._current_state.food.update(curr_step_data.removed_food)
         for s_id, tail_dir in curr_step_data.tail_directions.items():

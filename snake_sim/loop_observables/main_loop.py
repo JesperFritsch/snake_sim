@@ -69,6 +69,8 @@ class SimLoop(IMainLoop):
             alive, grew, tail_direction = self._env.move_snake(id, decision)
             if not alive:
                 self._snake_handler.kill_snake(id)
+                decision = Coord(0, 0)  # No move if dead
+            self._current_step_data.alive_states[id] = alive
             self._current_step_data.snake_times[id] = 0 # TODO: Implement snake times
             self._current_step_data.decisions[id] = decision
             self._current_step_data.tail_directions[id] = tail_direction
@@ -88,12 +90,14 @@ class SimLoop(IMainLoop):
 
     def stop(self):
         self._is_running = False
+        super().stop()
 
     def _pre_update(self):
         self._env.update_food()
         self._current_step_data = DotDict(
             step=0,
             total_time=0,
+            alive_states={},
             snake_times={},
             decisions={},
             tail_directions={},
@@ -116,7 +120,8 @@ class SimLoop(IMainLoop):
         total_time = time.time() - self._step_start_time
         self._current_step_data.lengths = {id: snake['length'] for id, snake in self._env.get_env_step_data().snakes.items()}
         self._current_step_data.total_time = total_time
-        self._notify_step()
+        if len(self._current_step_data.decisions):
+            self._notify_step()
 
     def _get_start_data(self) -> LoopStartData:
         return LoopStartData(

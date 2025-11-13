@@ -17,6 +17,11 @@ class ILoopObservable:
     def stop(self):
         pass
 
+    def close(self):
+        for observer in self._observers:
+            if hasattr(observer, 'close'):
+                observer.close()
+
     def add_observer(self, observer: ILoopObserver):
         self._observers.append(observer)
 

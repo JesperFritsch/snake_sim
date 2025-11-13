@@ -45,5 +45,6 @@ class FileRepeaterObservable(ILoopObservable):
         self._worker_thread.start()
 
     def stop(self):
+        super().stop()
         self._stop_event.set()
         self._worker_thread.join()

@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1fsnake_sim/protobuf/simrun.proto\x12\x06simrun\"\x1d\n\x05\x43oord\x12\t\n\x01x\x18\x01 \x01(\x11\x12\t\n\x01y\x18\x02 \x01(\x11\"5\n\x0bSnakeValues\x12\x12\n\nhead_value\x18\x01 \x01(\x05\x12\x12\n\nbody_value\x18\x02 \x01(\x05\"\xa2\x03\n\x0b\x45nvMetaData\x12\x0e\n\x06height\x18\x01 \x01(\x05\x12\r\n\x05width\x18\x02 \x01(\x05\x12\x12\n\nfree_value\x18\x03 \x01(\x05\x12\x15\n\rblocked_value\x18\x04 \x01(\x05\x12\x12\n\nfood_value\x18\x05 \x01(\x05\x12:\n\x0csnake_values\x18\x06 \x03(\x0b\x32$.simrun.EnvMetaData.SnakeValuesEntry\x12@\n\x0fstart_positions\x18\x07 \x03(\x0b\x32\'.simrun.EnvMetaData.StartPositionsEntry\x12\x10\n\x08\x62\x61se_map\x18\x08 \x01(\x0c\x12\x16\n\x0e\x62\x61se_map_dtype\x18\t \x01(\t\x1aG\n\x10SnakeValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\"\n\x05value\x18\x02 \x01(\x0b\x32\x13.simrun.SnakeValues:\x02\x38\x01\x1a\x44\n\x13StartPositionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\x1c\n\x05value\x18\x02 \x01(\x0b\x32\r.simrun.Coord:\x02\x38\x01\";\n\rLoopStartData\x12*\n\renv_meta_data\x18\x01 \x01(\x0b\x32\x13.simrun.EnvMetaData\"\xb5\x05\n\x0cLoopStepData\x12\x0c\n\x04step\x18\x01 \x01(\r\x12\x12\n\ntotal_time\x18\x02 \x01(\x01\x12\x39\n\x0bsnake_times\x18\x03 \x03(\x0b\x32$.simrun.LoopStepData.SnakeTimesEntry\x12\x36\n\tdecisions\x18\x04 \x03(\x0b\x32#.simrun.LoopStepData.DecisionsEntry\x12\x41\n\x0ftail_directions\x18\x05 \x03(\x0b\x32(.simrun.LoopStepData.TailDirectionsEntry\x12\x37\n\nsnake_grew\x18\x06 \x03(\x0b\x32#.simrun.LoopStepData.SnakeGrewEntry\x12\x32\n\x07lengths\x18\x07 \x03(\x0b\x32!.simrun.LoopStepData.LengthsEntry\x12\x1f\n\x08new_food\x18\x08 \x03(\x0b\x32\r.simrun.Coord\x12#\n\x0cremoved_food\x18\t \x03(\x0b\x32\r.simrun.Coord\x1a\x31\n\x0fSnakeTimesEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\r\n\x05value\x18\x02 \x01(\x01:\x02\x38\x01\x1a?\n\x0e\x44\x65\x63isionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\x1c\n\x05value\x18\x02 \x01(\x0b\x32\r.simrun.Coord:\x02\x38\x01\x1a\x44\n\x13TailDirectionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\x1c\n\x05value\x18\x02 \x01(\x0b\x32\r.simrun.Coord:\x02\x38\x01\x1a\x30\n\x0eSnakeGrewEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\r\n\x05value\x18\x02 \x01(\x08:\x02\x38\x01\x1a.\n\x0cLengthsEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\r\n\x05value\x18\x02 \x01(\r:\x02\x38\x01\"\"\n\x0cLoopStopData\x12\x12\n\nfinal_step\x18\x01 \x01(\r\"z\n\tRunRecord\x12$\n\x05start\x18\x01 \x01(\x0b\x32\x15.simrun.LoopStartData\x12#\n\x05steps\x18\x02 \x03(\x0b\x32\x14.simrun.LoopStepData\x12\"\n\x04stop\x18\x03 \x01(\x0b\x32\x14.simrun.LoopStopDatab\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1fsnake_sim/protobuf/simrun.proto\x12\x06simrun\"\x1d\n\x05\x43oord\x12\t\n\x01x\x18\x01 \x01(\x11\x12\t\n\x01y\x18\x02 \x01(\x11\"5\n\x0bSnakeValues\x12\x12\n\nhead_value\x18\x01 \x01(\x05\x12\x12\n\nbody_value\x18\x02 \x01(\x05\"\xa2\x03\n\x0b\x45nvMetaData\x12\x0e\n\x06height\x18\x01 \x01(\x05\x12\r\n\x05width\x18\x02 \x01(\x05\x12\x12\n\nfree_value\x18\x03 \x01(\x05\x12\x15\n\rblocked_value\x18\x04 \x01(\x05\x12\x12\n\nfood_value\x18\x05 \x01(\x05\x12:\n\x0csnake_values\x18\x06 \x03(\x0b\x32$.simrun.EnvMetaData.SnakeValuesEntry\x12@\n\x0fstart_positions\x18\x07 \x03(\x0b\x32\'.simrun.EnvMetaData.StartPositionsEntry\x12\x10\n\x08\x62\x61se_map\x18\x08 \x01(\x0c\x12\x16\n\x0e\x62\x61se_map_dtype\x18\t \x01(\t\x1aG\n\x10SnakeValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\"\n\x05value\x18\x02 \x01(\x0b\x32\x13.simrun.SnakeValues:\x02\x38\x01\x1a\x44\n\x13StartPositionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\x1c\n\x05value\x18\x02 \x01(\x0b\x32\r.simrun.Coord:\x02\x38\x01\";\n\rLoopStartData\x12*\n\renv_meta_data\x18\x01 \x01(\x0b\x32\x13.simrun.EnvMetaData\"\xa6\x06\n\x0cLoopStepData\x12\x0c\n\x04step\x18\x01 \x01(\r\x12\x12\n\ntotal_time\x18\x02 \x01(\x01\x12;\n\x0c\x61live_states\x18\x03 \x03(\x0b\x32%.simrun.LoopStepData.AliveStatesEntry\x12\x39\n\x0bsnake_times\x18\x04 \x03(\x0b\x32$.simrun.LoopStepData.SnakeTimesEntry\x12\x36\n\tdecisions\x18\x05 \x03(\x0b\x32#.simrun.LoopStepData.DecisionsEntry\x12\x41\n\x0ftail_directions\x18\x06 \x03(\x0b\x32(.simrun.LoopStepData.TailDirectionsEntry\x12\x37\n\nsnake_grew\x18\x07 \x03(\x0b\x32#.simrun.LoopStepData.SnakeGrewEntry\x12\x32\n\x07lengths\x18\x08 \x03(\x0b\x32!.simrun.LoopStepData.LengthsEntry\x12\x1f\n\x08new_food\x18\t \x03(\x0b\x32\r.simrun.Coord\x12#\n\x0cremoved_food\x18\n \x03(\x0b\x32\r.simrun.Coord\x1a\x32\n\x10\x41liveStatesEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\r\n\x05value\x18\x02 \x01(\x08:\x02\x38\x01\x1a\x31\n\x0fSnakeTimesEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\r\n\x05value\x18\x02 \x01(\x01:\x02\x38\x01\x1a?\n\x0e\x44\x65\x63isionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\x1c\n\x05value\x18\x02 \x01(\x0b\x32\r.simrun.Coord:\x02\x38\x01\x1a\x44\n\x13TailDirectionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\x1c\n\x05value\x18\x02 \x01(\x0b\x32\r.simrun.Coord:\x02\x38\x01\x1a\x30\n\x0eSnakeGrewEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\r\n\x05value\x18\x02 \x01(\x08:\x02\x38\x01\x1a.\n\x0cLengthsEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\r\n\x05value\x18\x02 \x01(\r:\x02\x38\x01\"\"\n\x0cLoopStopData\x12\x12\n\nfinal_step\x18\x01 \x01(\r\"z\n\tRunRecord\x12$\n\x05start\x18\x01 \x01(\x0b\x32\x15.simrun.LoopStartData\x12#\n\x05steps\x18\x02 \x03(\x0b\x32\x14.simrun.LoopStepData\x12\"\n\x04stop\x18\x03 \x01(\x0b\x32\x14.simrun.LoopStopDatab\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,6 +35,8 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_ENVMETADATA_SNAKEVALUESENTRY']._serialized_options = b'8\001'
   _globals['_ENVMETADATA_STARTPOSITIONSENTRY']._loaded_options = None
   _globals['_ENVMETADATA_STARTPOSITIONSENTRY']._serialized_options = b'8\001'
+  _globals['_LOOPSTEPDATA_ALIVESTATESENTRY']._loaded_options = None
+  _globals['_LOOPSTEPDATA_ALIVESTATESENTRY']._serialized_options = b'8\001'
   _globals['_LOOPSTEPDATA_SNAKETIMESENTRY']._loaded_options = None
   _globals['_LOOPSTEPDATA_SNAKETIMESENTRY']._serialized_options = b'8\001'
   _globals['_LOOPSTEPDATA_DECISIONSENTRY']._loaded_options = None
@@ -58,19 +60,21 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_LOOPSTARTDATA']._serialized_start=550
   _globals['_LOOPSTARTDATA']._serialized_end=609
   _globals['_LOOPSTEPDATA']._serialized_start=612
-  _globals['_LOOPSTEPDATA']._serialized_end=1305
-  _globals['_LOOPSTEPDATA_SNAKETIMESENTRY']._serialized_start=1023
-  _globals['_LOOPSTEPDATA_SNAKETIMESENTRY']._serialized_end=1072
-  _globals['_LOOPSTEPDATA_DECISIONSENTRY']._serialized_start=1074
-  _globals['_LOOPSTEPDATA_DECISIONSENTRY']._serialized_end=1137
-  _globals['_LOOPSTEPDATA_TAILDIRECTIONSENTRY']._serialized_start=1139
-  _globals['_LOOPSTEPDATA_TAILDIRECTIONSENTRY']._serialized_end=1207
-  _globals['_LOOPSTEPDATA_SNAKEGREWENTRY']._serialized_start=1209
-  _globals['_LOOPSTEPDATA_SNAKEGREWENTRY']._serialized_end=1257
-  _globals['_LOOPSTEPDATA_LENGTHSENTRY']._serialized_start=1259
-  _globals['_LOOPSTEPDATA_LENGTHSENTRY']._serialized_end=1305
-  _globals['_LOOPSTOPDATA']._serialized_start=1307
-  _globals['_LOOPSTOPDATA']._serialized_end=1341
-  _globals['_RUNRECORD']._serialized_start=1343
-  _globals['_RUNRECORD']._serialized_end=1465
+  _globals['_LOOPSTEPDATA']._serialized_end=1418
+  _globals['_LOOPSTEPDATA_ALIVESTATESENTRY']._serialized_start=1084
+  _globals['_LOOPSTEPDATA_ALIVESTATESENTRY']._serialized_end=1134
+  _globals['_LOOPSTEPDATA_SNAKETIMESENTRY']._serialized_start=1136
+  _globals['_LOOPSTEPDATA_SNAKETIMESENTRY']._serialized_end=1185
+  _globals['_LOOPSTEPDATA_DECISIONSENTRY']._serialized_start=1187
+  _globals['_LOOPSTEPDATA_DECISIONSENTRY']._serialized_end=1250
+  _globals['_LOOPSTEPDATA_TAILDIRECTIONSENTRY']._serialized_start=1252
+  _globals['_LOOPSTEPDATA_TAILDIRECTIONSENTRY']._serialized_end=1320
+  _globals['_LOOPSTEPDATA_SNAKEGREWENTRY']._serialized_start=1322
+  _globals['_LOOPSTEPDATA_SNAKEGREWENTRY']._serialized_end=1370
+  _globals['_LOOPSTEPDATA_LENGTHSENTRY']._serialized_start=1372
+  _globals['_LOOPSTEPDATA_LENGTHSENTRY']._serialized_end=1418
+  _globals['_LOOPSTOPDATA']._serialized_start=1420
+  _globals['_LOOPSTOPDATA']._serialized_end=1454
+  _globals['_RUNRECORD']._serialized_start=1456
+  _globals['_RUNRECORD']._serialized_end=1578
 # @@protoc_insertion_point(module_scope)

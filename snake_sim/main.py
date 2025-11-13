@@ -98,6 +98,7 @@ def main():
         log.error(e)
         log.debug("TRACE: ", exc_info=True)
     finally:
+        loop_repeater.close()
         try:
             stop_flag.value = True
         except:

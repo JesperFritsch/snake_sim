@@ -137,6 +137,10 @@ class ProtoRunFileHandler(IRunFileHandler):
         for sid, t in (step_data.snake_times or {}).items():
             step_proto.snake_times[int(sid)] = float(t)
 
+        # alive_states: Dict[int, bool]
+        for sid, alive in (step_data.alive_states or {}).items():
+            step_proto.alive_states[int(sid)] = bool(alive)
+
         # decisions / tail_directions / snake_grew / lengths (maps)
         for sid, coord in (step_data.decisions or {}).items():
             c = step_proto.decisions[int(sid)]
@@ -193,6 +197,7 @@ class ProtoRunFileHandler(IRunFileHandler):
 
     def _proto_to_step(self, p: ProtoLoopStepData) -> LoopStepData:
         snake_times = {sid: t for sid, t in p.snake_times.items()} if p.snake_times else {}
+        alive_states = {sid: alive for sid, alive in p.alive_states.items()} if p.alive_states else {}
         decisions = {sid: self._proto_to_coord(c) for sid, c in p.decisions.items()} if p.decisions else {}
         tail_directions = {sid: self._proto_to_coord(c) for sid, c in p.tail_directions.items()} if p.tail_directions else {}
         snake_grew = {sid: grew for sid, grew in p.snake_grew.items()} if p.snake_grew else {}
@@ -202,6 +207,7 @@ class ProtoRunFileHandler(IRunFileHandler):
         return LoopStepData(
             step=p.step,
             total_time=p.total_time,
+            alive_states=alive_states,
             snake_times=snake_times,
             decisions=decisions,
             tail_directions=tail_directions,

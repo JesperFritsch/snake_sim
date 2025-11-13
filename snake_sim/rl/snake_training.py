@@ -2,17 +2,26 @@
 import logging
 import json
 import time
+
 from pathlib import Path
 
+import importlib.util as imp_util
 from importlib import resources as pkg_resources
 
 from snake_sim.environment.food_handlers import FoodHandler
-from snake_sim.environment.snake_env import SnakeEnv
 from snake_sim.environment.types import DotDict, SnakeConfig, StrategyConfig
 from snake_sim.environment.snake_handlers import SnakeHandler
-from snake_sim.rl.loop_observables.rl_training_loop import RLTrainingLoop
 from snake_sim.environment.snake_factory import SnakeFactory
-from snake_sim.rl.types import TrainingConfig
+
+from snake_sim.rl.snakes.ppo_snake import PPOSnake
+from snake_sim.snakes.survivor_snake import SurvivorSnake
+from snake_sim.snakes.strategies.utils import apply_strategies
+
+from snake_sim.map_utils.general import get_map_files_mapping
+from snake_sim.loop_observers.file_persist_observer import FilePersistObserver
+from snake_sim.rl.loop_observables.rl_training_loop import RLTrainingLoop
+from snake_sim.rl.environment.rl_snake_env import RLSnakeEnv
+from snake_sim.rl.types import RLTrainingConfig
 from snake_sim.rl.ppo_trainer import PPOTrainer
 from snake_sim.logging_setup import setup_logging
 
@@ -20,13 +29,15 @@ from snake_sim.logging_setup import setup_logging
 with pkg_resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
 
+PACKAGE_ROOT = Path(imp_util.find_spec('snake_sim').origin).parent
+
 setup_logging(log_level=logging.INFO)
 
 log = logging.getLogger(Path(__file__).stem)
 
 
-def setup_training_loop(config: TrainingConfig, episode_id: int = 0, snapshot_dir: str = None) -> RLTrainingLoop:
-    snake_env = SnakeEnv(
+def setup_training_loop(config: RLTrainingConfig, snapshot_dir: str = None) -> RLTrainingLoop:
+    snake_env = RLSnakeEnv(
         width=32,
         height=32,
         free_value=default_config.free_value,
@@ -41,19 +52,16 @@ def setup_training_loop(config: TrainingConfig, episode_id: int = 0, snapshot_di
     snake_env.set_food_handler(food_handler)
     snake_handler = SnakeHandler()
     add_snakes(snake_env, snake_handler, snapshot_dir)
-    training_loop = RLTrainingLoop(current_episode=0)
+    training_loop = RLTrainingLoop(config)
     training_loop.set_environment(snake_env)
     training_loop.set_snake_handler(snake_handler)
-    if config.max_steps_per_epoch is not None:
-        training_loop.set_max_steps(config.max_steps_per_epoch)
+    if config.max_steps_per_episode is not None:
+        training_loop.set_max_steps(config.max_steps_per_episode)
 
     return training_loop
 
 
-def add_snakes(snake_env: SnakeEnv, snake_handler: SnakeHandler, snapshot_dir: str = None):
-    from snake_sim.rl.snakes.ppo_snake import PPOSnake
-    from snake_sim.snakes.survivor_snake import SurvivorSnake
-    from snake_sim.snakes.strategies.utils import apply_strategies
+def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir: str = None):
     
     # Create PPO snakes with snapshot directory
     ppo_snakes = []
@@ -83,7 +91,7 @@ def add_snakes(snake_env: SnakeEnv, snake_handler: SnakeHandler, snapshot_dir: s
     snake_dict = snake_handler.get_snakes()
 
     for snake_id, snake in snake_dict.items():
-        init_pos = snake_env.add_snake(snake_id)
+        init_pos = snake_env.add_snake(snake_id, start_length=2)
         snake.set_id(snake_id)
         snake.set_start_length(2)
         snake.set_start_position(init_pos)
@@ -94,48 +102,21 @@ def add_snakes(snake_env: SnakeEnv, snake_handler: SnakeHandler, snapshot_dir: s
     snake_handler.finalize(init_data)
 
 
-def train(config: TrainingConfig):
+def train(config: RLTrainingConfig):
     # Set up snapshot directory for model sharing
-    snapshot_dir = "models/ppo_training"
+    snapshot_dir = "models/ppo_training_new"
     Path(snapshot_dir).mkdir(parents=True, exist_ok=True)
     
     trainer = PPOTrainer(snapshot_dir=snapshot_dir)
     trainer.start_background()
     
-    log.info(f"Starting training for {config.epochs} episodes")
+    log.info(f"Starting training for {config.episodes} episodes")
     log.info(f"Model snapshots will be saved to: {snapshot_dir}")
-    
+    training_loop = setup_training_loop(config, snapshot_dir=snapshot_dir)
+    # file_persist_observer = FilePersistObserver(store_dir=Path(PACKAGE_ROOT) / "rl/trainings_runs")
+    # training_loop.add_observer(file_persist_observer)
     try:
-        for episode in range(config.epochs):
-            episode_start_time = time.time()
-            try:
-                training_loop = setup_training_loop(config, episode_id=episode, snapshot_dir=snapshot_dir)
-                
-                # Track episode stats
-                initial_queue_size = trainer.get_queue_size()
-                initial_update_count = trainer.get_update_count()
-                
-                training_loop.start()
-                
-                episode_duration = time.time() - episode_start_time
-                final_queue_size = trainer.get_queue_size()
-                final_update_count = trainer.get_update_count()
-                
-                # Log episode completion stats
-                transitions_generated = final_queue_size - initial_queue_size + (final_update_count - initial_update_count) * 256  # Estimate consumed
-                if episode % 10 == 0 or episode < 10:  # Log more frequently at start
-                    log.info(f"Episode {episode}/{config.epochs} completed in {episode_duration:.2f}s, "
-                           f"generated ~{transitions_generated} transitions, "
-                           f"training updates: {final_update_count}")
-                
-                # Log occasional training progress
-                if episode % 50 == 0 and episode > 0:
-                    log.info(f"Training Progress: {episode}/{config.epochs} episodes ({100*episode/config.epochs:.1f}%) completed, "
-                           f"Total training updates: {final_update_count}")
-                           
-            except Exception as e:
-                log.error(f"Episode {episode} failed: {e}", exc_info=True)
-                # Continue with next episode instead of crashing
+        training_loop.start()
     
     except KeyboardInterrupt:
         log.info("Training interrupted by user")
@@ -144,11 +125,31 @@ def train(config: TrainingConfig):
     finally:
         log.info("Training completed, stopping background trainer")
         trainer.stop_background()
+        training_loop.close()
 
 
 if __name__ == "__main__":
-    rl_config = TrainingConfig(
-        epochs=10000,
-        max_steps_per_epoch=5000
+
+    maps_mapping = get_map_files_mapping()
+
+    training_maps = [
+        "comps2",
+        "comps",
+        "lil_sign",
+        "face",
+        "patterns",
+        "quarters3",
+        "wavy",
+        "tricky",
+        "items",
+        None
+    ]
+
+    map_paths = [maps_mapping.get(map_name) for map_name in training_maps]
+
+    rl_config = RLTrainingConfig(
+        episodes=500000,
+        max_steps_per_episode=5000,
+        training_map_paths=map_paths
     )
     train(rl_config)

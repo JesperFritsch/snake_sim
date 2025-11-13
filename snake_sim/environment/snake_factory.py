@@ -38,7 +38,11 @@ class SnakeFactory(metaclass=SingletonMeta):
             snake_class = TYPENAME_TO_CLASS[snake_config.type]
         except KeyError:
             raise ValueError(f"Unknown snake type: {snake_config.type}")
-        snake = snake_class()
+        if issubclass(snake_class, PPOSnake):
+            snake = snake_class(snapshot_dir="models/ppo_training")
+        else:
+            snake = snake_class()
+            
         apply_strategies(snake, snake_config)
         return snake
 

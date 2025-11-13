@@ -6,7 +6,7 @@ from pathlib import Path
 
 from snake_sim.rl.snakes.rl_snake_base import RLSnakeBase
 from snake_sim.rl.types import PPOMetaData, PendingTransition, State
-from snake_sim.rl.models.ppo_model import SnakePPONet
+from snake_sim.rl.models.ppo_model import model_factory
 from snake_sim.rl.rl_data_queue import RLPendingTransitCache
 from snake_sim.rl.constants import ACTION_ORDER_INVERSE
 from snake_sim.rl.snapshot_manager import SnapshotManager
@@ -40,12 +40,12 @@ class PPOSnake(RLSnakeBase):
         # Snapshot manager for hot-reload
         self._snapshot_manager: SnapshotManager | None = None
         if snapshot_dir:
-            def model_factory():
-                return SnakePPONet(5, 9)  # Default: 5 channels, 9 context dims
+            def model_creator():
+                return model_factory(5, 9, map_size=32, advanced=False)  # Use stable basic model
             self._snapshot_manager = SnapshotManager(
                 dir=snapshot_dir,
                 base_name=snapshot_base_name,
-                factory=model_factory
+                factory=model_creator
             )
         self._poll_interval = poll_interval
         self._auto_reload = auto_reload and (self._snapshot_manager is not None)
@@ -59,13 +59,13 @@ class PPOSnake(RLSnakeBase):
             return
         ctx_dim = 0 if state.ctx is None else state.ctx.shape[0]
         in_channels = state.map.shape[0]
-        self._model = SnakePPONet(in_channels, ctx_dim).to(self._device)
+        self._model = model_factory(in_channels, ctx_dim, map_size=state.map.shape[1], advanced=False).to(self._device)
         
         # Update snapshot manager factory with correct dimensions
         if self._snapshot_manager:
-            def model_factory():
-                return SnakePPONet(in_channels, ctx_dim)
-            self._snapshot_manager.factory = model_factory
+            def model_creator():
+                return model_factory(in_channels, ctx_dim, map_size=state.map.shape[1], advanced=False)
+            self._snapshot_manager.factory = model_creator
             
             if self._eager_first_load:
                 self._try_load_latest()

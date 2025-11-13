@@ -30,15 +30,15 @@ message LoopStartData {
 message LoopStepData {
   uint32 step = 1;
   double total_time = 2;
+  map<uint32, bool> alive_states      = 3; // id -> alive
+  map<uint32, double> snake_times     = 4;  // id -> seconds
+  map<uint32, Coord>  decisions       = 5;  // id -> move
+  map<uint32, Coord>  tail_directions = 6;  // id -> tail dir
+  map<uint32, bool>   snake_grew      = 7;  // id -> grew
+  map<uint32, uint32> lengths         = 8;  // id -> length
 
-  map<uint32, double> snake_times     = 3;  // id -> seconds
-  map<uint32, Coord>  decisions       = 4;  // id -> move
-  map<uint32, Coord>  tail_directions = 5;  // id -> tail dir
-  map<uint32, bool>   snake_grew      = 6;  // id -> grew
-  map<uint32, uint32> lengths         = 7;  // id -> length
-
-  repeated Coord new_food     = 8;  // repeated primitives/msgs are compact
-  repeated Coord removed_food = 9;
+  repeated Coord new_food     = 9;  // repeated primitives/msgs are compact
+  repeated Coord removed_food = 10;
 }
 
 message LoopStopData {
