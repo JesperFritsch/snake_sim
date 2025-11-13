@@ -31,6 +31,17 @@ class IPCRepeaterObserver(ILoopObserver):
             return func(self, *args, **kwargs)
         return _check_worker_wrapper
 
+    def _reset_worker(self):
+        if self._pipe_conn.closed:
+            raise RuntimeError("Cannot restart IPCRepeaterObserver worker, pipe connection is closed.")
+        if self._thread.is_alive():
+            self._stop_event.set()
+            self._thread.join()
+        self._stop_event.clear()
+        self._data_queue = Queue()
+        self._thread = Thread(target=self._send_worker)
+        self._thread.start()
+
     def _send_worker(self):
         while not self._stop_event.is_set() or not self._data_queue.empty():
             try:
@@ -41,10 +52,6 @@ class IPCRepeaterObserver(ILoopObserver):
                 self._pipe_conn.send(msg)
             except (BrokenPipeError, EOFError, OSError) as e:
                 break
-        try:
-            self._pipe_conn.close()
-        except:
-            pass
 
     @_check_worker
     def notify_start(self, start_data: LoopStartData):
@@ -57,12 +64,18 @@ class IPCRepeaterObserver(ILoopObserver):
     @_check_worker
     def notify_stop(self, stop_data: LoopStopData):
         self._data_queue.put(("_notify_stop", stop_data))
-        self.close()
+
+    def reset(self):
+        self._data_queue.put(("_reset", None))
 
     def close(self):
         try:
             self._stop_event.set()
             self._thread.join()
+        except:
+            pass
+        try:
+            self._pipe_conn.close()
         except:
             pass
 

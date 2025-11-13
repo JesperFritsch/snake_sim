@@ -25,3 +25,8 @@ class TqdmLoopObserver(ILoopObserver):
             print()
             sys.stdout.flush()
             self._pbar = None
+    
+    def reset(self):
+        if self._pbar is not None:
+            self._pbar.close()
+            self._pbar = None

@@ -8,16 +8,29 @@ import math
 import numpy as np
 
 
-import snake_sim.rl.constants as consts
-from snake_sim.environment.types import EnvMetaData, EnvStepData, Coord, AreaCheckResult
-from snake_sim.rl.types import State
 from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles
 from snake_sim.cpp_bindings.area_check import AreaChecker
+from snake_sim.map_utils.general import print_map
+from snake_sim.environment.types import EnvMetaData, EnvStepData, Coord, AreaCheckResult
+import snake_sim.rl.constants as consts
+from snake_sim.rl.types import State
 
 BASE_STATE_VERSION = 1
 
 
 ADAPTER_CACHE = {}  # global cache for adapters if needed
+
+
+def print_channel(channel_map: np.ndarray, free_value=0, food_value=0, blocked_value=0, head_value=0, body_value=0):
+    print_map(
+        s_map=channel_map,
+        free_value=free_value,
+        food_value=food_value,
+        blocked_value=blocked_value,
+        head_value=head_value,
+        body_value=body_value
+    )
+
 
 
 @dataclass
@@ -62,14 +75,17 @@ class BaseStateBuilder:
         head = np.zeros((H, W), dtype=np.float32)
         body = np.zeros((H, W), dtype=np.float32)
         food = np.zeros((H, W), dtype=np.float32)
+        blocked = np.zeros((H, W), dtype=np.float32)
         head[snake_ctx.head.y, snake_ctx.head.x] = 1.0
         for bc in snake_ctx.body_coords[1:]:
             body[bc.y, bc.x] = 1.0
         food[s_map == env_meta.food_value] = 1.0
+        blocked[s_map == env_meta.blocked_value] = 1.0
         channels: Dict[str, np.ndarray] = {
             'head': head,
             'body': body,
             'food': food,
+            'blocked': blocked,
         }
         if self.include_opponents:
             opp_heads = np.zeros((H, W), dtype=np.float32)
@@ -106,7 +122,7 @@ class BaseStateBuilder:
         return stacked
 
     def _default_order(self, include_opponents: bool = True) -> List[str]:
-        base = ['head', 'body', 'food']
+        base = ['head', 'body', 'food', 'blocked']
         if include_opponents and self.include_opponents:
             base += ['opp_heads', 'opp_bodies']
         return base
@@ -121,6 +137,12 @@ class CompleteStateBuilder:
         state = self.base_builder.build(env_meta, step_data, snake_ctx)
         for adapter in self.adapters:
             adapter.apply(state, step_data, env_meta, snake_ctx)
+        # print_channel(state.map[0], head_value=1)
+        # print_channel(state.map[1], body_value=1)
+        # print_channel(state.map[2], food_value=1)
+        # print_channel(state.map[3], blocked_value=1)
+        # print(state.meta["context_order"])
+        # print(list(state.ctx))
         return state
 
 
@@ -200,7 +222,7 @@ class DirectionHintsAdapter:
             elif ac.has_tail:
                 margin_frac = 1.0
             else:
-                margin_frac = min(-1.0, max(1.0, ac.margin / max(1, ac.total_steps)))
+                margin_frac = max(-1.0, min(1.0, ac.margin / max(1, ac.total_steps)))
             ctx[consts.ACTION_ORDER[coord]] = margin_frac
         return ctx
 

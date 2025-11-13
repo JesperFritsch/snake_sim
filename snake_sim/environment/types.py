@@ -188,6 +188,7 @@ class LoopStepData:
     # decisions, snake_grew and snake_times will only have values for alive snakes
     step: int
     total_time: float
+    alive_states: Dict[int, bool]
     snake_times: Dict[int, float]
     decisions: Dict[int, Coord]
     tail_directions: Dict[int, Coord]
@@ -209,6 +210,7 @@ class CompleteStepState:
     food: Set[Coord]
     # heads are at index 0 in the deques
     snake_bodies: Dict[int, Deque[Coord]]
+    snake_alive: Dict[int, bool]
     state_idx: int = field(default=0)
 
     def to_dict(self):
@@ -227,6 +229,15 @@ class CompleteStepState:
         )
         instance.state_idx = state_dict['state_idx']
         return instance
+    
+    def copy(self) -> 'CompleteStepState':
+        return CompleteStepState(
+            env_meta_data=self.env_meta_data,
+            food=set(self.food),
+            snake_bodies={k: deque(v) for k, v in self.snake_bodies.items()},
+            snake_alive=self.snake_alive.copy(),
+            state_idx=self.state_idx
+        )
 
 @dataclass
 class StrategyConfig:

@@ -31,6 +31,8 @@ If running on NFS or exotic FS without atomic rename guarantees, additional lock
 """
 from __future__ import annotations
 
+import logging
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Dict, Callable
@@ -39,6 +41,7 @@ import torch
 
 from snake_sim.rl.model_snapshot import find_latest_snapshot, atomic_save
 
+log = logging.getLogger(Path(__file__).stem)
 
 @dataclass
 class LoadedSnapshot:
@@ -80,6 +83,7 @@ class SnapshotManager:
         return True
 
     def _load_path_into(self, path: Path, model: torch.nn.Module, step: int):
+        log.debug(f"Loading snapshot from {path} at step {step}")
         data = torch.load(path, map_location=model.device if hasattr(model, 'device') else 'cpu')
         if isinstance(data, dict) and 'policy_state' in data:
             state_dict = data['policy_state']

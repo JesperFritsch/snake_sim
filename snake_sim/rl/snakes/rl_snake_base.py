@@ -5,6 +5,7 @@ import snake_sim.debugging as debug
 
 from snake_sim.environment.types import Coord, EnvStepData
 from snake_sim.snakes.snake_base import SnakeBase
+from snake_sim.map_utils.general import print_map
 from snake_sim.rl.types import State
 from snake_sim.rl.state_builder import (
     BaseStateBuilder, 
@@ -12,6 +13,11 @@ from snake_sim.rl.state_builder import (
     DirectionHintsAdapter,
     SnakeContext
 )
+
+
+# debug.activate_debug()
+# debug.enable_debug_for("RLSnakeBase")
+
 
 class RLSnakeBase(SnakeBase):
     """ Base class for RL controlled snakes. """
@@ -38,6 +44,14 @@ class RLSnakeBase(SnakeBase):
 
     def _next_step(self) -> Coord:
         state = self._get_state(self._env_step_data)
+        # print_map(
+        #     self._env_step_data.map,
+        #     self._env_meta_data.free_value,
+        #     self._env_meta_data.food_value,
+        #     self._env_meta_data.blocked_value,
+        #     self._head_value,
+        #     self._body_value
+        # )
         debug.debug_print(f"RL Snake: {self._id} state ctx: {state.ctx}, meta: {state.meta}")
         return self._next_step_for_state(state)
 

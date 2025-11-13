@@ -14,6 +14,8 @@ import torch.nn.functional as F
 from snake_sim.rl.rl_data_queue import RLMetaDataQueue
 from snake_sim.rl.types import RLTransitionData, PPOMetaData, State
 from snake_sim.rl.snapshot_manager import SnapshotManager
+from snake_sim.rl.state_builder import print_channel
+from snake_sim.rl.models.ppo_model import model_factory
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -25,17 +27,20 @@ class PPOTrainerConfig:
     gamma: float = 0.99
     lam: float = 0.95  # GAE lambda
     clip_range: float = 0.2
-    policy_lr: float = 3e-4
-    value_lr: float = 1e-3
+    policy_lr: float = 1e-4  # Conservative for stable learning
+    value_lr: float = 3e-4   # Conservative for stable learning
     epochs: int = 4
-    minibatch_size: int = 256
-    entropy_coef: float = 0.01
-    value_coef: float = 0.5
+    minibatch_size: int = 128  # Reduced for more frequent updates
+    entropy_coef: float = 0.1   # Much higher to prevent collapse
+    value_coef: float = 1.0     # Increased to help value function learn faster
     max_grad_norm: float = 0.5
     device: str = 'auto'
     snapshot_dir: Optional[str] = None  # directory of model snapshots
     snapshot_base_name: str = 'ppo_model'
     save_every_updates: int = 10  # save snapshot after this many successful updates
+    # Adaptive exploration
+    stagnation_patience: int = 100  # Updates to wait before boosting exploration
+    exploration_boost_factor: float = 2.0  # Multiply entropy_coef when stagnating
 
 
 class PPOTrainer:
@@ -71,6 +76,11 @@ class PPOTrainer:
         }
         self._window_size = 20  # Rolling average window
         
+        # Stagnation detection for adaptive exploration
+        self._best_return = float('-inf')
+        self._updates_since_improvement = 0
+        self._exploration_boosted = False
+        
         log.info(f"PPOTrainer initialized device={self.device}")
 
     def _ensure_model(self, first_state: State):
@@ -78,23 +88,22 @@ class PPOTrainer:
         if self.model is not None:
             return
         
-        from snake_sim.rl.models.ppo_model import SnakePPONet
         ctx_dim = 0 if first_state.ctx is None else first_state.ctx.shape[0]
         in_channels = first_state.map.shape[0]
-        self.model = SnakePPONet(in_channels, ctx_dim).to(self.device)
+        self.model = model_factory(in_channels, ctx_dim, map_size=first_state.map.shape[1], advanced=False).to(self.device)
         
-        # Create optimizers
+        # Create simple unified optimizers - more stable
         self.policy_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.cfg.policy_lr)
         self.value_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.cfg.value_lr)
         
         # Setup snapshot manager if directory provided
         if self._snapshot_dir:
-            def model_factory():
-                return SnakePPONet(in_channels, ctx_dim)
+            def model_creator():
+                return model_factory(in_channels, ctx_dim, map_size=first_state.map.shape[1], advanced=False)
             self._snapshot_manager = SnapshotManager(
                 dir=self._snapshot_dir,
                 base_name=self.cfg.snapshot_base_name,
-                factory=model_factory
+                factory=model_creator
             )
             # Try to load latest snapshot
             self._try_load_latest_snapshot()
@@ -323,14 +332,17 @@ class PPOTrainer:
         policy_loss = -torch.mean(torch.min(surr1, surr2))
         value_loss = F.mse_loss(values, returns)
         
-        # Combined loss update to avoid retain_graph issues
+        # Simple stable loss combination
         total_loss = policy_loss + self.cfg.value_coef * value_loss - self.cfg.entropy_coef * entropy
         
         try:
             self.policy_optimizer.zero_grad()
             self.value_optimizer.zero_grad()
             total_loss.backward()
+            
+            # Standard gradient clipping
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.max_grad_norm)
+            
             self.policy_optimizer.step()
             self.value_optimizer.step()
         except RuntimeError as e:
@@ -341,6 +353,9 @@ class PPOTrainer:
                 raise
 
         self._update_counter += 1
+        
+        # Simple tracking - no complex adaptive mechanisms for now
+        
         # Save snapshot periodically
         if self._snapshot_manager and (self._update_counter % self.cfg.save_every_updates == 0):
             self._save_snapshot()

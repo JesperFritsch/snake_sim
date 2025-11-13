@@ -13,7 +13,7 @@
     "map": null,
     "spm": 180,
     "decision_timeout_ms": 500,
-    "start_length": 3,
+    "start_length": 2,
     "food_value": 0,
     "free_value": 1,
     "blocked_value": 2,
@@ -31,6 +31,7 @@
     "snake_config": {
         "type": "ppo_ai",
         "strategies" : {
+            
         }
     },
     "log_level": "DEBUG",

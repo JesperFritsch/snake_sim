@@ -48,6 +48,15 @@ class MapBuilderObserver(ConsumerObserver):
             self._head_coords[s_id] = pos
             self._current_map[s_pos.y, s_pos.x] = init_data.snake_values[s_id]['head_value']
 
+    def reset(self):
+        self._current_map = None
+        self._ex_head_coords.clear()
+        self._ex_tail_coords.clear()
+        self._head_coords.clear()
+        self._current_map_idx = 0
+        self._backing = False
+        return super().reset()
+
     def _ex_coord(self, coord: Coord) -> Coord:
         """ Expand a coordinate according to the expansion factor. """
         return Coord(*coord) * Coord(self._expansion, self._expansion)
@@ -82,15 +91,15 @@ class MapBuilderObserver(ConsumerObserver):
 
     def get_next_map(self):
         self._goto_next_map()
-        return self._current_map.copy()
+        return self.get_current_map()
 
     def get_prev_map(self):
         self._goto_prev_map()
-        return self._current_map.copy()
+        return self.get_current_map()
 
     def get_map(self, map_idx: int):
         self._goto_map(map_idx)
-        return self._current_map.copy()
+        return self.get_current_map()
 
     def get_map_for_step(self, step_idx: int):
         map_idx = step_idx * self._expansion
@@ -122,7 +131,6 @@ class MapBuilderObserver(ConsumerObserver):
         step_data = self._steps[curr_step_idx]
         self._current_map_idx += 1
         init_data = self._start_data.env_meta_data
-
         if ((self._current_map_idx - 1) % self._expansion) == 0:
             for s_id in step_data.decisions:
                 self._head_coords[s_id] += step_data.decisions[s_id]
@@ -145,7 +153,8 @@ class MapBuilderObserver(ConsumerObserver):
             new_head = self._ex_head_coords[s_id]
             if curr_tail.manhattan_distance(new_tail) != 0:
                 self._current_map[*reversed(curr_tail)] = init_data.free_value
-            self._current_map[*reversed(curr_head)] = init_data.snake_values[s_id]['body_value']
+            if step_data.lengths[s_id] > 1:
+                self._current_map[*reversed(curr_head)] = init_data.snake_values[s_id]['body_value']
             self._current_map[*reversed(new_head)] = init_data.snake_values[s_id]['head_value']
 
 

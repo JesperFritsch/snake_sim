@@ -14,3 +14,7 @@ class ILoopObserver(ABC):
     @abstractmethod
     def notify_stop(self, stop_data: LoopStopData):
         pass
+
+    def reset(self):
+        """Optional reset method to clear internal state."""
+        pass

@@ -27,6 +27,16 @@ class FilePersistObserver(ILoopObserver):
         self._stop_event: Event = Event()
         self._data_queue: Queue = Queue()
         self._writer_thread = Thread(target=self._write_worker)
+        self._writer_thread.start()
+
+    def _reset_writer(self):
+        if self._writer_thread.is_alive():
+            self._stop_event.set()
+            self._writer_thread.join()
+        self._stop_event.clear()
+        self._data_queue = Queue()
+        self._writer_thread = Thread(target=self._write_worker)
+        self._writer_thread.start()
 
     def _write_worker(self):
         file_handler = create_run_file_handler(str(self._filepath), new=True)
@@ -58,14 +68,15 @@ class FilePersistObserver(ILoopObserver):
 
     def notify_start(self, start_data: LoopStartData):
         self._data_queue.put(start_data)
-        self._writer_thread.start()
 
     def notify_step(self, step_data: LoopStepData):
         self._data_queue.put(step_data)
 
     def notify_stop(self, stop_data: LoopStopData):
         self._data_queue.put(stop_data)
-        self.close()
+
+    def reset(self):
+        self._reset_writer()
 
     def close(self):
         try:

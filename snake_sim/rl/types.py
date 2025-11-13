@@ -70,12 +70,7 @@ class PendingTransition:
 
 
 @dataclass
-class TrainingConfig:
-    """Configuration for RL training.
-
-    Fields:
-        epochs: Number of training epochs.
-        max_steps_per_epoch: Optional maximum number of steps per epoch.
-    """
-    epochs: int
-    max_steps_per_epoch: Optional[int] = None
+class RLTrainingConfig:
+    episodes: int
+    max_steps_per_episode: Optional[int] = None
+    training_map_paths: list[str] = field(default_factory=list)
