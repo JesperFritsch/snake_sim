@@ -13,7 +13,7 @@ from snake_sim.rl.environment.rl_snake_env import RLSnakeEnv
 from snake_sim.rl.rl_data_queue import RLPendingTransitCache, RLMetaDataQueue
 from snake_sim.rl.types import RLTransitionData, PendingTransition, RLTrainingConfig
 from snake_sim.rl.reward import compute_rewards
-from snake_sim.rl.ppo_trainer import rl_data_queue
+from snake_sim.map_utils.general import print_map
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -32,12 +32,8 @@ class RLTrainingLoop(SimLoop):
         self._pending_transition_cache = RLPendingTransitCache()
         self._transition_queue = RLMetaDataQueue()
         self._previous_pending_transitions: dict[int, PendingTransition] = {}
-        self._state_builder: StateBuilderObserver = StateBuilderObserver()
-        self._map_builder: MapBuilderObserver = MapBuilderObserver()
         self._prev_sim_state = None
         self._prev_sim_map = None
-        self.add_observer(self._state_builder)
-        self.add_observer(self._map_builder)
         
         # Training progress tracking
         self._episode_start_time = None
@@ -54,8 +50,9 @@ class RLTrainingLoop(SimLoop):
         snake_ids = set(current_pending_transitions.keys())
         if not snake_ids:
             return
-        current_sim_state = self._state_builder.get_state(self._steps)
-        current_sim_map = self._map_builder.get_map(self._steps)
+        current_sim_state = self._env.get_state()
+        current_sim_map = self._env.get_map()
+        current_sim_state.state_idx = self._steps
         
         if not self._prev_sim_state is None and not self._prev_sim_map is None:
             rewards = compute_rewards(
@@ -68,6 +65,7 @@ class RLTrainingLoop(SimLoop):
         self._prev_sim_map = current_sim_map
         self._previous_pending_transitions = current_pending_transitions
         self._pending_transition_cache.clear()
+        # self._print_env_map()
 
     def _finalize_pending_transitions(self, current_pending_transitions: dict[int, PendingTransition], rewards: dict[int, float]) -> dict[int, PendingTransition]:
         """Gathers pending transitions from all snakes in the environment.
@@ -99,22 +97,12 @@ class RLTrainingLoop(SimLoop):
                     episode_id=self._current_episode,
                 )
                 self._transition_queue.add_transition(transition)
-    
-    def _get_trainer_stats(self):
-        """Get training statistics from the global trainer (if available)."""
-        try:
-            queue_size = rl_data_queue.size()
-            return {'queue_size': queue_size}
-        except Exception:
-            return {'queue_size': 0}
-
 
     def _get_map_path_from_selection(self) -> str:
         """Selects a training map from the configured list."""
         if not self._config.training_map_paths:
             return None
         return random.choice(self._config.training_map_paths) or None
-
 
     def _reset(self):
         self._max_no_food_steps = None
@@ -130,6 +118,8 @@ class RLTrainingLoop(SimLoop):
         next_map_path = self._get_map_path_from_selection()
         if next_map_path:
             self._env.load_map(next_map_path)
+        else:
+            self._env.clear_map()
         new_positions = self._env.reset()
         self._snake_handler.reset(new_positions)
         for observer in self._observers:
@@ -143,25 +133,16 @@ class RLTrainingLoop(SimLoop):
             self._current_episode = episode
             self._episode_start_time = time.time()
             
-            # Track initial state for progress calculation
-            trainer_stats_before = self._get_trainer_stats()
-            self._initial_transitions_count = trainer_stats_before.get('queue_size', 0)
-            
             # Run the episode
             super().start()
             
             # Calculate episode metrics
             episode_duration = time.time() - self._episode_start_time
-            trainer_stats_after = self._get_trainer_stats()
-            final_transitions_count = trainer_stats_after.get('queue_size', 0)
-            
-            # Estimate transitions generated (rough approximation)
-            transitions_generated = final_transitions_count - self._initial_transitions_count
             
             # Log episode completion
             if episode % 10 == 0 or episode < 10:  # Log more frequently at start
                 log.info(f"Episode {episode}/{self._config.episodes} completed in {episode_duration:.2f}s, "
-                       f"steps: {self._steps}, queue_size: {final_transitions_count}")
+                       f"steps: {self._steps}")
             
             # Log progress milestones
             if episode % 50 == 0 and episode > 0:
@@ -173,3 +154,10 @@ class RLTrainingLoop(SimLoop):
             self._reset()
             
         log.info(f"✅ RL training completed! Finished {self._config.episodes} episodes")
+
+    def _print_env_map(self):
+        state = self._env.get_state()
+        self._env.print_map()
+        for snake_id, snake in state.snake_bodies.items():
+            head = snake[0]
+            print(f"Snake {snake_id} head at: ({head.x}, {head.y})")

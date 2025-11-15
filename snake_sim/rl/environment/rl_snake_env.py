@@ -1,7 +1,7 @@
 import numpy as np
 
 from snake_sim.environment.snake_env import SnakeEnv
-from snake_sim.environment.types import Coord
+from snake_sim.environment.types import Coord, CompleteStepState
 
 
 class RLSnakeEnv(SnakeEnv):
@@ -19,6 +19,20 @@ class RLSnakeEnv(SnakeEnv):
         """Check if the snake with the given ID is alive."""
         snake_rep = self._snake_reps.get(snake_id)
         return snake_rep.is_alive if snake_rep else False
+
+    def clear_map(self):
+        """Clear the environment map."""
+        self._map.fill(self._free_value)
+
+    def get_state(self, for_id: int = None) -> CompleteStepState:
+        """Get the complete step state of the environment."""
+        return CompleteStepState(
+            env_meta_data=self.get_init_data(),
+            food=set(self.get_food()),
+            snake_bodies={id: snake_rep.body.copy() for id, snake_rep in self._snake_reps.items()},
+            snake_alive={id: snake_rep.is_alive for id, snake_rep in self._snake_reps.items()},
+            state_idx=0
+        )
 
     def reset(self) -> dict[int, Coord]:
         """Reset the environment to the initial state for a new episode."""

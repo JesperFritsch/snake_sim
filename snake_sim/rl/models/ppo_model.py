@@ -1,8 +1,12 @@
+import logging 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from pathlib import Path
 from typing import Union, Dict, Tuple
 
+log = logging.getLogger(Path(__file__).stem)
 
 class SnakePPONet(nn.Module):
     """Simple stable PPO network for snake environment."""

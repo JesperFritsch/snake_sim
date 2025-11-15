@@ -255,6 +255,7 @@ class StrategyConfig:
 @dataclass
 class SnakeConfig:
     type: str
+    args: DotDict = field(default_factory=DotDict)
     # strategies is a dict of priority (int) -> StrategyConfig
     strategies: Dict[int, StrategyConfig] = field(default_factory=dict)
 
@@ -264,7 +265,7 @@ class SnakeConfig:
             int(k): StrategyConfig(**v)
             for k, v in config_dict.get('strategies', {}).items()
         }
-        return cls(type=config_dict['type'], strategies=strategies)
+        return cls(type=config_dict['type'], strategies=strategies, args=DotDict(config_dict.get('args', {})))
 
 
 class SnakeProcType(Enum):

@@ -30,7 +30,7 @@ class PPOTrainerConfig:
     policy_lr: float = 1e-4  # Conservative for stable learning
     value_lr: float = 3e-4   # Conservative for stable learning
     epochs: int = 4
-    minibatch_size: int = 128  # Reduced for more frequent updates
+    minibatch_size: int = 1024  # Reduced for more frequent updates
     entropy_coef: float = 0.1   # Much higher to prevent collapse
     value_coef: float = 1.0     # Increased to help value function learn faster
     max_grad_norm: float = 0.5
@@ -315,6 +315,10 @@ class PPOTrainer:
         return logits, value.squeeze(-1)
 
     def _ppo_update(self, batch: Dict):
+        """PPO update with proper training mode setting."""
+        # Set model to training mode for gradient computation
+        self.model.train()
+        
         states = batch['states']
         actions = batch['actions']
         old_log_probs = batch['old_log_probs']
@@ -379,7 +383,7 @@ class PPOTrainer:
     # This can be extended by slicing batch tensors and re-forwarding per epoch/minibatch.
 
     # ---- Background Thread API ----
-    def start_background(self, interval_sec: float = 1.0):
+    def start_background(self, interval_sec: float = 0.5):
         """Start a background thread that periodically invokes train().
 
         interval_sec: sleep duration between training attempts. If train() returns None

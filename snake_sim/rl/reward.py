@@ -1,9 +1,73 @@
 
+import math
 import numpy as np
+from typing import Dict
 
 from snake_sim.map_utils.general import print_map
 from snake_sim.environment.types import CompleteStepState
+from snake_sim.environment.types import AreaCheckResult
 from snake_sim.cpp_bindings.utils import distance_to_tile_with_value
+from snake_sim.cpp_bindings.area_check import AreaChecker
+from snake_sim.cpp_bindings.utils import get_visitable_tiles
+
+
+area_checkers: Dict[int, AreaChecker] = {}
+
+
+def get_area_checkers(
+        snake_values: Dict[int, Dict[str, int]], 
+        free_value: int, 
+        food_value: int, 
+        width: int,
+        height: int,
+    ) -> AreaChecker:
+    global area_checkers
+    for snake_id, values in snake_values.items():
+        if snake_id not in area_checkers:
+            area_checkers[snake_id] = AreaChecker(
+                food_value,
+                free_value,
+                values['body_value'],
+                values['head_value'],
+                width,
+                height,
+            )
+
+
+def get_best_area_checks(
+        area_checkers: Dict[int, AreaChecker],
+        state: CompleteStepState, 
+        s_map: np.ndarray
+    ) -> dict[int, AreaCheckResult]:
+    """ Check if each snake can access the area around it. """
+    best_area_checks: dict[int, AreaCheckResult] = {}
+    for snake_id, body in state.snake_bodies.items():
+        if not state.snake_alive.get(snake_id, False):
+            continue
+        head_coord = body[0]
+        visitable_tiles = get_visitable_tiles(
+            s_map,
+            state.env_meta_data.width,
+            state.env_meta_data.height,
+            head_coord,
+            [state.env_meta_data.free_value, state.env_meta_data.food_value]
+        )
+        for tile in visitable_tiles:
+            target_margin = max(10, math.ceil(0.06 * len(body)))
+            result = area_checkers[snake_id].area_check(
+                s_map,
+                list(body),
+                tile,
+                target_margin=target_margin,
+                food_check=False,
+                complete_area=False,
+                exhaustive=False
+            )
+            current_best = best_area_checks.get(snake_id)
+            if current_best is None or current_best.margin < result['margin']:
+                best_area_checks[snake_id] = AreaCheckResult(**result)
+
+    return best_area_checks
 
 
 def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
@@ -14,6 +78,14 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
     state1, map1 = state_map1
     state2, map2 = state_map2
     rewards = {}
+    get_area_checkers(
+        snake_values=state1.env_meta_data.snake_values,
+        free_value=state1.env_meta_data.free_value,
+        food_value=state1.env_meta_data.food_value,
+        width=state1.env_meta_data.width,
+        height=state1.env_meta_data.height,
+    )
+    best_area_checks = get_best_area_checks(area_checkers, state2, map2)
     for s_id in snake_ids:
         if s_id not in state_map1[0].snake_bodies or s_id not in state_map2[0].snake_bodies:
             raise ValueError(f"Snake id {s_id} not found in one of the states.")
@@ -38,6 +110,10 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
             # if snake ate or food changed, distances are unreliable
             food_dist1 = None
             food_dist2 = None
+        if area_check := best_area_checks.get(s_id):
+            survival_chance_reward = _survival_chance_reward(area_check)
+        else:
+            survival_chance_reward = 0.0
         food_reward = _food_approach_reward(food_dist1, food_dist2)
         did_eat_reward = _food_eat_reward(did_eat)
         length_reward = _length_reward(
@@ -49,8 +125,23 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
             state2.snake_alive.get(s_id, False),
             len(state2.snake_bodies[s_id]) if s_id in state2.snake_bodies else 2
         )
-        total_reward = length_reward + survival_reward + food_reward + did_eat_reward
+        total_reward = sum(
+            (
+                length_reward, 
+                survival_reward, 
+                food_reward,
+                did_eat_reward,
+                survival_chance_reward
+            )
+        )
         rewards[s_id] = total_reward
+        
+        # # Debug logging to monitor reward components
+        # if s_id == list(snake_ids)[0]:  # Log only first snake to reduce spam
+        #     print(f"Rewards for snake {s_id}: length={length_reward:.2f}, survival={survival_reward:.2f}, "
+        #           f"food_approach={food_reward:.2f}, food_eat={did_eat_reward:.2f}, "
+        #           f"survival_chance={survival_chance_reward:.2f}, total={total_reward:.2f}")
+    
     return rewards
 
 
@@ -82,11 +173,20 @@ def _length_reward(len1: int, len2: int, still_alive: bool) -> float:
         return 0.0  # no change
 
 
+def _survival_chance_reward(area_check: AreaCheckResult) -> float:
+    if area_check.margin >= 0:
+        return 0.0  # Safe area bonus
+    else:
+        return -0.2  # Unsafe area penalty
+
+
 def _survival_reward(still_alive: bool, current_length: int = 2) -> float:
     if not still_alive:
-        # No explicit death penalty - let episode termination be the penalty
-        # The lost opportunity for future rewards is the natural consequence
-        return 0.0
+        # Death penalty that scales with progress lost, not a flat massive penalty
+        # This ensures longer runs can still be net positive even with death
+        base_death_penalty = -7.0  # Moderate base cost for dying
+        progress_penalty = -(current_length - 2) * 1.0  # Penalty for lost progress
+        return base_death_penalty + progress_penalty  # RE-ENABLED: Death must have consequences!
     else:
         return 0.05  # Survival bonus per step
 

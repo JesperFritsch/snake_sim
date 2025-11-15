@@ -47,7 +47,7 @@ def setup_training_loop(config: RLTrainingConfig, snapshot_dir: str = None) -> R
     food_handler = FoodHandler(
             32,
             32,
-            25,
+            15,
             0)
     snake_env.set_food_handler(food_handler)
     snake_handler = SnakeHandler()
@@ -62,30 +62,27 @@ def setup_training_loop(config: RLTrainingConfig, snapshot_dir: str = None) -> R
 
 
 def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir: str = None):
-    
-    # Create PPO snakes with snapshot directory
-    ppo_snakes = []
-    for _ in range(1):
-        snake = PPOSnake(
-            snapshot_dir=snapshot_dir,
-            poll_interval=2.0,  # Check for updates every 2 seconds
-            auto_reload=True,
-            eager_first_load=True,  # Load initial weights immediately
-        )
-        ppo_snakes.append(snake)
-    
-    # Create regular survivor snakes
-    regular_snakes = []
-    for _ in range(0):
-        snake = SurvivorSnake()
-        # Apply food seeker strategy
-        snake_config = SnakeConfig(
+    snake_factory = SnakeFactory()
+    # Create PPO snakes with snapshot directory - Increased for better GPU utilization
+    ppo_snakes = snake_factory.create_many_snakes(
+        snake_config=SnakeConfig(
+            type='ppo_ai',
+            args={
+                'snapshot_dir': snapshot_dir,
+                'poll_interval': 2.0,
+                'auto_reload': True,
+                'eager_first_load': True,
+                'deterministic': False  # Use stochastic sampling for training
+            }),
+        count=16  # Increased back to 16 for much better training throughput
+    )
+    regular_snakes = snake_factory.create_many_snakes(
+        snake_config=SnakeConfig(
             type='survivor',
-            strategies={1: StrategyConfig(type='food_seeker')},
-        )
-        apply_strategies(snake, snake_config)
-        regular_snakes.append(snake)
-
+            strategies={1: StrategyConfig(type='food_seeker')}
+        ),
+        count=0
+    )
     for snake in ppo_snakes + regular_snakes:
         snake_handler.add_snake(snake)
     snake_dict = snake_handler.get_snakes()
@@ -104,7 +101,7 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
 
 def train(config: RLTrainingConfig):
     # Set up snapshot directory for model sharing
-    snapshot_dir = "models/ppo_training_new"
+    snapshot_dir = "models/ppo_training_new_reward"
     Path(snapshot_dir).mkdir(parents=True, exist_ok=True)
     
     trainer = PPOTrainer(snapshot_dir=snapshot_dir)
@@ -133,15 +130,15 @@ if __name__ == "__main__":
     maps_mapping = get_map_files_mapping()
 
     training_maps = [
-        "comps2",
-        "comps",
-        "lil_sign",
-        "face",
-        "patterns",
-        "quarters3",
-        "wavy",
-        "tricky",
-        "items",
+        # "comps2",
+        # "comps",
+        # "lil_sign",
+        # "face",
+        # "patterns",
+        # "quarters3",
+        # "wavy",
+        # "tricky",
+        # "items",
         None
     ]
 

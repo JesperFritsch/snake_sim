@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import threading
 import time
+import logging
 from pathlib import Path
 
 from snake_sim.rl.snakes.rl_snake_base import RLSnakeBase
@@ -11,6 +12,7 @@ from snake_sim.rl.rl_data_queue import RLPendingTransitCache
 from snake_sim.rl.constants import ACTION_ORDER_INVERSE
 from snake_sim.rl.snapshot_manager import SnapshotManager
 
+log = logging.getLogger(Path(__file__).stem)
 
 class PPOSnake(RLSnakeBase):
     """A snake controlled by a Proximal Policy Optimization (PPO) agent with optional snapshot hot-reload.
@@ -21,6 +23,7 @@ class PPOSnake(RLSnakeBase):
         poll_interval: Seconds between polling attempts.
         auto_reload: Enable background polling thread when True.
         eager_first_load: Attempt immediate load of latest snapshot before first action if True.
+        deterministic: If True, use argmax (best action). If False, sample from distribution (exploration). Default False for training.
     """
 
     def __init__(
@@ -31,6 +34,7 @@ class PPOSnake(RLSnakeBase):
         poll_interval: float = 30.0,
         auto_reload: bool = True,  # Re-enabled for model weight updates
         eager_first_load: bool = True,
+        deterministic: bool = True,  # Set True for deployment/evaluation
     ):
         super().__init__()
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -39,6 +43,7 @@ class PPOSnake(RLSnakeBase):
         self._transition_counter = 0
         # Snapshot manager for hot-reload
         self._snapshot_manager: SnapshotManager | None = None
+        print("Creating snapshot manager for dir:", snapshot_dir)
         if snapshot_dir:
             def model_creator():
                 return model_factory(5, 9, map_size=32, advanced=False)  # Use stable basic model
@@ -50,6 +55,7 @@ class PPOSnake(RLSnakeBase):
         self._poll_interval = poll_interval
         self._auto_reload = auto_reload and (self._snapshot_manager is not None)
         self._eager_first_load = eager_first_load
+        self._deterministic = deterministic
         self._reload_thread: threading.Thread | None = None
         self._reload_running = False
         self._hot_reload_lock = threading.Lock()
@@ -61,13 +67,18 @@ class PPOSnake(RLSnakeBase):
         in_channels = state.map.shape[0]
         self._model = model_factory(in_channels, ctx_dim, map_size=state.map.shape[1], advanced=False).to(self._device)
         
+        # Set model to evaluation mode for inference
+        self._model.eval()
+        
         # Update snapshot manager factory with correct dimensions
+        print("Ensuuring model")
         if self._snapshot_manager:
             def model_creator():
                 return model_factory(in_channels, ctx_dim, map_size=state.map.shape[1], advanced=False)
             self._snapshot_manager.factory = model_creator
-            
+            print("Model initialized with in_channels =", in_channels, "ctx_dim =", ctx_dim)
             if self._eager_first_load:
+                print("LOADING model")
                 self._try_load_latest()
         if self._auto_reload and not self._reload_running:
             self._start_reload_thread()
@@ -101,7 +112,11 @@ class PPOSnake(RLSnakeBase):
             if not success:
                 return False
             with self._hot_reload_lock:
-                return self._snapshot_manager.reload_into(self._model)
+                result = self._snapshot_manager.reload_into(self._model)
+                if result:
+                    # Ensure model is in eval mode after loading new weights
+                    self._model.eval()
+                return result
         except Exception:
             return False
 
@@ -116,8 +131,16 @@ class PPOSnake(RLSnakeBase):
         with torch.no_grad():
             with self._hot_reload_lock:
                 logits, value = self._model(batch_in)
+        
         dist = torch.distributions.Categorical(logits=logits.squeeze(0))
-        action_tensor = dist.sample()
+        
+        if self._deterministic:
+            # Deterministic mode: always pick best action (for deployment/evaluation)
+            action_tensor = logits.squeeze(0).argmax()
+        else:
+            # Stochastic mode: sample from distribution (for training/exploration)
+            action_tensor = dist.sample()
+        
         action_idx = int(action_tensor.item())
         log_prob = float(dist.log_prob(action_tensor).item())
         value_estimate = float(value.squeeze(0).item())

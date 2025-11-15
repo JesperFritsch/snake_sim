@@ -83,7 +83,7 @@ class SnapshotManager:
         return True
 
     def _load_path_into(self, path: Path, model: torch.nn.Module, step: int):
-        log.debug(f"Loading snapshot from {path} at step {step}")
+        log.info(f"Loading snapshot from {path} at step {step}")
         data = torch.load(path, map_location=model.device if hasattr(model, 'device') else 'cpu')
         if isinstance(data, dict) and 'policy_state' in data:
             state_dict = data['policy_state']

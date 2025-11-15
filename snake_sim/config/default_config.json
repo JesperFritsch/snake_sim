@@ -28,10 +28,22 @@
     "norm_body": 4,
     "norm_main_head": 5,
     "norm_main_body": 6,
+    "ssnake_config": {
+        "type": "survivor",
+        "strategies" : {
+            "1": {
+                "type": "food_seeker",
+                "params": {}
+            } 
+        }
+    },
     "snake_config": {
         "type": "ppo_ai",
-        "strategies" : {
-            
+        "args": {
+            "snapshot_dir": "models/ppo_training_new_reward",
+            "poll_interval": 30.0,
+            "auto_reload": true,
+            "eager_first_load": true
         }
     },
     "log_level": "DEBUG",

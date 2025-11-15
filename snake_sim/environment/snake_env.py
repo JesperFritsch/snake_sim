@@ -239,6 +239,4 @@ class SnakeEnv(ISnakeEnv):
             self._free_value,
             self._food_value,
             self._blocked_value,
-            300,
-            300
         )
