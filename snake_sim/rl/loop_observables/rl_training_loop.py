@@ -6,12 +6,11 @@ from pathlib import Path
 from dataclasses import dataclass
 
 from snake_sim.loop_observables.main_loop import SimLoop
-from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
-from snake_sim.loop_observers.map_builder_observer import MapBuilderObserver
 from snake_sim.environment.types import LoopStepData
 from snake_sim.rl.environment.rl_snake_env import RLSnakeEnv
 from snake_sim.rl.rl_data_queue import RLPendingTransitCache, RLMetaDataQueue
 from snake_sim.rl.types import RLTransitionData, PendingTransition, RLTrainingConfig
+from snake_sim.rl.state_builder import print_state 
 from snake_sim.rl.reward import compute_rewards
 from snake_sim.map_utils.general import print_map
 
@@ -44,6 +43,10 @@ class RLTrainingLoop(SimLoop):
             raise ValueError('Environment must be an instance of RLSnakeEnv')
         return super().set_environment(env)
 
+    def _pre_update(self):
+        super()._pre_update()
+        # print(f"Step {self._steps} starting: ==============================")
+
     def _post_update(self):
         super()._post_update()
         current_pending_transitions = self._pending_transition_cache.get_transitions()
@@ -54,6 +57,7 @@ class RLTrainingLoop(SimLoop):
         current_sim_map = self._env.get_map()
         current_sim_state.state_idx = self._steps
         
+        # self._print_env_map()
         if not self._prev_sim_state is None and not self._prev_sim_map is None:
             rewards = compute_rewards(
                 (self._prev_sim_state, self._prev_sim_map),
@@ -96,6 +100,14 @@ class RLTrainingLoop(SimLoop):
                     done=done,
                     episode_id=self._current_episode,
                 )
+                # print("From state:")
+                # print_state(transition.state)
+                # print("To state:")
+                # # if next_state is None:
+                # #     print("NEXT STATE: None (snake died)")
+                # # else:
+                # print_state(transition.next_state)
+                # print("Reward:", transition.reward)
                 self._transition_queue.add_transition(transition)
 
     def _get_map_path_from_selection(self) -> str:

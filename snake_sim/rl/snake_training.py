@@ -74,7 +74,7 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
                 'eager_first_load': True,
                 'deterministic': False  # Use stochastic sampling for training
             }),
-        count=16  # Increased back to 16 for much better training throughput
+        count=16  
     )
     regular_snakes = snake_factory.create_many_snakes(
         snake_config=SnakeConfig(

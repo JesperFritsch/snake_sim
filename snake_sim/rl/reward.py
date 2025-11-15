@@ -110,10 +110,7 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
             # if snake ate or food changed, distances are unreliable
             food_dist1 = None
             food_dist2 = None
-        if area_check := best_area_checks.get(s_id):
-            survival_chance_reward = _survival_chance_reward(area_check)
-        else:
-            survival_chance_reward = 0.0
+        survival_chance_reward = _survival_chance_reward(best_area_checks.get(s_id))
         food_reward = _food_approach_reward(food_dist1, food_dist2)
         did_eat_reward = _food_eat_reward(did_eat)
         length_reward = _length_reward(
@@ -136,11 +133,10 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
         )
         rewards[s_id] = total_reward
         
-        # # Debug logging to monitor reward components
-        # if s_id == list(snake_ids)[0]:  # Log only first snake to reduce spam
-        #     print(f"Rewards for snake {s_id}: length={length_reward:.2f}, survival={survival_reward:.2f}, "
-        #           f"food_approach={food_reward:.2f}, food_eat={did_eat_reward:.2f}, "
-        #           f"survival_chance={survival_chance_reward:.2f}, total={total_reward:.2f}")
+        # Debug logging to monitor reward components
+        # print(f"Rewards for snake {s_id}: length={length_reward:.2f}, survival={survival_reward:.2f}, "
+        #         f"food_approach={food_reward:.2f}, food_eat={did_eat_reward:.2f}, "
+        #         f"survival_chance={survival_chance_reward:.2f}, total={total_reward:.2f}")
     
     return rewards
 
@@ -174,7 +170,7 @@ def _length_reward(len1: int, len2: int, still_alive: bool) -> float:
 
 
 def _survival_chance_reward(area_check: AreaCheckResult) -> float:
-    if area_check.margin >= 0:
+    if area_check is not None and area_check.margin >= 0:
         return 0.0  # Safe area bonus
     else:
         return -0.2  # Unsafe area penalty
@@ -182,11 +178,11 @@ def _survival_chance_reward(area_check: AreaCheckResult) -> float:
 
 def _survival_reward(still_alive: bool, current_length: int = 2) -> float:
     if not still_alive:
-        # Death penalty that scales with progress lost, not a flat massive penalty
-        # This ensures longer runs can still be net positive even with death
-        base_death_penalty = -7.0  # Moderate base cost for dying
-        progress_penalty = -(current_length - 2) * 1.0  # Penalty for lost progress
-        return base_death_penalty + progress_penalty  # RE-ENABLED: Death must have consequences!
+        # # Gentle logarithmic scaling - diminishing penalty increase
+        # base_penalty = -10.0
+        # progress_penalty = -2.0 * math.log(1 + (current_length - 2))  # Grows slowly
+        # return base_penalty + progress_penalty
+        return -20.0  # Fixed penalty - death is always bad regardless of progress
     else:
-        return 0.05  # Survival bonus per step
+        return 0.05
 

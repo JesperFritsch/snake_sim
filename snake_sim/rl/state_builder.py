@@ -31,6 +31,15 @@ def print_channel(channel_map: np.ndarray, free_value=0, food_value=0, blocked_v
         body_value=body_value
     )
 
+def print_state(state: State):
+    print("State map shape:", state.map.shape)
+    print_channel(state.map[0], head_value=1)
+    print_channel(state.map[1], body_value=1)
+    print_channel(state.map[2], food_value=1)
+    print_channel(state.map[3], blocked_value=1)
+    print("State context:", state.ctx)
+    print("State meta:", state.meta)
+
 
 
 @dataclass
@@ -135,14 +144,9 @@ class CompleteStateBuilder:
 
     def build(self, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> State:
         state = self.base_builder.build(env_meta, step_data, snake_ctx)
+        ADAPTER_CACHE.clear()
         for adapter in self.adapters:
             adapter.apply(state, step_data, env_meta, snake_ctx)
-        # print_channel(state.map[0], head_value=1)
-        # print_channel(state.map[1], body_value=1)
-        # print_channel(state.map[2], food_value=1)
-        # print_channel(state.map[3], blocked_value=1)
-        # print(state.meta["context_order"])
-        # print(list(state.ctx))
         return state
 
 

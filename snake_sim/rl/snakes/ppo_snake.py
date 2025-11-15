@@ -43,7 +43,6 @@ class PPOSnake(RLSnakeBase):
         self._transition_counter = 0
         # Snapshot manager for hot-reload
         self._snapshot_manager: SnapshotManager | None = None
-        print("Creating snapshot manager for dir:", snapshot_dir)
         if snapshot_dir:
             def model_creator():
                 return model_factory(5, 9, map_size=32, advanced=False)  # Use stable basic model
@@ -71,14 +70,11 @@ class PPOSnake(RLSnakeBase):
         self._model.eval()
         
         # Update snapshot manager factory with correct dimensions
-        print("Ensuuring model")
         if self._snapshot_manager:
             def model_creator():
                 return model_factory(in_channels, ctx_dim, map_size=state.map.shape[1], advanced=False)
             self._snapshot_manager.factory = model_creator
-            print("Model initialized with in_channels =", in_channels, "ctx_dim =", ctx_dim)
             if self._eager_first_load:
-                print("LOADING model")
                 self._try_load_latest()
         if self._auto_reload and not self._reload_running:
             self._start_reload_thread()
