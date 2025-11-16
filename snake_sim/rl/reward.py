@@ -3,9 +3,11 @@ import math
 import numpy as np
 from typing import Dict
 
+import snake_sim.debugging as debug
 from snake_sim.map_utils.general import print_map
 from snake_sim.environment.types import CompleteStepState
 from snake_sim.environment.types import AreaCheckResult
+from snake_sim.rl.state_builder import print_state
 from snake_sim.cpp_bindings.utils import distance_to_tile_with_value
 from snake_sim.cpp_bindings.area_check import AreaChecker
 from snake_sim.cpp_bindings.utils import get_visitable_tiles
@@ -86,6 +88,10 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
         height=state1.env_meta_data.height,
     )
     best_area_checks = get_best_area_checks(area_checkers, state2, map2)
+    if debug.is_debug_active():
+        for area_snake_id, area_check in best_area_checks.items():
+            print(f"Area check for snake {area_snake_id}: {area_check}")
+            
     for s_id in snake_ids:
         if s_id not in state_map1[0].snake_bodies or s_id not in state_map2[0].snake_bodies:
             raise ValueError(f"Snake id {s_id} not found in one of the states.")
@@ -133,11 +139,10 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
         )
         rewards[s_id] = total_reward
         
-        # Debug logging to monitor reward components (ENABLED for monitoring)
-        # if total_reward != 0.01:  # Only log interesting rewards (not just baseline survival)
-        #     print(f"🎯 Rewards for snake {s_id}: length={length_reward:.2f}, survival={survival_reward:.2f}, "
-        #           f"food_approach={food_reward:.2f}, food_eat={did_eat_reward:.2f}, "
-        #           f"survival_chance={survival_chance_reward:.2f}, total={total_reward:.2f}")
+        if debug.is_debug_active():
+            print(f"🎯 Rewards for snake {s_id}: length={length_reward:.2f}, survival={survival_reward:.2f}, "
+                    f"food_approach={food_reward:.2f}, food_eat={did_eat_reward:.2f}, "
+                    f"survival_chance={survival_chance_reward:.2f}, total={total_reward:.2f}")
     
     return rewards
 

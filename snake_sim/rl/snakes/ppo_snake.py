@@ -41,6 +41,8 @@ class PPOSnake(RLSnakeBase):
         auto_reload: bool = True,  # Re-enabled for model weight updates
         eager_first_load: bool = True,
         deterministic: bool = True,  # Set True for deployment/evaluation
+        fast_mode: bool = True,  # Enable inference speed optimizations
+        use_half: bool = True,   # Convert model & inputs to FP16 if GPU available
     ):
         super().__init__()
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -64,6 +66,9 @@ class PPOSnake(RLSnakeBase):
         self._reload_thread: threading.Thread | None = None
         self._reload_running = False
         self._hot_reload_lock = threading.Lock()
+        self._fast_mode = fast_mode and (self._device.type == 'cuda')
+        self._use_half = use_half and (self._device.type == 'cuda')
+        self._scripted = False
 
     def _ensure_model(self, state: State):
         if self._model is not None:
@@ -71,9 +76,36 @@ class PPOSnake(RLSnakeBase):
         ctx_dim = 0 if state.ctx is None else state.ctx.shape[0]
         in_channels = state.map.shape[0]
         self._model = model_factory(in_channels, ctx_dim, map_size=state.map.shape[1]).to(self._device)
-        
-        # Set model to evaluation mode for inference
+        # Speed optimizations
+        if self._fast_mode:
+            try:
+                self._model = self._model.to(memory_format=torch.channels_last)
+            except Exception:
+                pass
+        if self._use_half:
+            try:
+                self._model = self._model.half()
+            except Exception:
+                pass
         self._model.eval()
+        # Optional TorchScript trace (compile not supported on 3.14)
+        if self._fast_mode and not self._scripted:
+            try:
+                example_map = torch.from_numpy(state.map).unsqueeze(0).float().to(self._device)
+                if self._use_half:
+                    example_map = example_map.half()
+                if state.ctx is not None:
+                    example_ctx = torch.from_numpy(state.ctx).unsqueeze(0).float().to(self._device)
+                    if self._use_half:
+                        example_ctx = example_ctx.half()
+                    example_in = {'map': example_map, 'ctx': example_ctx}
+                else:
+                    example_in = example_map
+                self._model = torch.jit.trace(self._model, example_in, strict=False)
+                self._scripted = True
+                log.info("PPOSnake: scripted inference model (TorchScript trace) active")
+            except Exception as e:
+                log.warning(f"TorchScript trace failed; continuing without scripting: {e}")
         
         # Update snapshot manager factory with correct dimensions
         if self._snapshot_manager:
@@ -123,16 +155,31 @@ class PPOSnake(RLSnakeBase):
             return False
 
     def _select_action(self, state: State):
-        # Collate single state into expected tensor batch
-        map_tensor = torch.from_numpy(state.map).unsqueeze(0).float().to(self._device)
+        # Prepare tensors (avoid unnecessary dtype conversions if half enabled)
+        dtype = torch.float16 if (self._use_half and self._fast_mode) else torch.float32
+        map_tensor = torch.from_numpy(state.map).unsqueeze(0).to(self._device, dtype=dtype)
+        if self._fast_mode:
+            try:
+                map_tensor = map_tensor.to(memory_format=torch.channels_last)
+            except Exception:
+                pass
         if state.ctx is not None:
-            ctx_tensor = torch.from_numpy(state.ctx).unsqueeze(0).float().to(self._device)
+            ctx_tensor = torch.from_numpy(state.ctx).unsqueeze(0).to(self._device, dtype=dtype)
             batch_in = {'map': map_tensor, 'ctx': ctx_tensor}
         else:
             batch_in = map_tensor
         with torch.no_grad():
             with self._hot_reload_lock:
-                logits, value = self._model(batch_in)
+                out = self._model(batch_in)
+        logits, value = out if isinstance(out, tuple) else (out['logits'], out['value'])
+        # Cast logits to float32 for stable distribution math
+        logits = logits.float()
+        # Apply action mask if present
+        action_mask = state.meta.get('action_mask') if state.meta is not None else None
+        if action_mask is not None:
+            mask_tensor = torch.from_numpy(action_mask).to(logits.device)
+            # Mild negative avoids fp16 overflow upstream; consistent with trainer change
+            logits = logits.masked_fill(mask_tensor.unsqueeze(0) == 0, -60.0)
         dist = torch.distributions.Categorical(logits=logits.squeeze(0))
         
         debug.debug_print(f"PPO Snake {self.get_id()} logits:", logits.cpu().numpy())

@@ -45,10 +45,14 @@ class PPOTrainerConfig:
     exploration_boost_factor: float = 1.5
     max_entropy_coef: float = 0.05  # REDUCED - don't let it get too random
     # Policy collapse prevention
-    kl_target: float = 0.5  # Target KL divergence - HIGH for initial training with advanced model
+    # KL / policy stability controls
+    kl_target: float = 0.8  # Relaxed (was 0.5) to allow larger early improvements
     enable_early_stopping: bool = True  # Stop epochs early if policy changes too much
-    kl_warmup_updates: int = 100  # Disable KL early stopping for first N updates
+    kl_warmup_updates: int = 50  # Shorter warmup (was 100) so stability checks engage sooner
     min_return_threshold: Optional[float] = None  # Rollback if returns drop below this
+    # Performance / acceleration toggles
+    use_amp: bool = True  # Mixed precision training (CUDA only)
+    compile_model: bool = True  # torch.compile for model speedup (PyTorch 2+)
 
 
 class PPOTrainer:
@@ -62,6 +66,18 @@ class PPOTrainer:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         else:
             self.device = torch.device(self.cfg.device)
+
+        # Mixed precision setup (only if CUDA available & enabled)
+        self._amp_enabled = (self.device.type == 'cuda')
+        # Use new torch.amp API (compatible with deprecation warnings)
+        try:
+            from torch import amp as _torch_amp  # PyTorch 2 style
+            self._scaler = _torch_amp.GradScaler('cuda', enabled=(self._amp_enabled and self.cfg.use_amp))
+        except Exception:
+            # Fallback for older versions (shouldn't happen, but safe)
+            self._scaler = torch.cuda.amp.GradScaler(enabled=(self._amp_enabled and self.cfg.use_amp))
+        # Track if we auto-disable AMP due to runtime dtype issues
+        self._amp_runtime_disabled = False
         
         self.model = None
         self.policy_optimizer = None
@@ -187,10 +203,24 @@ class PPOTrainer:
         ctx_dim = 0 if first_state.ctx is None else first_state.ctx.shape[0]
         in_channels = first_state.map.shape[0]
         self.model = model_factory(in_channels, ctx_dim, map_size=first_state.map.shape[1]).to(self.device)
-        
-        # Create simple unified optimizers - more stable
-        self.policy_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.cfg.policy_lr)
-        self.value_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.cfg.value_lr)
+        # Optional compile for speed (falls back gracefully)
+        if self.cfg.compile_model and self.device.type == 'cuda':
+            try:
+                self.model = torch.compile(self.model)
+                log.info("Model compiled with torch.compile()")
+            except Exception as e:
+                log.warning(f"torch.compile failed; continuing without compile: {e}")
+
+        # Split optimizers using param grouping if available
+        if hasattr(self.model, 'actor_parameters') and hasattr(self.model, 'critic_parameters'):
+            self.policy_optimizer = torch.optim.Adam(self.model.actor_parameters(), lr=self.cfg.policy_lr, eps=1e-5)
+            self.value_optimizer = torch.optim.Adam(self.model.critic_parameters(), lr=self.cfg.value_lr, eps=1e-5)
+            log.info("Initialized split optimizers (actor & critic)")
+        else:
+            # Fallback to unified parameters (should not occur after model patch)
+            self.policy_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.cfg.policy_lr, eps=1e-5)
+            self.value_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.cfg.value_lr, eps=1e-5)
+            log.warning("Model missing parameter grouping helpers; using unified optimizers")
         
         # Setup snapshot manager if directory provided
         if self._snapshot_dir:
@@ -407,6 +437,15 @@ class PPOTrainer:
         advantages = torch.tensor([self._adv_returns[t.transition_id][0] for t in transitions], dtype=torch.float32, device=self.device)
         returns = torch.tensor([self._adv_returns[t.transition_id][1] for t in transitions], dtype=torch.float32, device=self.device)
         state_batch = self._collate_states(states)
+        # Optional action masks (state.meta['action_mask'] expected as np.array shape (4,), 1 valid / 0 invalid)
+        masks = None
+        if all((s.meta is not None and 'action_mask' in s.meta) for s in states) and len(states) > 0:
+            try:
+                masks_np = [s.meta['action_mask'] for s in states]
+                masks = torch.from_numpy(np.stack(masks_np)).float().to(self.device)
+            except Exception as e:
+                log.warning(f"Failed to stack action masks; ignoring masks. Error: {e}")
+                masks = None
         batch = {
             'states': state_batch,
             'actions': actions,
@@ -414,6 +453,8 @@ class PPOTrainer:
             'advantages': advantages,
             'returns': returns
         }
+        if masks is not None:
+            batch['action_mask'] = masks
         return batch
 
     def _collate_states(self, states: List[State]):
@@ -458,6 +499,7 @@ class PPOTrainer:
         old_log_probs = batch['old_log_probs']
         advantages = batch['advantages']
         returns = batch['returns']
+        action_mask_full = batch.get('action_mask', None)
         
         batch_size = len(actions)
         
@@ -488,11 +530,26 @@ class PPOTrainer:
             shuffled_old_log_probs = old_log_probs[indices]
             shuffled_advantages = advantages[indices]
             shuffled_returns = normalized_returns[indices]  # Use normalized returns
+            shuffled_action_mask = action_mask_full[indices] if action_mask_full is not None else None
             
-            logits, values = self._forward(shuffled_states)
+            # Forward + loss under optional mixed precision
+            # Autocast with new API if available
+            try:
+                from torch import amp as _torch_amp
+                autocast_ctx = _torch_amp.autocast('cuda', enabled=(self._amp_enabled and self.cfg.use_amp))
+            except Exception:
+                autocast_ctx = torch.cuda.amp.autocast(enabled=(self._amp_enabled and self.cfg.use_amp))
+            with autocast_ctx:
+                logits, values = self._forward(shuffled_states)
+            # Convert to float32 for stable loss math regardless of autocast dtype
+            logits = logits.float()
+            values = values.float()
+            if shuffled_action_mask is not None:
+                # Use moderate negative to avoid fp16 overflow and maintain gradient stability post-cast
+                logits = logits.masked_fill(shuffled_action_mask == 0, -60.0)
             dist = torch.distributions.Categorical(logits=logits)
-            log_probs = dist.log_prob(shuffled_actions)
-            entropy = dist.entropy().mean()
+            log_probs = dist.log_prob(shuffled_actions).float()
+            entropy = dist.entropy().mean().float()
 
             # Compute KL divergence to detect policy collapse
             with torch.no_grad():
@@ -527,24 +584,42 @@ class PPOTrainer:
             total_loss = policy_loss + self.cfg.value_coef * value_loss - self.cfg.entropy_coef * entropy
             
             try:
-                self.policy_optimizer.zero_grad()
-                self.value_optimizer.zero_grad()
-                total_loss.backward()
-                
-                # Standard gradient clipping
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.max_grad_norm)
-                
-                self.policy_optimizer.step()
-                self.value_optimizer.step()
-                
-                # Track epoch metrics
+                self.policy_optimizer.zero_grad(set_to_none=True)
+                self.value_optimizer.zero_grad(set_to_none=True)
+                if self._amp_enabled and self.cfg.use_amp and not self._amp_runtime_disabled:
+                    self._scaler.scale(total_loss).backward()
+                    self._scaler.unscale_(self.policy_optimizer)
+                    self._scaler.unscale_(self.value_optimizer)
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.max_grad_norm)
+                    self._scaler.step(self.policy_optimizer)
+                    self._scaler.step(self.value_optimizer)
+                    self._scaler.update()
+                else:
+                    total_loss.backward()
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.max_grad_norm)
+                    self.policy_optimizer.step()
+                    self.value_optimizer.step()
+                # Track metrics
                 epoch_policy_losses.append(policy_loss.item())
                 epoch_value_losses.append(value_loss.item())
                 epoch_entropies.append(entropy.item())
                 epoch_kl_divs.append(approx_kl)
-                
             except RuntimeError as e:
-                if "inplace operation" in str(e):
+                if 'expected Half' in str(e) and not self._amp_runtime_disabled:
+                    log.warning(f"AMP dtype mismatch detected; disabling AMP for future updates: {e}")
+                    self._amp_runtime_disabled = True
+                    # Retry in full precision
+                    self.policy_optimizer.zero_grad(set_to_none=True)
+                    self.value_optimizer.zero_grad(set_to_none=True)
+                    total_loss.backward()
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.max_grad_norm)
+                    self.policy_optimizer.step()
+                    self.value_optimizer.step()
+                    epoch_policy_losses.append(policy_loss.item())
+                    epoch_value_losses.append(value_loss.item())
+                    epoch_entropies.append(entropy.item())
+                    epoch_kl_divs.append(approx_kl)
+                elif "inplace operation" in str(e):
                     log.warning(f"Gradient computation failed due to inplace operation, skipping epoch {epoch}: {e}")
                     continue
                 else:

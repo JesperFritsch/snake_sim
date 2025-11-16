@@ -5,6 +5,7 @@ import random
 from pathlib import Path
 from dataclasses import dataclass
 
+import snake_sim.debugging as debug
 from snake_sim.loop_observables.main_loop import SimLoop
 from snake_sim.environment.types import LoopStepData
 from snake_sim.rl.environment.rl_snake_env import RLSnakeEnv
@@ -45,7 +46,8 @@ class RLTrainingLoop(SimLoop):
 
     def _pre_update(self):
         super()._pre_update()
-        # print(f"Step {self._steps} starting: ==============================")
+        if debug.is_debug_active():
+            print(f"Step {self._steps} starting: ==============================")
 
     def _post_update(self):
         super()._post_update()
@@ -57,7 +59,6 @@ class RLTrainingLoop(SimLoop):
         current_sim_map = self._env.get_map()
         current_sim_state.state_idx = self._steps
         
-        # self._print_env_map()
         if not self._prev_sim_state is None and not self._prev_sim_map is None:
             rewards = compute_rewards(
                 (self._prev_sim_state, self._prev_sim_map),
@@ -69,7 +70,6 @@ class RLTrainingLoop(SimLoop):
         self._prev_sim_map = current_sim_map
         self._previous_pending_transitions = current_pending_transitions
         self._pending_transition_cache.clear()
-        # self._print_env_map()
 
     def _finalize_pending_transitions(self, current_pending_transitions: dict[int, PendingTransition], rewards: dict[int, float]) -> dict[int, PendingTransition]:
         """Gathers pending transitions from all snakes in the environment.
@@ -100,15 +100,15 @@ class RLTrainingLoop(SimLoop):
                     done=done,
                     episode_id=self._current_episode,
                 )
-                # print("From state:")
-                # print_state(transition.state)
-                # print("To state:")
-                # # if next_state is None:
-                # #     print("NEXT STATE: None (snake died)")
-                # # else:
-                # print_state(transition.next_state)
-                # print("Reward:", transition.reward)
                 self._transition_queue.add_transition(transition)
+                if debug.is_debug_active():
+                    print(f"RL Training Loop: Step {self._steps} completed. Rewards: {rewards}")
+                    self._print_env_map()
+                    print("From state:")
+                    print_state(transition.state)
+                    print("To state:")
+                    print_state(transition.next_state)
+                    print(f"Action taken: {transition.action_index}, Reward: {transition.reward}, Done: {transition.done}")
 
     def _get_map_path_from_selection(self) -> str:
         """Selects a training map from the configured list."""
