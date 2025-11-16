@@ -19,16 +19,11 @@ class SHMUpdater(ConcurrentUpdater):
 
     def register_snake(self, snake: SHMProxySnake):
         self._confirm_snake_type(snake)
-        if snake in self._managed_snakes:
-            raise ValueError(f"Snake with ID {snake.get_id()} is already registered.")
-        snake.set_reader_id(self._snake_count)
-        self._managed_snakes.add(snake)
+        snake.set_reader_id(self.snake_count)
         super().register_snake(snake)
 
     def unregister_snake(self, snake: SHMProxySnake):
         self._confirm_snake_type(snake)
-        if snake not in self._managed_snakes:
-            raise ValueError(f"Snake with ID {snake.get_id()} is not registered.")
         self._managed_snakes.remove(snake)
         super().unregister_snake(snake)
 
@@ -56,7 +51,7 @@ class SHMUpdater(ConcurrentUpdater):
         if self._shm_writer is not None:
             return
         shm_name = str(uuid4())
-        shm_reader_count = self._snake_count
+        shm_reader_count = self.snake_count
         payload_size = env_meta_data.width * env_meta_data.height
         log.debug(f"Creating SharedMemoryWriter with name: {shm_name}, readers: {shm_reader_count}, payload_size: {payload_size}")
         self._shm_writer = SharedMemoryWriter.create(

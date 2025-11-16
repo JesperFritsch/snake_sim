@@ -3,7 +3,7 @@ import pickle
 import sys
 import logging
 import numpy as np
-from typing import Optional
+from typing import Optional, Any
 from pathlib import Path
 
 from multiprocessing.sharedctypes import Synchronized
@@ -15,9 +15,11 @@ from snake_sim.environment.shm_update import SharedMemoryReader
 
 
 class Message:
-    def __init__(self, command: str, data: any):
+    def __init__(self, command: str, args: list[Any]=None, kwargs: dict[str, Any]=None, returns: Any = None):
         self.command = command
-        self.data = data
+        self.args = args
+        self.kwargs = kwargs
+        self.data = returns
 
     def serialize(self) -> bytes:
         return pickle.dumps(self)
@@ -28,18 +30,19 @@ class Message:
 
 
 class Call(Message):
-    def __init__(self, command: str, data: any):
-        super().__init__(command, data)
+    def __init__(self, command: str, args: list[Any]=None, kwargs: dict[str, Any]=None):
+        super().__init__(command, args, kwargs)
 
     def __str__(self):
-        return f"Request(command={self.command}, data={self.data})"
+        return f"Request(command={self.command}, args={self.args}, kwargs={self.kwargs})"
+
 
 class Return(Message):
-    def __init__(self, command: str, data: any):
-        super().__init__(command, data)
+    def __init__(self, command: str, args: list[Any]=None, kwargs: dict[str, Any]=None, returns: Any = None):
+        super().__init__(command, args, kwargs, returns)
 
     def __str__(self):
-        return f"Response(command={self.command}, data={self.data})"
+        return f"Response(command={self.command}, args={self.args}, kwargs={self.kwargs}, returns={self.data})"
 
 
 class SHMSnakeServer:
@@ -112,13 +115,13 @@ class SHMSnakeServer:
                 # if its not a snake method then its a command from the snake proxy to the server
                 if hasattr(self._snake_instance, request.command):
                     snake_method = getattr(self._snake_instance, request.command)
-                    result = snake_method(request.data)
+                    result = snake_method(*request.args, **request.kwargs)
                 elif hasattr(self, request.command):
                     server_method = getattr(self, request.command)
-                    result = server_method(request.data)
+                    result = server_method(*request.args, **request.kwargs)
                 else:
                     raise ValueError(f"Unknown command: {request.command}")
-                response = Return(request.command, result)
+                response = Return(request.command, request.args, request.kwargs, returns=result)
                 self._send(response)
             log.debug("Stop event set, shutting down server")
         except (BrokenPipeError, EOFError, ConnectionError):

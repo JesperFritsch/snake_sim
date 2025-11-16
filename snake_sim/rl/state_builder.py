@@ -208,7 +208,7 @@ class DirectionHintsAdapter:
                 c_coord,
                 target_margin=target_margin,
                 food_check=False,
-                complete_area=False,
+                complete_area=True,
                 exhaustive=False
             )
             area_check = AreaCheckResult(**result)
@@ -243,5 +243,6 @@ class DirectionHintsAdapter:
                 clockwise=rot
             )
             action_idx = consts.ACTION_ORDER.get(dir_tuple)
-            ctx[action_idx] = 1.0
+            if action_idx is not None:
+                ctx[action_idx] = 1.0
         return ctx

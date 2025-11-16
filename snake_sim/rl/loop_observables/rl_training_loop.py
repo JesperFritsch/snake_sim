@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from snake_sim.loop_observables.main_loop import SimLoop
 from snake_sim.environment.types import LoopStepData
 from snake_sim.rl.environment.rl_snake_env import RLSnakeEnv
-from snake_sim.rl.rl_data_queue import RLPendingTransitCache, RLMetaDataQueue
+from snake_sim.rl.training.rl_data_queue import RLPendingTransitCache, RLMetaDataQueue
 from snake_sim.rl.types import RLTransitionData, PendingTransition, RLTrainingConfig
 from snake_sim.rl.state_builder import print_state 
 from snake_sim.rl.reward import compute_rewards

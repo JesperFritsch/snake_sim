@@ -9,9 +9,10 @@ import importlib.util as imp_util
 from importlib import resources as pkg_resources
 
 from snake_sim.environment.food_handlers import FoodHandler
-from snake_sim.environment.types import DotDict, SnakeConfig, StrategyConfig
+from snake_sim.environment.types import DotDict, SnakeConfig, StrategyConfig, SnakeProcType
 from snake_sim.environment.snake_handlers import SnakeHandler
 from snake_sim.environment.snake_factory import SnakeFactory
+from snake_sim.environment.snake_processes import SnakeProcessManager
 
 from snake_sim.rl.snakes.ppo_snake import PPOSnake
 from snake_sim.snakes.survivor_snake import SurvivorSnake
@@ -22,7 +23,7 @@ from snake_sim.loop_observers.file_persist_observer import FilePersistObserver
 from snake_sim.rl.loop_observables.rl_training_loop import RLTrainingLoop
 from snake_sim.rl.environment.rl_snake_env import RLSnakeEnv
 from snake_sim.rl.types import RLTrainingConfig
-from snake_sim.rl.ppo_trainer import PPOTrainer
+from snake_sim.rl.training.ppo_trainer import PPOTrainer
 from snake_sim.logging_setup import setup_logging
 
 
@@ -34,7 +35,7 @@ PACKAGE_ROOT = Path(imp_util.find_spec('snake_sim').origin).parent
 setup_logging(log_level=logging.INFO)
 
 log = logging.getLogger(Path(__file__).stem)
-
+snake_proc_mngr = SnakeProcessManager()
 
 def setup_training_loop(config: RLTrainingConfig, snapshot_dir: str = None) -> RLTrainingLoop:
     snake_env = RLSnakeEnv(
@@ -64,16 +65,34 @@ def setup_training_loop(config: RLTrainingConfig, snapshot_dir: str = None) -> R
 def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir: str = None):
     snake_factory = SnakeFactory()
     # Create PPO snakes with snapshot directory - Increased for better GPU utilization
+    ppo_snake_config = SnakeConfig(
+        type='ppo_ai',
+        args={
+            'snapshot_dir': snapshot_dir,
+            'poll_interval': 2.0,
+            'auto_reload': True,
+            'eager_first_load': True,
+            'deterministic': False  # Use stochastic sampling for training
+        }
+    )
+    # snake_factory = SnakeFactory()
+    # ppo_snakes = []
+    # for _ in range(3):
+    #     snake_id = snake_handler.get_next_snake_id()
+    #     snake_proc_mngr.start(
+    #         id=snake_id,
+    #         proc_type=SnakeProcType.SHM,
+    #         snake_config=ppo_snake_config
+    #     )
+    #     target = snake_proc_mngr.get_target(snake_id)
+    #     snake = snake_factory.create_snake(
+    #         proc_type=SnakeProcType.SHM,
+    #         target=target
+    #     )
+    #     snake_handler.add_snake(snake)
+
     ppo_snakes = snake_factory.create_many_snakes(
-        snake_config=SnakeConfig(
-            type='ppo_ai',
-            args={
-                'snapshot_dir': snapshot_dir,
-                'poll_interval': 2.0,
-                'auto_reload': True,
-                'eager_first_load': True,
-                'deterministic': False  # Use stochastic sampling for training
-            }),
+        snake_config=ppo_snake_config,
         count=16  
     )
     regular_snakes = snake_factory.create_many_snakes(
@@ -101,7 +120,7 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
 
 def train(config: RLTrainingConfig):
     # Set up snapshot directory for model sharing
-    snapshot_dir = "models/ppo_training_new_reward"
+    snapshot_dir = "models/ppo_training_mid"
     Path(snapshot_dir).mkdir(parents=True, exist_ok=True)
     
     trainer = PPOTrainer(snapshot_dir=snapshot_dir)
@@ -122,6 +141,7 @@ def train(config: RLTrainingConfig):
     finally:
         log.info("Training completed, stopping background trainer")
         trainer.stop_background()
+        snake_proc_mngr.shutdown()
         training_loop.close()
 
 

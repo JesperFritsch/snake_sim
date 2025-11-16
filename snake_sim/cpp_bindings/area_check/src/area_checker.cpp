@@ -167,7 +167,7 @@ std::unordered_set<Coord> AreaChecker::get_overlapping_jagged_tiles(
 
     if (jagged_edge1.front() - jagged_edge1[1] != jagged_edge2.front() - jagged_edge2[1])
     {
-        throw std::invalid_argument("jagged edges must have the same orientation");
+        return {};
     }
 
     std::unordered_set<Coord> overlapping_tiles;
