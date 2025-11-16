@@ -2,6 +2,7 @@ import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import itertools
 
 from pathlib import Path
 from typing import Union, Dict, Tuple
@@ -84,6 +85,23 @@ class SnakePPONet(nn.Module):
         values = self.value_head(value_input)
         
         return action_logits, values
+
+    # ---- Parameter grouping helpers ----
+    def shared_parameters(self):
+        """Convolutional trunk shared by actor and critic."""
+        return itertools.chain(
+            self.conv1.parameters(),
+            self.conv2.parameters(),
+            self.conv3.parameters()
+        )
+
+    def actor_parameters(self):
+        """Actor params: shared trunk + policy head."""
+        return itertools.chain(self.shared_parameters(), self.policy_head.parameters())
+
+    def critic_parameters(self):
+        """Critic params: value head only to avoid double optimizer stepping of trunk."""
+        return self.value_head.parameters()
 
 
 class SpatialSnakePPONet(nn.Module):
@@ -192,6 +210,22 @@ class SpatialSnakePPONet(nn.Module):
         values = self.value_head(combined_features)
         
         return action_logits, values
+
+    # ---- Parameter grouping helpers ----
+    def shared_parameters(self):
+        return itertools.chain(
+            self.conv1.parameters(),
+            self.conv2.parameters(),
+            self.conv3.parameters(),
+            self.conv4.parameters(),
+            self.value_conv.parameters()
+        )
+
+    def actor_parameters(self):
+        return itertools.chain(self.shared_parameters(), self.spatial_policy.parameters())
+
+    def critic_parameters(self):
+        return self.value_head.parameters()
 
 
 def model_factory(in_channels: int, ctx_dim: int = 0, map_size: int = 32, advanced: bool = False) -> nn.Module:

@@ -8,6 +8,8 @@ from pathlib import Path
 import importlib.util as imp_util
 from importlib import resources as pkg_resources
 
+import snake_sim.debugging as debug
+
 from snake_sim.environment.food_handlers import FoodHandler
 from snake_sim.environment.types import DotDict, SnakeConfig, StrategyConfig, SnakeProcType
 from snake_sim.environment.snake_handlers import SnakeHandler
@@ -33,6 +35,10 @@ with pkg_resources.open_text('snake_sim.config', 'default_config.json') as confi
 PACKAGE_ROOT = Path(imp_util.find_spec('snake_sim').origin).parent
 
 setup_logging(log_level=logging.INFO)
+
+# debug.activate_debug()
+# debug.enable_debug_for("compute_rewards")
+# debug.enable_debug_for("RLTrainingLoop")
 
 log = logging.getLogger(Path(__file__).stem)
 snake_proc_mngr = SnakeProcessManager()
@@ -62,45 +68,37 @@ def setup_training_loop(config: RLTrainingConfig, snapshot_dir: str = None) -> R
     return training_loop
 
 
-def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir: str = None):
+def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir: str = None, ppo_count: int = 8, opponent_count: int = 0):
+    """Add snakes to environment.
+
+    Args:
+        snapshot_dir: directory for PPO snapshots.
+        ppo_count: number of PPO training snakes to spawn (higher -> more transitions -> better GPU utilization).
+        opponent_count: number of heuristic survivor snakes (optional for diversity).
+    """
     snake_factory = SnakeFactory()
-    # Create PPO snakes with snapshot directory - Increased for better GPU utilization
     ppo_snake_config = SnakeConfig(
         type='ppo_ai',
         args={
             'snapshot_dir': snapshot_dir,
-            'poll_interval': 2.0,
+            'poll_interval': 5.0,        # fewer reload checks reduces I/O overhead
             'auto_reload': True,
             'eager_first_load': True,
-            'deterministic': False  # Use stochastic sampling for training
+            'deterministic': False,
+            'fast_mode': True,
+            'use_half': True
         }
     )
-    # snake_factory = SnakeFactory()
-    # ppo_snakes = []
-    # for _ in range(3):
-    #     snake_id = snake_handler.get_next_snake_id()
-    #     snake_proc_mngr.start(
-    #         id=snake_id,
-    #         proc_type=SnakeProcType.SHM,
-    #         snake_config=ppo_snake_config
-    #     )
-    #     target = snake_proc_mngr.get_target(snake_id)
-    #     snake = snake_factory.create_snake(
-    #         proc_type=SnakeProcType.SHM,
-    #         target=target
-    #     )
-    #     snake_handler.add_snake(snake)
-
     ppo_snakes = snake_factory.create_many_snakes(
         snake_config=ppo_snake_config,
-        count=16  
+        count=max(1, ppo_count)
     )
     regular_snakes = snake_factory.create_many_snakes(
         snake_config=SnakeConfig(
             type='survivor',
             strategies={1: StrategyConfig(type='food_seeker')}
         ),
-        count=0
+        count=max(0, opponent_count)
     )
     for snake in ppo_snakes + regular_snakes:
         snake_handler.add_snake(snake)
@@ -120,13 +118,13 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
 
 def train(config: RLTrainingConfig):
     # Set up snapshot directory for model sharing
-    snapshot_dir = "models/ppo_training_mid"
+    snapshot_dir = "models/ppo_training_mid_action_mask"
     Path(snapshot_dir).mkdir(parents=True, exist_ok=True)
     
     trainer = PPOTrainer(snapshot_dir=snapshot_dir)
     trainer.start_background()
     
-    log.info(f"Starting training for {config.episodes} episodes")
+    log.info(f"Starting training for {config.episodes} episodes with {8} PPO snakes")
     log.info(f"Model snapshots will be saved to: {snapshot_dir}")
     training_loop = setup_training_loop(config, snapshot_dir=snapshot_dir)
     # file_persist_observer = FilePersistObserver(store_dir=Path(PACKAGE_ROOT) / "rl/trainings_runs")
@@ -150,15 +148,15 @@ if __name__ == "__main__":
     maps_mapping = get_map_files_mapping()
 
     training_maps = [
-        # "comps2",
-        # "comps",
-        # "lil_sign",
-        # "face",
-        # "patterns",
-        # "quarters3",
-        # "wavy",
-        # "tricky",
-        # "items",
+        "comps2",
+        "comps",
+        "lil_sign",
+        "face",
+        "patterns",
+        "quarters3",
+        "wavy",
+        "tricky",
+        "items",
         None
     ]
 

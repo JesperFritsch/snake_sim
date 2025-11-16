@@ -41,6 +41,28 @@ def print_state(state: State):
     print("State meta:", state.meta)
 
 
+def _get_visitable_tiles(
+        s_map: np.ndarray,
+        env_meta: EnvMetaData,
+        head_coord: Coord
+    ) -> List[Coord]:
+    if 'visitable_tiles' in ADAPTER_CACHE:
+        return ADAPTER_CACHE['visitable_tiles']
+    tile_tuples = get_visitable_tiles(
+        s_map,
+        env_meta.width,
+        env_meta.height,
+        head_coord,
+        [env_meta.free_value, env_meta.food_value]
+    )
+    tile_coords = [Coord(*t) for t in tile_tuples]
+    ADAPTER_CACHE['visitable_tiles'] = tile_coords
+    return tile_coords
+
+
+def _clean_dir_ctx():
+    return np.zeros((len(consts.ACTION_ORDER),), dtype=np.float32)
+
 
 @dataclass
 class SnakeContext:
@@ -186,12 +208,8 @@ class DirectionHintsAdapter:
 
     def _get_area_checks(self, s_map: np.ndarray, env_meta: EnvMetaData, step_data: EnvStepData, ctx: SnakeContext) -> Dict[Coord, AreaCheckResult]:
         head_coord = ctx.head
-        visitable_tiles = get_visitable_tiles(
-            s_map,
-            env_meta.width,
-            env_meta.height,
-            head_coord,
-            [env_meta.free_value, env_meta.food_value]
+        visitable_tiles = _get_visitable_tiles(
+            s_map, env_meta, head_coord
         )
         return {
             d_coord: self._get_area_check(d_coord, step_data, ctx) if head_coord + d_coord in visitable_tiles else None
@@ -214,12 +232,9 @@ class DirectionHintsAdapter:
             area_check = AreaCheckResult(**result)
             ADAPTER_CACHE.setdefault("area_checks", {})[coord] = area_check
         return area_check
-    
-    def _clean_dir_ctx(self):
-        return np.zeros((len(consts.ACTION_ORDER),), dtype=np.float32)
 
     def _create_area_ctx(self, area_checks: dict[Coord, AreaCheckResult]) -> np.ndarray:
-        ctx = self._clean_dir_ctx()
+        ctx = _clean_dir_ctx()
         for coord, ac in area_checks.items():
             if ac is None:
                 margin_frac = -1.0
@@ -231,7 +246,7 @@ class DirectionHintsAdapter:
         return ctx
 
     def _create_close_food_ctx(self, env_data: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> np.ndarray:
-        ctx = self._clean_dir_ctx()
+        ctx = _clean_dir_ctx()
         for rot in (True, False):
             dir_tuple = get_dir_to_tile(
                 step_data.map,
@@ -246,3 +261,33 @@ class DirectionHintsAdapter:
             if action_idx is not None:
                 ctx[action_idx] = 1.0
         return ctx
+
+
+class ActionMaskAdapter:
+    name = 'action_mask'
+
+    def apply(self, state: State, step_data: EnvStepData, env_meta: EnvMetaData, snake_ctx: SnakeContext) -> None:
+        """Compute per-action validity mask and store in state.meta['action_mask'].
+
+        A move is valid if:
+          - Target cell within bounds
+          - Target cell value in {free_value, food_value}
+        Opponent or own bodies/head values render the move invalid.
+        """
+        head = snake_ctx.head
+        H, W = env_meta.height, env_meta.width
+        s_map = step_data.map
+        free_v = env_meta.free_value
+        food_v = env_meta.food_value
+        mask = _clean_dir_ctx()
+        visitable_tiles = _get_visitable_tiles(
+            s_map, env_meta, head
+        )
+        for coord in consts.ACTION_ORDER:
+            target = head + coord
+            if target in visitable_tiles:
+                mask[consts.ACTION_ORDER[coord]] = 1.0
+
+        state.meta['action_mask'] = mask
+        state.meta.setdefault('context_order', [])  # ensure exists
+        state.meta.setdefault('adapters', []).append(self.name)
