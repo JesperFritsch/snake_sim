@@ -39,5 +39,5 @@ class ConcurrentUpdater(ISnakeUpdater):
     def finalize(self, env_meta_data: EnvMetaData):
         super().finalize(env_meta_data)
         if self._executor is None:
-            log.debug(f"Creating ThreadPoolExecutor with {self._snake_count} workers")
-            self._executor = ThreadPoolExecutor(max_workers=self._snake_count)
+            log.debug(f"Creating ThreadPoolExecutor with {self.snake_count} workers")
+            self._executor = ThreadPoolExecutor(max_workers=self.snake_count)

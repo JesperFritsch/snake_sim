@@ -7,10 +7,16 @@ from pathlib import Path
 
 from snake_sim.rl.snakes.rl_snake_base import RLSnakeBase
 from snake_sim.rl.types import PPOMetaData, PendingTransition, State
+from snake_sim.rl.state_builder import print_channel
 from snake_sim.rl.models.ppo_model import model_factory
-from snake_sim.rl.rl_data_queue import RLPendingTransitCache
+from snake_sim.rl.training.rl_data_queue import RLPendingTransitCache
 from snake_sim.rl.constants import ACTION_ORDER_INVERSE
 from snake_sim.rl.snapshot_manager import SnapshotManager
+
+import snake_sim.debugging as debug 
+
+# debug.activate_debug()
+# debug.enable_debug_for_all()
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -45,7 +51,7 @@ class PPOSnake(RLSnakeBase):
         self._snapshot_manager: SnapshotManager | None = None
         if snapshot_dir:
             def model_creator():
-                return model_factory(5, 9, map_size=32, advanced=False)  # Use stable basic model
+                return model_factory(5, 9, map_size=32)  # Use stable basic model
             self._snapshot_manager = SnapshotManager(
                 dir=snapshot_dir,
                 base_name=snapshot_base_name,
@@ -64,7 +70,7 @@ class PPOSnake(RLSnakeBase):
             return
         ctx_dim = 0 if state.ctx is None else state.ctx.shape[0]
         in_channels = state.map.shape[0]
-        self._model = model_factory(in_channels, ctx_dim, map_size=state.map.shape[1], advanced=False).to(self._device)
+        self._model = model_factory(in_channels, ctx_dim, map_size=state.map.shape[1]).to(self._device)
         
         # Set model to evaluation mode for inference
         self._model.eval()
@@ -72,7 +78,7 @@ class PPOSnake(RLSnakeBase):
         # Update snapshot manager factory with correct dimensions
         if self._snapshot_manager:
             def model_creator():
-                return model_factory(in_channels, ctx_dim, map_size=state.map.shape[1], advanced=False)
+                return model_factory(in_channels, ctx_dim, map_size=state.map.shape[1])
             self._snapshot_manager.factory = model_creator
             if self._eager_first_load:
                 self._try_load_latest()
@@ -127,9 +133,14 @@ class PPOSnake(RLSnakeBase):
         with torch.no_grad():
             with self._hot_reload_lock:
                 logits, value = self._model(batch_in)
-        
         dist = torch.distributions.Categorical(logits=logits.squeeze(0))
         
+        debug.debug_print(f"PPO Snake {self.get_id()} logits:", logits.cpu().numpy())
+        debug.debug_print(f"PPO Snake {self.get_id()} action distribution probs:", dist.probs.cpu().numpy())
+        if debug.is_debug_active():
+            print("State context:", state.ctx)
+            print("State meta:", state.meta)
+            self._print_map()
         if self._deterministic:
             # Deterministic mode: always pick best action (for deployment/evaluation)
             action_tensor = logits.squeeze(0).argmax()

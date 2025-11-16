@@ -9,29 +9,33 @@ from typing import Union, Dict, Tuple
 log = logging.getLogger(Path(__file__).stem)
 
 class SnakePPONet(nn.Module):
-    """Simple stable PPO network for snake environment."""
+    """Simple stable PPO network for snake environment - NOW WITH SPATIAL REASONING."""
     
     def __init__(self, in_channels: int, ctx_dim: int = 0):
         super().__init__()
         
-        # Simple CNN feature extraction
+        # CNN feature extraction - keep spatial info
         self.conv1 = nn.Conv2d(in_channels, 32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(64, 32, kernel_size=3, padding=1)
         
-        # Global average pooling to reduce spatial dimensions
-        self.global_pool = nn.AdaptiveAvgPool2d(1)
+        # Spatial policy head - predicts action logits at head position
+        # We'll pool to 4x4 to keep SOME spatial awareness without being huge
+        self.spatial_reduce = nn.AdaptiveAvgPool2d(4)  # 32x32 -> 4x4 (reduces params)
         
-        # Policy head (actor)
-        policy_input_dim = 64 + ctx_dim
+        # Policy head (actor) - uses 4x4 spatial features
+        policy_input_dim = 32 * 4 * 4 + ctx_dim  # 512 + ctx_dim
         self.policy_head = nn.Sequential(
             nn.Linear(policy_input_dim, 128),
             nn.ReLU(),
             nn.Linear(128, 4)  # 4 actions: up, down, left, right
         )
         
-        # Value head (critic)  
+        # Value head (critic) - can use global pooling since it's just a scalar
+        self.value_pool = nn.AdaptiveAvgPool2d(1)
+        value_input_dim = 32 + ctx_dim
         self.value_head = nn.Sequential(
-            nn.Linear(policy_input_dim, 128),
+            nn.Linear(value_input_dim, 128),
             nn.ReLU(),
             nn.Linear(128, 1)
         )
@@ -58,19 +62,26 @@ class SnakePPONet(nn.Module):
         # CNN feature extraction
         features = F.relu(self.conv1(map_tensor))
         features = F.relu(self.conv2(features))
+        features = F.relu(self.conv3(features))  # (B, 32, H, W)
         
-        # Global pooling to get fixed-size features
-        pooled = self.global_pool(features).squeeze(-1).squeeze(-1)  # (B, 64)
+        # Policy uses spatial features (4x4)
+        policy_features = self.spatial_reduce(features)  # (B, 32, 4, 4)
+        policy_flat = policy_features.flatten(1)  # (B, 512)
+        
+        # Value uses global pooling (just needs scalar)
+        value_features = self.value_pool(features).squeeze(-1).squeeze(-1)  # (B, 32)
         
         # Concatenate context if available
         if ctx is not None:
-            features_with_ctx = torch.cat([pooled, ctx], dim=1)
+            policy_input = torch.cat([policy_flat, ctx], dim=1)
+            value_input = torch.cat([value_features, ctx], dim=1)
         else:
-            features_with_ctx = pooled
+            policy_input = policy_flat
+            value_input = value_features
             
         # Get policy and value outputs
-        action_logits = self.policy_head(features_with_ctx)
-        values = self.value_head(features_with_ctx)
+        action_logits = self.policy_head(policy_input)
+        values = self.value_head(value_input)
         
         return action_logits, values
 
@@ -186,6 +197,8 @@ class SpatialSnakePPONet(nn.Module):
 def model_factory(in_channels: int, ctx_dim: int = 0, map_size: int = 32, advanced: bool = False) -> nn.Module:
     """Factory function to create PPO model instances."""
     if advanced:
+        log.info("Creating SpatialSnakePPONet model")
         return SpatialSnakePPONet(in_channels, ctx_dim, map_size)
     else:
+        log.info("Creating SnakePPONet model")
         return SnakePPONet(in_channels, ctx_dim)

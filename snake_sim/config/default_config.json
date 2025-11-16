@@ -40,7 +40,7 @@
     "snake_config": {
         "type": "ppo_ai",
         "args": {
-            "snapshot_dir": "models/ppo_training_new_reward",
+            "snapshot_dir": "models/ppo_training_mid",
             "poll_interval": 30.0,
             "auto_reload": true,
             "eager_first_load": true

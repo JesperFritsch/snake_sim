@@ -26,7 +26,7 @@ class SHMProxySnake(ISnake):
         self._context = zmq.Context()
         self._socket = self._context.socket(zmq.REQ)
         self._socket.connect(target)
-        self._est_conn_timeout = 5.0
+        self._est_conn_timeout = 30.0
         # Make sends fail immediately if there is no connected peer
         try:
             self._socket.setsockopt(zmq.IMMEDIATE, 1)
@@ -50,7 +50,7 @@ class SHMProxySnake(ISnake):
         @wraps(func)
         def zmq_msg_forwarder_wrapper(self: 'SHMProxySnake', *args, **kwargs):
             func(self, *args, **kwargs)
-            self._send(Call(func.__name__, args[0] if args else None))
+            self._send(Call(func.__name__, list(args), dict(kwargs)))
             response: Return = self._receive()
             if response.command != func.__name__:
                 raise ConnectionError(f"Expected response for {func.__name__}, got {response.command}")
@@ -126,7 +126,7 @@ class SHMProxySnake(ISnake):
         """
         while True:
             if self._check_connection_loss():
-                raise ConnectionError
+                raise ConnectionError("Connection lost")
             if self._check_resp_ready():
                 return
 

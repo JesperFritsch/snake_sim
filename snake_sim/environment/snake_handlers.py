@@ -58,7 +58,7 @@ class SnakeHandler(ISnakeHandler):
 
     def kill_snake(self, id):
         log.debug(f"Killing snake with id {id}")
-        SnakeProcessManager().kill_snake_process(id)
+        # SnakeProcessManager().kill_snake_process(id) # Dont kill the process for RL training
         snake = self._snakes.get(id)
         if snake is not None:
             updater = self._get_updater(snake)
@@ -89,6 +89,8 @@ class SnakeHandler(ISnakeHandler):
         return self._gather_decisions(updater_batches)
 
     def add_snake(self, snake: ISnake):
+        if snake in self._snakes.values():
+            return
         snake_id = self.get_next_snake_id()
         self._snakes[snake_id] = snake
         updater = self._get_updater(snake)
@@ -136,6 +138,8 @@ class SnakeHandler(ISnakeHandler):
         for snake_id, snake in self._snakes.items():
             snake.reset()
             snake.set_start_position(start_positions[snake_id])
+            updater = self._get_updater(snake)
+            updater.register_snake(snake)
         self._dead_snakes.clear()
 
     def close(self):
