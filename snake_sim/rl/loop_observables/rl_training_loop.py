@@ -117,8 +117,6 @@ class RLTrainingLoop(SimLoop):
         return random.choice(self._config.training_map_paths) or None
 
     def _reset(self):
-        self._max_no_food_steps = None
-        self._max_steps = None
         self._steps = 0
         self._current_step_data: LoopStepData = None
         self._step_start_time = None

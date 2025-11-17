@@ -74,3 +74,4 @@ class RLTrainingConfig:
     episodes: int
     max_steps_per_episode: Optional[int] = None
     training_map_paths: list[str] = field(default_factory=list)
+    max_no_food_steps: Optional[int] = None
