@@ -64,6 +64,8 @@ def setup_training_loop(config: RLTrainingConfig, snapshot_dir: str = None) -> R
     training_loop.set_snake_handler(snake_handler)
     if config.max_steps_per_episode is not None:
         training_loop.set_max_steps(config.max_steps_per_episode)
+    if config.max_no_food_steps is not None:
+        training_loop.set_max_no_food_steps(config.max_no_food_steps)
 
     return training_loop
 
@@ -81,7 +83,7 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
         type='ppo_ai',
         args={
             'snapshot_dir': snapshot_dir,
-            'poll_interval': 5.0,        # fewer reload checks reduces I/O overhead
+            'poll_interval': 1.0,        # fewer reload checks reduces I/O overhead
             'auto_reload': True,
             'eager_first_load': True,
             'deterministic': False,
@@ -118,7 +120,8 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
 
 def train(config: RLTrainingConfig):
     # Set up snapshot directory for model sharing
-    snapshot_dir = "models/ppo_training_mid_action_mask"
+    # snapshot_dir = "models/ppo_training_speed_up"
+    snapshot_dir = "models/ppo_training_speed_up_all_maps"
     Path(snapshot_dir).mkdir(parents=True, exist_ok=True)
     
     trainer = PPOTrainer(snapshot_dir=snapshot_dir)
@@ -164,7 +167,7 @@ if __name__ == "__main__":
 
     rl_config = RLTrainingConfig(
         episodes=500000,
-        max_steps_per_episode=5000,
+        max_no_food_steps=500,
         training_map_paths=map_paths
     )
     train(rl_config)

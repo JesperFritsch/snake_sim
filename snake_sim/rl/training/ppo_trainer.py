@@ -39,7 +39,7 @@ class PPOTrainerConfig:
     device: str = 'auto'
     snapshot_dir: Optional[str] = None  # directory of model snapshots
     snapshot_base_name: str = 'ppo_model'
-    save_every_updates: int = 10  # save snapshot after this many successful updates
+    save_every_updates: int = 5  # save snapshot after this many successful updates
     # Adaptive exploration - DISABLED by setting unreachable patience
     stagnation_patience: int = 100000  # Effectively disabled
     exploration_boost_factor: float = 1.5

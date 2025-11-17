@@ -10,7 +10,8 @@ import pstats
 
 from importlib import resources
 
-from snake_sim.snakes.survivor_snake import SurvivorSnake
+from snake_sim.environment.snake_factory import SnakeFactory
+from snake_sim.snakes.snake_base import SnakeBase
 from snake_sim.environment.snake_strategy_factory import SnakeStrategyFactory
 from snake_sim.environment.snake_env import SnakeRep
 from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData, CompleteStepState, StrategyConfig, AreaCheckResult
@@ -41,7 +42,7 @@ def get_state_file_path():
     return latest_file
 
 
-def test_make_choice(snake: SurvivorSnake, s_map, food_locations: List[Coord] = None):
+def test_make_choice(snake: SnakeBase, s_map, food_locations: List[Coord] = None):
     env_step_data = EnvStepData(s_map, {}, food_locations)
     snake._set_new_head = lambda x: print(f"New head: {x}")
     start_time = time.time()
@@ -50,7 +51,7 @@ def test_make_choice(snake: SurvivorSnake, s_map, food_locations: List[Coord] = 
     print(f"Time make choice: {(time.time() - start_time) * 1000}")
     print(f"Choice: {choice}")
 
-def test_recurse_area_check(snake: SurvivorSnake, s_map, direction=Coord(1,0)):
+def test_recurse_area_check(snake: SnakeBase, s_map, direction=Coord(1,0)):
     tile = Coord(*snake.get_head_coord()) + direction
     start_time = time.time()
     area_check = snake._area_checker.recurse_area_check(
@@ -60,12 +61,12 @@ def test_recurse_area_check(snake: SurvivorSnake, s_map, direction=Coord(1,0)):
         snake._length,
         3,
         # 1.0,
-        SurvivorSnake.SAFE_MARGIN_FRAC + 0.5,
+        SnakeBase.SAFE_MARGIN_FRAC + 0.5,
     )
     print(f"Time recurse area check direction {direction}: {(time.time() - start_time) * 1000}")
     print(f"Direction: {direction}, Area check: {area_check}")
 
-def test_area_check_direction(snake: SurvivorSnake, s_map, direction):
+def test_area_check_direction(snake: SnakeBase, s_map, direction):
     tile = Coord(*snake.get_head_coord()) + direction
     start_time = time.time()
     for _ in range(1):
@@ -82,7 +83,7 @@ def test_area_check_direction(snake: SurvivorSnake, s_map, direction):
     print(f"Direction: {direction}, Coord: {tile} Area check: {area_check}")
 
 
-def test_area_check(snake: SurvivorSnake, s_map):
+def test_area_check(snake: SnakeBase, s_map):
     visitable_tiles = get_visitable_tiles(
         s_map,
         snake.get_env_meta_data().width,
@@ -106,7 +107,7 @@ def test_area_check(snake: SurvivorSnake, s_map):
         print(f"AreaCheckResult: {AreaCheckResult(**area_check)}")
 
 
-def test_area_check_performace(snake: SurvivorSnake, s_map, iterations=1000, direction=Coord(1,0)):
+def test_area_check_performace(snake: SnakeBase, s_map, iterations=1000, direction=Coord(1,0)):
     stime = time.time()
     tile = Coord(*snake.get_head_coord()) + direction
     for _ in range(iterations):
@@ -115,7 +116,7 @@ def test_area_check_performace(snake: SurvivorSnake, s_map, iterations=1000, dir
     print(f"Tile: {tile}, Area check: {area_check}")
 
 
-def test_get_dir_to_tile(snake: SurvivorSnake, s_map, tile_value, start_coord):
+def test_get_dir_to_tile(snake: SnakeBase, s_map, tile_value, start_coord):
     time_start = time.time()
     direction = get_dir_to_tile(
         s_map,
@@ -129,7 +130,7 @@ def test_get_dir_to_tile(snake: SurvivorSnake, s_map, tile_value, start_coord):
     print(f"Direction to tile value {tile_value}: {direction}")
 
 
-def test_get_visitable_tiles(snake: SurvivorSnake, s_map, center_coord):
+def test_get_visitable_tiles(snake: SnakeBase, s_map, center_coord):
     time_start = time.time()
     visitable_tiles = get_visitable_tiles(
         s_map,
@@ -143,7 +144,7 @@ def test_get_visitable_tiles(snake: SurvivorSnake, s_map, center_coord):
 
 
 # @profile()
-def run_tests(snake: SurvivorSnake, s_map):
+def run_tests(snake: SnakeBase, s_map):
     test_recurse_area_check(snake, s_map, Coord(1,0))
     # test_make_choice(snake, s_map, state_dict['food'])
     test_area_check(snake, s_map)
@@ -156,9 +157,9 @@ def run_tests(snake: SurvivorSnake, s_map):
 
 
 def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, env_meta_data: EnvMetaData):
-    snake = SurvivorSnake()
+    snake = SnakeBase()
     snake.set_strategy(1, SnakeStrategyFactory().create_strategy("food_seeker", StrategyConfig("food_seeker")))
-    # snake = SurvivorSnake(calc_timeout=1500)
+    # snake = SnakeBase(calc_timeout=1500)
     snake.set_id(id)
     snake.set_start_length(1)
     snake_rep = snake_reps[id]
@@ -236,7 +237,7 @@ if __name__ == "__main__":
     snake_reps = create_snake_reps(step_state)
 
     activate_debug()
-    enable_debug_for('SurvivorSnake')
+    enable_debug_for('SnakeBase')
     enable_debug_for('_next_step')
     enable_debug_for('_get_food_dir')
     enable_debug_for('_best_first_search')
