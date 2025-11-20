@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-df = pd.read_csv('models/ppo_training_speed_up/training_stats_20251116_183941.csv')
+df = pd.read_csv('models/ppo_training_new_model_no_map_better_mask/training_stats_20251118_191751.csv')
 
 # Plot returns over time
 plt.figure(figsize=(12, 6))

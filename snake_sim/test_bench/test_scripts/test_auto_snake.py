@@ -14,7 +14,15 @@ from snake_sim.environment.snake_factory import SnakeFactory
 from snake_sim.snakes.snake_base import SnakeBase
 from snake_sim.environment.snake_strategy_factory import SnakeStrategyFactory
 from snake_sim.environment.snake_env import SnakeRep
-from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData, CompleteStepState, StrategyConfig, AreaCheckResult
+from snake_sim.environment.types import (
+    Coord, 
+    EnvStepData, 
+    EnvMetaData, 
+    CompleteStepState, 
+    StrategyConfig, 
+    AreaCheckResult,
+    SnakeConfig
+)
 from snake_sim.debugging import enable_debug_for, activate_debug
 from snake_sim.utils import get_locations, profile
 from snake_sim.render.utils import create_color_map
@@ -43,6 +51,7 @@ def get_state_file_path():
 
 
 def test_make_choice(snake: SnakeBase, s_map, food_locations: List[Coord] = None):
+    print("head coord:", snake._head_coord)
     env_step_data = EnvStepData(s_map, {}, food_locations)
     snake._set_new_head = lambda x: print(f"New head: {x}")
     start_time = time.time()
@@ -52,7 +61,7 @@ def test_make_choice(snake: SnakeBase, s_map, food_locations: List[Coord] = None
     print(f"Choice: {choice}")
 
 def test_recurse_area_check(snake: SnakeBase, s_map, direction=Coord(1,0)):
-    tile = Coord(*snake.get_head_coord()) + direction
+    tile = Coord(*snake._head_coord) + direction
     start_time = time.time()
     area_check = snake._area_checker.recurse_area_check(
         s_map,
@@ -67,7 +76,7 @@ def test_recurse_area_check(snake: SnakeBase, s_map, direction=Coord(1,0)):
     print(f"Direction: {direction}, Area check: {area_check}")
 
 def test_area_check_direction(snake: SnakeBase, s_map, direction):
-    tile = Coord(*snake.get_head_coord()) + direction
+    tile = Coord(*snake._head_coord) + direction
     start_time = time.time()
     for _ in range(1):
         area_check = snake._area_checker.area_check(
@@ -86,10 +95,10 @@ def test_area_check_direction(snake: SnakeBase, s_map, direction):
 def test_area_check(snake: SnakeBase, s_map):
     visitable_tiles = get_visitable_tiles(
         s_map,
-        snake.get_env_meta_data().width,
-        snake.get_env_meta_data().height,
+        snake._env_meta_data.width,
+        snake._env_meta_data.height,
         (snake._body_coords[0].x, snake._body_coords[0].y),
-        [snake.get_env_meta_data().free_value, snake.get_env_meta_data().food_value]
+        [snake._env_meta_data.free_value, snake._env_meta_data.food_value]
     )
     for tile in visitable_tiles:
         time_start = time.time()
@@ -109,7 +118,7 @@ def test_area_check(snake: SnakeBase, s_map):
 
 def test_area_check_performace(snake: SnakeBase, s_map, iterations=1000, direction=Coord(1,0)):
     stime = time.time()
-    tile = Coord(*snake.get_head_coord()) + direction
+    tile = Coord(*snake._head_coord) + direction
     for _ in range(iterations):
         area_check = snake._area_check_wrapper(s_map, snake._body_coords, tile, complete_area=True)
     print(f"Time: {(time.time() - stime) * 1000}")
@@ -144,31 +153,36 @@ def test_get_visitable_tiles(snake: SnakeBase, s_map, center_coord):
 
 
 # @profile()
-def run_tests(snake: SnakeBase, s_map):
-    test_recurse_area_check(snake, s_map, Coord(1,0))
-    # test_make_choice(snake, s_map, state_dict['food'])
-    test_area_check(snake, s_map)
+def run_tests(snake: SnakeBase, s_map: np.ndarray, step_state: CompleteStepState):
+    # test_recurse_area_check(snake, s_map, Coord(1,0))
+    test_make_choice(snake, s_map, step_state.food)
+    # test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
     # test_area_check_direction(snake, s_map, Coord(1, 0))
     # test_area_check_direction(snake, s_map, Coord(-1, 0))
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_step_data.food_value, Coord(58, 61))
-    # test_get_visitable_tiles(snake, s_map, snake.get_head_coord())
+    # test_get_visitable_tiles(snake, s_map, snake._head_coord)
 
 
 def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, env_meta_data: EnvMetaData):
-    snake = SnakeBase()
-    snake.set_strategy(1, SnakeStrategyFactory().create_strategy("food_seeker", StrategyConfig("food_seeker")))
+    snake: SnakeBase = SnakeFactory().create_snake(
+        snake_config=SnakeConfig(
+            type='ai_ppo',
+            args={}
+        )
+    )
+    # snake.set_strategy(1, SnakeStrategyFactory().create_strategy("food_seeker", StrategyConfig("food_seeker")))
     # snake = SnakeBase(calc_timeout=1500)
     snake.set_id(id)
     snake.set_start_length(1)
     snake_rep = snake_reps[id]
     snake.set_init_data(env_meta_data)
     snake._body_coords = snake_rep.body.copy()
-    snake._init_area_checker()
+    # snake._init_area_checker()
     snake._update_map(s_map)
-    snake._head_coord = snake.get_body_coords()[0]
-    snake._length = len(snake.get_body_coords())
+    snake._head_coord = snake._body_coords[0]
+    snake._length = len(snake._body_coords)
     return snake
 
 
@@ -178,9 +192,9 @@ def print_colored_map(s_map, env_meta_data: EnvMetaData, color_mapping, show_sna
     for row in s_map:
         for val in row:
             if highlight_values:
-                color = color_mapping[str(val)] if val in highlight_values or val <= blocked_value else (0x80, 0x80, 0x80)
+                color = color_mapping[val] if val in highlight_values or val <= blocked_value else (0x80, 0x80, 0x80)
             else:
-                color = color_mapping[str(val)]
+                color = color_mapping[val]
             print(rgb_color_text('  ', *color), end='')
         print()
 
@@ -209,20 +223,6 @@ def create_snake_reps(step_state: CompleteStepState) -> Dict[int, SnakeRep]:
         snake_reps[snake_rep.id] = snake_rep
     return snake_reps
 
-
-def create_env_meta_data(snake_reps: List[SnakeRep], state_dict) -> EnvMetaData:
-    return EnvMetaData(
-        state_dict['width'],
-        state_dict['height'],
-        state_dict['free_value'],
-        state_dict['blocked_value'],
-        state_dict['food_value'],
-        {int(k): v for k, v in state_dict['snake_values'].items()},
-        {s_rep.id: s_rep.get_head() for s_rep in snake_reps},
-        state_dict['base_map']
-    )
-
-
 def put_food_in_frame(frame, food_coords, color, expand_factor=2, offset=(1, 1)):
     for coord in food_coords:
         coord = (Coord(*coord) * (expand_factor, expand_factor)) + offset
@@ -250,22 +250,22 @@ if __name__ == "__main__":
         color_mapping = create_color_map(step_state.env_meta_data.snake_values)
         for s_rep in snake_reps.values():
             print(f"ID: {s_rep.id: <4} HEAD: {Coord(*s_rep.get_head()): <20} body len: {s_rep._length: <4}, body_color: {rgb_color_text('  ', *color_mapping[s_rep.body_value])}")
-        print_colored_map(s_map, step_state.env_meta_data.__dict__, color_mapping, show_snake_id=snake_id)
+        print_colored_map(s_map, step_state.env_meta_data, color_mapping, show_snake_id=snake_id)
 
     else:
         test_snake = create_test_snake(snake_id, snake_reps, s_map, step_state.env_meta_data)
         print_map(
             s_map,
-            test_snake.get_env_meta_data().free_value,
-            test_snake.get_env_meta_data().food_value,
-            test_snake.get_env_meta_data().blocked_value,
-            test_snake.get_self_map_values()[0],
-            test_snake.get_self_map_values()[1]
+            test_snake._env_meta_data.free_value,
+            test_snake._env_meta_data.food_value,
+            test_snake._env_meta_data.blocked_value,
+            test_snake._head_value,
+            test_snake._body_value
         )
-        print("snake env_meta_data: ", test_snake.get_env_meta_data())
-        print("snake env_step_data: ", test_snake.get_env_step_data())
-        print("snake head: ", test_snake.get_head_coord())
-        print("snake head value: ", test_snake.get_self_map_values()[0])
-        print("snake body value: ", test_snake.get_self_map_values()[1])
+        print("snake env_meta_data: ", test_snake._env_meta_data)
+        print("snake env_step_data: ", test_snake._env_step_data)
+        # print("snake head: ", test_snake._head_coord)
+        # print("snake head value: ", test_snake.get_self_map_values()[0])
+        # print("snake body value: ", test_snake.get_self_map_values()[1])
         sys.stdout.flush()
-        run_tests(test_snake, s_map)
+        run_tests(test_snake, s_map, step_state)

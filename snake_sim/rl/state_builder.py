@@ -111,7 +111,8 @@ class BaseStateBuilder:
         for bc in snake_ctx.body_coords[1:]:
             body[bc.y, bc.x] = 1.0
         food[s_map == env_meta.food_value] = 1.0
-        blocked[s_map == env_meta.blocked_value] = 1.0
+        blocked_values = [env_meta.blocked_value] + [v for sid, vals in env_meta.snake_values.items() for v in vals.values()]
+        blocked[np.isin(s_map, blocked_values)] = 1.0
         channels: Dict[str, np.ndarray] = {
             'head': head,
             'body': body,
@@ -124,7 +125,7 @@ class BaseStateBuilder:
             opponent_head_vals: List[int] = []
             opponent_body_vals: List[int] = []
             for sid, vals in env_meta.snake_values.items():
-                if sid == snake_ctx.snake_id:
+                if sid == snake_ctx.snake_id or sid not in step_data.snakes or not step_data.snakes[sid].get('is_alive', False):
                     continue
                 hv = vals.get('head_value')
                 bv = vals.get('body_value')
@@ -164,11 +165,29 @@ class CompleteStateBuilder:
         self.base_builder = base_builder
         self.adapters = adapters
 
+    def get_channels_and_ctx_size(self, env_meta: EnvMetaData) -> int:
+        """Calculate total channels + ctx size after applying adapters."""
+        base_channels = len(self.base_builder._default_order())
+        adapter_ctx = 0
+        for adapter in self.adapters:
+            if adapter.name == 'direction_hints':
+                adapter_ctx += len(consts.ACTION_ORDER) * 3  # area_ctx, safety_ctx, close_food_ctx
+            elif adapter.name == 'action_mask':
+                adapter_ctx += len(consts.ACTION_ORDER)  # action_mask
+        return base_channels + adapter_ctx
+        
     def build(self, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> State:
         state = self.base_builder.build(env_meta, step_data, snake_ctx)
         ADAPTER_CACHE.clear()
         for adapter in self.adapters:
             adapter.apply(state, step_data, env_meta, snake_ctx)
+        area_ctx = state.meta['area_ctx']  # shape (A,)
+        safety_ctx = state.meta['safety_ctx']  # shape (A,)
+        food_ctx = state.meta['close_food_ctx']  # shape (A,)
+        mask_ctx = state.meta['action_mask']  # shape (A,)
+        action_features = np.stack([area_ctx, safety_ctx, food_ctx, mask_ctx], axis=1).astype(np.float32)
+        state.meta['action_features'] = action_features  # (A, 4)
+        state.meta['action_feature_names'] = ['margin_frac', 'safety_hint', 'food_hint', 'valid_mask']
         return state
 
 
@@ -192,19 +211,26 @@ class DirectionHintsAdapter:
         )
 
     def apply(self, state: State, step_data: EnvStepData, env_meta: EnvMetaData, snake_ctx: SnakeContext) -> None:
-
+        # Initialize area checker lazily.
         if self._area_checker is None:
             self._init_area_checker(snake_ctx, env_meta)
 
+        # Compute per-action area safety (margin fraction) and directional food hints.
         area_checks = self._get_area_checks(step_data.map, env_meta, step_data, snake_ctx)
-        area_ctx = self._create_area_ctx(area_checks)
-        close_food_ctx = self._create_close_food_ctx(env_meta, step_data, snake_ctx)
-        # Append to state context
-        state.ctx = np.concatenate([state.ctx, area_ctx, close_food_ctx], axis=0)
-        # Update meta
-        state.meta['context_order'] += ['area_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
-        state.meta['context_order'] += ['close_food_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
-        state.meta['context_size'] += (area_ctx.shape[0] + close_food_ctx.shape[0])
+        area_ctx = self._create_area_ctx(area_checks)  # (A,)
+        safety_ctx = self._create_safety_ctx(area_checks)  # (A,)
+        close_food_ctx = self._create_close_food_ctx(env_meta, step_data, snake_ctx)  # (A,)
+
+        # Store them separately in meta (don't extend global ctx; keep it lean).
+        state.meta['area_ctx'] = area_ctx.astype(np.float32)
+        state.meta['safety_ctx'] = safety_ctx.astype(np.float32)
+        state.meta['close_food_ctx'] = close_food_ctx.astype(np.float32)
+        state.meta.setdefault('adapters', []).append(self.name)
+        # For traceability we still record ordering labels but we do NOT bump context_size.
+        state.meta.setdefault('context_order', ['length_ratio'])
+        state.meta['area_ctx_labels'] = ['area_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
+        state.meta['safety_ctx_labels'] = ['safety_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
+        state.meta['close_food_ctx_labels'] = ['close_food_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
 
     def _get_area_checks(self, s_map: np.ndarray, env_meta: EnvMetaData, step_data: EnvStepData, ctx: SnakeContext) -> Dict[Coord, AreaCheckResult]:
         head_coord = ctx.head
@@ -245,6 +271,16 @@ class DirectionHintsAdapter:
             ctx[consts.ACTION_ORDER[coord]] = margin_frac
         return ctx
 
+    def _create_safety_ctx(self, area_checks: dict[Coord, AreaCheckResult]) -> np.ndarray:
+        ctx = _clean_dir_ctx()
+        for coord, ac in area_checks.items():
+            if ac is None:
+                is_safe = 0.0
+            else:
+                is_safe = 1.0 if ac.margin / max(1, ac.total_steps) >= self.SAFE_MARGIN_FRAC else 0.0
+            ctx[consts.ACTION_ORDER[coord]] = is_safe
+        return ctx
+
     def _create_close_food_ctx(self, env_data: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> np.ndarray:
         ctx = _clean_dir_ctx()
         for rot in (True, False):
@@ -267,26 +303,13 @@ class ActionMaskAdapter:
     name = 'action_mask'
 
     def apply(self, state: State, step_data: EnvStepData, env_meta: EnvMetaData, snake_ctx: SnakeContext) -> None:
-        """Compute per-action validity mask and store in state.meta['action_mask'].
+        """ Compute a mask where all actions that are safe are one, and the rest are zero. """
 
-        A move is valid if:
-          - Target cell within bounds
-          - Target cell value in {free_value, food_value}
-        Opponent or own bodies/head values render the move invalid.
-        """
-        head = snake_ctx.head
-        H, W = env_meta.height, env_meta.width
-        s_map = step_data.map
-        free_v = env_meta.free_value
-        food_v = env_meta.food_value
         mask = _clean_dir_ctx()
-        visitable_tiles = _get_visitable_tiles(
-            s_map, env_meta, head
-        )
-        for coord in consts.ACTION_ORDER:
-            target = head + coord
-            if target in visitable_tiles:
-                mask[consts.ACTION_ORDER[coord]] = 1.0
+        area_ctx = state.meta['area_ctx']
+        for coord, action_idx in consts.ACTION_ORDER.items():
+            if area_ctx[action_idx] >= 0.0:  # area is accessible
+                mask[action_idx] = 1.0
 
         state.meta['action_mask'] = mask
         state.meta.setdefault('context_order', [])  # ensure exists

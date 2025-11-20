@@ -13,19 +13,37 @@ def _get_caller_info():
         class_name = outer_frame.f_locals['self'].__class__.__name__
     return class_name, func_name
 
+def _get_caller_tree():
+    frame = inspect.currentframe()
+    outer_frame = frame.f_back.f_back
+    call_tree = []
+    while outer_frame:
+        func_name = outer_frame.f_code.co_name
+        class_name = None
+        if 'self' in outer_frame.f_locals:
+            class_name = outer_frame.f_locals['self'].__class__.__name__
+        call_tree.append((class_name, func_name))
+        outer_frame = outer_frame.f_back
+    return call_tree
+
 def debug_print_func(*args, **kwargs):
-    class_name, func_name = _get_caller_info()
-    if _is_active_here(func_name, class_name):
+    call_tree = _get_caller_tree()
+    if _is_active_here(call_tree):
+        class_name, func_name = call_tree[0] if call_tree else (None, None)
         prefix = f"[{class_name + '.' if class_name else ''}{func_name}]"
         print(prefix, *args, **kwargs)
         sys.stdout.flush()
 
-def _is_active_here(func_name, class_name=None):
-    return ALL_ENABLED or func_name in ENABLED_DEBUG_FUNCTIONS or (class_name and class_name in ENABLED_DEBUG_FUNCTIONS)
+def _is_active_here(call_tree: list[tuple[str | None, str]]):
+    return ALL_ENABLED or any(
+        (class_name in ENABLED_DEBUG_FUNCTIONS) or
+        (func_name in ENABLED_DEBUG_FUNCTIONS)
+        for class_name, func_name in call_tree
+    )
 
 def _is_debug_active():
-    class_name, func_name = _get_caller_info()
-    return _is_active_here(func_name, class_name)
+    call_tree = _get_caller_tree()
+    return _is_active_here(call_tree)
 
 def is_debug_active():
     return False
