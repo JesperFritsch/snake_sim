@@ -2,7 +2,7 @@
 
 A snake simulation environment with support for deep learning snakes.
 
-## Installation
+## Installation (use -e if developing)
 
 ```bash
 pip install -e .
@@ -12,7 +12,7 @@ This installs PyTorch with **CPU support** by default.
 
 ### For CUDA/GPU Support
 
-If you want to use GPU acceleration for deep learning strategies:
+If you want to use GPU acceleration for deep RL snake:
 
 
 ```bash
@@ -52,51 +52,41 @@ snake-sim
 
 ## Interactive Controls (Render Loop)
 
-When using the `PygameRenderer`, the render loop listens to window-focused key
-events (works on Wayland, X11, Windows, macOS). Ensure the Pygame window has
-focus for input to be registered.
+When running the simulation, you can control the playback using your keyboard. The controls work in both graphical window mode and terminal mode.
 
-Key bindings:
+### Key Controls:
 
-    RIGHT Arrow      step forward / continuous while held
-    LEFT Arrow       step backward / continuous while held
-    CTRL (with arrow) fast mode (20x base FPS)
-    SHIFT            increase frame step size to 10
-    SPACE            toggle pause (pause auto-render; manual stepping OK)
-    ENTER            save current state (if state builder attached)
-    CTRL + C         quit render loop
+- **Right Arrow**: Step forward one frame, or hold to play continuously
+- **Left Arrow**: Step backward one frame, or hold to rewind
+- **Ctrl + Arrow**: Fast forward/rewind (20x speed)
+- **Shift + Arrow**: Jump forward/backward 10 frames at a time
+- **Spacebar**: Pause/unpause the automatic playback
+- **Enter**: Save the current state (if supported)
+- **q**, **Esc**, or **Ctrl + C**: Quit the simulation
 
-Headless mode: Input is disabled (Dummy provider). Use command-line or IPC
-mechanisms if you need remote control.
+Make sure the window is active (clicked on) in graphical mode for keys to register. In terminal mode, fast and multi-step controls depend on your keyboard's repeat rate.
 
-Wayland note: Previous global key capture (pynput) was replaced by window
-events to avoid unreliable behavior under Wayland compositors.
+If running without a display (headless), controls are disabled. Use command-line options or remote control instead.
 
-### Terminal Renderer Input
+Note: On some systems like Wayland, the controls work better with window focus.
 
-When using the terminal renderer (no Pygame window), a terminal input provider
-captures keys directly from stdin (TTY):
+## Example Commands
 
-    RIGHT / LEFT     arrow keys (escape sequences) for forward/back stepping
-    SPACE            pause/unpause
-    ENTER            save state
-    c (with CTRL)    quit (CTRL+C as usual)
+Here are some common ways to run the snake simulation:
 
-Provider selection order:
+```bash
+# Play a previously recorded simulation file
+snake-sim play-file runs/my_simulation.json
 
-1. Explicit provider passed to `RenderLoop` constructor (if given)
-2. If renderer is `TerminalRenderer` -> Terminal provider
-3. If a Pygame window environment exists -> Pygame provider
-4. If stdin is a TTY -> Terminal provider
-5. Fallback -> Dummy (no input)
+# Run a live simulation with terminal rendering
+snake-sim compute --renderer terminal
 
-Terminal specifics:
+# Run a live simulation with graphical window (default)
+snake-sim compute --renderer window --fps 30
 
-    RIGHT / LEFT    arrow keys to step forward/back
-    SPACE           pause/unpause
-    ENTER           save state
-    q               quit render loop
-    ESC             quit render loop
+# Run with verbose output and custom grid size
+snake-sim compute --verbose --grid-size 20
 
-Fast (CTRL) and multi-step (SHIFT) modifiers rely on terminal key repeat; true
-release events aren't available so holds are not fully simulated.
+# Record a simulation to a specific file
+snake-sim compute --record-file my_run.json
+```
