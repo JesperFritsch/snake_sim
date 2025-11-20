@@ -14,7 +14,7 @@ from snake_sim.snakes.strategies.utils import apply_strategies
 
 TYPENAME_TO_CLASS = {
     'survivor': SurvivorSnake,
-    'ppo_ai': PPOSnake,
+    'ai_ppo': PPOSnake,
 }
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:

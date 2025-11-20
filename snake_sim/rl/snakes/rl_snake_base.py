@@ -46,14 +46,6 @@ class RLSnakeBase(SnakeBase):
 
     def _next_step(self) -> Coord:
         state = self._get_state(self._env_step_data)
-        # print_map(
-        #     self._env_step_data.map,
-        #     self._env_meta_data.free_value,
-        #     self._env_meta_data.food_value,
-        #     self._env_meta_data.blocked_value,
-        #     self._head_value,
-        #     self._body_value
-        # )
         debug.debug_print(f"RL Snake: {self._id} state ctx: {state.ctx}, meta: {state.meta}")
         return self._next_step_for_state(state)
 

@@ -7,8 +7,8 @@ from pathlib import Path
 
 from snake_sim.rl.snakes.rl_snake_base import RLSnakeBase
 from snake_sim.rl.types import PPOMetaData, PendingTransition, State
-from snake_sim.rl.state_builder import print_channel
-from snake_sim.rl.models.ppo_model import model_factory
+from snake_sim.rl.state_builder import print_state
+from snake_sim.rl.models.ppo_model import model_factory, SnakePPONet
 from snake_sim.rl.training.rl_data_queue import RLPendingTransitCache
 from snake_sim.rl.constants import ACTION_ORDER_INVERSE
 from snake_sim.rl.snapshot_manager import SnapshotManager
@@ -46,14 +46,16 @@ class PPOSnake(RLSnakeBase):
     ):
         super().__init__()
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self._model: torch.nn.Module | None = None
+        # Runtime model instance (lazy init from first built state)
+        self._model = None  # type: torch.nn.Module | None
         self._pending_cache = RLPendingTransitCache()
         self._transition_counter = 0
         # Snapshot manager for hot-reload
         self._snapshot_manager: SnapshotManager | None = None
         if snapshot_dir:
+            # Snapshot manager factory will be replaced once first state encountered
             def model_creator():
-                return model_factory(5, 9, map_size=32)  # Use stable basic model
+                return model_factory(5, 0)  # Placeholder dims; overwritten on first ensure
             self._snapshot_manager = SnapshotManager(
                 dir=snapshot_dir,
                 base_name=snapshot_base_name,
@@ -73,44 +75,41 @@ class PPOSnake(RLSnakeBase):
     def _ensure_model(self, state: State):
         if self._model is not None:
             return
-        ctx_dim = 0 if state.ctx is None else state.ctx.shape[0]
+        if state.ctx is None:
+            raise ValueError("State ctx missing; CompleteStateBuilder should provide ctx")
+        if 'action_features' not in (state.meta or {}):
+            raise ValueError("State meta missing action_features; adapters must supply them")
+        ctx_dim = state.ctx.shape[0]
         in_channels = state.map.shape[0]
-        self._model = model_factory(in_channels, ctx_dim, map_size=state.map.shape[1]).to(self._device)
-        # Speed optimizations
+        self._model = model_factory(in_channels, ctx_dim).to(self._device)
         if self._fast_mode:
             try:
                 self._model = self._model.to(memory_format=torch.channels_last)
             except Exception:
                 pass
-        if self._use_half:
+        if self._use_half and self._device.type == 'cuda':
             try:
                 self._model = self._model.half()
             except Exception:
                 pass
         self._model.eval()
-        # Optional TorchScript trace (compile not supported on 3.14)
+        # TorchScript trace with full input dict (map, ctx, action_features)
         if self._fast_mode and not self._scripted:
             try:
                 example_map = torch.from_numpy(state.map).unsqueeze(0).float().to(self._device)
-                if self._use_half:
-                    example_map = example_map.half()
-                if state.ctx is not None:
-                    example_ctx = torch.from_numpy(state.ctx).unsqueeze(0).float().to(self._device)
-                    if self._use_half:
-                        example_ctx = example_ctx.half()
-                    example_in = {'map': example_map, 'ctx': example_ctx}
-                else:
-                    example_in = example_map
+                example_ctx = torch.from_numpy(state.ctx).unsqueeze(0).float().to(self._device)
+                example_af = torch.from_numpy(state.meta['action_features']).unsqueeze(0).float().to(self._device)
+                if self._use_half and self._device.type == 'cuda':
+                    example_map = example_map.half(); example_ctx = example_ctx.half(); example_af = example_af.half()
+                example_in = {'map': example_map, 'ctx': example_ctx, 'action_features': example_af}
                 self._model = torch.jit.trace(self._model, example_in, strict=False)
                 self._scripted = True
-                log.info("PPOSnake: scripted inference model (TorchScript trace) active")
+                log.info("PPOSnake: scripted inference model active")
             except Exception as e:
                 log.warning(f"TorchScript trace failed; continuing without scripting: {e}")
-        
-        # Update snapshot manager factory with correct dimensions
         if self._snapshot_manager:
             def model_creator():
-                return model_factory(in_channels, ctx_dim, map_size=state.map.shape[1])
+                return model_factory(in_channels, ctx_dim)
             self._snapshot_manager.factory = model_creator
             if self._eager_first_load:
                 self._try_load_latest()
@@ -155,32 +154,36 @@ class PPOSnake(RLSnakeBase):
             return False
 
     def _select_action(self, state: State):
-        # Prepare tensors (avoid unnecessary dtype conversions if half enabled)
-        dtype = torch.float16 if (self._use_half and self._fast_mode) else torch.float32
+        if state.ctx is None:
+            raise ValueError("State ctx required for PPO inference")
+        if 'action_features' not in (state.meta or {}):
+            raise ValueError("Missing action_features in state.meta")
+        dtype = torch.float16 if (self._use_half and self._device.type == 'cuda') else torch.float32
         map_tensor = torch.from_numpy(state.map).unsqueeze(0).to(self._device, dtype=dtype)
+        ctx_tensor = torch.from_numpy(state.ctx).unsqueeze(0).to(self._device, dtype=dtype)
+        af_tensor = torch.from_numpy(state.meta['action_features']).unsqueeze(0).to(self._device, dtype=dtype)
         if self._fast_mode:
             try:
                 map_tensor = map_tensor.to(memory_format=torch.channels_last)
             except Exception:
                 pass
-        if state.ctx is not None:
-            ctx_tensor = torch.from_numpy(state.ctx).unsqueeze(0).to(self._device, dtype=dtype)
-            batch_in = {'map': map_tensor, 'ctx': ctx_tensor}
-        else:
-            batch_in = map_tensor
+        batch_in = {'map': map_tensor, 'ctx': ctx_tensor, 'action_features': af_tensor}
         with torch.no_grad():
             with self._hot_reload_lock:
-                out = self._model(batch_in)
-        logits, value = out if isinstance(out, tuple) else (out['logits'], out['value'])
-        # Cast logits to float32 for stable distribution math
-        logits = logits.float()
-        # Apply action mask if present
-        action_mask = state.meta.get('action_mask') if state.meta is not None else None
-        if action_mask is not None:
-            mask_tensor = torch.from_numpy(action_mask).to(logits.device)
-            # Mild negative avoids fp16 overflow upstream; consistent with trainer change
-            logits = logits.masked_fill(mask_tensor.unsqueeze(0) == 0, -60.0)
-        dist = torch.distributions.Categorical(logits=logits.squeeze(0))
+                logits, value = self._model(batch_in)
+        logits = logits.float()  # stable distribution math
+        action_mask = state.meta.get('action_mask')
+        if action_mask is None:
+            raise ValueError("action_mask missing in state.meta; ensure adapter ran")
+        mask_tensor = torch.from_numpy(action_mask).to(logits.device)
+
+        valid_count = int(mask_tensor.sum().item())
+        masked_logits = logits.clone()
+        if valid_count > 0:
+            masked_logits = masked_logits.masked_fill(mask_tensor.unsqueeze(0) == 0, float('-inf'))
+            dist = torch.distributions.Categorical(logits=masked_logits.squeeze(0))
+        else:
+            dist = torch.distributions.Categorical(logits=logits.squeeze(0))
         
         debug.debug_print(f"PPO Snake {self.get_id()} logits:", logits.cpu().numpy())
         debug.debug_print(f"PPO Snake {self.get_id()} action distribution probs:", dist.probs.cpu().numpy())
@@ -189,8 +192,9 @@ class PPOSnake(RLSnakeBase):
             print("State meta:", state.meta)
             self._print_map()
         if self._deterministic:
-            # Deterministic mode: always pick best action (for deployment/evaluation)
-            action_tensor = logits.squeeze(0).argmax()
+            # Deterministic mode: pick best among VALID actions (masked_logits has -inf for invalid)
+            target_logits = masked_logits if valid_count > 0 else logits
+            action_tensor = target_logits.squeeze(0).argmax()
         else:
             # Stochastic mode: sample from distribution (for training/exploration)
             action_tensor = dist.sample()
@@ -198,6 +202,18 @@ class PPOSnake(RLSnakeBase):
         action_idx = int(action_tensor.item())
         log_prob = float(dist.log_prob(action_tensor).item())
         value_estimate = float(value.squeeze(0).item())
+        if valid_count > 0 and mask_tensor[action_idx].item() == 0:
+            if not hasattr(self, '_invalid_action_samples'):
+                self._invalid_action_samples = 0
+            self._invalid_action_samples += 1
+            log.warning(
+                f"Sampled invalid action index={action_idx} despite masking; performing safe fallback to best valid action."  # noqa: E501
+            )
+            safe_logits = masked_logits.squeeze(0)
+            fallback_tensor = safe_logits.argmax()
+            action_idx = int(fallback_tensor.item())
+            # Recompute log_prob under distribution for fallback (prob ~0 if originally invalid)
+            log_prob = float(dist.log_prob(fallback_tensor).item())
         return action_idx, log_prob, value_estimate
 
     def _next_step_for_state(self, state: State):

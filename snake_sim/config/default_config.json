@@ -38,9 +38,9 @@
         }
     },
     "snake_config": {
-        "type": "ppo_ai",
+        "type": "ai_ppo",
         "args": {
-            "snapshot_dir": "models/ppo_training_mid_action_mask",
+            "snapshot_dir": "models/ppo_training",
             "poll_interval": 30.0,
             "auto_reload": true,
             "eager_first_load": true

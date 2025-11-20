@@ -21,6 +21,7 @@ from snake_sim.environment.interfaces.snake_updater_interface import ISnakeUpdat
 from snake_sim.snakes.shm_proxy_snake import SHMProxySnake
 from snake_sim.snakes.grpc_proxy_snake import GRPCProxySnake
 from snake_sim.snakes.snake_base import SnakeBase
+from snake_sim.rl.snakes.rl_snake_base import RLSnakeBase
 
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
@@ -33,6 +34,7 @@ SNAKE_UPDATER_MAP = {
     SHMProxySnake: SHMUpdater,
     GRPCProxySnake: ConcurrentUpdater,
     SnakeBase: InprocUpdater,
+    RLSnakeBase: ConcurrentUpdater,
 }
 
 

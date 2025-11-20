@@ -3,7 +3,7 @@ from enum import Enum
 from dataclasses import dataclass, field
 from collections import deque
 from collections.abc import Iterable
-from typing import Optional, List, Dict, Deque, Set
+from typing import Optional, List, Dict, Deque, Set, Any
 import numpy as np
 
 
@@ -140,7 +140,7 @@ class RecurseCheckResult:
 @dataclass
 class EnvStepData:
     map: np.ndarray
-    snakes: dict
+    snakes: dict[int, dict[str, Any]] # 'is_alive': bool, 'length': int
     food_locations: Optional[List[Coord]]
 
 

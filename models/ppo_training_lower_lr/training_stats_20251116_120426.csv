@@ -1,2 +1,0 @@
-timestamp,update,policy_loss,value_loss,entropy,kl_div,returns_mean,advantages_mean,batch_size,epochs_completed,entropy_coef,exploration_boosted,best_return,updates_since_improvement
-2025-11-16T12:04:29.829093,1,0.3710666596889496,1.001968264579773,0.007040365599095821,7.103138446807861,-10.383895874023438,-1.8535944334985288e-08,1029,1,0.02,False,-10.383895874023438,0

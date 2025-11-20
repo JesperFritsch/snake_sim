@@ -2,6 +2,7 @@
 import logging
 import json
 import time
+import cProfile
 
 from pathlib import Path
 
@@ -80,7 +81,7 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
     """
     snake_factory = SnakeFactory()
     ppo_snake_config = SnakeConfig(
-        type='ppo_ai',
+        type='ai_ppo',
         args={
             'snapshot_dir': snapshot_dir,
             'poll_interval': 1.0,        # fewer reload checks reduces I/O overhead
@@ -121,13 +122,12 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
 def train(config: RLTrainingConfig):
     # Set up snapshot directory for model sharing
     # snapshot_dir = "models/ppo_training_speed_up"
-    snapshot_dir = "models/ppo_training_speed_up_all_maps"
+    snapshot_dir = "models/ppo_training_no_map"
     Path(snapshot_dir).mkdir(parents=True, exist_ok=True)
     
     trainer = PPOTrainer(snapshot_dir=snapshot_dir)
     trainer.start_background()
     
-    log.info(f"Starting training for {config.episodes} episodes with {8} PPO snakes")
     log.info(f"Model snapshots will be saved to: {snapshot_dir}")
     training_loop = setup_training_loop(config, snapshot_dir=snapshot_dir)
     # file_persist_observer = FilePersistObserver(store_dir=Path(PACKAGE_ROOT) / "rl/trainings_runs")
@@ -151,15 +151,15 @@ if __name__ == "__main__":
     maps_mapping = get_map_files_mapping()
 
     training_maps = [
-        "comps2",
-        "comps",
-        "lil_sign",
-        "face",
-        "patterns",
-        "quarters3",
-        "wavy",
-        "tricky",
-        "items",
+        # "comps2",
+        # "comps",
+        # "lil_sign",
+        # "face",
+        # "patterns",
+        # "quarters3",
+        # "wavy",
+        # "tricky",
+        # "items",
         None
     ]
 
@@ -171,3 +171,4 @@ if __name__ == "__main__":
         training_map_paths=map_paths
     )
     train(rl_config)
+    # cProfile.run('train(rl_config)', sort='cumtime')
