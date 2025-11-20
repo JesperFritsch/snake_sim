@@ -5,9 +5,8 @@
     "snake_count": 7,
     "calc_timeout": 7000,
     "food_decay": 500,
-    "verbose": false,
     "sound": false,
-    "inproc_snakes": false,
+    "distributed_snakes": false,
     "rate_meter": false,
     "fps": 10,
     "map": null,
@@ -22,13 +21,13 @@
     "no_record": true,
     "record_file": "snake_run.json",
     "record_dir": "C:\\temp",
-    "max_no_food_steps": 100000000000,
+    "max_no_food_steps": null,
     "max_steps": null,
     "norm_head": 3,
     "norm_body": 4,
     "norm_main_head": 5,
     "norm_main_body": 6,
-    "ssnake_config": {
+    "snake_config": {
         "type": "survivor",
         "strategies" : {
             "1": {
@@ -37,7 +36,7 @@
             } 
         }
     },
-    "snake_config": {
+    "ai_snake_config": {
         "type": "ai_ppo",
         "args": {
             "snapshot_dir": "models/ppo_training",

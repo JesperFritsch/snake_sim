@@ -36,6 +36,7 @@ class TerminalRenderer(IRenderer):
         self._free_value = None
         self._food_value = None
         self._blocked_value = None
+        self._init_finished = False
 
     def is_init_finished(self):
         return self._init_finished

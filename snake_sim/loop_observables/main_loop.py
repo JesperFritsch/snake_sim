@@ -114,7 +114,6 @@ class SimLoop(IMainLoop):
 
     def _post_update(self):
         if self._max_no_food_steps and self._env.steps_since_any_ate() > self._max_no_food_steps:
-            print(f"Stopping training loop due to no food eaten in {self._max_no_food_steps} steps.")
             self.stop()
         if self._max_steps is not None and self._steps > self._max_steps:
             self.stop()

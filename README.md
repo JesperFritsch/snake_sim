@@ -75,8 +75,6 @@ Note: On some systems like Wayland, the controls work better with window focus.
 Here are some common ways to run the snake simulation:
 
 ```bash
-# Play a previously recorded simulation file
-snake-sim play-file runs/my_simulation.json
 
 # Run a live simulation with terminal rendering
 snake-sim compute --renderer terminal
@@ -84,9 +82,32 @@ snake-sim compute --renderer terminal
 # Run a live simulation with graphical window (default)
 snake-sim compute --renderer window --fps 30
 
-# Run with verbose output and custom grid size
-snake-sim compute --verbose --grid-size 20
+# Run with custom grid size
+snake-sim compute --grid-size 20
 
 # Record a simulation to a specific file
 snake-sim compute --record-file my_run.json
+
+# Run with 20 snakes and 40 food on map combined4 where the food never decays
+snake-sim compute --snake-count 20 --food 40 --food-decay 0 --map combined4
+
+# Run snakes in distributed mode, each snake will run in a separate process.
+# Since the algorithm is so much faster now it actually slows it down, this was more
+# useful before many big performance optimizations
+snake-sim compute --distributed-snakes
+
+# Play a previously recorded simulation file
+snake-sim play-file runs/my_simulation.json
+
 ```
+
+## Images
+
+### 60 snakes on 128 x 128 grid
+![60 snakes on 128 x 128 grid](docs/screenshots/60snakes_128.png)
+
+### Single snake on 64 x 64 map
+![Single snake on 64 x 64 map](docs/screenshots/1snake_combined4.png)
+
+### Single snake on 32 x 32 map
+![Single snake on 32 x 32 map](docs/screenshots/1snake_comps2.png)

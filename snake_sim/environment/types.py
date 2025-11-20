@@ -283,10 +283,9 @@ class SimConfig:
     food_decay: int
     snake_count: int
     calc_timeout: int
-    verbose: bool
     start_length: int
     external_snake_targets: List[str]
-    inproc_snakes: bool
+    distributed_snakes: bool
     snake_config: SnakeConfig
 
 

@@ -85,7 +85,6 @@ def main():
         loop_repeater.start()
         if config.no_render:
             waitable_observer.wait_until_finished()
-            print("Loop finished.")
         else:
             try:
                 render_loop.join()

@@ -167,19 +167,21 @@ def run_tests(snake: SnakeBase, s_map: np.ndarray, step_state: CompleteStepState
 
 def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, env_meta_data: EnvMetaData):
     snake: SnakeBase = SnakeFactory().create_snake(
+        # snake_config=SnakeConfig(
+        #     type='ai_ppo',
+        #     args={}
+        # )
         snake_config=SnakeConfig(
-            type='ai_ppo',
-            args={}
+            type='survivor',
+            args={},
         )
     )
-    # snake.set_strategy(1, SnakeStrategyFactory().create_strategy("food_seeker", StrategyConfig("food_seeker")))
-    # snake = SnakeBase(calc_timeout=1500)
+    snake.set_strategy(1, SnakeStrategyFactory().create_strategy("food_seeker", StrategyConfig("food_seeker")))
     snake.set_id(id)
     snake.set_start_length(1)
     snake_rep = snake_reps[id]
     snake.set_init_data(env_meta_data)
     snake._body_coords = snake_rep.body.copy()
-    # snake._init_area_checker()
     snake._update_map(s_map)
     snake._head_coord = snake._body_coords[0]
     snake._length = len(snake._body_coords)

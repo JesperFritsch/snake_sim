@@ -38,8 +38,6 @@ class SnakeFactory(metaclass=SingletonMeta):
             snake_class = TYPENAME_TO_CLASS[snake_config.type]
         except KeyError:
             raise ValueError(f"Unknown snake type: {snake_config.type}")
-        print(f"Creating snake of type: {snake_config.type}")
-        print(f"With args: {snake_config.args}")
         snake = snake_class(**snake_config.args)
             
         apply_strategies(snake, snake_config)
