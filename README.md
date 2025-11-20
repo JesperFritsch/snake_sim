@@ -4,6 +4,8 @@ A snake simulation environment with support for deep learning snakes.
 
 ## Installation (use -e if developing)
 
+### first cd in to repo root
+
 ```bash
 pip install -e .
 ```
