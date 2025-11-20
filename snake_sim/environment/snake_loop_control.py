@@ -134,7 +134,7 @@ class SnakeLoopControl:
                 log.exception(e)
 
     @_loop_check
-    def _initialize_non_inproc_snakes(self):
+    def _initialize_distributed_snakes(self):
         snake_factory = SnakeFactory()
         for _ in range(self._config.snake_count):
             snake_id = self._snake_handler.get_next_snake_id()
@@ -174,10 +174,10 @@ class SnakeLoopControl:
                     self._loop.stop()
                 threading.Thread(target=wait_stop_flag, args=(stop_flag,), daemon=True).start()
             try:
-                if self._config.inproc_snakes:
-                    self._initialize_inproc_snakes()
+                if self._config.distributed_snakes:
+                    self._initialize_distributed_snakes()
                 else:
-                    self._initialize_non_inproc_snakes()
+                    self._initialize_inproc_snakes()
                 self._initialize_remote_grpcs()
                 self._finalize_snakes()
             except:
@@ -215,10 +215,9 @@ def setup_loop(config) -> SnakeLoopControl:
         food_decay=config.food_decay,
         snake_count=config.snake_count,
         calc_timeout=config.calc_timeout,
-        verbose=config.verbose,
         start_length=config.start_length,
         external_snake_targets=config.external_snake_targets,
-        inproc_snakes=config.inproc_snakes,
+        distributed_snakes=config.distributed_snakes,
         snake_config=SnakeConfig.from_dict(config.snake_config),
     )
     if config.command == "game":

@@ -20,7 +20,6 @@ class EnsureDirAction(argparse.Action):
         setattr(namespace, self.dest, path)
 
 def add_common_arguments(parser):
-    parser.add_argument('--verbose', action='store_true', help='Print verbose output', default=False)
     parser.add_argument('--no-record', action='store_true', help='Do not record the run', default=False)
     parser.add_argument('--record-dir', type=Path, action=EnsureDirAction, help='where to put the recording file', default=Path(__file__).parent / 'runs')
     parser.add_argument('--record-file', type=str, help='Name of the recording file', default="")
@@ -37,7 +36,7 @@ def add_run_config_arguments(parser):
     parser.add_argument('--map', type=str, help='Path to map file')
     parser.add_argument('--start-length', type=int, help='Starting length of the snakes')
     parser.add_argument('--external-snake-targets', type=str, nargs='+', help='External snake targets')
-    parser.add_argument('--inproc-snakes', action="store_true", help='Run all snakes in one process, otherwise one process per snake', default=False)
+    parser.add_argument('--distributed-snakes', action="store_true", help='Run snakes in distributed mode, each snake in its own process', default=False)
     parser.add_argument('--rate-meter', action="store_true", help='Rate meter for steps per second for all snakes combined', default=False)
 
 
