@@ -122,7 +122,7 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
 def train(config: RLTrainingConfig):
     # Set up snapshot directory for model sharing
     # snapshot_dir = "models/ppo_training_speed_up"
-    snapshot_dir = "models/ppo_training_no_map"
+    snapshot_dir = "models/ppo_training"
     Path(snapshot_dir).mkdir(parents=True, exist_ok=True)
     
     trainer = PPOTrainer(snapshot_dir=snapshot_dir)
@@ -151,15 +151,15 @@ if __name__ == "__main__":
     maps_mapping = get_map_files_mapping()
 
     training_maps = [
-        # "comps2",
-        # "comps",
-        # "lil_sign",
-        # "face",
-        # "patterns",
-        # "quarters3",
-        # "wavy",
-        # "tricky",
-        # "items",
+        "comps2",
+        "comps",
+        "lil_sign",
+        "face",
+        "patterns",
+        "quarters3",
+        "wavy",
+        "tricky",
+        "items",
         None
     ]
 

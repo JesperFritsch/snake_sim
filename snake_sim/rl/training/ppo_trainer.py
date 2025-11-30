@@ -31,14 +31,14 @@ class PPOTrainerConfig:
     clip_range: float = 0.3  # INCREASED from 0.2 - allow bigger policy updates
     policy_lr: float = 1e-4  # LOWERED for stability - prevent policy collapse
     value_lr: float = 3e-4   # LOWERED for stability - was destroying learned values
-    minibatch_size: int = 1024  # Reduced for more frequent updates
+    minibatch_size: int = 256 
     entropy_coef: float = 0.02  # INCREASED from 0.01 - need some exploration
     value_coef: float = 0.5     # Reduced from 1.0 to stabilize value function
     max_grad_norm: float = 0.5
     device: str = 'auto'
     snapshot_dir: Optional[str] = None  # directory of model snapshots
     snapshot_base_name: str = 'ppo_model'
-    save_every_updates: int = 5  # save snapshot after this many successful updates
+    save_every_updates: int = 1  # save snapshot after this many successful updates
     # Adaptive exploration - DISABLED by setting unreachable patience
     stagnation_patience: int = 100000  # Effectively disabled
     exploration_boost_factor: float = 1.5

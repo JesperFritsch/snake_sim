@@ -46,7 +46,8 @@ class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
             request.food_value,
             {int(k): {"head_value": v.head_value, "body_value": v.body_value} for k, v in request.snake_values.items()},
             {int(k): Coord(x=v.x, y=v.y) for k, v in request.start_positions.items()},
-            request.base_map
+            np.frombuffer(request.base_map, dtype=np.dtype(request.base_map_dtype)).reshape(request.height, request.width),
+            request.base_map_dtype
         )
         self._snake_instance.set_init_data(init_data)
         return remote_snake_pb2.Empty()

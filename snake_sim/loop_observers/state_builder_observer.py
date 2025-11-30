@@ -34,7 +34,8 @@ class StateBuilderObserver(ConsumerObserver):
             env_meta_data=init_data,
             food=set(),
             snake_alive={},
-            snake_bodies={}
+            snake_bodies={},
+            snake_ate={},
         )
         for s_id, pos in init_data.start_positions.items():
             self._current_state.snake_bodies[s_id] = deque([pos])
@@ -79,14 +80,15 @@ class StateBuilderObserver(ConsumerObserver):
         self._current_state.state_idx += 1
         step_data = self._steps[self._current_step_idx]
         self._current_step_idx += 1
-        self._current_state.food.update(step_data.new_food)
         self._current_state.snake_alive.update(step_data.alive_states)
+        self._current_state.food.update(step_data.new_food)
         self._current_state.food.difference_update(step_data.removed_food)
         for s_id, dir in step_data.decisions.items():
             body = self._current_state.snake_bodies[s_id]
             new_head = body[0] + dir
             body.appendleft(new_head)
             tail_dir = step_data.tail_directions[s_id]
+            self._current_state.snake_ate[s_id] = new_head in step_data.removed_food
             if tail_dir != (0, 0):
                 body.pop()
 
@@ -102,6 +104,7 @@ class StateBuilderObserver(ConsumerObserver):
         for s_id, tail_dir in curr_step_data.tail_directions.items():
             body = self._current_state.snake_bodies[s_id]
             popped_tile = body.popleft()
+            self._current_state.snake_ate[s_id] = body[0] in curr_step_data.removed_food
             if tail_dir != (0, 0):
                 old_tail = body[-1] - tail_dir if len(body) > 1 else popped_tile - tail_dir
                 body.append(old_tail)

@@ -31,6 +31,7 @@ class RLSnakeEnv(SnakeEnv):
             food=set(self.get_food()),
             snake_bodies={id: snake_rep.body.copy() for id, snake_rep in self._snake_reps.items()},
             snake_alive={id: snake_rep.is_alive for id, snake_rep in self._snake_reps.items()},
+            snake_ate={id: snake_rep.get_head() in set(self.get_food()) for id, snake_rep in self._snake_reps.items()},
             state_idx=0
         )
 

@@ -33,6 +33,8 @@ def save_step_state(step_state: CompleteStepState):
     """ Save the step state to a json file. """
     if step_state.state_idx in STATE_CACHE:
         file_path = STATE_CACHE[step_state.state_idx]
+        # set the last modified time to now
+        Path(file_path).touch()
         log.info(f"Step state already saved to '{file_path}'")
         return
     file_path = get_statefile_dir() / f"state_{rand_str(10)}.json"

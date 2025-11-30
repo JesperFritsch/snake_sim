@@ -106,8 +106,11 @@ class RLTrainingLoop(SimLoop):
                     self._print_env_map()
                     print("From state:")
                     print_state(transition.state)
-                    print("To state:")
-                    print_state(transition.next_state)
+                    if transition.next_state is None:
+                        print("To state: <DEAD>")
+                    else:
+                        print("To state:")
+                        print_state(transition.next_state)
                     print(f"Action taken: {transition.action_index}, Reward: {transition.reward}, Done: {transition.done}")
 
     def _get_map_path_from_selection(self) -> str:
