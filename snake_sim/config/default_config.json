@@ -27,7 +27,7 @@
     "norm_body": 4,
     "norm_main_head": 5,
     "norm_main_body": 6,
-    "ssnake_config": {
+    "snake_config": {
         "type": "survivor",
         "strategies" : {
             "1": {
@@ -36,7 +36,7 @@
             } 
         }
     },
-    "snake_config": {
+    "ai_snake_config": {
         "type": "ai_ppo",
         "args": {
             "snapshot_dir": "models/ppo_training_no_map",
