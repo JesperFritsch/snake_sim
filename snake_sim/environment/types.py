@@ -211,6 +211,7 @@ class CompleteStepState:
     # heads are at index 0 in the deques
     snake_bodies: Dict[int, Deque[Coord]]
     snake_alive: Dict[int, bool]
+    snake_ate: Dict[int, bool]
     state_idx: int = field(default=0)
 
     def to_dict(self):

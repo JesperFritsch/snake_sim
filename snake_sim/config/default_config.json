@@ -27,7 +27,7 @@
     "norm_body": 4,
     "norm_main_head": 5,
     "norm_main_body": 6,
-    "snake_config": {
+    "ssnake_config": {
         "type": "survivor",
         "strategies" : {
             "1": {
@@ -36,10 +36,10 @@
             } 
         }
     },
-    "ai_snake_config": {
+    "snake_config": {
         "type": "ai_ppo",
         "args": {
-            "snapshot_dir": "models/ppo_training",
+            "snapshot_dir": "models/ppo_training_no_map",
             "poll_interval": 30.0,
             "auto_reload": true,
             "eager_first_load": true

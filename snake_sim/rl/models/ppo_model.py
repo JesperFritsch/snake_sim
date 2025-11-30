@@ -21,9 +21,12 @@ class SnakePPONet(nn.Module):
     NUM_ACTIONS = 4
     ACTION_FEAT_DIM = 4  # [margin_frac, safety_hint, food_hint, valid_mask]
 
-    def __init__(self, in_channels: int, ctx_dim: int = 0):
+    def __init__(self, in_channels: int, ctx_dim: int = 0, af_dropout_prob: float = 0.0):
         super().__init__()
         self.ctx_dim = ctx_dim
+        # Probability to drop entire per-action feature vectors during training
+        # (applied per-action, per-sample). Default 0.0 (no dropout).
+        self.af_dropout_prob = float(af_dropout_prob)
 
         # Spatial trunk
         self.conv1 = nn.Conv2d(in_channels,64, kernel_size=3, padding=1)
@@ -55,7 +58,6 @@ class SnakePPONet(nn.Module):
             nn.Linear(64, 1)
         )
 
-    # NOTE: Single-optimizer design; no actor/critic parameter grouping needed.
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         # Enforce presence of required keys for clarity
@@ -92,6 +94,15 @@ class SnakePPONet(nn.Module):
         base_emb = self.base_proj(base_input)  # (B,128)
 
         # Per-action conditioning
+        # Optionally apply per-action-feature dropout during training to
+        # discourage over-reliance on action_features.
+        if self.training and self.af_dropout_prob > 0.0:
+            keep_prob = 1.0 - self.af_dropout_prob
+            # action_features shape: (B,A,F)
+            mask = torch.rand(action_features.shape[:2], device=action_features.device) < keep_prob
+            mask = mask.unsqueeze(-1).to(action_features.dtype)
+            action_features = action_features * mask
+
         action_emb = self.action_feat_proj(action_features)  # (B,A,32)
         base_expanded = base_emb.unsqueeze(1).expand(B, A, base_emb.size(1))  # (B,A,128)
         combined = torch.cat([base_expanded, action_emb], dim=2)  # (B,A,160)
@@ -107,7 +118,7 @@ class SnakePPONet(nn.Module):
         return action_logits, values
 
 
-def model_factory(in_channels: int, ctx_dim: int) -> nn.Module:
+def model_factory(in_channels: int, ctx_dim: int, af_dropout_prob: float = 0.0) -> nn.Module:
     """Factory function to create PPO model instances."""
     log.info("Creating SnakePPONet model")
-    return SnakePPONet(in_channels, ctx_dim)
+    return SnakePPONet(in_channels, ctx_dim, af_dropout_prob)

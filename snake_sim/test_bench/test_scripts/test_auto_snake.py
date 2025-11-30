@@ -4,9 +4,11 @@ from io import StringIO
 import numpy as np
 from typing import List, Dict
 from pathlib import Path
+import json
 from collections import deque
 import cProfile
 import pstats
+import torch
 
 from importlib import resources
 
@@ -16,6 +18,7 @@ from snake_sim.environment.snake_strategy_factory import SnakeStrategyFactory
 from snake_sim.environment.snake_env import SnakeRep
 from snake_sim.environment.types import (
     Coord, 
+    DotDict,
     EnvStepData, 
     EnvMetaData, 
     CompleteStepState, 
@@ -30,6 +33,9 @@ from snake_sim.map_utils.general import print_map
 from snake_sim.storing.state_storer import load_step_state, get_statefile_dir
 from snake_sim.logging_setup import setup_logging
 setup_logging(log_level="DEBUG")
+
+with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
+    default_config = DotDict(json.load(config_file))
 
 from snake_sim.cpp_bindings.utils import (
     get_dir_to_tile,
@@ -152,6 +158,47 @@ def test_get_visitable_tiles(snake: SnakeBase, s_map, center_coord):
     print(f"Visitable tiles from {center_coord}: {visitable_tiles}")
 
 
+def test_spatial_network_ablation(snake: SnakeBase, s_map, food_locations: List[Coord] = None):
+    """
+    Run spatial ablation analysis using the already created snake, matching the style of other test functions.
+    """
+    from snake_sim.rl.spatial_network_analyzer import SpatialNetworkAnalyzer
+    from snake_sim.rl.state_builder import SnakeContext
+    env_step_data = EnvStepData(s_map, {}, food_locations)
+    snake_ctx = SnakeContext(
+        snake_id=snake._id,
+        head=snake._head_coord,
+        body_coords=list(snake._body_coords),
+        length=snake._length
+    )
+    rl_state = snake._state_builder.build(
+        snake._env_meta_data,
+        env_step_data,
+        snake_ctx
+    )
+    # Sanity-check and build tensors
+    print("RL state map shape:", rl_state.map.shape)
+    print("RL state ctx:", rl_state.ctx)
+    map_tensor = torch.from_numpy(rl_state.map).unsqueeze(0).float()  # (1, C, H, W)
+    ctx_arr = np.asarray(rl_state.ctx, dtype=np.float32)
+    # Ensure ctx is (1, ctx_dim)
+    ctx_tensor = torch.from_numpy(ctx_arr.reshape(1, -1)).float()
+    action_features = rl_state.meta['action_features']
+    print("Action features shape (A,F):", action_features.shape)
+    if action_features.ndim == 2:
+        action_features = action_features[np.newaxis, ...]  # (1, A, F)
+    action_features_tensor = torch.from_numpy(action_features).float()
+    analyzer = SpatialNetworkAnalyzer(
+        snapshot_dir="models/ppo_training",
+        base_name="ppo_model",
+    )
+    results = analyzer.compare_modes(map_tensor, ctx_tensor, action_features_tensor)
+    for mode, res in results.items():
+        print(f"[Ablation] Mode: {mode}")
+        print("Logits:", res["logits"].detach().cpu().numpy())
+        print("Values:", res["values"].detach().cpu().numpy())
+
+
 # @profile()
 def run_tests(snake: SnakeBase, s_map: np.ndarray, step_state: CompleteStepState):
     # test_recurse_area_check(snake, s_map, Coord(1,0))
@@ -163,20 +210,18 @@ def run_tests(snake: SnakeBase, s_map: np.ndarray, step_state: CompleteStepState
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_step_data.food_value, Coord(58, 61))
     # test_get_visitable_tiles(snake, s_map, snake._head_coord)
+    test_spatial_network_ablation(snake, s_map, step_state.food)
 
 
 def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, env_meta_data: EnvMetaData):
     snake: SnakeBase = SnakeFactory().create_snake(
+        snake_config=SnakeConfig.from_dict(default_config.snake_config)
         # snake_config=SnakeConfig(
-        #     type='ai_ppo',
-        #     args={}
+        #     type='survivor',
+        #     args={},
         # )
-        snake_config=SnakeConfig(
-            type='survivor',
-            args={},
-        )
     )
-    snake.set_strategy(1, SnakeStrategyFactory().create_strategy("food_seeker", StrategyConfig("food_seeker")))
+    # snake.set_strategy(1, SnakeStrategyFactory().create_strategy("food_seeker", StrategyConfig("food_seeker")))
     snake.set_id(id)
     snake.set_start_length(1)
     snake_rep = snake_reps[id]
@@ -244,7 +289,7 @@ if __name__ == "__main__":
     enable_debug_for('_get_food_dir')
     enable_debug_for('_best_first_search')
 
-    snake_id = 0
+    snake_id = 1
     # snake_id = None
     s_map = create_map(step_state, snake_reps)
 
@@ -264,10 +309,12 @@ if __name__ == "__main__":
             test_snake._head_value,
             test_snake._body_value
         )
-        print("snake env_meta_data: ", test_snake._env_meta_data)
-        print("snake env_step_data: ", test_snake._env_step_data)
+        # print("snake env_meta_data: ", test_snake._env_meta_data)
+        # print("snake env_step_data: ", test_snake._env_step_data)
         # print("snake head: ", test_snake._head_coord)
         # print("snake head value: ", test_snake.get_self_map_values()[0])
         # print("snake body value: ", test_snake.get_self_map_values()[1])
         sys.stdout.flush()
         run_tests(test_snake, s_map, step_state)
+
+        

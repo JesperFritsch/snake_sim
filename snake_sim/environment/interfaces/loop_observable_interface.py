@@ -9,6 +9,12 @@ class ILoopObservable:
         self._did_notify_start = False
         self._did_notify_stop = False
 
+    def is_done(self) -> bool:
+        return self._did_notify_stop
+
+    def is_running(self) -> bool:
+        return self._did_notify_start and not self.is_done()
+
     @abstractmethod
     def start(self):
         pass
