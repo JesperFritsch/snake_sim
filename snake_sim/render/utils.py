@@ -1,6 +1,6 @@
 
 import json
-
+import colorsys
 from typing import Dict, Tuple
 from snake_sim.environment.types import DotDict
 
@@ -18,3 +18,28 @@ def create_color_map(snake_values: dict) -> Dict[int, Tuple[int, int, int]]:
         color_map[snake_value_dict["head_value"]] = config.snake_colors[i % color_len]["head_color"]
         color_map[snake_value_dict["body_value"]] = config.snake_colors[i % color_len]["body_color"]
     return color_map
+
+
+def print_colors(colors: list[tuple[int, int, int]]):
+    """ Print the given list of RGB colors in the terminal """
+    for color in colors:
+        r, g, b = color
+        print(f"\033[48;2;{r};{g};{b}m   \033[0m", end=' ')
+    print()
+
+
+def generate_distinct_colors(n, s=0.9, v=0.9):
+    """
+    Generate `n` distinct RGB colors as (r, g, b) tuples in [0, 255],
+    all bright and saturated enough to stand out on black.
+    """
+    colors = []
+    for i in range(n):
+        h = i / n  # evenly spaced hue
+        r, g, b = colorsys.hsv_to_rgb(h, s, v)
+        colors.append((
+            int(r * 255),
+            int(g * 255),
+            int(b * 255),
+        ))
+    return colors
