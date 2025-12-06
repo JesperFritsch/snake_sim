@@ -1,7 +1,11 @@
+import logging
+from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import List
 from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver
 from snake_sim.environment.types import LoopStartData, LoopStepData, LoopStopData
+
+log = logging.getLogger(Path(__file__).stem)
 
 class ILoopObservable:
     def __init__(self, *args, **kwargs):
@@ -48,6 +52,7 @@ class ILoopObservable:
 
     def _notify_start(self):
         if self._did_notify_start: return
+        log.debug(f"{self.__class__.__name__} notifying observers of loop start")
         self._did_notify_start = True
         start_data = self._get_start_data()
         for observer in self._observers:
@@ -60,6 +65,7 @@ class ILoopObservable:
 
     def _notify_stop(self):
         if self._did_notify_stop: return
+        log.debug(f"{self.__class__.__name__} notifying observers of loop stop")
         self._did_notify_stop = True
         stop_data = self._get_stop_data()
         for observer in self._observers:

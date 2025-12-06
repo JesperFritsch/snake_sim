@@ -32,8 +32,8 @@ def create_color_map(snake_values: dict) -> Dict[int, Tuple[int, int, int]]:
     config = DotDict(default_config)
     color_map = {config[key]: value for key, value in config.color_mapping.items()}
     nr_snakes = len(snake_values)
-    head_colors = generate_distinct_colors(nr_snakes, s=1, v=0.8)
-    body_colors = generate_distinct_colors(nr_snakes, s=1, v=0.5)
+    head_colors = generate_distinct_colors(nr_snakes, s=1, v=0.9)
+    body_colors = generate_distinct_colors(nr_snakes, s=1, v=0.6)
     for i, snake_value_dict in enumerate(snake_values.values()):
         color_map[snake_value_dict["head_value"]] = head_colors[i]
         color_map[snake_value_dict["body_value"]] = body_colors[i]
