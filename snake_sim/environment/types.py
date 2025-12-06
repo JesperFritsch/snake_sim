@@ -223,13 +223,12 @@ class CompleteStepState:
 
     @classmethod
     def from_dict(cls, state_dict):
+        state_dict["env_meta_data"] = EnvMetaData.from_dict(state_dict["env_meta_data"])
+        state_dict["food"] = set([Coord(*f) for f in state_dict["food"]])
+        state_dict["snake_bodies"] = {int(k): deque([Coord(*pos) for pos in v]) for k, v in state_dict["snake_bodies"].items()}
         instance = cls(
-            env_meta_data=EnvMetaData.from_dict(state_dict['env_meta_data']),
-            food=set([Coord(*f) for f in state_dict['food']]),
-            snake_bodies={int(k): deque([Coord(*pos) for pos in v]) for k, v in state_dict['snake_bodies'].items()},
-            snake_alive={int(k): v for k, v in state_dict['snake_alive'].items()},
+            **state_dict
         )
-        instance.state_idx = state_dict['state_idx']
         return instance
     
     def copy(self) -> 'CompleteStepState':
@@ -238,7 +237,8 @@ class CompleteStepState:
             food=set(self.food),
             snake_bodies={k: deque(v) for k, v in self.snake_bodies.items()},
             snake_alive=self.snake_alive.copy(),
-            state_idx=self.state_idx
+            snake_ate=self.snake_ate.copy(),
+            state_idx=self.state_idx,
         )
 
 @dataclass

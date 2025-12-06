@@ -97,7 +97,6 @@ def main():
         log.error(e)
         log.debug("TRACE: ", exc_info=True)
     finally:
-        loop_repeater.close()
         try:
             stop_flag.value = True
         except:
@@ -108,6 +107,8 @@ def main():
         except:
             log.debug("No render loop to stop.")
             raise
+        waitable_observer.wait_until_finished()
+        loop_repeater.close()
 
 if __name__ == '__main__':
     main()

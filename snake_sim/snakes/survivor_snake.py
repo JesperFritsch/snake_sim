@@ -87,6 +87,13 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
             debug.debug_print(f"choosing strategy tile {self._current_strategy_tile} with margin frac {strat_margin_frac_at_depth}")
             return self._current_strategy_tile
         else:
+            if any(any([val == float("inf") for val in margin_fracs[coord].values()]) for coord in margin_fracs):
+                debug.debug_print("found infinite margin frac, choosing that")
+                return max(
+                    [coord for coord in margin_fracs if any([val == float("inf") for val in margin_fracs[coord].values()])],
+                    key=lambda coord: margin_fracs[coord].get(max(margin_fracs[coord].keys()), -1)
+                )
+            debug.debug_print("choosing best available option")
             return max(
                 margin_fracs,
                 key=lambda coord: margin_fracs[coord].get(max(margin_fracs[coord].keys()), -1)
