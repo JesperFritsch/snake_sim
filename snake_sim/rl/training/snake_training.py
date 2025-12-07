@@ -151,15 +151,15 @@ if __name__ == "__main__":
     maps_mapping = get_map_files_mapping()
 
     training_maps = [
-        "comps2",
-        "comps",
-        "lil_sign",
-        "face",
-        "patterns",
-        "quarters3",
-        "wavy",
-        "tricky",
-        "items",
+        # "comps2",
+        # "comps",
+        # "lil_sign",
+        # "face",
+        # "patterns",
+        # "quarters3",
+        # "wavy",
+        # "tricky",
+        # "items",
         None
     ]
 

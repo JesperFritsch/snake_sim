@@ -16,24 +16,35 @@ def handle_connection_loss(func):
 
 
 class GRPCProxySnake(ISnake):
-    def __init__(self, target: str):
+    def __init__(self, target: str, timeout: float = 5.0):
         super().__init__()
         self.target = target
+        self.timeout = timeout
         self.channel = grpc.insecure_channel(target)
         self.stub = remote_snake_pb2_grpc.RemoteSnakeStub(self.channel)
         self._log = logging.getLogger(f"{self.__class__.__name__}-{target}")
+        self._wait_for_connection()
+
+    def _wait_for_connection(self):
+        """Wait for the gRPC channel to be ready."""
+        try:
+            self._log.debug(f"Waiting for connection to {self.target}...")
+            grpc.channel_ready_future(self.channel).result(timeout=self.timeout)
+            self._log.debug(f"Connected to {self.target}")
+        except grpc.FutureTimeoutError:
+            self._log.error(f"Timeout waiting for connection to {self.target}")
+            raise ConnectionError(f"Failed to connect to {self.target} within {self.timeout}s")
 
     @handle_connection_loss
     def kill(self):
         super().kill()
-        self._log.debug(f"got killed")
         self.stub.Kill(remote_snake_pb2.Empty())
         self.channel.close()
 
     @handle_connection_loss
     def set_id(self, id: int):
         super().set_id(id)
-        self.stub.SetId(remote_snake_pb2.SnakeId(id=id))
+        self.stub.SetId(remote_snake_pb2.SnakeId(id=id), wait_for_ready=True, timeout=self.timeout)
 
     @handle_connection_loss
     def set_start_length(self, start_length: int):
@@ -49,7 +60,7 @@ class GRPCProxySnake(ISnake):
     @handle_connection_loss
     def set_init_data(self, env_meta_data: EnvMetaData):
         super().set_init_data(env_meta_data)
-        env_meta_data_proto = remote_snake_pb2.EnvMetaData(
+        env_meta_data_proto = remote_snake_pb2.EnvInitData(
             height=env_meta_data.height,
             width=env_meta_data.width,
             free_value=env_meta_data.free_value,
@@ -70,8 +81,8 @@ class GRPCProxySnake(ISnake):
     @handle_connection_loss
     def update(self, env_step_data: EnvStepData):
         # print(f"{self.target}: Updating")
-        env_step_data_proto = remote_snake_pb2.EnvStepData(
-            map=env_step_data.map,
+        env_step_data_proto = remote_snake_pb2.EnvData(
+            map=env_step_data.map.tobytes(),
             snakes={k: remote_snake_pb2.SnakeRep(is_alive=v["is_alive"], length=v["length"]) for k, v in env_step_data.snakes.items()},
             food_locations=[remote_snake_pb2.Coord(x=coord[0], y=coord[1]) for coord in env_step_data.food_locations] if env_step_data.food_locations else []
         )
@@ -83,7 +94,7 @@ class GRPCProxySnake(ISnake):
 
 
     def __reduce__(self):
-        return (self.__class__, (self.target))
+        return (self.__class__, (self.target, self.timeout))
 
     def __del__(self):
         try:
