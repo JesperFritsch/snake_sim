@@ -27,6 +27,7 @@
     "norm_body": 4,
     "norm_main_head": 5,
     "norm_main_body": 6,
+    "snake_config_key": null,
     "snake_config": {
         "type": "survivor",
         "strategies" : {

@@ -107,7 +107,10 @@ def main():
         except:
             log.debug("No render loop to stop.")
             raise
-        waitable_observer.wait_until_finished()
+        if waitable_observer.has_started():
+            waitable_observer.wait_until_finished()
+        else:
+            log.debug("Loop never started, no need to wait for finish.")
         loop_repeater.close()
 
 if __name__ == '__main__':

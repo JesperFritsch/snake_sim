@@ -140,12 +140,12 @@ class SnakeLoopControl:
             snake_id = self._snake_handler.get_next_snake_id()
             self._snake_proc_mngr.start(
                 id=snake_id,
-                proc_type=SnakeProcType.SHM,
+                proc_type=SnakeProcType.GRPC,
                 snake_config=self._config.snake_config
             )
             target = self._snake_proc_mngr.get_target(snake_id)
             snake = snake_factory.create_snake(
-                proc_type=SnakeProcType.SHM,
+                proc_type=SnakeProcType.GRPC,
                 target=target
             )
             self._snake_handler.add_snake(snake)
@@ -218,7 +218,7 @@ def setup_loop(config) -> SnakeLoopControl:
         start_length=config.start_length,
         external_snake_targets=config.external_snake_targets,
         distributed_snakes=config.distributed_snakes,
-        snake_config=SnakeConfig.from_dict(config.snake_config),
+        snake_config=SnakeConfig.from_dict(config[config.snake_config_key] if config.snake_config_key else config.snake_config),
     )
     if config.command == "game":
         sim_config = GameConfig(

@@ -157,6 +157,7 @@ class SHMProxySnake(ISnake):
 
     @zmq_msg_forwarder
     def kill(self):
+        self._close()
         super().kill()
 
     @zmq_msg_forwarder
@@ -189,10 +190,13 @@ class SHMProxySnake(ISnake):
         env_step_data.map = None
         return self.shm_update(env_step_data)
 
+    def _close(self):
+        self._monitor.close() if self._monitor else None
+        self._socket.close()
+        self._context.term()
+
     def __reduce__(self):
         return (self.__class__, (self._target))
 
     def __del__(self):
-        self._monitor.close() if self._monitor else None
-        self._socket.close()
-        self._context.term()
+        self._close()

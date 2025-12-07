@@ -38,6 +38,7 @@ def add_run_config_arguments(parser):
     parser.add_argument('--external-snake-targets', type=str, nargs='+', help='External snake targets')
     parser.add_argument('--distributed-snakes', action="store_true", help='Run snakes in distributed mode, each snake in its own process', default=False)
     parser.add_argument('--rate-meter', action="store_true", help='Rate meter for steps per second for all snakes combined', default=False)
+    parser.add_argument('--snake-config-key', type=str, help='key in the snake configuration dictionary to use for all snakes')
 
 
 def add_playback_arguments(parser):
