@@ -17,7 +17,7 @@ def test_spatial_network_ablation():
     analyzer = SpatialNetworkAnalyzer(
         snapshot_dir="models/ppo_training",  # Adjust if needed
         base_name="ppo_model",
-        device="cpu"
+        device="cuda"
     )
     results = analyzer.compare_modes(state_batch, ctx_batch)
     for mode, res in results.items():

@@ -12,18 +12,15 @@ from importlib import resources as pkg_resources
 import snake_sim.debugging as debug
 
 from snake_sim.environment.food_handlers import FoodHandler
-from snake_sim.environment.types import DotDict, SnakeConfig, StrategyConfig, SnakeProcType
+from snake_sim.environment.types import DotDict, SnakeConfig, StrategyConfig
 from snake_sim.environment.snake_handlers import SnakeHandler
 from snake_sim.environment.snake_factory import SnakeFactory
 from snake_sim.environment.snake_processes import SnakeProcessManager
 
-from snake_sim.rl.snakes.ppo_snake import PPOSnake
-from snake_sim.snakes.survivor_snake import SurvivorSnake
-from snake_sim.snakes.strategies.utils import apply_strategies
 
 from snake_sim.map_utils.general import get_map_files_mapping
-from snake_sim.loop_observers.file_persist_observer import FilePersistObserver
 from snake_sim.rl.loop_observables.rl_training_loop import RLTrainingLoop
+from snake_sim.rl.snapshot_manager import SNAPSHOT_BASE_DIR
 from snake_sim.rl.environment.rl_snake_env import RLSnakeEnv
 from snake_sim.rl.types import RLTrainingConfig
 from snake_sim.rl.training.ppo_trainer import PPOTrainer
@@ -71,7 +68,7 @@ def setup_training_loop(config: RLTrainingConfig, snapshot_dir: str = None) -> R
     return training_loop
 
 
-def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir: str = None, ppo_count: int = 8, opponent_count: int = 0):
+def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir: str = None, ppo_count: int = 10, opponent_count: int = 0):
     """Add snakes to environment.
 
     Args:
@@ -84,8 +81,8 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
         type='ai_ppo',
         args={
             'snapshot_dir': snapshot_dir,
-            'poll_interval': 1.0,        # fewer reload checks reduces I/O overhead
             'auto_reload': True,
+            'mask_fatal_actions': True,
             'eager_first_load': True,
             'deterministic': False,
             'fast_mode': True,
@@ -122,8 +119,8 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
 def train(config: RLTrainingConfig):
     # Set up snapshot directory for model sharing
     # snapshot_dir = "models/ppo_training_speed_up"
-    snapshot_dir = "models/ppo_training"
-    Path(snapshot_dir).mkdir(parents=True, exist_ok=True)
+    snapshot_dir = "new_food_ctx_no_food_reward"
+    Path(SNAPSHOT_BASE_DIR, snapshot_dir).mkdir(parents=True, exist_ok=True)
     
     trainer = PPOTrainer(snapshot_dir=snapshot_dir)
     trainer.start_background()

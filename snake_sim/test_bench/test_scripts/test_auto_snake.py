@@ -201,22 +201,22 @@ def test_spatial_network_ablation(snake: SnakeBase, s_map, food_locations: List[
 
 # @profile()
 def run_tests(snake: SnakeBase, s_map: np.ndarray, step_state: CompleteStepState):
-    test_recurse_area_check(snake, s_map, Coord(0,-1))
-    test_recurse_area_check(snake, s_map, Coord(0,1))
+    # test_recurse_area_check(snake, s_map, Coord(0,-1))
+    # test_recurse_area_check(snake, s_map, Coord(0,1))
     test_make_choice(snake, s_map, step_state.food)
-    test_area_check(snake, s_map)
+    # test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
-    test_area_check_direction(snake, s_map, Coord(0, -1))
-    test_area_check_direction(snake, s_map, Coord(0, 1))
+    # test_area_check_direction(snake, s_map, Coord(0, -1))
+    # test_area_check_direction(snake, s_map, Coord(0, 1))
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_step_data.food_value, Coord(58, 61))
     # test_get_visitable_tiles(snake, s_map, snake._head_coord)
-    # test_spatial_network_ablation(snake, s_map, step_state.food)
+    test_spatial_network_ablation(snake, s_map, step_state.food)
 
 
 def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, env_meta_data: EnvMetaData):
     snake: SnakeBase = SnakeFactory().create_snake(
-        snake_config=SnakeConfig.from_dict(default_config.snake_config)
+        snake_config=SnakeConfig.from_dict(default_config.ai_snake_config)
         # snake_config=SnakeConfig(
         #     type='survivor',
         #     args={},
@@ -290,7 +290,7 @@ if __name__ == "__main__":
     enable_debug_for('_get_food_dir')
     enable_debug_for('_best_first_search')
 
-    snake_id = 0
+    snake_id = 4
     # snake_id = None
     s_map = create_map(step_state, snake_reps)
 

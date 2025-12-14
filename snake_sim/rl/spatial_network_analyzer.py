@@ -22,7 +22,7 @@ class SpatialNetworkAnalyzer:
         # Create a SnapshotManager factory that builds a model with the correct
         # input channel and context sizes so state_dicts load cleanly.
         sm = SnapshotManager(
-            dir=self.snapshot_dir,
+            dir_name=self.snapshot_dir,
             base_name=self.base_name,
             factory=lambda: model_factory(in_channels, ctx_dim)
         )

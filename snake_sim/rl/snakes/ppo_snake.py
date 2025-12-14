@@ -1,18 +1,16 @@
 import torch
 import numpy as np
 import threading
-import time
 import logging
 from pathlib import Path
 
 from snake_sim.rl.snakes.rl_snake_base import RLSnakeBase
 from snake_sim.rl.types import PPOMetaData, PendingTransition, State
 from snake_sim.rl.state_builder import print_state
-from snake_sim.rl.models.ppo_model import model_factory, SnakePPONet
+from snake_sim.rl.models.ppo_model import model_factory
 from snake_sim.rl.training.rl_data_queue import RLPendingTransitCache
 from snake_sim.rl.constants import ACTION_ORDER_INVERSE
 from snake_sim.rl.snapshot_manager import SnapshotManager
-
 import snake_sim.debugging as debug 
 
 # debug.activate_debug()
@@ -21,24 +19,25 @@ import snake_sim.debugging as debug
 log = logging.getLogger(Path(__file__).stem)
 
 class PPOSnake(RLSnakeBase):
-    """A snake controlled by a Proximal Policy Optimization (PPO) agent with optional snapshot hot-reload.
+    """A snake controlled by a Proximal Policy Optimization (PPO) agent with watchdog-based hot-reload.
 
     Parameters:
-        snapshot_dir: Directory where trainer saves snapshots (<base>_step*.pt). If provided, snake polls for newer weights.
-        snapshot_base_name: Base prefix used by trainer (default 'ppo_model'). Used only for documentation; discovery is pattern-based.
-        poll_interval: Seconds between polling attempts.
-        auto_reload: Enable background polling thread when True.
+        snapshot_dir: Directory where trainer saves snapshots (<base>_step*.pt). Watchdog monitors for instant reload.
+        snapshot_base_name: Base prefix used by trainer (default 'ppo_model').
+        auto_reload: Enable watchdog monitoring for instant model reload when True.
         eager_first_load: Attempt immediate load of latest snapshot before first action if True.
-        deterministic: If True, use argmax (best action). If False, sample from distribution (exploration). Default False for training.
+        deterministic: If True, use argmax (best action). If False, sample from distribution (exploration).
+        fast_mode: Enable inference optimizations (channels_last, TorchScript) on CUDA.
+        use_half: Convert model and inputs to FP16 for faster inference on CUDA.
     """
 
     def __init__(
         self,
         *,
-        snapshot_dir: str | None = None,
+        snapshot_dir: str,
         snapshot_base_name: str = 'ppo_model',
-        poll_interval: float = 30.0,
-        auto_reload: bool = True,  # Re-enabled for model weight updates
+        mask_fatal_actions: bool = True,
+        auto_reload: bool = True,
         eager_first_load: bool = True,
         deterministic: bool = True,  # Set True for deployment/evaluation
         fast_mode: bool = True,  # Enable inference speed optimizations
@@ -50,23 +49,20 @@ class PPOSnake(RLSnakeBase):
         self._model = None  # type: torch.nn.Module | None
         self._pending_cache = RLPendingTransitCache()
         self._transition_counter = 0
+        self._mask_fatal_actions = mask_fatal_actions
         # Snapshot manager for hot-reload
         self._snapshot_manager: SnapshotManager | None = None
-        if snapshot_dir:
-            # Snapshot manager factory will be replaced once first state encountered
-            def model_creator():
-                return model_factory(5, 0)  # Placeholder dims; overwritten on first ensure
-            self._snapshot_manager = SnapshotManager(
-                dir=snapshot_dir,
-                base_name=snapshot_base_name,
-                factory=model_creator
-            )
-        self._poll_interval = poll_interval
+        # Snapshot manager factory will be replaced once first state encountered
+        def model_creator():
+            return model_factory(5, 0)  # Placeholder dims; overwritten on first ensure
+        self._snapshot_manager = SnapshotManager(
+            dir_name=snapshot_dir,
+            base_name=snapshot_base_name,
+            factory=model_creator
+        )
         self._auto_reload = auto_reload and (self._snapshot_manager is not None)
         self._eager_first_load = eager_first_load
         self._deterministic = deterministic
-        self._reload_thread: threading.Thread | None = None
-        self._reload_running = False
         self._hot_reload_lock = threading.Lock()
         self._fast_mode = fast_mode and (self._device.type == 'cuda')
         self._use_half = use_half and (self._device.type == 'cuda')
@@ -113,29 +109,31 @@ class PPOSnake(RLSnakeBase):
             self._snapshot_manager.factory = model_creator
             if self._eager_first_load:
                 self._try_load_latest()
-        if self._auto_reload and not self._reload_running:
-            self._start_reload_thread()
+            if self._auto_reload:
+                self._snapshot_manager.start_watching(on_new_snapshot=self._on_snapshot_update)
+                log.info(f"🔄 PPOSnake {self.get_id()}: Watchdog monitoring for instant model reload")
 
     # ---- Snapshot reload helpers ----
-    def _start_reload_thread(self):
-        self._reload_running = True
-
-        def _runner():
-            while self._reload_running:
-                try:
-                    self._try_load_latest()
-                except Exception:
-                    pass  # suppress transient I/O or partial write issues
-                time.sleep(self._poll_interval)
-
-        self._reload_thread = threading.Thread(target=_runner, name=f"ppo_snake_reload_{self.get_id()}", daemon=True)
-        self._reload_thread.start()
-
     def stop_reload(self):
-        self._reload_running = False
-        if self._reload_thread is not None:
-            self._reload_thread.join(timeout=1.0)
-            self._reload_thread = None
+        """Stop watchdog monitoring."""
+        if self._snapshot_manager:
+            self._snapshot_manager.stop_watching()
+    
+    def _on_snapshot_update(self):
+        """Callback invoked by watchdog when a new snapshot is detected."""
+        if not self._model:
+            return
+        
+        try:
+            with self._hot_reload_lock:
+                result = self._snapshot_manager.reload_into(self._model)
+                if result:
+                    self._model.eval()
+                    if self._snapshot_manager._last_loaded:
+                        step = self._snapshot_manager._last_loaded.step
+                        log.debug(f"⚡ PPOSnake {self.get_id()}: Hot-reloaded weights at step {step}")
+        except Exception as e:
+            log.warning(f"Failed to reload snapshot in callback: {e}")
 
     def _try_load_latest(self) -> bool:
         if not self._snapshot_manager or not self._model:
@@ -172,17 +170,21 @@ class PPOSnake(RLSnakeBase):
             with self._hot_reload_lock:
                 logits, value = self._model(batch_in)
         logits = logits.float()  # stable distribution math
-        action_mask = state.meta.get('action_mask')
-        if action_mask is None:
-            raise ValueError("action_mask missing in state.meta; ensure adapter ran")
-        mask_tensor = torch.from_numpy(action_mask).to(logits.device)
+        if self._mask_fatal_actions:
+            action_mask = state.meta.get('action_mask')
+            if action_mask is None:
+                raise ValueError("action_mask missing in state.meta; ensure adapter ran")
+            mask_tensor = torch.from_numpy(action_mask).to(logits.device)
 
-        valid_count = int(mask_tensor.sum().item())
-        masked_logits = logits.clone()
-        if valid_count > 0:
-            masked_logits = masked_logits.masked_fill(mask_tensor.unsqueeze(0) == 0, float('-inf'))
-            dist = torch.distributions.Categorical(logits=masked_logits.squeeze(0))
+            valid_count = int(mask_tensor.sum().item())
+            masked_logits = logits.clone()
+            if valid_count > 0:
+                masked_logits = masked_logits.masked_fill(mask_tensor.unsqueeze(0) == 0, float('-inf'))
+                dist = torch.distributions.Categorical(logits=masked_logits.squeeze(0))
+            else:
+                dist = torch.distributions.Categorical(logits=logits.squeeze(0))
         else:
+            valid_count = -1  # masking disabled
             dist = torch.distributions.Categorical(logits=logits.squeeze(0))
         
         debug.debug_print(f"PPO Snake {self.get_id()} logits:", logits.cpu().numpy())

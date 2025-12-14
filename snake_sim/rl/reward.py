@@ -117,7 +117,7 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
             food_dist1 = None
             food_dist2 = None
         survival_chance_reward = _survival_chance_reward(best_area_checks.get(s_id))
-        food_reward = _food_approach_reward(food_dist1, food_dist2)
+        food_reward = 0 #_food_approach_reward(food_dist1, food_dist2)
         did_eat_reward = _food_eat_reward(did_eat)
         length_reward = _length_reward(
             len(state1.snake_bodies[s_id]),
@@ -189,7 +189,7 @@ def _survival_chance_reward(area_check: AreaCheckResult) -> float:
 def _survival_reward(still_alive: bool, current_length: int = 2) -> float:
     if not still_alive:
         # Fixed death penalty - prevents "die early before penalty grows" incentive
-        return -2.0  # Scaled down from -20.0
+        return -0.0  # Scaled down from -20.0
     else:
         # Small reward scaling with length - bigger snakes get more for surviving
         # This encourages growth without making looping optimal

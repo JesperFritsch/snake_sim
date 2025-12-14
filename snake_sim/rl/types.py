@@ -55,8 +55,8 @@ class RLTransitionData:
     snake_id: int
     next_state: State
     meta: RLMetaData
+    episode_id: int
     done: bool = False
-    episode_id: Optional[int] = None
     transition_id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
 
