@@ -15,7 +15,7 @@ import torch.nn.functional as F
 
 from snake_sim.rl.training.rl_data_queue import RLMetaDataQueue
 from snake_sim.rl.types import RLTransitionData, PPOMetaData, State
-from snake_sim.rl.snapshot_manager import SnapshotManager
+from snake_sim.rl.snapshot_manager import SnapshotManager, SNAPSHOT_BASE_DIR
 from snake_sim.rl.state_builder import print_channel
 from snake_sim.rl.models.ppo_model import model_factory
 
@@ -28,15 +28,16 @@ rl_data_queue = RLMetaDataQueue()
 class PPOTrainerConfig:
     gamma: float = 0.99
     lam: float = 0.95  # GAE lambda
-    clip_range: float = 0.3  # INCREASED from 0.2 - allow bigger policy updates
-    policy_lr: float = 1e-4  # LOWERED for stability - prevent policy collapse
-    value_lr: float = 3e-4   # LOWERED for stability - was destroying learned values
-    minibatch_size: int = 256 
-    entropy_coef: float = 0.02  # INCREASED from 0.01 - need some exploration
+    clip_range: float = 0.2  # Tighten PPO policy clip range for stability
+    policy_lr: float = 1e-4  # Policy learning rate
+    value_lr: float = 1e-4   # Lower critic LR to prevent value explosions
+    minibatch_size: int = 64  # Size of each minibatch during training
+    rollout_size: int = 2048  # INCREASED - collect more before training (was 2048)
+    train_epochs: int = 1  # Number of times to iterate over collected data
+    entropy_coef: float = 0.015  # Slightly lower entropy to reduce overly random updates
     value_coef: float = 0.5     # Reduced from 1.0 to stabilize value function
     max_grad_norm: float = 0.5
     device: str = 'auto'
-    snapshot_dir: Optional[str] = None  # directory of model snapshots
     snapshot_base_name: str = 'ppo_model'
     save_every_updates: int = 1  # save snapshot after this many successful updates
     # Adaptive exploration - DISABLED by setting unreachable patience
@@ -45,11 +46,18 @@ class PPOTrainerConfig:
     max_entropy_coef: float = 0.05  # REDUCED - don't let it get too random
     # Policy collapse prevention
     # KL / policy stability controls
-    kl_target: float = 0.8  # Relaxed (was 0.5) to allow larger early improvements
+    kl_target: float = 0.1  # Lower target; used for warnings (approximate KL proxy)
     enable_early_stopping: bool = True  # Stop epochs early if policy changes too much
+    # Only train on complete episodes (recommended for episodic tasks)
+    require_complete_episodes: bool = True
     # Performance / acceleration toggles
     use_amp: bool = True  # Mixed precision training (CUDA only)
-    compile_model: bool = True  # torch.compile for model speedup (PyTorch 2+)
+    compile_model: bool = False  # torch.compile (not supported on Python 3.14+)
+    # GPU optimization
+    pin_memory: bool = True  # Pin memory for faster CPU->GPU transfer
+    num_workers: int = 4  # Number of data loading workers (if using DataLoader)
+    # Critic stability: clip value updates similar to PPO value clip
+    vf_clip_range: float = 0.2
 
 
 class PPOTrainer:
@@ -116,10 +124,7 @@ class PPOTrainer:
     
     def _setup_csv_logging(self):
         """Setup CSV file for logging training statistics."""
-        if self._snapshot_dir:
-            csv_dir = Path(self._snapshot_dir)
-        else:
-            csv_dir = Path("models/training_logs")
+        csv_dir = Path(SNAPSHOT_BASE_DIR, self._snapshot_dir)
         
         csv_dir.mkdir(parents=True, exist_ok=True)
         
@@ -221,17 +226,15 @@ class PPOTrainer:
         ], eps=1e-5)
         log.info(f"Initialized optimizer with policy_lr={self.cfg.policy_lr} value_lr={self.cfg.value_lr}")
         
-        # Setup snapshot manager if directory provided
-        if self._snapshot_dir:
-            def model_creator():
-                return model_factory(in_channels, ctx_dim)
-            self._snapshot_manager = SnapshotManager(
-                dir=self._snapshot_dir,
-                base_name=self.cfg.snapshot_base_name,
-                factory=model_creator
-            )
-            # Try to load latest snapshot
-            self._try_load_latest_snapshot()
+        def model_creator():
+            return model_factory(in_channels, ctx_dim)
+        self._snapshot_manager = SnapshotManager(
+            dir_name=self._snapshot_dir,
+            base_name=self.cfg.snapshot_base_name,
+            factory=model_creator
+        )
+        # Try to load latest snapshot
+        self._try_load_latest_snapshot()
         
         log.info(f"PPOTrainer created model: {in_channels} channels, {ctx_dim} context dims")
 
@@ -315,13 +318,13 @@ class PPOTrainer:
             if success and self._snapshot_manager._last_loaded:
                 loaded_info = self._snapshot_manager._last_loaded
                 self._update_counter = loaded_info.step
-                log.info(f"📁 Loaded snapshot from {loaded_info.path}, resuming from step {self._update_counter}")
+                log.debug(f"📁 Loaded snapshot from {loaded_info.path}, resuming from step {self._update_counter}")
                 # Also load optimizer states if available
                 data = torch.load(loaded_info.path, map_location=self.device)
                 if isinstance(data, dict):
                     if 'optimizer' in data and self.optimizer:
                         self.optimizer.load_state_dict(data['optimizer'])
-                        log.info("📈 Restored optimizer state")
+                        log.debug("📈 Restored optimizer state")
         except Exception as e:
             log.warning(f"Failed to load snapshot: {e}")
 
@@ -367,10 +370,16 @@ class PPOTrainer:
     def train(self):
         """Run one PPO training cycle if enough data accumulated.
 
+        Proper PPO workflow:
+        1. Collect complete episodes until we have rollout_size transitions
+        2. Compute advantages for each complete episode
+        3. Train on the collected data for multiple epochs
+        4. Split data into minibatches during training for efficiency
+
         Returns training stats dict or None if insufficient data.
         """
         with self._train_lock:
-            if rl_data_queue.size() < self.cfg.minibatch_size:
+            if rl_data_queue.size() < self.cfg.rollout_size:
                 return None  # Not enough yet – keep accumulating
             transitions = rl_data_queue.get_transitions()
             if not transitions:
@@ -379,19 +388,85 @@ class PPOTrainer:
             # Initialize model lazily from first transition
             self._ensure_model(transitions[0].state)
             
+            # Group transitions by (snake_id, episode_id) to form trajectories
             traj_map: Dict[Tuple[str, str], List[RLTransitionData]] = {}
             for t in transitions:
-                snake_id = t.snake_id or 'snake'
-                episode_id = t.episode_id or 'episode'
+                snake_id = t.snake_id
+                episode_id = t.episode_id
                 traj_map.setdefault((snake_id, episode_id), []).append(t)
+            
+            # Sort each trajectory by transition number
             for k in traj_map:
                 traj_map[k].sort(key=lambda x: x.transition_nr)
+            
             all_trajs = list(traj_map.values())
+            
+            # Filter to only complete episodes if configured
+            if self.cfg.require_complete_episodes:
+                complete_trajs = [traj for traj in all_trajs if traj[-1].done]
+                incomplete_trajs = [traj for traj in all_trajs if not traj[-1].done]
+                
+                if incomplete_trajs:
+                    # Put incomplete trajectories back in queue for later
+                    for traj in incomplete_trajs:
+                        for t in traj:
+                            rl_data_queue.add_transition(t)
+                    log.debug(f"Kept {len(incomplete_trajs)} incomplete trajectories in queue")
+                
+                if not complete_trajs:
+                    log.debug("No complete episodes yet, waiting for more data")
+                    return None
+                
+                all_trajs = complete_trajs
+            
+            for traj in all_trajs:
+                snake_id = traj[0].snake_id
+                episode_id = traj[0].episode_id
+                traj_length = len(traj)
+                log.info(f"Processing trajectory: snake_id={snake_id}, episode_id={episode_id}, length={traj_length}")
+
+            # Compute GAE advantages for each trajectory
             for traj in all_trajs:
                 self._compute_gae(traj)
+            
+            # Flatten all trajectories into one list for training
             processed = [t for traj in all_trajs for t in traj]
-            batch = self._collate_batch(processed)
-            stats = self._ppo_update(batch)
+
+            # Allow training on smaller batches if we have at least one full trajectory.
+            # This prevents throwing away useful data when it's just under the configured minibatch size.
+            if len(processed) == 0:
+                log.debug("No transitions available to train on yet")
+                return None
+            
+            log.info(f"Training on {len(processed)} transitions from {len(all_trajs)} complete episodes")
+            
+            # Train for multiple epochs on the collected data
+            stats = None
+            for epoch in range(self.cfg.train_epochs):
+                # Shuffle data each epoch
+                np.random.shuffle(processed)
+                
+                # Split into minibatches and train
+                # Always perform at least one minibatch; if data is scarce, use the whole set once.
+                num_minibatches = max(1, len(processed) // self.cfg.minibatch_size)
+                for mb_idx in range(num_minibatches):
+                    if len(processed) < self.cfg.minibatch_size:
+                        # Single smaller batch (use all data)
+                        minibatch = processed
+                    else:
+                        start_idx = mb_idx * self.cfg.minibatch_size
+                        end_idx = start_idx + self.cfg.minibatch_size
+                        minibatch = processed[start_idx:end_idx]
+                    
+                    batch = self._collate_batch(minibatch)
+                    epoch_stats = self._ppo_update(batch, epoch=epoch)
+                    
+                    # Keep stats from last minibatch for logging
+                    if epoch_stats:
+                        stats = epoch_stats
+                        stats['epoch'] = epoch
+                        stats['minibatch'] = mb_idx
+            
             return stats
 
     # ---- Core Steps ----
@@ -500,17 +575,23 @@ class PPOTrainer:
                 raise ValueError(f"action_features shape {af.shape} mismatch; expected ({exp_actions},{exp_feat_dim})")
             action_feats_list.append(af)
 
-        map_batch = torch.from_numpy(np.stack(maps_np)).float().to(self.device)
-        ctx_batch = torch.from_numpy(np.stack(ctx_all)).float().to(self.device)
-        af_batch = torch.from_numpy(np.stack(action_feats_list)).float().to(self.device)
+        # Use non-blocking transfers for better GPU utilization
+        map_batch = torch.from_numpy(np.stack(maps_np)).float().to(self.device, non_blocking=True)
+        ctx_batch = torch.from_numpy(np.stack(ctx_all)).float().to(self.device, non_blocking=True)
+        af_batch = torch.from_numpy(np.stack(action_feats_list)).float().to(self.device, non_blocking=True)
         return {'map': map_batch, 'ctx': ctx_batch, 'action_features': af_batch}
     # ---- Forward & Update ----
     def _forward(self, state_batch):
         logits, value = self.model(state_batch)
         return logits, value.squeeze(-1)
 
-    def _ppo_update(self, batch: Dict):
-        """Single-pass PPO update (epochs removed for stability)."""
+    def _ppo_update(self, batch: Dict, epoch: int = 0):
+        """Single minibatch PPO update.
+        
+        Args:
+            batch: Dictionary containing states, actions, advantages, returns, etc.
+            epoch: Current training epoch (for logging)
+        """
         self.model.train()
 
         states = batch['states']  # dict of batched tensors
@@ -566,9 +647,15 @@ class PPOTrainer:
         surr1 = ratio * shuffled_advantages
         surr2 = torch.clamp(ratio, 1 - self.cfg.clip_range, 1 + self.cfg.clip_range) * shuffled_advantages
         policy_loss = -torch.mean(torch.min(surr1, surr2))
-        value_loss = F.mse_loss(values, shuffled_returns)
 
-        if value_loss.item() > 100.0:
+        # PPO-style value clipping: stabilize critic by limiting per-update delta
+        values_old = values.detach()
+        values_clipped = values_old + torch.clamp(values - values_old, -self.cfg.vf_clip_range, self.cfg.vf_clip_range)
+        value_loss_unclipped = F.mse_loss(values, shuffled_returns)
+        value_loss_clipped = F.mse_loss(values_clipped, shuffled_returns)
+        value_loss = torch.max(value_loss_unclipped, value_loss_clipped)
+
+        if value_loss.item() > 20.0:
             log.error(f"🚨 VALUE FUNCTION EXPLOSION: loss={value_loss.item():.2f}")
             log.error(f"   Value predictions - min: {values.min().item():.2f}, max: {values.max().item():.2f}, mean: {values.mean().item():.2f}")
             log.error(f"   Return targets - min: {shuffled_returns.min().item():.2f}, max: {shuffled_returns.max().item():.2f}, mean: {shuffled_returns.mean().item():.2f}")
@@ -768,7 +855,7 @@ class PPOTrainer:
         self._bg_running = True
 
         def _runner():
-            log.info("Background PPO training thread started")
+            log.debug("Background PPO training thread started")
             last_stats_time = time.time()
             stats_interval = 10.0  # Print stats every 10 seconds
             
@@ -783,10 +870,6 @@ class PPOTrainer:
                 if stats:
                     try:
                         current_time = time.time()
-                        
-                        # Detect policy collapse
-                        if stats['returns_mean'] < -10.0:
-                            log.error(f"🚨 POLICY COLLAPSE WARNING: Return={stats['returns_mean']:.3f}")
                         
                         # Brief update log
                         log.info(f"Update {stats['update']}: "
@@ -846,7 +929,7 @@ class PPOTrainer:
                 model=self.model,
                 optimizers=optimizers
             )
-            log.info(f"Saved snapshot {path}")
+            log.debug(f"Saved snapshot {path}")
             # Prune old snapshots (keep last 5)
             self._snapshot_manager.prune(keep_last=5)
         except Exception as e:
@@ -858,7 +941,7 @@ class PPOTrainer:
             try:
                 self._csv_file.flush()
                 self._csv_file.close()
-                log.info("📝 Training statistics CSV file closed")
+                log.debug("📝 Training statistics CSV file closed")
             except Exception as e:
                 log.warning(f"Failed to close CSV file: {e}")
         

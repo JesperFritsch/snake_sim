@@ -40,8 +40,9 @@
     "ai_snake_config": {
         "type": "ai_ppo",
         "args": {
-            "snapshot_dir": "models/ppo_training_no_map",
-            "poll_interval": 30.0,
+            "snapshot_dir": "new_food_ctx",
+            "mask_fatal_actions": true,
+            "deterministic": true,
             "auto_reload": true,
             "eager_first_load": true
         }

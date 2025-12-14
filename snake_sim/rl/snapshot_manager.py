@@ -6,6 +6,7 @@ Features:
   - Optional retention: prune older snapshots beyond a keep-last N.
   - Change detection: can check if a new snapshot appeared since last load.
   - Supports optimizer state persistence (optional) for trainer continuity.
+  - Watchdog integration: immediate notification when new snapshots are created (optional).
 
 Filename convention: <base_name>_step<STEP>.pt (same as model_snapshot).
 
@@ -18,7 +19,12 @@ Trainer side:
   sm.save(step=global_update, model=model, policy_state=True, optimizers={'policy': opt1, 'value': opt2})
   sm.prune(keep_last=5)
 
-Agent side (periodic polling):
+Agent side (with watchdog - immediate reload):
+  sm = SnapshotManager(dir="models/ppo", base_name="ppo_model", factory=create_model)
+  model = sm.init_or_load(device)
+  sm.start_watching(on_new_snapshot=lambda: sm.reload_into(model))
+
+Agent side (periodic polling - legacy):
   sm = SnapshotManager(dir="models/ppo", base_name="ppo_model", factory=create_model)
   model = sm.init_or_load(device)
   while running:
@@ -38,10 +44,17 @@ from pathlib import Path
 from typing import Optional, Dict, Callable
 import time
 import torch
+import threading
+from importlib import resources
+
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
 from snake_sim.rl.model_snapshot import find_latest_snapshot, atomic_save
 
 log = logging.getLogger(Path(__file__).stem)
+logging.getLogger('watchdog').setLevel(logging.WARNING)
+SNAPSHOT_BASE_DIR = Path(resources.files('snake_sim') / 'rl' / 'models_snapshots')
 
 @dataclass
 class LoadedSnapshot:
@@ -50,12 +63,52 @@ class LoadedSnapshot:
     timestamp: float
 
 
+class _SnapshotFileHandler(FileSystemEventHandler):
+    """Watchdog handler for snapshot file changes."""
+    
+    def __init__(self, manager: 'SnapshotManager'):
+        self.manager = manager
+    
+    def on_created(self, event: FileSystemEvent):
+        """Called when a file is created."""
+        if event.is_directory:
+            return
+        
+        path = Path(event.src_path)
+        # Check if this is a snapshot file (not a temp file)
+        if path.suffix == '.pt' and '_step' in path.name and not path.name.startswith('.'):
+            # Extract step to verify it's our snapshot
+            step = self.manager._extract_step(path)
+            if step is not None and path.name.startswith(self.manager.base_name):
+                log.debug(f"📁 Watchdog detected new snapshot: {path.name} (step {step})")
+                self.manager._notify_callbacks()
+    
+    def on_moved(self, event: FileSystemEvent):
+        """Called when a file is moved (atomic rename completion)."""
+        if event.is_directory:
+            return
+        
+        dest_path = Path(event.dest_path)
+        # Check if destination is a snapshot file
+        if dest_path.suffix == '.pt' and '_step' in dest_path.name and not dest_path.name.startswith('.'):
+            step = self.manager._extract_step(dest_path)
+            if step is not None and dest_path.name.startswith(self.manager.base_name):
+                log.debug(f"📁 Watchdog detected snapshot completion: {dest_path.name} (step {step})")
+                self.manager._notify_callbacks()
+
+
 class SnapshotManager:
-    def __init__(self, dir: str | Path, base_name: str, factory: Callable[[], torch.nn.Module]):
-        self.dir = Path(dir)
+    def __init__(self, dir_name: str | Path, base_name: str, factory: Callable[[], torch.nn.Module]):
+        self.dir = Path(SNAPSHOT_BASE_DIR, dir_name)
         self.base_name = base_name
         self.factory = factory
         self._last_loaded: Optional[LoadedSnapshot] = None
+        
+        # Watchdog support
+        self._observer = None
+        self._callbacks: list[Callable[[], None]] = []
+        self._callback_lock = threading.Lock()
+        self._watching = False
 
     # ---- Loading ----
     def init_or_load(self, device: torch.device) -> torch.nn.Module:
@@ -83,7 +136,7 @@ class SnapshotManager:
         return True
 
     def _load_path_into(self, path: Path, model: torch.nn.Module, step: int):
-        log.info(f"Loading snapshot from {path} at step {step}")
+        log.debug(f"Loading snapshot from {path} at step {step}")
         data = torch.load(path, map_location=model.device if hasattr(model, 'device') else 'cpu')
         if isinstance(data, dict) and 'policy_state' in data:
             state_dict = data['policy_state']
@@ -112,6 +165,82 @@ class SnapshotManager:
         """Get information about the last successfully loaded snapshot."""
         return self._last_loaded
 
+    # ---- Watchdog Integration ----
+    def start_watching(self, on_new_snapshot: Optional[Callable[[], None]] = None) -> bool:
+        """Start watching the snapshot directory for new files using watchdog.
+        
+        Args:
+            on_new_snapshot: Optional callback to invoke when a new snapshot is detected.
+                           If provided, it will be added to the callback list.
+        
+        Returns:
+            True if watching started successfully, False if already watching.
+        """
+        if self._watching:
+            log.debug("Watchdog already watching")
+            if on_new_snapshot:
+                self.add_callback(on_new_snapshot)
+            return True
+        
+        # Ensure directory exists
+        self.dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create observer and handler
+        self._observer = Observer()
+        handler = _SnapshotFileHandler(self)
+        self._observer.schedule(handler, str(self.dir), recursive=False)
+        
+        if on_new_snapshot:
+            self.add_callback(on_new_snapshot)
+        
+        self._observer.start()
+        self._watching = True
+        log.info(f"👀 Watchdog started monitoring: {self.dir}")
+        return True
+    
+    def stop_watching(self):
+        """Stop the watchdog observer."""
+        if not self._watching or self._observer is None:
+            return
+        
+        self._observer.stop()
+        self._observer.join(timeout=2.0)
+        self._observer = None
+        self._watching = False
+        log.info("👀 Watchdog stopped")
+    
+    def add_callback(self, callback: Callable[[], None]):
+        """Add a callback to be invoked when a new snapshot is detected.
+        
+        Args:
+            callback: Function to call when new snapshot appears.
+        """
+        with self._callback_lock:
+            if callback not in self._callbacks:
+                self._callbacks.append(callback)
+                log.debug(f"Added snapshot callback: {callback.__name__ if hasattr(callback, '__name__') else 'lambda'}")
+    
+    def remove_callback(self, callback: Callable[[], None]):
+        """Remove a callback from the notification list.
+        
+        Args:
+            callback: Function to remove from callbacks.
+        """
+        with self._callback_lock:
+            if callback in self._callbacks:
+                self._callbacks.remove(callback)
+    
+    def _notify_callbacks(self):
+        """Notify all registered callbacks about a new snapshot."""
+        with self._callback_lock:
+            callbacks = self._callbacks.copy()
+        
+        for callback in callbacks:
+            try:
+                callback()
+            except Exception as e:
+                log.error(f"Error in snapshot callback: {e}", exc_info=True)
+
     # ---- Retention ----
     def prune(self, keep_last: int = 5):
         if keep_last <= 0:
@@ -139,3 +268,8 @@ class SnapshotManager:
             except ValueError:
                 return None
         return None
+    
+    # ---- Cleanup ----
+    def __del__(self):
+        """Cleanup watchdog observer on deletion."""
+        self.stop_watching()

@@ -152,17 +152,6 @@ class RLTrainingLoop(SimLoop):
             # Calculate episode metrics
             episode_duration = time.time() - self._episode_start_time
             
-            # Log episode completion
-            if episode % 10 == 0 or episode < 10:  # Log more frequently at start
-                log.info(f"Episode {episode}/{self._config.episodes} completed in {episode_duration:.2f}s, "
-                       f"steps: {self._steps}")
-            
-            # Log progress milestones
-            if episode % 50 == 0 and episode > 0:
-                progress_pct = 100 * episode / self._config.episodes
-                log.info(f"🎯 Training Progress: {episode}/{self._config.episodes} episodes "
-                       f"({progress_pct:.1f}%) completed")
-            
             # Reset for next episode
             self._reset()
             

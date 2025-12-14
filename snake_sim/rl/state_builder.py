@@ -8,7 +8,7 @@ import math
 import numpy as np
 
 
-from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles
+from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles, distance_to_tile_with_value
 from snake_sim.cpp_bindings.area_check import AreaChecker
 from snake_sim.map_utils.general import print_map
 from snake_sim.environment.types import EnvMetaData, EnvStepData, Coord, AreaCheckResult
@@ -283,19 +283,44 @@ class DirectionHintsAdapter:
 
     def _create_close_food_ctx(self, env_data: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> np.ndarray:
         ctx = _clean_dir_ctx()
-        for rot in (True, False):
-            dir_tuple = get_dir_to_tile(
+        distances = {}
+        visitable_tiles = _get_visitable_tiles(
+            step_data.map,
+            env_data,
+            snake_ctx.head
+        )
+        for tile in visitable_tiles:
+            distance = distance_to_tile_with_value(
                 step_data.map,
                 env_data.width,
                 env_data.height,
-                snake_ctx.head,
+                tile,
                 env_data.food_value,
                 [env_data.free_value, env_data.food_value],
-                clockwise=rot
             )
-            action_idx = consts.ACTION_ORDER.get(dir_tuple)
-            if action_idx is not None:
-                ctx[action_idx] = 1.0
+            distances[tile] = distance
+        dist_sum = sum([d for d in distances.values() if d >= 0])
+        for c_dir, index in consts.ACTION_ORDER.items():
+            distance = distances.get(snake_ctx.head + c_dir, -1)
+            if dist_sum <= 0 or distance == -1:
+                food_hint = 0.0
+            else:
+                food_hint = 1.0 - (distance / dist_sum)
+            ctx[index] = food_hint
+
+        # for rot in (True, False):
+        #     dir_tuple = get_dir_to_tile(
+        #         step_data.map,
+        #         env_data.width,
+        #         env_data.height,
+        #         snake_ctx.head,
+        #         env_data.food_value,
+        #         [env_data.free_value, env_data.food_value],
+        #         clockwise=rot
+        #     )
+        #     action_idx = consts.ACTION_ORDER.get(dir_tuple)
+        #     # if action_idx is not None:
+        #     #     ctx[action_idx] = 1.0
         return ctx
 
 
@@ -308,7 +333,7 @@ class ActionMaskAdapter:
         mask = _clean_dir_ctx()
         area_ctx = state.meta['area_ctx']
         for coord, action_idx in consts.ACTION_ORDER.items():
-            if area_ctx[action_idx] >= 0.0:  # area is accessible
+            if area_ctx[action_idx] >= 0.0 or True:  # area is accessible
                 mask[action_idx] = 1.0
 
         state.meta['action_mask'] = mask
