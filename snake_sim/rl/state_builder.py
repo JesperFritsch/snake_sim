@@ -161,9 +161,10 @@ class BaseStateBuilder:
 
 
 class CompleteStateBuilder:
-    def __init__(self, base_builder: BaseStateBuilder, adapters: List[IStateAdapter]=[]):
+    def __init__(self, base_builder: BaseStateBuilder, adapters: List[IStateAdapter]=[], fixed_shuffle_features: bool = False):
         self.base_builder = base_builder
         self.adapters = adapters
+        self.fixed_shuffle_features = fixed_shuffle_features
 
     def get_channels_and_ctx_size(self, env_meta: EnvMetaData) -> int:
         """Calculate total channels + ctx size after applying adapters."""
@@ -173,7 +174,8 @@ class CompleteStateBuilder:
             if adapter.name == 'direction_hints':
                 adapter_ctx += len(consts.ACTION_ORDER) * 3  # area_ctx, safety_ctx, close_food_ctx
             elif adapter.name == 'action_mask':
-                adapter_ctx += len(consts.ACTION_ORDER)  # action_mask
+                # Masking removed; no additional ctx needed
+                adapter_ctx += 0
         return base_channels + adapter_ctx
         
     def build(self, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> State:
@@ -184,10 +186,16 @@ class CompleteStateBuilder:
         area_ctx = state.meta['area_ctx']  # shape (A,)
         safety_ctx = state.meta['safety_ctx']  # shape (A,)
         food_ctx = state.meta['close_food_ctx']  # shape (A,)
-        mask_ctx = state.meta['action_mask']  # shape (A,)
-        action_features = np.stack([area_ctx, safety_ctx, food_ctx, mask_ctx], axis=1).astype(np.float32)
-        state.meta['action_features'] = action_features  # (A, 4)
-        state.meta['action_feature_names'] = ['margin_frac', 'safety_hint', 'food_hint', 'valid_mask']
+        # Masking removed from action features; use three-element vector
+        action_features = np.stack([area_ctx, safety_ctx, food_ctx], axis=1).astype(np.float32)
+        # TEST: Fixed shuffle of action_features to break action-index hardwiring
+        # Reverses the order: action 0 gets features of action 3, etc.
+        # Preserves correlations but tests if model relies on absolute action positions
+        if self.fixed_shuffle_features:
+            # Reverse along action axis, then make a contiguous copy to avoid negative strides
+            action_features = action_features[::-1].copy()
+        state.meta['action_features'] = action_features  # (A, 3)
+        state.meta['action_feature_names'] = ['margin_frac', 'safety_hint', 'food_hint']
         return state
 
 
@@ -305,37 +313,10 @@ class DirectionHintsAdapter:
             if dist_sum <= 0 or distance == -1:
                 food_hint = 0.0
             else:
-                food_hint = 1.0 - (distance / dist_sum)
+                food_hint = 0.5 + (0.5 - (distance / dist_sum) / 2)
             ctx[index] = food_hint
 
-        # for rot in (True, False):
-        #     dir_tuple = get_dir_to_tile(
-        #         step_data.map,
-        #         env_data.width,
-        #         env_data.height,
-        #         snake_ctx.head,
-        #         env_data.food_value,
-        #         [env_data.free_value, env_data.food_value],
-        #         clockwise=rot
-        #     )
-        #     action_idx = consts.ACTION_ORDER.get(dir_tuple)
-        #     # if action_idx is not None:
-        #     #     ctx[action_idx] = 1.0
         return ctx
 
 
-class ActionMaskAdapter:
-    name = 'action_mask'
-
-    def apply(self, state: State, step_data: EnvStepData, env_meta: EnvMetaData, snake_ctx: SnakeContext) -> None:
-        """ Compute a mask where all actions that are safe are one, and the rest are zero. """
-
-        mask = _clean_dir_ctx()
-        area_ctx = state.meta['area_ctx']
-        for coord, action_idx in consts.ACTION_ORDER.items():
-            if area_ctx[action_idx] >= 0.0 or True:  # area is accessible
-                mask[action_idx] = 1.0
-
-        state.meta['action_mask'] = mask
-        state.meta.setdefault('context_order', [])  # ensure exists
-        state.meta.setdefault('adapters', []).append(self.name)
+# ActionMaskAdapter removed: masking is disabled; policy learns safety from features

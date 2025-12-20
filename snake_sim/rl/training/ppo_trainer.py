@@ -28,10 +28,10 @@ rl_data_queue = RLMetaDataQueue()
 class PPOTrainerConfig:
     gamma: float = 0.99
     lam: float = 0.95  # GAE lambda
-    clip_range: float = 0.2  # Tighten PPO policy clip range for stability
+    clip_range: float = 0.3  # Tighten PPO policy clip range for stability
     policy_lr: float = 1e-4  # Policy learning rate
-    value_lr: float = 1e-4   # Lower critic LR to prevent value explosions
-    minibatch_size: int = 64  # Size of each minibatch during training
+    value_lr: float = 3e-4   # Lower critic LR to prevent value explosions
+    minibatch_size: int = 256  # Size of each minibatch during training
     rollout_size: int = 2048  # INCREASED - collect more before training (was 2048)
     train_epochs: int = 1  # Number of times to iterate over collected data
     entropy_coef: float = 0.015  # Slightly lower entropy to reduce overly random updates
@@ -53,10 +53,6 @@ class PPOTrainerConfig:
     # Performance / acceleration toggles
     use_amp: bool = True  # Mixed precision training (CUDA only)
     compile_model: bool = False  # torch.compile (not supported on Python 3.14+)
-    # GPU optimization
-    pin_memory: bool = True  # Pin memory for faster CPU->GPU transfer
-    num_workers: int = 4  # Number of data loading workers (if using DataLoader)
-    # Critic stability: clip value updates similar to PPO value clip
     vf_clip_range: float = 0.2
 
 
@@ -512,18 +508,12 @@ class PPOTrainer:
         advantages = torch.tensor([self._adv_returns[t.transition_id][0] for t in transitions], dtype=torch.float32, device=self.device)
         returns = torch.tensor([self._adv_returns[t.transition_id][1] for t in transitions], dtype=torch.float32, device=self.device)
         state_batch = self._collate_states(states)
-        # Action mask REQUIRED for current training design
-        if not all('action_mask' in (s.meta or {}) for s in states):
-            raise ValueError("All states must include 'action_mask' in meta for training")
-        masks_np = [s.meta['action_mask'] for s in states]
-        masks = torch.from_numpy(np.stack(masks_np)).float().to(self.device)
         batch = {
             'states': state_batch,
             'actions': actions,
             'old_log_probs': old_log_probs,
             'advantages': advantages,
-            'returns': returns,
-            'action_mask': masks
+            'returns': returns
         }
         return batch
 
@@ -551,24 +541,8 @@ class PPOTrainer:
             exp_actions, exp_feat_dim = 4, 3
 
         for s in states:
-            meta = getattr(s, 'meta', {}) or {}
-            af = meta.get('action_features')
-            if af is None:
-                # Fallback reconstruction if adapters ran but consolidation failed earlier.
-                area = meta.get('area_ctx')
-                food = meta.get('close_food_ctx')
-                mask = meta.get('action_mask')
-                if area is not None and food is not None and mask is not None:
-                    try:
-                        af = np.stack([area, food, mask], axis=1).astype(np.float32)
-                        meta['action_features'] = af
-                        meta.setdefault('action_feature_names', ['margin_frac', 'food_hint', 'valid_mask'])
-                        log.debug("Reconstructed missing action_features from per-action meta arrays")
-                    except Exception as e:
-                        raise ValueError(f"Failed to reconstruct action_features: {e}")
-                else:
-                    missing_keys = [k for k in ['area_ctx','close_food_ctx','action_mask'] if meta.get(k) is None]
-                    raise ValueError(f"State meta missing consolidated action_features and required components {missing_keys}; ensure CompleteStateBuilder adapters executed")
+            meta = s.meta
+            af = meta['action_features']
             # Validate shape
             af = np.asarray(af)
             if af.ndim != 2 or af.shape[0] != exp_actions or af.shape[1] != exp_feat_dim:
@@ -599,7 +573,6 @@ class PPOTrainer:
         old_log_probs = batch['old_log_probs']
         advantages = batch['advantages']
         returns = batch['returns']
-        action_mask = batch['action_mask']
         batch_size = len(actions)
 
         # Normalize returns (critic target) if enabled
@@ -621,7 +594,6 @@ class PPOTrainer:
         shuffled_old_log_probs = old_log_probs[indices]
         shuffled_advantages = advantages[indices]
         shuffled_returns = normalized_returns[indices]
-        shuffled_mask = action_mask[indices]
 
         # Forward with autocast (AMP) if available
         try:
@@ -633,8 +605,7 @@ class PPOTrainer:
             logits, values = self._forward(shuffled_states)
         logits = logits.float()
         values = values.float()
-        # Mask invalid actions with large negative
-        logits = logits.masked_fill(shuffled_mask == 0, -60.0)
+    # No action masking: allow model to learn safety via features
 
         dist = torch.distributions.Categorical(logits=logits)
         log_probs = dist.log_prob(shuffled_actions).float()

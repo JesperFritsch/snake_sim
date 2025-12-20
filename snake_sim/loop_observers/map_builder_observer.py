@@ -86,29 +86,29 @@ class MapBuilderObserver(ConsumerObserver):
                                 expanded_map[ex_n_coord.y, ex_n_coord.x] = blocked_value
         return expanded_map
 
-    def get_current_map(self):
+    def get_current_map(self) -> np.ndarray:
         return self._current_map.copy()
 
-    def get_next_map(self):
+    def get_next_map(self) -> np.ndarray:
         self._goto_next_map()
         return self.get_current_map()
 
-    def get_prev_map(self):
+    def get_prev_map(self) -> np.ndarray:
         self._goto_prev_map()
         return self.get_current_map()
 
-    def get_map(self, map_idx: int):
+    def get_map(self, map_idx: int) -> np.ndarray:
         self._goto_map(map_idx)
         return self.get_current_map()
 
-    def get_map_for_step(self, step_idx: int):
+    def get_map_for_step(self, step_idx: int) -> np.ndarray:
         map_idx = step_idx * self._expansion
         return self.get_map(map_idx)
 
-    def get_current_map_idx(self):
+    def get_current_map_idx(self) -> int:
         return self._current_map_idx
 
-    def get_current_step_idx(self):
+    def get_current_step_idx(self) -> int:
         return self._current_map_idx // self._expansion
 
     def _goto_map(self, map_idx: int):
@@ -121,7 +121,7 @@ class MapBuilderObserver(ConsumerObserver):
                 self._goto_prev_map()
                 idx_delta += 1
 
-    def _goto_next_map(self) -> List[np.ndarray]:
+    def _goto_next_map(self):
         """ Create maps between current step and next step, according to the expansion factor. """
         curr_step_idx = self.get_current_step_idx()
         if curr_step_idx >= len(self._steps):
@@ -158,7 +158,7 @@ class MapBuilderObserver(ConsumerObserver):
             self._current_map[*reversed(new_head)] = init_data.snake_values[s_id]['head_value']
 
 
-    def _goto_prev_map(self) -> List[np.ndarray]:
+    def _goto_prev_map(self):
         if self._current_map_idx <= 0:
             self._current_map_idx = 0
             raise CurrentIsFirst("Current map is the first map")

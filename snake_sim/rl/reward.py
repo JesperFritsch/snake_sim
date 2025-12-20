@@ -117,7 +117,7 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
             food_dist1 = None
             food_dist2 = None
         survival_chance_reward = _survival_chance_reward(best_area_checks.get(s_id))
-        food_reward = 0 #_food_approach_reward(food_dist1, food_dist2)
+        food_reward = _food_approach_reward(food_dist1, food_dist2)
         did_eat_reward = _food_eat_reward(did_eat)
         length_reward = _length_reward(
             len(state1.snake_bodies[s_id]),
@@ -133,20 +133,24 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
         dominance_reward = _dominance_reward(state2.snake_alive.get(s_id, False), total_dead)
         total_reward = sum(
             (
-                length_reward, 
-                survival_reward, 
+                length_reward,
+                survival_reward,
                 food_reward,
                 did_eat_reward,
                 survival_chance_reward,
                 dominance_reward
             )
         )
+        # Scale overall reward signal to increase training SNR
+        total_reward = float(total_reward) * 10.0
         rewards[s_id] = total_reward
-        
+
         if debug.is_debug_active():
-            print(f"🎯 Rewards for snake {s_id}: length={length_reward:.2f}, survival={survival_reward:.2f}, "
-                    f"food_approach={food_reward:.2f}, food_eat={did_eat_reward:.2f}, "
-                    f"survival_chance={survival_chance_reward:.2f}, dominance={dominance_reward:.2f}, total={total_reward:.2f}")
+            print(
+                f"🎯 Rewards for snake {s_id}: length={length_reward:.2f}, survival={survival_reward:.2f}, "
+                f"food_approach={food_reward:.2f}, food_eat={did_eat_reward:.2f}, "
+                f"survival_chance={survival_chance_reward:.2f}, dominance={dominance_reward:.2f}, total={total_reward:.2f}"
+            )
     
     return rewards
 
@@ -189,7 +193,7 @@ def _survival_chance_reward(area_check: AreaCheckResult) -> float:
 def _survival_reward(still_alive: bool, current_length: int = 2) -> float:
     if not still_alive:
         # Fixed death penalty - prevents "die early before penalty grows" incentive
-        return -0.0  # Scaled down from -20.0
+        return -2.0  # Scaled down from -20.0
     else:
         # Small reward scaling with length - bigger snakes get more for surviving
         # This encourages growth without making looping optimal

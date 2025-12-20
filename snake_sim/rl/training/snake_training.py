@@ -119,7 +119,7 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
 def train(config: RLTrainingConfig):
     # Set up snapshot directory for model sharing
     # snapshot_dir = "models/ppo_training_speed_up"
-    snapshot_dir = "new_food_ctx_no_food_reward"
+    snapshot_dir = "new_simpler_model_new_state"
     Path(SNAPSHOT_BASE_DIR, snapshot_dir).mkdir(parents=True, exist_ok=True)
     
     trainer = PPOTrainer(snapshot_dir=snapshot_dir)
