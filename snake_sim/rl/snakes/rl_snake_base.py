@@ -11,7 +11,6 @@ from snake_sim.rl.state_builder import (
     BaseStateBuilder, 
     CompleteStateBuilder, 
     DirectionHintsAdapter,
-    ActionMaskAdapter,
     SnakeContext
 )
 
@@ -25,10 +24,11 @@ class RLSnakeBase(SnakeBase):
 
     def __init__(self):
         super().__init__()
-        # Include action mask adapter so each built State already has 'action_mask'
+        # Build state with direction hints only (masking removed)
         self._state_builder = CompleteStateBuilder(
             BaseStateBuilder(),
-            adapters=[DirectionHintsAdapter(), ActionMaskAdapter()]
+            adapters=[DirectionHintsAdapter()],
+            fixed_shuffle_features=True
         )
 
     def _get_state(self, step_data: EnvStepData) -> State:

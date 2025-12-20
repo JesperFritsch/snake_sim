@@ -40,10 +40,10 @@
     "ai_snake_config": {
         "type": "ai_ppo",
         "args": {
-            "snapshot_dir": "new_food_ctx",
+            "snapshot_dir": "new_simpler_model_new_state",
             "mask_fatal_actions": true,
             "deterministic": true,
-            "auto_reload": true,
+            "auto_reload": false,
             "eager_first_load": true
         }
     },

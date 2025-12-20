@@ -29,9 +29,6 @@ class ISnake(ABC):
     def get_id(self):
         return self._id
 
-    def get_id(self):
-        return self._id
-
     def set_start_length(self, start_length: int):
         self._start_length = start_length
         self._length = start_length

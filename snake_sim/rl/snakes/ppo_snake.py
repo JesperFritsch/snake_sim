@@ -157,9 +157,13 @@ class PPOSnake(RLSnakeBase):
         if 'action_features' not in (state.meta or {}):
             raise ValueError("Missing action_features in state.meta")
         dtype = torch.float16 if (self._use_half and self._device.type == 'cuda') else torch.float32
-        map_tensor = torch.from_numpy(state.map).unsqueeze(0).to(self._device, dtype=dtype)
-        ctx_tensor = torch.from_numpy(state.ctx).unsqueeze(0).to(self._device, dtype=dtype)
-        af_tensor = torch.from_numpy(state.meta['action_features']).unsqueeze(0).to(self._device, dtype=dtype)
+        # Ensure arrays are contiguous (torch.from_numpy doesn't accept negative strides)
+        map_np = np.ascontiguousarray(state.map)
+        ctx_np = np.ascontiguousarray(state.ctx)
+        af_np = np.ascontiguousarray(state.meta['action_features'])
+        map_tensor = torch.from_numpy(map_np).unsqueeze(0).to(self._device, dtype=dtype)
+        ctx_tensor = torch.from_numpy(ctx_np).unsqueeze(0).to(self._device, dtype=dtype)
+        af_tensor = torch.from_numpy(af_np).unsqueeze(0).to(self._device, dtype=dtype)
         if self._fast_mode:
             try:
                 map_tensor = map_tensor.to(memory_format=torch.channels_last)
@@ -170,22 +174,9 @@ class PPOSnake(RLSnakeBase):
             with self._hot_reload_lock:
                 logits, value = self._model(batch_in)
         logits = logits.float()  # stable distribution math
-        if self._mask_fatal_actions:
-            action_mask = state.meta.get('action_mask')
-            if action_mask is None:
-                raise ValueError("action_mask missing in state.meta; ensure adapter ran")
-            mask_tensor = torch.from_numpy(action_mask).to(logits.device)
-
-            valid_count = int(mask_tensor.sum().item())
-            masked_logits = logits.clone()
-            if valid_count > 0:
-                masked_logits = masked_logits.masked_fill(mask_tensor.unsqueeze(0) == 0, float('-inf'))
-                dist = torch.distributions.Categorical(logits=masked_logits.squeeze(0))
-            else:
-                dist = torch.distributions.Categorical(logits=logits.squeeze(0))
-        else:
-            valid_count = -1  # masking disabled
-            dist = torch.distributions.Categorical(logits=logits.squeeze(0))
+        # Masking disabled: sample/select directly from logits
+        valid_count = -1
+        dist = torch.distributions.Categorical(logits=logits.squeeze(0))
         
         debug.debug_print(f"PPO Snake {self.get_id()} logits:", logits.cpu().numpy())
         debug.debug_print(f"PPO Snake {self.get_id()} action distribution probs:", dist.probs.cpu().numpy())
@@ -194,9 +185,8 @@ class PPOSnake(RLSnakeBase):
             print("State meta:", state.meta)
             self._print_map()
         if self._deterministic:
-            # Deterministic mode: pick best among VALID actions (masked_logits has -inf for invalid)
-            target_logits = masked_logits if valid_count > 0 else logits
-            action_tensor = target_logits.squeeze(0).argmax()
+            # Deterministic mode: pick best action from logits
+            action_tensor = logits.squeeze(0).argmax()
         else:
             # Stochastic mode: sample from distribution (for training/exploration)
             action_tensor = dist.sample()
@@ -204,18 +194,7 @@ class PPOSnake(RLSnakeBase):
         action_idx = int(action_tensor.item())
         log_prob = float(dist.log_prob(action_tensor).item())
         value_estimate = float(value.squeeze(0).item())
-        if valid_count > 0 and mask_tensor[action_idx].item() == 0:
-            if not hasattr(self, '_invalid_action_samples'):
-                self._invalid_action_samples = 0
-            self._invalid_action_samples += 1
-            log.warning(
-                f"Sampled invalid action index={action_idx} despite masking; performing safe fallback to best valid action."  # noqa: E501
-            )
-            safe_logits = masked_logits.squeeze(0)
-            fallback_tensor = safe_logits.argmax()
-            action_idx = int(fallback_tensor.item())
-            # Recompute log_prob under distribution for fallback (prob ~0 if originally invalid)
-            log_prob = float(dist.log_prob(fallback_tensor).item())
+        # No mask fallback needed
         return action_idx, log_prob, value_estimate
 
     def _next_step_for_state(self, state: State):
