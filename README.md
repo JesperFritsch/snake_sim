@@ -38,7 +38,7 @@ python setup.py build_ext --inplace
 
 The snake simulation system is built on a modular architecture with clear separation between environment, reinforcement learning agents, and rendering components. Below is the system design diagram:
 
-![System Design UML Diagram](docs/system_design.drawio)
+![System Design UML Diagram](docs/system_design.png)
 
 **Key Components:**
 - **Environment**: Manages the simulation state, snake updates, and food spawning
