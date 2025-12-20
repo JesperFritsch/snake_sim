@@ -36,15 +36,13 @@ python setup.py build_ext --inplace
 
 ## System Architecture
 
-The snake simulation system is built on a modular architecture with clear separation between environment, reinforcement learning agents, and rendering components. Below is the system design diagram:
+The snake simulation system is built on a modular architecture with clear separation between environment, snake instances and rendering components. Below is a overview that does not include all objects:
 
 ![System Design UML Diagram](docs/system_design_uml.png)
 
 **Key Components:**
 - **Environment**: Manages the simulation state, snake updates, and food spawning
-- **RL Training**: PPO-based trainer and agents for deep learning snakes
-- **State Builder**: Constructs feature representations (maps, context, per-action hints) for agents
-- **Models**: Neural network architectures (convolutional trunk + per-action policy head)
+- **Snake Updater**: Manages how each type of snake can get updated, GRPC snakes for example can be updated in parallel.
 - **Rendering**: Terminal and window-based visualization
 
 ## Running on Headless Servers
