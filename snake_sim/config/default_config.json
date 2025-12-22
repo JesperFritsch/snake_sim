@@ -19,7 +19,6 @@
     "external_snake_targets": [],
     "command": "compute",
     "no_record": true,
-    "record_file": "snake_run.json",
     "record_dir": "C:\\temp",
     "max_no_food_steps": null,
     "max_steps": null,
@@ -58,103 +57,5 @@
         "food_value": [223,163,49],
         "free_value": [0,0,0],
         "blocked_value": [127,127,127]
-    },
-    "snake_colors": [
-        {
-            "head_color": [142, 15, 5],
-            "body_color": [255, 30, 10]
-        },
-        {
-            "head_color": [19, 44, 209],
-            "body_color": [12, 26, 117]
-        },
-        {
-            "head_color": [19, 212, 77],
-            "body_color": [12, 117, 43]
-        },
-        {
-            "head_color": [199, 4, 173],
-            "body_color": [139, 2, 121]
-        },
-        {
-            "head_color": [0, 170, 255],
-            "body_color": [0, 119, 179]
-        },
-        {
-            "head_color": [255, 0, 0],
-            "body_color": [179, 0, 0]
-        },
-        {
-            "head_color": [255, 162, 0],
-            "body_color": [179, 114, 0]
-        },
-        {
-            "head_color": [176, 27, 16],
-            "body_color": [125, 19, 11]
-        },
-        {
-            "head_color": [19, 44, 209],
-            "body_color": [12, 26, 117]
-        },
-        {
-            "head_color": [19, 212, 77],
-            "body_color": [12, 117, 43]
-        },
-        {
-            "head_color": [199, 4, 173],
-            "body_color": [139, 2, 121]
-        },
-        {
-            "head_color": [0, 170, 255],
-            "body_color": [0, 119, 179]
-        },
-        {
-            "head_color": [255, 0, 0],
-            "body_color": [179, 0, 0]
-        },
-        {
-            "head_color": [255, 162, 0],
-            "body_color": [179, 114, 0]
-        },
-        {
-            "head_color": [176, 27, 16],
-            "body_color": [125, 19, 11]
-        },
-        {
-            "head_color": [19, 44, 209],
-            "body_color": [12, 26, 117]
-        },
-        {
-            "head_color": [19, 212, 77],
-            "body_color": [12, 117, 43]
-        },
-        {
-            "head_color": [199, 4, 173],
-            "body_color": [139, 2, 121]
-        },
-        {
-            "head_color": [0, 170, 255],
-            "body_color": [0, 119, 179]
-        },
-        {
-            "head_color": [255, 0, 0],
-            "body_color": [179, 0, 0]
-        },
-        {
-            "head_color": [255, 162, 0],
-            "body_color": [179, 114, 0]
-        },
-        {
-            "head_color": [176, 27, 16],
-            "body_color": [125, 19, 11]
-        },
-        {
-            "head_color": [19, 44, 209],
-            "body_color": [12, 26, 117]
-        },
-        {
-            "head_color": [19, 212, 77],
-            "body_color": [12, 117, 43]
-        }
-    ]
+    }
 }
