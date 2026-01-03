@@ -32,6 +32,7 @@ dependencies = [
     "torch",
     "torchvision",
     "watchdog",
+    "scipy",
     "snake_proto_template @ git+ssh://git@github.com/JesperFritsch/snake_proto_template.git@main"
 ]
 

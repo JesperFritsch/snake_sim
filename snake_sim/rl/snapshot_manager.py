@@ -17,7 +17,8 @@ Trainer side:
   model = sm.init_or_load(device)
   ... training loop ...
   sm.save(step=global_update, model=model, policy_state=True, optimizers={'policy': opt1, 'value': opt2})
-  sm.prune(keep_last=5)
+    # Optional: call sm.prune(keep_last=K) if you explicitly want rotation.
+    # This project typically relies on `archive/` for long-term retention instead.
 
 Agent side (with watchdog - immediate reload):
   sm = SnapshotManager(dir="models/ppo", base_name="ppo_model", factory=create_model)
@@ -98,10 +99,20 @@ class _SnapshotFileHandler(FileSystemEventHandler):
 
 
 class SnapshotManager:
-    def __init__(self, dir_name: str | Path, base_name: str, factory: Callable[[], torch.nn.Module]):
+    def __init__(
+        self,
+        dir_name: str | Path,
+        base_name: str,
+        factory: Callable[[], torch.nn.Module],
+        *,
+        archive_every_n: int = 2000,
+        archive_subdir: str = "archive",
+    ):
         self.dir = Path(SNAPSHOT_BASE_DIR, dir_name)
         self.base_name = base_name
         self.factory = factory
+        self.archive_every_n = int(archive_every_n)
+        self.archive_dir = self.dir / archive_subdir
         self._last_loaded: Optional[LoadedSnapshot] = None
         
         # Watchdog support
@@ -142,16 +153,81 @@ class SnapshotManager:
             state_dict = data['policy_state']
         else:
             state_dict = data
+
+        # ---- Backwards compatibility: residual block refactor ----
+        # Older snapshots used a ModuleList `res_blocks` with keys like:
+        #   res_blocks.0.conv1.weight
+        # Newer models inline these layers as:
+        #   res1_conv1.weight
+        # so loading would fail unless we remap.
+        if (
+            isinstance(state_dict, dict)
+            and any(k.startswith('res_blocks.') for k in state_dict.keys())
+            and not any(k.startswith('res1_conv1.') for k in state_dict.keys())
+        ):
+            remapped = dict(state_dict)
+            for block_idx in (0, 1):
+                for conv_idx in (1, 2):
+                    for suffix in ('weight', 'bias'):
+                        old_key = f"res_blocks.{block_idx}.conv{conv_idx}.{suffix}"
+                        new_key = f"res{block_idx + 1}_conv{conv_idx}.{suffix}"
+                        if old_key in remapped and new_key not in remapped:
+                            remapped[new_key] = remapped.pop(old_key)
+            state_dict = remapped
+
         model.load_state_dict(state_dict)
+
+        # ---- Post-load numerical sanity check ----
+        # A single NaN in parameters can make actor logits NaN and crash the whole run.
+        # Refuse to mark snapshot as loaded if parameters are non-finite.
+        try:
+            for name, p in model.named_parameters():
+                if p is None:
+                    continue
+                if not torch.isfinite(p).all():
+                    raise ValueError(f"Non-finite parameter after load: {name}")
+        except Exception as e:
+            log.error(f"🚨 Refusing to load snapshot {path} at step {step}: {e}")
+            return
+
         self._last_loaded = LoadedSnapshot(path=path, step=step, timestamp=time.time())
 
     # ---- Saving ----
-    def save(self, step: int, model: torch.nn.Module, *, policy_state: bool = True, optimizers: Optional[Dict[str, torch.optim.Optimizer]] = None) -> Path:
-        payload = {'policy_state': model.state_dict(), 'step': step}
+    def save(
+        self,
+        step: int,
+        model: torch.nn.Module,
+        *,
+        policy_state: bool = True,
+        optimizers: Optional[Dict[str, torch.optim.Optimizer]] = None,
+    ) -> Path:
+        """Save a snapshot for hot-reload and optionally archive a copy every N steps.
+
+        Behavior:
+          - Always writes the latest snapshot to `self.dir` (so agents can load newest weights).
+          - Additionally writes a copy to `self.archive_dir` when `step % archive_every_n == 0`.
+            The archive directory is never pruned/rotated.
+
+        Notes:
+          - This method does not delete/rotate snapshots in `self.dir`.
+            If you want rotation, call `prune(keep_last=...)` explicitly.
+        """
+        payload = {'policy_state': model.state_dict() if policy_state else model, 'step': step}
         if optimizers:
             for name, opt in optimizers.items():
                 payload[f'optimizer_{name}'] = opt.state_dict()
-        return atomic_save(payload, self.dir, self.base_name, step=step)
+
+        # Save latest (hot-reload target)
+        latest_path = atomic_save(payload, self.dir, self.base_name, step=step)
+
+        # Archive occasionally (no rotation)
+        if self.archive_every_n > 0 and (step % self.archive_every_n == 0):
+            try:
+                atomic_save(payload, self.archive_dir, self.base_name, step=step)
+            except Exception as e:
+                log.warning(f"Failed saving archived snapshot at step {step}: {e}")
+
+        return latest_path
 
     # ---- Information ----
     def get_latest_info(self) -> Optional[LoadedSnapshot]:
@@ -242,7 +318,7 @@ class SnapshotManager:
                 log.error(f"Error in snapshot callback: {e}", exc_info=True)
 
     # ---- Retention ----
-    def prune(self, keep_last: int = 5):
+    def prune(self, keep_last: int = 1):
         if keep_last <= 0:
             return
         snapshots = []

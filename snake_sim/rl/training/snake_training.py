@@ -16,13 +16,16 @@ from snake_sim.environment.types import DotDict, SnakeConfig, StrategyConfig
 from snake_sim.environment.snake_handlers import SnakeHandler
 from snake_sim.environment.snake_factory import SnakeFactory
 from snake_sim.environment.snake_processes import SnakeProcessManager
+from snake_sim.loop_observers.file_persist_observer import FilePersistObserver
 
 
 from snake_sim.map_utils.general import get_map_files_mapping
 from snake_sim.rl.loop_observables.rl_training_loop import RLTrainingLoop
+from snake_sim.rl.loop_observers.rl_stats_printer_observer import RLStatsPrinterObserver
 from snake_sim.rl.snapshot_manager import SNAPSHOT_BASE_DIR
 from snake_sim.rl.environment.rl_snake_env import RLSnakeEnv
 from snake_sim.rl.types import RLTrainingConfig
+from snake_sim.rl.training.rl_data_queue import RLMetaDataQueue
 from snake_sim.rl.training.ppo_trainer import PPOTrainer
 from snake_sim.logging_setup import setup_logging
 
@@ -41,7 +44,7 @@ setup_logging(log_level=logging.INFO)
 log = logging.getLogger(Path(__file__).stem)
 snake_proc_mngr = SnakeProcessManager()
 
-def setup_training_loop(config: RLTrainingConfig, snapshot_dir: str = None) -> RLTrainingLoop:
+def setup_training_loop(config: RLTrainingConfig, snapshot_dir: str = None, transition_queue = None) -> RLTrainingLoop:
     snake_env = RLSnakeEnv(
         width=32,
         height=32,
@@ -52,12 +55,12 @@ def setup_training_loop(config: RLTrainingConfig, snapshot_dir: str = None) -> R
     food_handler = FoodHandler(
             32,
             32,
-            15,
+            config.food_tiles,
             0)
     snake_env.set_food_handler(food_handler)
     snake_handler = SnakeHandler()
-    add_snakes(snake_env, snake_handler, snapshot_dir)
-    training_loop = RLTrainingLoop(config)
+    add_snakes(snake_env, snake_handler, snapshot_dir, ppo_count=config.nr_snakes)
+    training_loop = RLTrainingLoop(config, transition_queue=transition_queue)
     training_loop.set_environment(snake_env)
     training_loop.set_snake_handler(snake_handler)
     if config.max_steps_per_episode is not None:
@@ -68,7 +71,7 @@ def setup_training_loop(config: RLTrainingConfig, snapshot_dir: str = None) -> R
     return training_loop
 
 
-def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir: str = None, ppo_count: int = 10, opponent_count: int = 0):
+def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir: str = None, ppo_count: int = 15, opponent_count: int = 0):
     """Add snakes to environment.
 
     Args:
@@ -82,7 +85,6 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
         args={
             'snapshot_dir': snapshot_dir,
             'auto_reload': True,
-            'mask_fatal_actions': True,
             'eager_first_load': True,
             'deterministic': False,
             'fast_mode': True,
@@ -119,16 +121,20 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
 def train(config: RLTrainingConfig):
     # Set up snapshot directory for model sharing
     # snapshot_dir = "models/ppo_training_speed_up"
-    snapshot_dir = "new_simpler_model_new_state"
+    snapshot_dir = "basemodel_trapping"
     Path(SNAPSHOT_BASE_DIR, snapshot_dir).mkdir(parents=True, exist_ok=True)
     
-    trainer = PPOTrainer(snapshot_dir=snapshot_dir)
+    t_queue = RLMetaDataQueue()
+
+    trainer = PPOTrainer(transition_queue=t_queue, snapshot_dir=snapshot_dir)
     trainer.start_background()
     
     log.info(f"Model snapshots will be saved to: {snapshot_dir}")
-    training_loop = setup_training_loop(config, snapshot_dir=snapshot_dir)
+    training_loop = setup_training_loop(config, snapshot_dir=snapshot_dir, transition_queue=t_queue)
     # file_persist_observer = FilePersistObserver(store_dir=Path(PACKAGE_ROOT) / "rl/trainings_runs")
     # training_loop.add_observer(file_persist_observer)
+    rl_stats_printer_observer = RLStatsPrinterObserver()
+    training_loop.add_observer(rl_stats_printer_observer)
     try:
         training_loop.start()
     
@@ -145,8 +151,6 @@ def train(config: RLTrainingConfig):
 
 if __name__ == "__main__":
 
-    maps_mapping = get_map_files_mapping()
-
     training_maps = [
         # "comps2",
         # "comps",
@@ -160,12 +164,12 @@ if __name__ == "__main__":
         None
     ]
 
-    map_paths = [maps_mapping.get(map_name) for map_name in training_maps]
-
     rl_config = RLTrainingConfig(
         episodes=500000,
-        max_no_food_steps=500,
-        training_map_paths=map_paths
+        max_no_food_steps=1000,  # ← INCREASED from 500. Allow more exploration time.
+        food_tiles=15,
+        nr_snakes=15,
+        training_maps=training_maps
     )
     train(rl_config)
     # cProfile.run('train(rl_config)', sort='cumtime')
