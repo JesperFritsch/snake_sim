@@ -11,6 +11,7 @@ from snake_sim.rl.models.ppo_model import model_factory
 from snake_sim.rl.training.rl_data_queue import RLPendingTransitCache
 from snake_sim.rl.constants import ACTION_ORDER_INVERSE
 from snake_sim.rl.snapshot_manager import SnapshotManager
+from snake_sim.rl.action_masking import apply_action_mask_to_logits
 import snake_sim.debugging as debug 
 
 # debug.activate_debug()
@@ -36,10 +37,10 @@ class PPOSnake(RLSnakeBase):
         *,
         snapshot_dir: str,
         snapshot_base_name: str = 'ppo_model',
-        mask_fatal_actions: bool = True,
         auto_reload: bool = True,
         eager_first_load: bool = True,
         deterministic: bool = True,  # Set True for deployment/evaluation
+        deterministic_temperature: float = 0.0,
         fast_mode: bool = True,  # Enable inference speed optimizations
         use_half: bool = True,   # Convert model & inputs to FP16 if GPU available
     ):
@@ -49,20 +50,26 @@ class PPOSnake(RLSnakeBase):
         self._model = None  # type: torch.nn.Module | None
         self._pending_cache = RLPendingTransitCache()
         self._transition_counter = 0
-        self._mask_fatal_actions = mask_fatal_actions
+        self._snapshot_dir = snapshot_dir
         # Snapshot manager for hot-reload
         self._snapshot_manager: SnapshotManager | None = None
         # Snapshot manager factory will be replaced once first state encountered
         def model_creator():
-            return model_factory(5, 0)  # Placeholder dims; overwritten on first ensure
+            # Placeholder dims; overwritten on first ensure. Keep in sync with the default
+            # channel layout (incl. food_dist) to avoid surprises if a snapshot is loaded
+            # before the first state is seen.
+            return model_factory(6, 0)
         self._snapshot_manager = SnapshotManager(
-            dir_name=snapshot_dir,
+            dir_name=self._snapshot_dir,
             base_name=snapshot_base_name,
             factory=model_creator
         )
         self._auto_reload = auto_reload and (self._snapshot_manager is not None)
         self._eager_first_load = eager_first_load
         self._deterministic = deterministic
+        # If > 0, deterministic mode becomes "low-temperature sampling" instead of hard argmax.
+        # This reduces brittleness when the top-1 and top-2 logits are close.
+        self._deterministic_temperature = float(deterministic_temperature)
         self._hot_reload_lock = threading.Lock()
         self._fast_mode = fast_mode and (self._device.type == 'cuda')
         self._use_half = use_half and (self._device.type == 'cuda')
@@ -75,6 +82,8 @@ class PPOSnake(RLSnakeBase):
             raise ValueError("State ctx missing; CompleteStateBuilder should provide ctx")
         if 'action_features' not in (state.meta or {}):
             raise ValueError("State meta missing action_features; adapters must supply them")
+        if 'action_mask' not in (state.meta or {}):
+            raise ValueError("State meta missing action_mask; adapters must supply it")
         ctx_dim = state.ctx.shape[0]
         in_channels = state.map.shape[0]
         self._model = model_factory(in_channels, ctx_dim).to(self._device)
@@ -97,6 +106,8 @@ class PPOSnake(RLSnakeBase):
                 example_af = torch.from_numpy(state.meta['action_features']).unsqueeze(0).float().to(self._device)
                 if self._use_half and self._device.type == 'cuda':
                     example_map = example_map.half(); example_ctx = example_ctx.half(); example_af = example_af.half()
+                # NOTE: model doesn't consume action_mask; it's included so the traced signature matches
+                # the real inference input dict if you choose to pass it through later.
                 example_in = {'map': example_map, 'ctx': example_ctx, 'action_features': example_af}
                 self._model = torch.jit.trace(self._model, example_in, strict=False)
                 self._scripted = True
@@ -156,14 +167,19 @@ class PPOSnake(RLSnakeBase):
             raise ValueError("State ctx required for PPO inference")
         if 'action_features' not in (state.meta or {}):
             raise ValueError("Missing action_features in state.meta")
+        if 'action_mask' not in (state.meta or {}):
+            raise ValueError("Missing action_mask in state.meta")
         dtype = torch.float16 if (self._use_half and self._device.type == 'cuda') else torch.float32
         # Ensure arrays are contiguous (torch.from_numpy doesn't accept negative strides)
         map_np = np.ascontiguousarray(state.map)
         ctx_np = np.ascontiguousarray(state.ctx)
         af_np = np.ascontiguousarray(state.meta['action_features'])
+        am_np = np.ascontiguousarray(state.meta['action_mask'])
         map_tensor = torch.from_numpy(map_np).unsqueeze(0).to(self._device, dtype=dtype)
         ctx_tensor = torch.from_numpy(ctx_np).unsqueeze(0).to(self._device, dtype=dtype)
         af_tensor = torch.from_numpy(af_np).unsqueeze(0).to(self._device, dtype=dtype)
+        action_mask = torch.from_numpy(am_np).unsqueeze(0).to(self._device)
+        action_mask = action_mask.to(dtype=torch.bool)
         if self._fast_mode:
             try:
                 map_tensor = map_tensor.to(memory_format=torch.channels_last)
@@ -174,8 +190,32 @@ class PPOSnake(RLSnakeBase):
             with self._hot_reload_lock:
                 logits, value = self._model(batch_in)
         logits = logits.float()  # stable distribution math
-        # Masking disabled: sample/select directly from logits
-        valid_count = -1
+
+        # ---- Safety against numerical issues ----
+        # If logits contain NaNs/Infs (can happen if the learner diverged and published a bad snapshot),
+        # never crash the actor process. Fall back to a uniform distribution over valid actions.
+        if not torch.isfinite(logits).all():
+            # Prefer logging over throwing: crashing an actor kills the whole multi-env run.
+            try:
+                log.warning(
+                    "PPO Snake %s produced non-finite logits; falling back to safe sampling.",
+                    self.get_id(),
+                )
+            except Exception:
+                pass
+            valid = action_mask.squeeze(0).to(dtype=torch.bool)
+            if valid.any():
+                valid_idx = torch.nonzero(valid, as_tuple=False).squeeze(-1)
+                action_tensor = valid_idx[torch.randint(len(valid_idx), (1,), device=self._device)][0]
+                action_idx = int(action_tensor.item())
+                # It's not meaningful to report a log_prob/value here; keep them finite.
+                return action_idx, 0.0, 0.0
+            # Absolute last resort: pick action 0.
+            return 0, 0.0, 0.0
+
+        logits = apply_action_mask_to_logits(logits, action_mask)
+
+        # Base distribution (used for log_prob reporting in non-deterministic mode)
         dist = torch.distributions.Categorical(logits=logits.squeeze(0))
         
         debug.debug_print(f"PPO Snake {self.get_id()} logits:", logits.cpu().numpy())
@@ -185,14 +225,24 @@ class PPOSnake(RLSnakeBase):
             print("State meta:", state.meta)
             self._print_map()
         if self._deterministic:
-            # Deterministic mode: pick best action from logits
-            action_tensor = logits.squeeze(0).argmax()
+            if self._deterministic_temperature and self._deterministic_temperature > 0.0:
+                # Less-brittle "deterministic": sample with low temperature.
+                # T -> 0 approaches argmax; small T keeps occasional alternative when top-2 are close.
+                t = max(self._deterministic_temperature, 1e-6)
+                temp_logits = (logits.squeeze(0) / t)
+                temp_dist = torch.distributions.Categorical(logits=temp_logits)
+                action_tensor = temp_dist.sample()
+                log_prob = float(temp_dist.log_prob(action_tensor).item())
+            else:
+                # Deterministic mode: pick best action from logits
+                action_tensor = logits.squeeze(0).argmax()
+                log_prob = float(dist.log_prob(action_tensor).item())
         else:
             # Stochastic mode: sample from distribution (for training/exploration)
             action_tensor = dist.sample()
+            log_prob = float(dist.log_prob(action_tensor).item())
         
         action_idx = int(action_tensor.item())
-        log_prob = float(dist.log_prob(action_tensor).item())
         value_estimate = float(value.squeeze(0).item())
         # No mask fallback needed
         return action_idx, log_prob, value_estimate

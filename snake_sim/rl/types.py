@@ -49,6 +49,7 @@ class RLTransitionData:
     (e.g., advantage, return) without mutating the meta object.
     """
     transition_nr: int
+    process_id: int
     state: State
     action_index: int
     reward: float
@@ -57,6 +58,10 @@ class RLTransitionData:
     meta: RLMetaData
     episode_id: int
     done: bool = False
+    # Explicit behavior event: whether the snake ate food on this transition.
+    # This should be set by the environment/loop (source of truth), not inferred
+    # from total reward magnitude (since reward shaping can change).
+    ate_food: bool = False
     transition_id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
 
@@ -72,6 +77,8 @@ class PendingTransition:
 @dataclass
 class RLTrainingConfig:
     episodes: int
+    food_tiles: int
+    nr_snakes: int
     max_steps_per_episode: Optional[int] = None
-    training_map_paths: list[str] = field(default_factory=list)
+    training_maps: list[str] = field(default_factory=list)
     max_no_food_steps: Optional[int] = None

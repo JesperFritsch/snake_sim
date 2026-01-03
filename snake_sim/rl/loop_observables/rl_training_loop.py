@@ -2,6 +2,8 @@
 import logging
 import time
 import random
+import os
+import sys
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -13,7 +15,7 @@ from snake_sim.rl.training.rl_data_queue import RLPendingTransitCache, RLMetaDat
 from snake_sim.rl.types import RLTransitionData, PendingTransition, RLTrainingConfig
 from snake_sim.rl.state_builder import print_state 
 from snake_sim.rl.reward import compute_rewards
-from snake_sim.map_utils.general import print_map
+from snake_sim.map_utils.general import print_map, get_map_files_mapping
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -24,13 +26,13 @@ class RLTrainingLoop(SimLoop):
     Extends the main simulation loop with RL-specific functionality.
     """
 
-    def __init__(self, config: RLTrainingConfig):
+    def __init__(self, config: RLTrainingConfig, transition_queue: RLMetaDataQueue = None):
         super().__init__()
         self._config = config
         self._env: RLSnakeEnv = None
         self._current_episode = 0
         self._pending_transition_cache = RLPendingTransitCache()
-        self._transition_queue = RLMetaDataQueue()
+        self._transition_queue = transition_queue or RLMetaDataQueue()
         self._previous_pending_transitions: dict[int, PendingTransition] = {}
         self._prev_sim_state = None
         self._prev_sim_map = None
@@ -48,6 +50,7 @@ class RLTrainingLoop(SimLoop):
         super()._pre_update()
         if debug.is_debug_active():
             print(f"Step {self._steps} starting: ==============================")
+            self._print_env_map()
 
     def _post_update(self):
         super()._post_update()
@@ -80,6 +83,19 @@ class RLTrainingLoop(SimLoop):
 
         if self._previous_pending_transitions:
             for snake_id, pre_pending_transition in self._previous_pending_transitions.items():
+                # Explicit event flag for logging: did this snake eat food on this step?
+                # We detect it by checking if the *new* head position is on a food tile from the previous state.
+                # This matches the reward.py logic.
+                ate_food = False
+                try:
+                    if self._prev_sim_state is not None:
+                        prev_food = getattr(self._prev_sim_state, 'food', None)
+                        cur_body = getattr(self._env.get_state(), 'snake_bodies', {}).get(snake_id) if self._env is not None else None
+                        if prev_food is not None and cur_body:
+                            ate_food = (cur_body[0] in prev_food)
+                except Exception:
+                    ate_food = False
+
                 current_pending = current_pending_transitions.get(snake_id, None)
                 if current_pending is not None and self._env.snake_is_alive(snake_id):
                     # Use the current environment state, not the pending transition's state
@@ -91,9 +107,13 @@ class RLTrainingLoop(SimLoop):
                     done=True
                 transition = RLTransitionData(
                     transition_nr=self._steps,
+                    # Must be stable and unique across OS processes.
+                    # `id(self)` is per-process and can collide between processes.
+                    process_id=os.getpid(),
                     state=pre_pending_transition.state,
                     action_index=pre_pending_transition.action_index,
                     reward=rewards[snake_id],
+                    ate_food=ate_food,
                     next_state=next_state,
                     snake_id=snake_id,
                     meta=pre_pending_transition.meta,
@@ -103,7 +123,6 @@ class RLTrainingLoop(SimLoop):
                 self._transition_queue.add_transition(transition)
                 if debug.is_debug_active():
                     print(f"RL Training Loop: Step {self._steps} completed. Rewards: {rewards}")
-                    self._print_env_map()
                     print("From state:")
                     print_state(transition.state)
                     if transition.next_state is None:
@@ -115,9 +134,11 @@ class RLTrainingLoop(SimLoop):
 
     def _get_map_path_from_selection(self) -> str:
         """Selects a training map from the configured list."""
-        if not self._config.training_map_paths:
+        if not self._config.training_maps:
             return None
-        return random.choice(self._config.training_map_paths) or None
+        map_name = random.choice(self._config.training_maps) or None
+        map_path = get_map_files_mapping().get(map_name) if map_name else None
+        return map_path
 
     def _reset(self):
         self._steps = 0
@@ -139,6 +160,7 @@ class RLTrainingLoop(SimLoop):
             observer.reset()
         self._previous_pending_transitions.clear()
         self._pending_transition_cache.clear()
+
 
     def start(self):
         log.info(f"Starting RL training for {self._config.episodes} episodes")
@@ -163,3 +185,4 @@ class RLTrainingLoop(SimLoop):
         for snake_id, snake in state.snake_bodies.items():
             head = snake[0]
             print(f"Snake {snake_id} head at: ({head.x}, {head.y})")
+        sys.stdout.flush()

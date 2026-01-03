@@ -39,11 +39,11 @@
     "ai_snake_config": {
         "type": "ai_ppo",
         "args": {
-            "snapshot_dir": "new_simpler_model_new_state",
-            "mask_fatal_actions": true,
+            "snapshot_dir": "basemodel_big_negative_death",
             "deterministic": true,
             "auto_reload": false,
-            "eager_first_load": true
+            "eager_first_load": true,
+            "fast_mode": true
         }
     },
     "log_level": "DEBUG",

@@ -18,28 +18,33 @@ from snake_sim.rl.types import RLTransitionData, PPOMetaData, State
 from snake_sim.rl.snapshot_manager import SnapshotManager, SNAPSHOT_BASE_DIR
 from snake_sim.rl.state_builder import print_channel
 from snake_sim.rl.models.ppo_model import model_factory
+from snake_sim.rl.action_masking import apply_action_mask_to_logits
 
 log = logging.getLogger(Path(__file__).stem)
-
-rl_data_queue = RLMetaDataQueue()
-
 
 @dataclass
 class PPOTrainerConfig:
     gamma: float = 0.99
-    lam: float = 0.95  # GAE lambda
-    clip_range: float = 0.3  # Tighten PPO policy clip range for stability
-    policy_lr: float = 1e-4  # Policy learning rate
-    value_lr: float = 3e-4   # Lower critic LR to prevent value explosions
-    minibatch_size: int = 256  # Size of each minibatch during training
-    rollout_size: int = 2048  # INCREASED - collect more before training (was 2048)
-    train_epochs: int = 1  # Number of times to iterate over collected data
+    lam: float = 0.98  # GAE lambda
+    clip_range: float = 0.4  # Slightly wider clip -> larger effective updates
+    # Learning rates: the previous defaults produced near-zero policy updates
+    # (ratio_std ~ 1e-4, clipfrac ~ 0). These values are still modest for PPO,
+    # but should yield meaningfully non-zero updates.
+    policy_lr: float = 5e-4
+    # Critic can become unstable fast in sparse/noisy-reward settings.
+    # Keep value_lr lower than policy_lr unless you have very reliable return targets.
+    value_lr: float = 1e-3
+    minibatch_size: int = 256  # More minibatches/rollout -> more gradient steps
+    rollout_size: int = 8192  # INCREASED - collect more before training (was 2048)
+    train_epochs: int = 2  # More optimizer steps per rollout -> faster learning
     entropy_coef: float = 0.015  # Slightly lower entropy to reduce overly random updates
     value_coef: float = 0.5     # Reduced from 1.0 to stabilize value function
-    max_grad_norm: float = 0.5
+    max_grad_norm: float = 1.0  # Increased from 0.5 (double norm fix allows higher safety margin)
     device: str = 'auto'
     snapshot_base_name: str = 'ppo_model'
     save_every_updates: int = 1  # save snapshot after this many successful updates
+    # Keep an unpruned archive snapshot every N updates (in <snapshot_dir>/archive/)
+    archive_every_n_updates: int = 2000
     # Adaptive exploration - DISABLED by setting unreachable patience
     stagnation_patience: int = 100000  # Effectively disabled
     exploration_boost_factor: float = 1.5
@@ -47,19 +52,35 @@ class PPOTrainerConfig:
     # Policy collapse prevention
     # KL / policy stability controls
     kl_target: float = 0.1  # Lower target; used for warnings (approximate KL proxy)
-    enable_early_stopping: bool = True  # Stop epochs early if policy changes too much
+    enable_early_stopping: bool = False  # Disabled - was causing oscillation
+    # Hard cap to avoid catastrophic policy updates. If approx_kl exceeds this,
+    # skip the update and do NOT publish a snapshot.
+    kl_hard_limit: float = 0.5
     # Only train on complete episodes (recommended for episodic tasks)
-    require_complete_episodes: bool = True
+    require_complete_episodes: bool = False
+
+    # If > 0: only train on trajectories with at least this many transitions.
+    # Useful when using heterogeneous env groups where some snakes contribute
+    # very short fragments in the queue (high variance advantages).
+    min_trajectory_len: int = 512 # same as mini batch size
+
     # Performance / acceleration toggles
     use_amp: bool = True  # Mixed precision training (CUDA only)
     compile_model: bool = False  # torch.compile (not supported on Python 3.14+)
     vf_clip_range: float = 0.2
 
+    # Auxiliary loss: encourage the *raw* (pre-mask) policy logits to assign low
+    # preference to invalid actions, so the model internalizes action legality.
+    # Keep this small; masking still enforces safety at sampling-time.
+    illegal_logit_coef: float = 0.02
+    # We use softplus(logit - margin). With margin=0, it pushes invalid logits < 0.
+    illegal_logit_margin: float = 0.0
+
 
 class PPOTrainer:
     """Minimal PPO trainer that creates its own model lazily from first batch of data."""
 
-    def __init__(self, config: PPOTrainerConfig = None, snapshot_dir: str = None):
+    def __init__(self, transition_queue: RLMetaDataQueue, config: PPOTrainerConfig = None, snapshot_dir: str = None):
         """Initialize trainer. Model is created lazily from first batch."""
         self._update_counter = 0
         self.cfg = config or PPOTrainerConfig()
@@ -82,12 +103,18 @@ class PPOTrainer:
         
         self.model = None
         self.optimizer = None
-        self._snapshot_dir = snapshot_dir
+        # Some test/scratch usage constructs PPOTrainer without an explicit snapshot_dir.
+        # Fall back to the configured base name so CSV/snapshots have a stable location.
+        self._snapshot_dir = snapshot_dir or self.cfg.snapshot_base_name
         self._snapshot_manager = None
         self._adv_returns = {}
         self._train_lock = threading.Lock()
         self._bg_thread = None
         self._bg_running = False
+        self._transition_queue = transition_queue 
+
+        # Explicit behavior metric (comes from transition.ate_food)
+        self._last_batch_foods_eaten = 0
         
         # Training metrics tracking
         self._metrics_history = {
@@ -104,32 +131,48 @@ class PPOTrainer:
         self._best_return = float('-inf')
         self._updates_since_improvement = 0
         self._exploration_boosted = False
-        
+
         # Value normalization for stability
         self._return_mean = 0.0
         self._return_std = 1.0
         self._return_count = 0
-        self._enable_value_norm = True  # Normalize returns for value function training
+        # Normalizing critic targets is one of the safest stabilizers.
+        # This implementation uses Welford updates (no exponential decay), so it should be stable.
+        self._enable_value_norm = True
         
         # CSV logging for training statistics
         self._csv_file = None
         self._csv_writer = None
         self._setup_csv_logging()
-        
+
+        self.accumulating_trajs: Dict[Tuple[str, str, int], List[RLTransitionData]] = {}
+
         log.info(f"PPOTrainer initialized device={self.device}")
-    
+
     def _setup_csv_logging(self):
         """Setup CSV file for logging training statistics."""
         csv_dir = Path(SNAPSHOT_BASE_DIR, self._snapshot_dir)
         
         csv_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Create filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        csv_path = csv_dir / f"training_stats_{timestamp}.csv"
+
+        # Reuse an existing stats file if present, so restarts don't create many CSVs
+        # for what is effectively the same training run (same snapshot_dir).
+        #
+        # Strategy:
+        #   - If any training_stats_*.csv exists, pick the most recently modified and append.
+        #   - Otherwise create a new timestamped file.
+        #
+        # This keeps one evolving log file per snapshot_dir by default.
+        existing = sorted(csv_dir.glob("training_stats.csv"), key=lambda p: p.stat().st_mtime)
+        if existing:
+            csv_path = existing[-1]
+            mode = 'a'
+        else:
+            csv_path = csv_dir / f"training_stats.csv"
+            mode = 'w'
         
         try:
-            self._csv_file = open(csv_path, 'w', newline='')
+            self._csv_file = open(csv_path, mode, newline='')
             self._csv_writer = csv.writer(self._csv_file)
             
             # Write header
@@ -149,12 +192,48 @@ class PPOTrainer:
                 'best_return',
                 'updates_since_improvement',
                 'value_pred_denorm_mean',
-                'value_residual_mean'
+                'value_residual_mean',
+                # PPO diagnostics
+                'clipfrac',
+                'ratio_mean',
+                'ratio_std',
+                'approx_kl',
+                'explained_variance',
+                'invalid_action_frac',
+                'illegal_logit_loss',
+                # Model diagnostics
+                'path_mixer_raw',
+                'path_mixer_alpha',
+                # Explicit behavior metrics
+                'foods_eaten',
+                'foods_per_1k_steps',
+                'steps_per_food'
             ]
-            self._csv_writer.writerow(header)
-            self._csv_file.flush()
-            
-            log.info(f"📝 Training statistics will be logged to: {csv_path}")
+
+            # Only write header if file is new/empty (or doesn't already have a header).
+            try:
+                needs_header = False
+                if mode == 'w':
+                    needs_header = True
+                else:
+                    # Append mode: check if file seems empty or lacks the expected header.
+                    if csv_path.stat().st_size == 0:
+                        needs_header = True
+                    else:
+                        with open(csv_path, 'r', newline='') as rf:
+                            first_line = rf.readline().strip()
+                        expected_first = ','.join(header)
+                        if first_line != expected_first:
+                            # If the header differs (older format), don't write a second header.
+                            # We keep appending rows to that file for continuity.
+                            needs_header = False
+                if needs_header:
+                    self._csv_writer.writerow(header)
+                    self._csv_file.flush()
+            except Exception as e:
+                log.warning(f"Failed header check/write for CSV {csv_path}: {e}")
+
+            log.info(f"📝 Training statistics will be logged to: {csv_path} (mode={mode})")
         except Exception as e:
             log.warning(f"Failed to setup CSV logging: {e}")
             self._csv_file = None
@@ -186,7 +265,22 @@ class PPOTrainer:
                 self._best_return,
                 self._updates_since_improvement,
                 stats.get('value_pred_denorm_mean', ''),
-                stats.get('value_residual_mean', '')
+                stats.get('value_residual_mean', ''),
+                # PPO diagnostics
+                stats.get('clipfrac', ''),
+                stats.get('ratio_mean', ''),
+                stats.get('ratio_std', ''),
+                stats.get('approx_kl', ''),
+                stats.get('explained_variance', ''),
+                stats.get('invalid_action_frac', ''),
+                stats.get('illegal_logit_loss', ''),
+                # Model diagnostics
+                stats.get('path_mixer_raw', ''),
+                stats.get('path_mixer_alpha', ''),
+                # Explicit behavior metrics
+                stats.get('foods_eaten', ''),
+                stats.get('foods_per_1k_steps', ''),
+                stats.get('steps_per_food', ''),
             ]
             self._csv_writer.writerow(row)
             
@@ -213,9 +307,15 @@ class PPOTrainer:
                 log.info("Model compiled with torch.compile()")
             except Exception as e:
                 log.warning(f"torch.compile failed; continuing without compile: {e}")
+
+        # Some PyTorch versions return a wrapper module from torch.compile that owns the
+        # compiled graph but stores parameters on an underlying original module.
+        # For optimizers and state_dict operations we want to target the underlying module
+        # when available.
+        core_model = getattr(self.model, '_orig_mod', self.model)
         # Separate optimizer parameter groups: policy vs value head for distinct learning rates.
-        value_params = [p for n, p in self.model.named_parameters() if 'value_head' in n]
-        policy_params = [p for n, p in self.model.named_parameters() if 'value_head' not in n]
+        value_params = [p for n, p in core_model.named_parameters() if 'value_head' in n]
+        policy_params = [p for n, p in core_model.named_parameters() if 'value_head' not in n]
         self.optimizer = torch.optim.Adam([
             {'params': policy_params, 'lr': self.cfg.policy_lr},
             {'params': value_params, 'lr': self.cfg.value_lr}
@@ -227,7 +327,8 @@ class PPOTrainer:
         self._snapshot_manager = SnapshotManager(
             dir_name=self._snapshot_dir,
             base_name=self.cfg.snapshot_base_name,
-            factory=model_creator
+            factory=model_creator,
+            archive_every_n=self.cfg.archive_every_n_updates,
         )
         # Try to load latest snapshot
         self._try_load_latest_snapshot()
@@ -258,10 +359,27 @@ class PPOTrainer:
                     recent_avg = sum(values[mid:]) / (len(values) - mid)
                     trend = recent_avg - older_avg
                     averages[f'{key}_trend'] = trend
+            values.clear()  # Clear after computing averages to save memory
         return averages
+
+    def _get_policy_mixer_stats(self) -> dict:
+        """Return pathway mixer diagnostics.
+
+        Intentionally assumes required fields exist (crash loudly if they don't).
+        """
+        with torch.no_grad():
+            mixer_raw = float(self.model.pathway_mixer.detach().cpu().item())
+            alpha = float(torch.sigmoid(self.model.pathway_mixer.detach()).cpu().item())
+        return {
+            'path_mixer_raw': mixer_raw,
+            'path_mixer_alpha': alpha,
+        }
 
     def _log_detailed_metrics(self, stats: dict):
         """Log detailed training metrics with trends and running averages."""
+        # Add model-specific diagnostics (if available)
+        stats.update(self._get_policy_mixer_stats())
+
         self._update_metrics_history(stats)
         
         if self._update_counter % 5 == 0:  # Every 5 updates
@@ -288,6 +406,24 @@ class PPOTrainer:
             log.info(f"  Entropy: {entropy_avg:.4f} | Returns: {returns_avg:.4f} {returns_direction}")
             log.info(f"  Exploration: entropy_coef={self.cfg.entropy_coef:.4f} | Best Return: {self._best_return:.3f}")
             log.info(f"  Stagnation: {self._updates_since_improvement} updates without improvement")
+
+            log.info(
+                f"  Mixer: raw={stats['path_mixer_raw']:+.3f} | "
+                f"alpha(sigmoid)={stats['path_mixer_alpha']:.3f} "
+                f"(0=safety, 1=spatial)"
+            )
+
+            # PPO diagnostics (helps answer: "are we actually updating?")
+            if 'clipfrac' in stats:
+                log.info(
+                    "  PPO: clipfrac=%.3f | ratio(mean±std)=%.3f±%.3f | approx_kl=%.6f | EV=%.3f | invalid=%.3f",
+                    stats.get('clipfrac', float('nan')),
+                    stats.get('ratio_mean', float('nan')),
+                    stats.get('ratio_std', float('nan')),
+                    stats.get('approx_kl', float('nan')),
+                    stats.get('explained_variance', float('nan')),
+                    stats.get('invalid_action_frac', float('nan')),
+                )
             
             # Learning indicators
             if returns_trend > 0.01:
@@ -310,7 +446,9 @@ class PPOTrainer:
         if not self._snapshot_manager:
             return
         try:
-            success = self._snapshot_manager.reload_into(self.model)
+            # If we're compiled, make sure weights load into the original module.
+            target_model = getattr(self.model, '_orig_mod', self.model)
+            success = self._snapshot_manager.reload_into(target_model)
             if success and self._snapshot_manager._last_loaded:
                 loaded_info = self._snapshot_manager._last_loaded
                 self._update_counter = loaded_info.step
@@ -326,7 +464,7 @@ class PPOTrainer:
 
     def get_queue_size(self):
         """Get current transition queue size."""
-        return rl_data_queue.size()
+        return self._transition_queue.size()
 
     def get_update_count(self):
         """Get current number of training updates performed."""
@@ -375,58 +513,84 @@ class PPOTrainer:
         Returns training stats dict or None if insufficient data.
         """
         with self._train_lock:
-            if rl_data_queue.size() < self.cfg.rollout_size:
+            if self._transition_queue.size() < self.cfg.rollout_size:
                 return None  # Not enough yet – keep accumulating
-            transitions = rl_data_queue.get_transitions()
+            # _adv_returns is only needed for collating the *current* rollout batch.
+            # Keeping old entries causes unbounded growth (memory leak) in long runs.
+            self._adv_returns.clear()
+            transitions = self._transition_queue.get_transitions()
             if not transitions:
                 return None
             
             # Initialize model lazily from first transition
             self._ensure_model(transitions[0].state)
             
-            # Group transitions by (snake_id, episode_id) to form trajectories
-            traj_map: Dict[Tuple[str, str], List[RLTransitionData]] = {}
+            # Group transitions by (snake_id, episode_id, process_id) to form trajectories
             for t in transitions:
                 snake_id = t.snake_id
                 episode_id = t.episode_id
-                traj_map.setdefault((snake_id, episode_id), []).append(t)
+                process_id = t.process_id
+                self.accumulating_trajs.setdefault((snake_id, episode_id, process_id), []).append(t)
             
-            # Sort each trajectory by transition number
-            for k in traj_map:
-                traj_map[k].sort(key=lambda x: x.transition_nr)
             
-            all_trajs = list(traj_map.values())
-            
-            # Filter to only complete episodes if configured
-            if self.cfg.require_complete_episodes:
-                complete_trajs = [traj for traj in all_trajs if traj[-1].done]
-                incomplete_trajs = [traj for traj in all_trajs if not traj[-1].done]
-                
-                if incomplete_trajs:
-                    # Put incomplete trajectories back in queue for later
-                    for traj in incomplete_trajs:
-                        for t in traj:
-                            rl_data_queue.add_transition(t)
-                    log.debug(f"Kept {len(incomplete_trajs)} incomplete trajectories in queue")
-                
-                if not complete_trajs:
-                    log.debug("No complete episodes yet, waiting for more data")
-                    return None
-                
-                all_trajs = complete_trajs
-            
-            for traj in all_trajs:
+            all_ready_trajs: Dict[Tuple[str, str, int], List[RLTransitionData]] = {}
+            keys_to_remove: List[Tuple[str, str, int]] = []
+
+            # We collect keys to remove and delete them after the loop.
+            for key, traj in self.accumulating_trajs.items():
+                if not traj:
+                    keys_to_remove.append(key)
+                    continue
+
+                # Gate readiness based on configured minimum length / completion.
+                if self.cfg.min_trajectory_len > 0 and len(traj) < self.cfg.min_trajectory_len and not traj[-1].done:
+                    continue  # let short trajs accumulate more
+                if self.cfg.require_complete_episodes and not traj[-1].done:
+                    continue  # wait for episode completion
+
+                # Sort in-place for stable GAE + contiguous check.
+                traj.sort(key=lambda x: x.transition_nr)
+
+                if not all(b.transition_nr == a.transition_nr + 1 for a, b in zip(traj, traj[1:])):
+                    log.warning(
+                        "Trajectory has non-sequential transitions: snake_id=%s, episode_id=%s, process_id=%s",
+                        key[0],
+                        key[1],
+                        key[2],
+                    )
+                    # Keep accumulating; we don't want to train on a broken sequence.
+                    # (If you *do* want to train anyway, change this to still mark ready.)
+                    continue
+
+                all_ready_trajs[key] = traj
+                keys_to_remove.append(key)
+
+            for key in keys_to_remove:
+                self.accumulating_trajs.pop(key, None)
+
+            for traj in all_ready_trajs.values():
                 snake_id = traj[0].snake_id
                 episode_id = traj[0].episode_id
+                process_id = traj[0].process_id
+                start_step = traj[0].transition_nr
+                is_done = traj[-1].done
                 traj_length = len(traj)
-                log.info(f"Processing trajectory: snake_id={snake_id}, episode_id={episode_id}, length={traj_length}")
+                log.info(
+                    "Processing trajectory: snake_id=%s, episode_id=%s, process=%s, length=%s, start_step=%s, done=%s",
+                    snake_id,
+                    episode_id,
+                    process_id,
+                    traj_length,
+                    start_step,
+                    is_done
+                )
 
             # Compute GAE advantages for each trajectory
-            for traj in all_trajs:
+            for traj in all_ready_trajs.values():
                 self._compute_gae(traj)
             
             # Flatten all trajectories into one list for training
-            processed = [t for traj in all_trajs for t in traj]
+            processed = [t for traj in all_ready_trajs.values() for t in traj]
 
             # Allow training on smaller batches if we have at least one full trajectory.
             # This prevents throwing away useful data when it's just under the configured minibatch size.
@@ -434,7 +598,14 @@ class PPOTrainer:
                 log.debug("No transitions available to train on yet")
                 return None
             
-            log.info(f"Training on {len(processed)} transitions from {len(all_trajs)} complete episodes")
+            log.info(f"Training on {len(processed)} transitions from {len(all_ready_trajs)} complete episodes")
+
+            # Count explicit food events in this training batch.
+            # This is robust to reward shaping changes.
+            try:
+                self._last_batch_foods_eaten = int(sum(1 for t in processed if getattr(t, 'ate_food', False)))
+            except Exception:
+                self._last_batch_foods_eaten = 0
             
             # Train for multiple epochs on the collected data
             stats = None
@@ -478,9 +649,42 @@ class PPOTrainer:
             values.append(meta.value_estimate)
             rewards.append(t.reward)
             dones.append(float(t.done))
-        # Determine bootstrap: 0 if terminal else last value estimate
-        final_done = bool(dones[-1]) if dones else True
-        bootstrap_value = 0.0 if final_done else values[-1]
+
+        # Bootstrap: for truncated (non-terminal) trajectories, bootstrap from V(s_T)
+        # using the final transition's next_state.
+        #
+        # Why: `meta.value_estimate` is V(s_t) for the *current* state at each step.
+        # GAE needs V(s_{t+1}) when computing delta_t, and in particular needs V(s_T)
+        # for the last step if it is *not* terminal. Reusing V(s_{T-1}) biases the
+        # advantages/returns for truncated trajectories.
+        bootstrap_value = 0.0
+        if values:
+            last_t = trajectory[-1]
+            if (not last_t.done) and (last_t.next_state is not None):
+                # Lazily ensure model exists in odd call paths.
+                self._ensure_model(last_t.state)
+                try:
+                    ns = last_t.next_state
+                    if ns.ctx is None:
+                        raise ValueError("next_state.ctx missing; required for PPO model")
+                    if 'action_features' not in (ns.meta or {}):
+                        raise KeyError("next_state.meta missing action_features")
+
+                    map_tensor = torch.from_numpy(np.ascontiguousarray(ns.map)).unsqueeze(0).float().to(self.device, non_blocking=True)
+                    ctx_tensor = torch.from_numpy(np.ascontiguousarray(ns.ctx)).unsqueeze(0).float().to(self.device, non_blocking=True)
+                    af_tensor = torch.from_numpy(np.ascontiguousarray(ns.meta['action_features'])).unsqueeze(0).float().to(self.device, non_blocking=True)
+                    with torch.no_grad():
+                        _, v_next = self.model({'map': map_tensor, 'ctx': ctx_tensor, 'action_features': af_tensor})
+                    bootstrap_value = float(v_next.squeeze(0).squeeze(-1).detach().cpu().item())
+                except Exception as e:
+                    # Fall back to a conservative bootstrap of 0.0 (treat as terminal)
+                    # rather than silently using V(s_{T-1}).
+                    log.warning(f"GAE bootstrap from next_state failed; using 0.0 (treat as terminal): {e}")
+                    bootstrap_value = 0.0
+            else:
+                # Terminal trajectory: V(s_T)=0.0, masking also enforces this.
+                bootstrap_value = 0.0
+        
         values = np.array(values + [bootstrap_value], dtype=np.float32)
         rewards = np.array(rewards, dtype=np.float32)
         dones = np.array(dones, dtype=np.float32)
@@ -505,6 +709,10 @@ class PPOTrainer:
         states = [t.state for t in transitions]
         actions = torch.tensor([t.action_index for t in transitions], dtype=torch.long, device=self.device)
         old_log_probs = torch.tensor([t.meta.log_prob for t in transitions], dtype=torch.float32, device=self.device)  # type: ignore
+        # IMPORTANT: store old value predictions from rollout time for value clipping.
+        # PPO value clipping requires comparing to the baseline value predictions that were used
+        # when the data was collected (not the current forward pass).
+        old_values = torch.tensor([t.meta.value_estimate for t in transitions], dtype=torch.float32, device=self.device)  # type: ignore
         advantages = torch.tensor([self._adv_returns[t.transition_id][0] for t in transitions], dtype=torch.float32, device=self.device)
         returns = torch.tensor([self._adv_returns[t.transition_id][1] for t in transitions], dtype=torch.float32, device=self.device)
         state_batch = self._collate_states(states)
@@ -512,15 +720,16 @@ class PPOTrainer:
             'states': state_batch,
             'actions': actions,
             'old_log_probs': old_log_probs,
+            'old_values': old_values,
             'advantages': advantages,
             'returns': returns
         }
         return batch
 
     def _collate_states(self, states: List[State]):
-        """Collate States assuming consistent presence of ctx and action_features.
+        """Collate States assuming consistent presence of ctx, action_features, and action_mask.
 
-        Returns dict with 'map', 'ctx', 'action_features'.
+        Returns dict with 'map', 'ctx', 'action_features', 'action_mask'.
         """
         if len(states) == 0:
             raise ValueError("_collate_states received empty state list")
@@ -530,8 +739,9 @@ class PPOTrainer:
         if any(c is None for c in ctx_all):
             raise ValueError("All states must have ctx in new design")
 
-        # Reconstruct or validate per-action features.
+    # Reconstruct or validate per-action features + action masks.
         action_feats_list = []
+        action_masks_list = []
         # Attempt to import model constants for validation; fall back to defaults.
         try:
             from snake_sim.rl.models.ppo_model import SnakePPONet  # local import to avoid circular issues
@@ -549,11 +759,20 @@ class PPOTrainer:
                 raise ValueError(f"action_features shape {af.shape} mismatch; expected ({exp_actions},{exp_feat_dim})")
             action_feats_list.append(af)
 
+            if 'action_mask' not in meta:
+                raise KeyError("State meta missing action_mask; fix state builder/adapters")
+            am = np.asarray(meta['action_mask'])
+            if am.ndim != 1 or am.shape[0] != exp_actions:
+                raise ValueError(f"action_mask shape {am.shape} mismatch; expected ({exp_actions},)")
+            action_masks_list.append(am.astype(np.float32))
+
         # Use non-blocking transfers for better GPU utilization
         map_batch = torch.from_numpy(np.stack(maps_np)).float().to(self.device, non_blocking=True)
         ctx_batch = torch.from_numpy(np.stack(ctx_all)).float().to(self.device, non_blocking=True)
         af_batch = torch.from_numpy(np.stack(action_feats_list)).float().to(self.device, non_blocking=True)
-        return {'map': map_batch, 'ctx': ctx_batch, 'action_features': af_batch}
+        am_batch = torch.from_numpy(np.stack(action_masks_list)).to(self.device, non_blocking=True)
+        # keep float32 in batch; cast to bool right before masking logits
+        return {'map': map_batch, 'ctx': ctx_batch, 'action_features': af_batch, 'action_mask': am_batch.float()}
     # ---- Forward & Update ----
     def _forward(self, state_batch):
         logits, value = self.model(state_batch)
@@ -571,9 +790,14 @@ class PPOTrainer:
         states = batch['states']  # dict of batched tensors
         actions = batch['actions']
         old_log_probs = batch['old_log_probs']
+        old_values = batch.get('old_values', None)
         advantages = batch['advantages']
         returns = batch['returns']
         batch_size = len(actions)
+
+        # Note: advantages are already normalized in _compute_gae()
+        # Do NOT renormalize here - it causes double normalization artifacts
+        # advantages already have mean≈0, std≈1
 
         # Normalize returns (critic target) if enabled
         if self._enable_value_norm:
@@ -588,10 +812,12 @@ class PPOTrainer:
         shuffled_states = {
             'map': states['map'][indices],
             'ctx': states['ctx'][indices],
-            'action_features': states['action_features'][indices]
+            'action_features': states['action_features'][indices],
+            'action_mask': states['action_mask'][indices],
         }
         shuffled_actions = actions[indices]
         shuffled_old_log_probs = old_log_probs[indices]
+        shuffled_old_values = old_values[indices] if old_values is not None else None
         shuffled_advantages = advantages[indices]
         shuffled_returns = normalized_returns[indices]
 
@@ -602,10 +828,24 @@ class PPOTrainer:
         except Exception:
             autocast_ctx = torch.cuda.amp.autocast(enabled=(self._amp_enabled and self.cfg.use_amp and not self._amp_runtime_disabled))
         with autocast_ctx:
-            logits, values = self._forward(shuffled_states)
-        logits = logits.float()
+            logits_raw, values = self._forward(shuffled_states)
+        logits_raw = logits_raw.float()
         values = values.float()
-    # No action masking: allow model to learn safety via features
+
+        # ---- Numerical safety checks ----
+        # If forward produced NaNs/Infs, bail before creating distributions.
+        # This prevents publishing a broken checkpoint that crashes actor processes.
+        if (not torch.isfinite(logits_raw).all()) or (not torch.isfinite(values).all()):
+            log.error(
+                "🚨 Non-finite model outputs in PPO update %s (epoch=%s). Skipping update.",
+                self._update_counter,
+                epoch,
+            )
+            return None
+
+        # Hard action masking (recommended for snake).
+        action_mask = shuffled_states['action_mask'].to(dtype=torch.bool)
+        logits = apply_action_mask_to_logits(logits_raw, action_mask)
 
         dist = torch.distributions.Categorical(logits=logits)
         log_probs = dist.log_prob(shuffled_actions).float()
@@ -619,21 +859,79 @@ class PPOTrainer:
         surr2 = torch.clamp(ratio, 1 - self.cfg.clip_range, 1 + self.cfg.clip_range) * shuffled_advantages
         policy_loss = -torch.mean(torch.min(surr1, surr2))
 
-        # PPO-style value clipping: stabilize critic by limiting per-update delta
-        values_old = values.detach()
-        values_clipped = values_old + torch.clamp(values - values_old, -self.cfg.vf_clip_range, self.cfg.vf_clip_range)
+        # PPO diagnostics (computed on the same minibatch)
+        with torch.no_grad():
+            clipfrac = float(((ratio - 1.0).abs() > self.cfg.clip_range).float().mean().item())
+            ratio_mean = float(ratio.mean().item())
+            ratio_std = float(ratio.std(unbiased=False).item())
+            # Standard PPO approx KL: mean(old_logp - new_logp)
+            approx_kl = float((shuffled_old_log_probs - log_probs).mean().item())
+
+        # If KL blows up, it's very likely we took an oversized update.
+        # Skipping protects against publishing a broken checkpoint.
+        if approx_kl > float(self.cfg.kl_hard_limit):
+            log.error(
+                "🚨 KL hard limit exceeded (approx_kl=%.4f > %.4f). Skipping update.",
+                approx_kl,
+                float(self.cfg.kl_hard_limit),
+            )
+            return None
+
+        # PPO-style value clipping: stabilize critic by limiting deviation from OLD (rollout-time) values.
+        # NOTE: Using values.detach() here is a bug (it makes the clip delta always 0). We must use
+        # the stored rollout-time estimates.
+        if shuffled_old_values is None:
+            # Safety fallback (shouldn't happen in normal training): behave like unclipped MSE.
+            values_clipped = values
+        else:
+            values_old = shuffled_old_values.detach()
+            values_clipped = values_old + torch.clamp(values - values_old, -self.cfg.vf_clip_range, self.cfg.vf_clip_range)
         value_loss_unclipped = F.mse_loss(values, shuffled_returns)
         value_loss_clipped = F.mse_loss(values_clipped, shuffled_returns)
         value_loss = torch.max(value_loss_unclipped, value_loss_clipped)
 
-        if value_loss.item() > 20.0:
+        # ---- Auxiliary legality loss (pre-mask logits) ----
+        # Goal: reduce invalid_action_frac by teaching the network that illegal moves
+        # should have low logits even before masking.
+        # We only use it when there exists at least one invalid action in the minibatch.
+        illegal_logit_loss = logits_raw.new_tensor(0.0)
+        if self.cfg.illegal_logit_coef > 0:
+            invalid_mask = ~action_mask
+            if invalid_mask.any():
+                illegal_logits = logits_raw[invalid_mask]
+                # softplus(x) ~ max(0, x) but smooth.
+                illegal_logit_loss = F.softplus(illegal_logits - float(self.cfg.illegal_logit_margin)).mean()
+
+        # Critic quality diagnostic: explained variance of returns by value predictions
+        with torch.no_grad():
+            v_pred = values
+            v_y = shuffled_returns
+            v_y_var = torch.var(v_y)
+            if float(v_y_var.item()) < 1e-12:
+                explained_variance = float('nan')
+            else:
+                explained_variance = float((1.0 - torch.var(v_y - v_pred) / v_y_var).item())
+
+        # Value loss can be moderately large without implying divergence; avoid skipping too eagerly
+        # or you end up freezing learning whenever returns get noisy.
+        if value_loss.item() > 100.0:
             log.error(f"🚨 VALUE FUNCTION EXPLOSION: loss={value_loss.item():.2f}")
             log.error(f"   Value predictions - min: {values.min().item():.2f}, max: {values.max().item():.2f}, mean: {values.mean().item():.2f}")
             log.error(f"   Return targets - min: {shuffled_returns.min().item():.2f}, max: {shuffled_returns.max().item():.2f}, mean: {shuffled_returns.mean().item():.2f}")
             log.error("   Skipping this update to prevent collapse")
             return None
 
-        total_loss = policy_loss + self.cfg.value_coef * value_loss - self.cfg.entropy_coef * entropy
+        total_loss = (
+            policy_loss
+            + self.cfg.value_coef * value_loss
+            - self.cfg.entropy_coef * entropy
+            + self.cfg.illegal_logit_coef * illegal_logit_loss
+        )
+
+        # Guard against NaN/Inf loss (can happen with extreme ratios/advantages).
+        if not torch.isfinite(total_loss):
+            log.error("🚨 Non-finite total_loss detected; skipping update.")
+            return None
 
         try:
             self.optimizer.zero_grad(set_to_none=True)
@@ -673,10 +971,35 @@ class PPOTrainer:
             'advantages_mean': float(advantages.mean().item()),
             'returns_mean': float(returns.mean().item()),
             'batch_size': batch_size,
-            'epochs_completed': 1,  # For CSV compatibility
+            'epochs_completed': self.cfg.train_epochs,  # For CSV compatibility
             'entropy_coef': self.cfg.entropy_coef,
-            'exploration_boosted': self._exploration_boosted
+            'exploration_boosted': self._exploration_boosted,
+            # PPO diagnostics
+            'clipfrac': clipfrac,
+            'ratio_mean': ratio_mean,
+            'ratio_std': ratio_std,
+            'approx_kl': approx_kl,
+            'explained_variance': explained_variance,
+            # Mask diagnostic
+            'invalid_action_frac': float((~action_mask).float().mean().item()),
+            'illegal_logit_loss': float(illegal_logit_loss.item()) if illegal_logit_loss is not None else 0.0,
         }
+
+        # --- Behavior metrics ---
+        try:
+            foods = int(getattr(self, '_last_batch_foods_eaten', 0))
+            steps = int(batch_size)
+            stats['foods_eaten'] = foods
+            stats['foods_per_1k_steps'] = float(foods) / max(1, steps) * 1000.0
+            stats['steps_per_food'] = float(steps) / max(1, foods)
+        except Exception:
+            pass
+
+        # Add model diagnostics (needed for CSV; _log_detailed_metrics also adds these)
+        try:
+            stats.update(self._get_policy_mixer_stats())
+        except Exception as e:
+            log.debug(f"Mixer stats unavailable: {e}")
         # De-normalized value prediction logging for diagnostics
         try:
             if self._enable_value_norm:
@@ -859,7 +1182,7 @@ class PPOTrainer:
                         
                         # Detailed stats less frequently 
                         if current_time - last_stats_time >= stats_interval:
-                            queue_size = rl_data_queue.size()
+                            queue_size = self._transition_queue.size()
                             log.info(f"📊 Training Overview (Update {stats['update']}):")
                             log.info(f"   Queue Size: {queue_size} | Batch Size: {stats['batch_size']}")
                             log.info(f"   Policy Loss: {stats['policy_loss']:.4f} | Value Loss: {stats['value_loss']:.4f}")
@@ -889,6 +1212,11 @@ class PPOTrainer:
             self._bg_thread.join(timeout=timeout)
             self._bg_thread = None
 
+    def join_background(self, timeout: Optional[float] = None):
+        """Join the background thread if running."""
+        if self._bg_thread is not None:
+            self._bg_thread.join(timeout=timeout)
+
     def _save_snapshot(self):
         """Save model snapshot using SnapshotManager."""
         if not self._snapshot_manager:
@@ -901,8 +1229,8 @@ class PPOTrainer:
                 optimizers=optimizers
             )
             log.debug(f"Saved snapshot {path}")
-            # Prune old snapshots (keep last 5)
-            self._snapshot_manager.prune(keep_last=5)
+            # Prune old snapshots (keep last 2)
+            self._snapshot_manager.prune(keep_last=2)
         except Exception as e:
             log.warning(f"Failed saving snapshot: {e}")
     
@@ -910,11 +1238,16 @@ class PPOTrainer:
         """Cleanup resources including CSV file."""
         if self._csv_file:
             try:
-                self._csv_file.flush()
-                self._csv_file.close()
+                if not self._csv_file.closed:
+                    self._csv_file.flush()
+                    self._csv_file.close()
                 log.debug("📝 Training statistics CSV file closed")
             except Exception as e:
                 log.warning(f"Failed to close CSV file: {e}")
+            finally:
+                # Prevent double-close attempts (e.g., explicit close() then __del__).
+                self._csv_writer = None
+                self._csv_file = None
         
         # Stop background thread if running
         if self._bg_running:

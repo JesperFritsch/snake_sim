@@ -6,9 +6,10 @@ from typing import List, Dict, Any, Sequence, Protocol, Optional
 
 import math
 import numpy as np
+import sys
 
 
-from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles, distance_to_tile_with_value
+from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles, distance_to_tile_with_value, dist_heat_map
 from snake_sim.cpp_bindings.area_check import AreaChecker
 from snake_sim.map_utils.general import print_map
 from snake_sim.environment.types import EnvMetaData, EnvStepData, Coord, AreaCheckResult
@@ -37,8 +38,30 @@ def print_state(state: State):
     print_channel(state.map[1], body_value=1)
     print_channel(state.map[2], food_value=1)
     print_channel(state.map[3], blocked_value=1)
+    _print_red_heatmap(state.map[4])
     print("State context:", state.ctx)
     print("State meta:", state.meta)
+    sys.stdout.flush()
+
+
+def _print_red_heatmap(norm_map: np.ndarray) -> None:
+    """Print a normalized (H,W) map as colored blocks.
+
+    Each cell is printed as two spaces with an ANSI 24-bit background color.
+      - value 0.0 => bright red
+      - value 1.0 => black
+    """
+    if norm_map is None or not hasattr(norm_map, 'shape') or len(norm_map.shape) != 2:
+        print("<heatmap: invalid shape>")
+        return
+
+    v = np.clip(np.asarray(norm_map, dtype=np.float32), 0.0, 1.0)
+    for y in range(v.shape[0]):
+        parts: List[str] = []
+        for x in range(v.shape[1]):
+            red = int(round((1.0 - float(v[y, x])) * 255.0))
+            parts.append(f"\x1b[48;2;{red};0;0m  \x1b[0m")
+        print("".join(parts))
 
 
 def _get_visitable_tiles(
@@ -78,12 +101,17 @@ class IStateAdapter(Protocol):
 
 
 class BaseStateBuilder:
-    def __init__(self, include_opponents: bool = True):
+    def __init__(
+        self,
+        include_opponents: bool = True,
+    ):
         self.include_opponents = include_opponents
 
     # New flexible build: per-channel buffers
     def build(self, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> State:
         channels_dict = self._build_channels(env_meta, step_data, snake_ctx)
+        additional_channels = self._additional_channels(env_meta, step_data, snake_ctx)
+        channels_dict.update(additional_channels)
         order = self._default_order(include_opponents=self.include_opponents)
         map_tensor = self._build_map(channels_dict, order)
         return State(
@@ -100,6 +128,48 @@ class BaseStateBuilder:
             }
         )
 
+    def _create_food_dist_heat_map(self, env_meta: EnvMetaData, step_data: EnvStepData) -> np.ndarray:
+        """Create a normalized food-distance channel.
+
+        The underlying heat map returns integer-like distances (and may use -1 for unreachable).
+        We convert it to float32 in [0, 1] by dividing by `food_dist_max` and clipping.
+
+        Notes:
+            - Distances <= 0 become 0.0 (including unreachable=-1).
+            - Distances >= food_dist_max become 1.0.
+        """
+        heat_map_array = dist_heat_map(
+            step_data.map,
+            env_meta.width,
+            env_meta.height,
+            env_meta.free_value,
+            env_meta.blocked_value,
+            env_meta.food_value
+        )
+
+        # Convert to float32 and normalize into [0,1].
+        distances = np.asarray(heat_map_array, dtype=np.float32)
+        food_dist_max = (env_meta.width + env_meta.height) / 1.1
+
+        # Treat unreachable or negative distances as 0 ("no signal").
+        distances = np.maximum(distances, 0.0)
+        norm = np.clip(distances / food_dist_max, 0.0, 1.0).astype(np.float32)
+
+        # print("Food distance heatmap (red = close):")
+
+        # # for row in norm:
+        # #     print(" ".join([f"{val:4.2f}" for val in row]))
+
+        # _print_red_heatmap(norm)
+
+        return norm
+
+    def _additional_channels(self, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> Dict[str, np.ndarray]:
+        """Override to add more channels beyond the base ones."""
+        return {
+            "food_dist": self._create_food_dist_heat_map(env_meta, step_data)
+        }
+    
     def _build_channels(self, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> Dict[str, np.ndarray]:
         s_map = step_data.map
         H, W = env_meta.height, env_meta.width
@@ -154,48 +224,28 @@ class BaseStateBuilder:
         return stacked
 
     def _default_order(self, include_opponents: bool = True) -> List[str]:
-        base = ['head', 'body', 'food', 'blocked']
+        base = ['head', 'body', 'food', 'blocked', 'food_dist']
         if include_opponents and self.include_opponents:
             base += ['opp_heads', 'opp_bodies']
         return base
 
 
 class CompleteStateBuilder:
-    def __init__(self, base_builder: BaseStateBuilder, adapters: List[IStateAdapter]=[], fixed_shuffle_features: bool = False):
+    def __init__(self, base_builder: BaseStateBuilder, adapters: List[IStateAdapter]=[]):
         self.base_builder = base_builder
         self.adapters = adapters
-        self.fixed_shuffle_features = fixed_shuffle_features
-
-    def get_channels_and_ctx_size(self, env_meta: EnvMetaData) -> int:
-        """Calculate total channels + ctx size after applying adapters."""
-        base_channels = len(self.base_builder._default_order())
-        adapter_ctx = 0
-        for adapter in self.adapters:
-            if adapter.name == 'direction_hints':
-                adapter_ctx += len(consts.ACTION_ORDER) * 3  # area_ctx, safety_ctx, close_food_ctx
-            elif adapter.name == 'action_mask':
-                # Masking removed; no additional ctx needed
-                adapter_ctx += 0
-        return base_channels + adapter_ctx
         
     def build(self, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> State:
         state = self.base_builder.build(env_meta, step_data, snake_ctx)
         ADAPTER_CACHE.clear()
         for adapter in self.adapters:
             adapter.apply(state, step_data, env_meta, snake_ctx)
-        area_ctx = state.meta['area_ctx']  # shape (A,)
-        safety_ctx = state.meta['safety_ctx']  # shape (A,)
-        food_ctx = state.meta['close_food_ctx']  # shape (A,)
-        # Masking removed from action features; use three-element vector
-        action_features = np.stack([area_ctx, safety_ctx, food_ctx], axis=1).astype(np.float32)
-        # TEST: Fixed shuffle of action_features to break action-index hardwiring
-        # Reverses the order: action 0 gets features of action 3, etc.
-        # Preserves correlations but tests if model relies on absolute action positions
-        if self.fixed_shuffle_features:
-            # Reverse along action axis, then make a contiguous copy to avoid negative strides
-            action_features = action_features[::-1].copy()
-        state.meta['action_features'] = action_features  # (A, 3)
-        state.meta['action_feature_names'] = ['margin_frac', 'safety_hint', 'food_hint']
+        area_ctx = state.meta['area_ctx']  # shape (A,) - margin_frac for each action
+        # Keep only margin_frac as action features. This gives spatial signal without giving away optimal actions.
+        # Removed: safety_ctx (binary safe/unsafe) and food_ctx (direction to food) as they bypass learning.
+        action_features = area_ctx.reshape(-1, 1).astype(np.float32)  # (A, 1)
+        state.meta['action_features'] = action_features
+        state.meta['action_feature_names'] = ['margin_frac']
         return state
 
 
@@ -320,3 +370,40 @@ class DirectionHintsAdapter:
 
 
 # ActionMaskAdapter removed: masking is disabled; policy learns safety from features
+
+
+class ActionMaskAdapter:
+    """Compute a hard action mask for the agent.
+
+    The goal is to prevent *illegal* actions from being sampled/trained on.
+    This is intentionally minimal and does NOT encode advanced safety heuristics
+    like "will I die 3 steps later"; it only checks immediate legality.
+
+    Stored in:
+        state.meta['action_mask'] as np.ndarray shape (A,) float32 (1=valid, 0=invalid)
+    """
+
+    name = 'action_mask'
+
+    def apply(self, state: State, step_data: EnvStepData, env_meta: EnvMetaData, snake_ctx: SnakeContext) -> None:
+        s_map = step_data.map
+        H, W = env_meta.height, env_meta.width
+        head = snake_ctx.head
+
+        mask = _clean_dir_ctx()
+        for d_coord, idx in consts.ACTION_ORDER.items():
+            nx, ny = head.x + d_coord.x, head.y + d_coord.y
+            if nx < 0 or nx >= W or ny < 0 or ny >= H:
+                mask[idx] = 0.0
+                continue
+            # Requested rule: treat anything > free_value as blocked.
+            # This masks walls + other snake bodies/heads while keeping free/food tiles.
+            mask[idx] = 0.0 if s_map[ny, nx] > env_meta.free_value else 1.0
+
+        # Safety fallback: if everything is illegal (should not happen often),
+        # allow all actions to avoid NaNs downstream; the env will resolve collisions.
+        if mask.sum() == 0:
+            mask[:] = 1.0
+
+        state.meta['action_mask'] = mask.astype(np.float32)
+        state.meta.setdefault('adapters', []).append(self.name)

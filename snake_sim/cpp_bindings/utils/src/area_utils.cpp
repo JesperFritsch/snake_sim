@@ -129,3 +129,107 @@ bool can_make_area_inaccessible(
     }
     return false;
 }
+
+
+unsigned int* dist_heat_map(
+    uint8_t *s_map,
+    int width,
+    int height,
+    int free_value,
+    int blocked_value,
+    int target_value
+){
+    unsigned int* heat_map = new unsigned int[width * height];
+    std::fill(heat_map, heat_map + width * height, 255); // Initialize all distances to "infinity" (255)
+
+    std::queue<Coord> to_visit;
+
+    std::unordered_set<Coord> visited;
+
+    // Initialize the queue with all target positions
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (s_map[y * width + x] == target_value) {
+                heat_map[y * width + x] = 0;
+                to_visit.push(Coord(x, y));
+            }
+        }
+    }
+
+    std::vector<Coord> directions = {Coord(1,0), Coord(-1,0), Coord(0,1), Coord(0,-1)};
+
+    while (!to_visit.empty()) {
+        Coord current = to_visit.front();
+        to_visit.pop();
+        unsigned int current_dist = heat_map[current.y * width + current.x];
+        for (const auto& dir : directions) {
+            Coord neighbor(current.x + dir.x, current.y + dir.y);
+            if (
+                neighbor.x >= 0 && 
+                neighbor.x < width && 
+                neighbor.y >= 0 && 
+                neighbor.y < height && 
+                visited.find(neighbor) == visited.end()
+            ) {
+                visited.insert(neighbor);
+                if (s_map[neighbor.y * width + neighbor.x] != blocked_value) {
+                    unsigned int& neighbor_dist = heat_map[neighbor.y * width + neighbor.x];
+                    if (current_dist + 1 < neighbor_dist) {
+                        neighbor_dist = current_dist + 1;
+                        to_visit.push(neighbor);
+                    }
+                }
+            }
+        }
+    }
+
+    return heat_map;
+}
+
+
+std::vector<int> area_boundary_tiles(
+    uint8_t *s_map,
+    int width,
+    int height,
+    int free_value,
+    Coord area_start
+) {
+    std::unordered_set<int> boundary_tiles;
+    std::queue<Coord> to_visit;
+    std::unordered_set<Coord> visited;
+
+    to_visit.push(area_start);
+    visited.insert(area_start);
+
+    std::vector<Coord> directions = {Coord(1,0), Coord(-1,0), Coord(0,1), Coord(0,-1)};
+
+    while (!to_visit.empty()) {
+        Coord current = to_visit.front();
+        to_visit.pop();
+
+        for (const auto& dir : directions) {
+            Coord neighbor(current.x + dir.x, current.y + dir.y);
+            if (
+                neighbor.x >= 0 && 
+                neighbor.x < width && 
+                neighbor.y >= 0 && 
+                neighbor.y < height
+            ) {
+                if (s_map[neighbor.y * width + neighbor.x] > free_value) {
+                    int idx = neighbor.y * width + neighbor.x;
+                    boundary_tiles.insert(s_map[idx]);
+                } else {
+                    auto [it, inserted] = visited.insert(neighbor);
+                    if (inserted) {
+                        to_visit.push(neighbor);
+                    }
+                }
+            }
+            else {
+                boundary_tiles.insert(-1); 
+            }
+        }
+    }
+
+    return std::vector<int>(boundary_tiles.begin(), boundary_tiles.end());
+}

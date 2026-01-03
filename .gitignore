@@ -13,3 +13,6 @@ build/
 dist/
 *.so
 /snake_sim/test_bench/state_files/*
+*/rl/**/archive/
+*/rl/**/*.csv
+**/trainings_runs/

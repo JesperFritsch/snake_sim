@@ -15,6 +15,7 @@ from importlib import resources
 from snake_sim.environment.snake_factory import SnakeFactory
 from snake_sim.snakes.snake_base import SnakeBase
 from snake_sim.environment.snake_strategy_factory import SnakeStrategyFactory
+from snake_sim.rl.spatial_network_analyzer import SpatialNetworkAnalyzer
 from snake_sim.environment.snake_env import SnakeRep
 from snake_sim.environment.types import (
     Coord, 
@@ -40,7 +41,8 @@ with resources.open_text('snake_sim.config', 'default_config.json') as config_fi
 from snake_sim.cpp_bindings.utils import (
     get_dir_to_tile,
     get_visitable_tiles,
-    can_make_area_inaccessible
+    can_make_area_inaccessible,
+    area_boundary_tiles
 )
 
 
@@ -162,20 +164,8 @@ def test_spatial_network_ablation(snake: SnakeBase, s_map, food_locations: List[
     """
     Run spatial ablation analysis using the already created snake, matching the style of other test functions.
     """
-    from snake_sim.rl.spatial_network_analyzer import SpatialNetworkAnalyzer
-    from snake_sim.rl.state_builder import SnakeContext
     env_step_data = EnvStepData(s_map, {}, food_locations)
-    snake_ctx = SnakeContext(
-        snake_id=snake._id,
-        head=snake._head_coord,
-        body_coords=list(snake._body_coords),
-        length=snake._length
-    )
-    rl_state = snake._state_builder.build(
-        snake._env_meta_data,
-        env_step_data,
-        snake_ctx
-    )
+    rl_state = snake._get_state(env_step_data)
     # Sanity-check and build tensors
     print("RL state map shape:", rl_state.map.shape)
     print("RL state ctx:", rl_state.ctx)
@@ -189,7 +179,7 @@ def test_spatial_network_ablation(snake: SnakeBase, s_map, food_locations: List[
         action_features = action_features[np.newaxis, ...]  # (1, A, F)
     action_features_tensor = torch.from_numpy(action_features).float()
     analyzer = SpatialNetworkAnalyzer(
-        snapshot_dir="models/ppo_training",
+        snapshot_dir=snake._snapshot_dir,
         base_name="ppo_model",
     )
     results = analyzer.compare_modes(map_tensor, ctx_tensor, action_features_tensor)
@@ -198,6 +188,17 @@ def test_spatial_network_ablation(snake: SnakeBase, s_map, food_locations: List[
         print("Logits:", res["logits"].detach().cpu().numpy())
         print("Values:", res["values"].detach().cpu().numpy())
 
+
+def test_area_funcs(snake: SnakeBase, s_map):
+    tile_values = area_boundary_tiles(
+        s_map,
+        snake._env_meta_data.width,
+        snake._env_meta_data.height,
+        snake._env_meta_data.free_value,
+        snake._head_coord
+    )
+    print(snake._env_meta_data.snake_values)
+    print("Area boundary tiles:", tile_values)
 
 # @profile()
 def run_tests(snake: SnakeBase, s_map: np.ndarray, step_state: CompleteStepState):
@@ -212,6 +213,7 @@ def run_tests(snake: SnakeBase, s_map: np.ndarray, step_state: CompleteStepState
     # test_get_dir_to_tile(snake, s_map, snake.env_step_data.food_value, Coord(58, 61))
     # test_get_visitable_tiles(snake, s_map, snake._head_coord)
     test_spatial_network_ablation(snake, s_map, step_state.food)
+    test_area_funcs(snake, s_map)
 
 
 def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, env_meta_data: EnvMetaData):
@@ -286,36 +288,34 @@ if __name__ == "__main__":
 
     activate_debug()
     enable_debug_for('SnakeBase')
+    enable_debug_for("BaseStateBuilder")
     enable_debug_for('_next_step')
     enable_debug_for('_get_food_dir')
     enable_debug_for('_best_first_search')
 
-    snake_id = 7
-    # snake_id = None
+    snake_id = 5
     s_map = create_map(step_state, snake_reps)
 
-    if snake_id is None:
-        color_mapping = create_color_map(step_state.env_meta_data.snake_values)
-        for s_rep in snake_reps.values():
-            print(f"ID: {s_rep.id: <4} HEAD: {Coord(*s_rep.get_head()): <20} body len: {s_rep._length: <4}, body_color: {rgb_color_text('  ', *color_mapping[s_rep.body_value])}")
-        print_colored_map(s_map, step_state.env_meta_data, color_mapping, show_snake_id=snake_id)
+    color_mapping = create_color_map(step_state.env_meta_data.snake_values)
+    for s_rep in snake_reps.values():
+        print(f"ID: {s_rep.id: <4} HEAD: {Coord(*s_rep.get_head()): <20} body len: {s_rep._length: <4}, body_color: {rgb_color_text('  ', *color_mapping[s_rep.body_value])}")
+    print_colored_map(s_map, step_state.env_meta_data, color_mapping, show_snake_id=None)
 
-    else:
-        test_snake = create_test_snake(snake_id, snake_reps, s_map, step_state.env_meta_data)
-        print_map(
-            s_map,
-            test_snake._env_meta_data.free_value,
-            test_snake._env_meta_data.food_value,
-            test_snake._env_meta_data.blocked_value,
-            test_snake._head_value,
-            test_snake._body_value
-        )
-        # print("snake env_meta_data: ", test_snake._env_meta_data)
-        # print("snake env_step_data: ", test_snake._env_step_data)
-        # print("snake head: ", test_snake._head_coord)
-        # print("snake head value: ", test_snake.get_self_map_values()[0])
-        # print("snake body value: ", test_snake.get_self_map_values()[1])
-        sys.stdout.flush()
-        run_tests(test_snake, s_map, step_state)
+    test_snake = create_test_snake(snake_id, snake_reps, s_map, step_state.env_meta_data)
+    print_map(
+        s_map,
+        test_snake._env_meta_data.free_value,
+        test_snake._env_meta_data.food_value,
+        test_snake._env_meta_data.blocked_value,
+        test_snake._head_value,
+        test_snake._body_value
+    )
+    # print("snake env_meta_data: ", test_snake._env_meta_data)
+    # print("snake env_step_data: ", test_snake._env_step_data)
+    # print("snake head: ", test_snake._head_coord)
+    # print("snake head value: ", test_snake.get_self_map_values()[0])
+    # print("snake body value: ", test_snake.get_self_map_values()[1])
+    sys.stdout.flush()
+    run_tests(test_snake, s_map, step_state)
 
         
