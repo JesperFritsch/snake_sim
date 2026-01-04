@@ -53,6 +53,7 @@ class RLTransitionData:
     state: State
     action_index: int
     reward: float
+    reward_info: dict[str, float]
     snake_id: int
     next_state: State
     meta: RLMetaData
@@ -62,6 +63,10 @@ class RLTransitionData:
     # This should be set by the environment/loop (source of truth), not inferred
     # from total reward magnitude (since reward shaping can change).
     ate_food: bool = False
+    # Explicit behavior event: whether the snake contributed to trapping an opponent
+    # on this transition. This should be set by the environment/loop using reward_info
+    # or other ground-truth signals.
+    did_trap: bool = False
     transition_id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
 

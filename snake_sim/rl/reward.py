@@ -125,12 +125,13 @@ def assign_trapping_credit(
 
 def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
                 state_map2: tuple[CompleteStepState, np.ndarray],
-                snake_ids: set[int]) -> dict[int, float]:
+                snake_ids: set[int]) -> tuple[dict[int, float], dict[int, dict[str, float]]]:
     """ Computes rewards for each snake between two states.
     """
     state1, map1 = state_map1
     state2, map2 = state_map2
     rewards = {}
+    info = {}
     get_area_checkers(
         snake_values=state1.env_meta_data.snake_values,
         free_value=state1.env_meta_data.free_value,
@@ -151,29 +152,29 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
     for s_id in snake_ids:
         if s_id not in state_map1[0].snake_bodies or s_id not in state_map2[0].snake_bodies:
             raise ValueError(f"Snake id {s_id} not found in one of the states.")
-        food_dist1 = distance_to_tile_with_value(
-            map1,
-            state1.env_meta_data.width,
-            state1.env_meta_data.height,
-            state1.snake_bodies[s_id][0],
-            state1.env_meta_data.food_value,
-            [state1.env_meta_data.free_value, state1.env_meta_data.food_value]
-        )
-        food_dist2 = distance_to_tile_with_value(
-            map2,
-            state2.env_meta_data.width,
-            state2.env_meta_data.height,
-            state2.snake_bodies[s_id][0],
-            state2.env_meta_data.food_value,
-            [state2.env_meta_data.free_value, state2.env_meta_data.food_value]
-        )
+        # food_dist1 = distance_to_tile_with_value(
+        #     map1,
+        #     state1.env_meta_data.width,
+        #     state1.env_meta_data.height,
+        #     state1.snake_bodies[s_id][0],
+        #     state1.env_meta_data.food_value,
+        #     [state1.env_meta_data.free_value, state1.env_meta_data.food_value]
+        # )
+        # food_dist2 = distance_to_tile_with_value(
+        #     map2,
+        #     state2.env_meta_data.width,
+        #     state2.env_meta_data.height,
+        #     state2.snake_bodies[s_id][0],
+        #     state2.env_meta_data.food_value,
+        #     [state2.env_meta_data.free_value, state2.env_meta_data.food_value]
+        # )
         did_eat = state2.snake_bodies[s_id][0] in state1.food
-        if set(state1.food) != set(state2.food) or did_eat:
-            # if snake ate or food changed, distances are unreliable
-            food_dist1 = None
-            food_dist2 = None
+        # if set(state1.food) != set(state2.food) or did_eat:
+        #     # if snake ate or food changed, distances are unreliable
+        #     food_dist1 = None
+        #     food_dist2 = None
         survival_chance_reward = _survival_chance_reward(best_area_checks_s2.get(s_id))
-        food_reward = _food_approach_reward(food_dist1, food_dist2)
+        food_reward = 0 # _food_approach_reward(food_dist1, food_dist2)
         did_eat_reward = _food_eat_reward(did_eat)
         survival_reward = _survival_reward(
             state2.snake_alive.get(s_id, False),
@@ -194,6 +195,15 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
         # Scale overall reward signal to increase training SNR
         rewards[s_id] = total_reward
 
+        info[s_id] = {
+            'survival_reward': survival_reward,
+            'food_approach_reward': food_reward,
+            'food_eat_reward': did_eat_reward,
+            'survival_chance_reward': survival_chance_reward,
+            'trapping_reward': trapping_reward_value,
+            'total_reward': total_reward,
+        }
+
         if debug.is_debug_active():
             print(
                 f"🎯 Rewards for snake {s_id}:, survival={survival_reward:.2f}, "
@@ -201,7 +211,7 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
                 f"survival_chance={survival_chance_reward:.2f}, trapping={trapping_reward_value:.2f}, total={total_reward:.2f}"
             )
     
-    return rewards
+    return rewards, info
 
 
 def _food_approach_reward(dist1: float | None, dist2: float | None) -> float:
@@ -223,7 +233,7 @@ def _food_approach_reward(dist1: float | None, dist2: float | None) -> float:
 def _food_eat_reward(ate_food: bool) -> float:
     """Eating food is the primary success signal."""
     if ate_food:
-        return .5  # ← RESTORED: was 1.0. This is the goal!
+        return 1.0  # ← RESTORED: was 1.0. This is the goal!
     return 0.0  # did not eat food
 
 
@@ -238,7 +248,7 @@ def _survival_chance_reward(area_check: AreaCheckResult) -> float:
 def trapping_reward(is_trapping_contributor: bool) -> float:
     """Reward for contributing to trapping an opponent."""
     if is_trapping_contributor:
-        return 5 # Reward for directly trapping an opponent
+        return 10 # Reward for directly trapping an opponent
     return 0.0
 
 
@@ -246,7 +256,7 @@ def _survival_reward(still_alive: bool, current_length: int = 2) -> float:
     """Small per-step survival bonus to encourage longer episodes."""
     if not still_alive:
         # Death penalty only if dead
-        return -10.0  # Keep penalty for death
+        return -20.0  # Keep penalty for death
     else:
         # Small survival bonus - encourages long episodes needed for food exploration
         return -0.001  # ← RESTORED: was 0 (commented out). 1 cent per step to explore!

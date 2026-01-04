@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from snake_sim.rl.snapshot_manager import SNAPSHOT_BASE_DIR
 
-snapshot_dir = "basemodel_small_mb_many_agents"
+snapshot_dir = "basemodel_again_no_approachreward"
 
 df = pd.read_csv(Path(SNAPSHOT_BASE_DIR) / snapshot_dir / "training_stats.csv")
 
@@ -35,6 +35,22 @@ if any(c in df.columns for c in food_cols):
 	plt.ylabel('Food efficiency')
 	plt.legend()
 	plt.title('Food Efficiency (explicit ate_food)')
+	plt.show()
+
+# Plot trapping metrics if present
+trap_cols = {'traps_per_1k_steps', 'steps_per_trap', 'traps_made'}
+if any(c in df.columns for c in trap_cols):
+	plt.figure(figsize=(12, 6))
+	# if 'traps_per_1k_steps' in df.columns:
+	# 	plt.plot(df['update'], df['traps_per_1k_steps'], label='Traps / 1k steps', linestyle='-')
+	# if 'steps_per_trap' in df.columns:
+	# 	plt.plot(df['update'], df['steps_per_trap'], label='Steps / trap', linestyle='--')
+	if 'traps_made' in df.columns:
+		plt.plot(df['update'], df['traps_made'], label='Traps made (batch)', linestyle=':')
+	plt.xlabel('Update')
+	plt.ylabel('Trapping')
+	plt.legend()
+	plt.title('Trapping Frequency (explicit did_trap)')
 	plt.show()
 
 # Detect when exploration was boosted

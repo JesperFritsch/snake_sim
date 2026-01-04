@@ -24,8 +24,8 @@ log = logging.getLogger(Path(__file__).stem)
 
 @dataclass
 class PPOTrainerConfig:
-    gamma: float = 0.99
-    lam: float = 0.98  # GAE lambda
+    gamma: float = 0.95
+    lam: float = 0.93  # GAE lambda
     clip_range: float = 0.4  # Slightly wider clip -> larger effective updates
     # Learning rates: the previous defaults produced near-zero policy updates
     # (ratio_std ~ 1e-4, clipfrac ~ 0). These values are still modest for PPO,
@@ -34,9 +34,9 @@ class PPOTrainerConfig:
     # Critic can become unstable fast in sparse/noisy-reward settings.
     # Keep value_lr lower than policy_lr unless you have very reliable return targets.
     value_lr: float = 1e-3
-    minibatch_size: int = 256  # More minibatches/rollout -> more gradient steps
+    minibatch_size: int = 128  # More minibatches/rollout -> more gradient steps
     rollout_size: int = 8192  # INCREASED - collect more before training (was 2048)
-    train_epochs: int = 2  # More optimizer steps per rollout -> faster learning
+    train_epochs: int = 3  # More optimizer steps per rollout -> faster learning
     entropy_coef: float = 0.015  # Slightly lower entropy to reduce overly random updates
     value_coef: float = 0.5     # Reduced from 1.0 to stabilize value function
     max_grad_norm: float = 1.0  # Increased from 0.5 (double norm fix allows higher safety margin)
@@ -115,6 +115,11 @@ class PPOTrainer:
 
         # Explicit behavior metric (comes from transition.ate_food)
         self._last_batch_foods_eaten = 0
+        # Explicit behavior metric: trap events (comes from transition.did_trap)
+        self._last_batch_traps = 0
+
+        # Cached total transitions in the current rollout (used for per-rollout metrics).
+        self._last_rollout_steps = 0
         
         # Training metrics tracking
         self._metrics_history = {
@@ -207,7 +212,15 @@ class PPOTrainer:
                 # Explicit behavior metrics
                 'foods_eaten',
                 'foods_per_1k_steps',
-                'steps_per_food'
+                'steps_per_food',
+                # Explicit behavior metrics (trapping)
+                'traps_made',
+                'traps_per_1k_steps',
+                'steps_per_trap',
+                # Rollout totals (constant across minibatch updates within a rollout)
+                'foods_eaten_rollout',
+                'traps_made_rollout',
+                'rollout_steps'
             ]
 
             # Only write header if file is new/empty (or doesn't already have a header).
@@ -281,6 +294,12 @@ class PPOTrainer:
                 stats.get('foods_eaten', ''),
                 stats.get('foods_per_1k_steps', ''),
                 stats.get('steps_per_food', ''),
+                stats.get('traps_made', ''),
+                stats.get('traps_per_1k_steps', ''),
+                stats.get('steps_per_trap', ''),
+                stats.get('foods_eaten_rollout', ''),
+                stats.get('traps_made_rollout', ''),
+                stats.get('rollout_steps', ''),
             ]
             self._csv_writer.writerow(row)
             
@@ -600,12 +619,22 @@ class PPOTrainer:
             
             log.info(f"Training on {len(processed)} transitions from {len(all_ready_trajs)} complete episodes")
 
+            # Cache rollout totals for per-rollout metrics.
+            self._last_rollout_steps = int(len(processed))
+
             # Count explicit food events in this training batch.
             # This is robust to reward shaping changes.
             try:
                 self._last_batch_foods_eaten = int(sum(1 for t in processed if getattr(t, 'ate_food', False)))
             except Exception:
                 self._last_batch_foods_eaten = 0
+
+            # Count explicit trap events in this training batch.
+            # We use the boolean flag carried in the transition, not raw reward magnitude.
+            try:
+                self._last_batch_traps = int(sum(1 for t in processed if getattr(t, 'did_trap', False)))
+            except Exception:
+                self._last_batch_traps = 0
             
             # Train for multiple epochs on the collected data
             stats = None
@@ -626,7 +655,7 @@ class PPOTrainer:
                         minibatch = processed[start_idx:end_idx]
                     
                     batch = self._collate_batch(minibatch)
-                    epoch_stats = self._ppo_update(batch, epoch=epoch)
+                    epoch_stats = self._ppo_update(batch, epoch=epoch, transitions=minibatch)
                     
                     # Keep stats from last minibatch for logging
                     if epoch_stats:
@@ -716,13 +745,14 @@ class PPOTrainer:
         advantages = torch.tensor([self._adv_returns[t.transition_id][0] for t in transitions], dtype=torch.float32, device=self.device)
         returns = torch.tensor([self._adv_returns[t.transition_id][1] for t in transitions], dtype=torch.float32, device=self.device)
         state_batch = self._collate_states(states)
+
         batch = {
             'states': state_batch,
             'actions': actions,
             'old_log_probs': old_log_probs,
             'old_values': old_values,
             'advantages': advantages,
-            'returns': returns
+            'returns': returns,
         }
         return batch
 
@@ -778,7 +808,7 @@ class PPOTrainer:
         logits, value = self.model(state_batch)
         return logits, value.squeeze(-1)
 
-    def _ppo_update(self, batch: Dict, epoch: int = 0):
+    def _ppo_update(self, batch: Dict, epoch: int = 0, transitions: Optional[List[RLTransitionData]] = None):
         """Single minibatch PPO update.
         
         Args:
@@ -987,11 +1017,28 @@ class PPOTrainer:
 
         # --- Behavior metrics ---
         try:
-            foods = int(getattr(self, '_last_batch_foods_eaten', 0))
+            # IMPORTANT: PPOTrainer logs stats once per *minibatch update*, not once per rollout.
+            # So behavior metrics should be computed on the current minibatch transitions.
+            # (Rollout totals are cached in self._last_batch_* if you want whole-rollout views.)
+            foods = 0
+            traps = 0
+            if transitions is not None:
+                foods = int(sum(1 for t in transitions if getattr(t, 'ate_food', False)))
+                traps = int(sum(1 for t in transitions if getattr(t, 'did_trap', False)))
             steps = int(batch_size)
+
             stats['foods_eaten'] = foods
             stats['foods_per_1k_steps'] = float(foods) / max(1, steps) * 1000.0
             stats['steps_per_food'] = float(steps) / max(1, foods)
+
+            stats['traps_made'] = traps
+            stats['traps_per_1k_steps'] = float(traps) / max(1, steps) * 1000.0
+            stats['steps_per_trap'] = float(steps) / max(1, traps)
+
+            # Also log per-rollout totals alongside minibatch-normalized metrics.
+            stats['foods_eaten_rollout'] = int(getattr(self, '_last_batch_foods_eaten', 0))
+            stats['traps_made_rollout'] = int(getattr(self, '_last_batch_traps', 0))
+            stats['rollout_steps'] = int(getattr(self, '_last_rollout_steps', 0))
         except Exception:
             pass
 

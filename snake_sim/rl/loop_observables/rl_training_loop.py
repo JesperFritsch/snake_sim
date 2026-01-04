@@ -63,18 +63,18 @@ class RLTrainingLoop(SimLoop):
         current_sim_state.state_idx = self._steps
         
         if not self._prev_sim_state is None and not self._prev_sim_map is None:
-            rewards = compute_rewards(
+            rewards, reward_info = compute_rewards(
                 (self._prev_sim_state, self._prev_sim_map),
                 (current_sim_state, current_sim_map),
                 snake_ids,
             )   
-            self._finalize_pending_transitions(current_pending_transitions, rewards)
+            self._finalize_pending_transitions(current_pending_transitions, rewards, reward_info)
         self._prev_sim_state = current_sim_state
         self._prev_sim_map = current_sim_map
         self._previous_pending_transitions = current_pending_transitions
         self._pending_transition_cache.clear()
 
-    def _finalize_pending_transitions(self, current_pending_transitions: dict[int, PendingTransition], rewards: dict[int, float]) -> dict[int, PendingTransition]:
+    def _finalize_pending_transitions(self, current_pending_transitions: dict[int, PendingTransition], rewards: dict[int, float], reward_info: dict[int, dict[str, float]]) -> dict[int, PendingTransition]:
         """Gathers pending transitions from all snakes in the environment.
 
         Returns:
@@ -96,6 +96,16 @@ class RLTrainingLoop(SimLoop):
                 except Exception:
                     ate_food = False
 
+                # Explicit event flag for logging: did this snake contribute to trapping
+                # an opponent on this step?
+                did_trap = False
+                try:
+                    ri = reward_info.get(snake_id, {}) if reward_info is not None else {}
+                    # Treat as a trap event if the trapping reward component is non-zero.
+                    did_trap = float(ri.get('trapping_reward', 0.0)) != 0.0
+                except Exception:
+                    did_trap = False
+
                 current_pending = current_pending_transitions.get(snake_id, None)
                 if current_pending is not None and self._env.snake_is_alive(snake_id):
                     # Use the current environment state, not the pending transition's state
@@ -113,7 +123,9 @@ class RLTrainingLoop(SimLoop):
                     state=pre_pending_transition.state,
                     action_index=pre_pending_transition.action_index,
                     reward=rewards[snake_id],
+                    reward_info=reward_info[snake_id],
                     ate_food=ate_food,
+                    did_trap=did_trap,
                     next_state=next_state,
                     snake_id=snake_id,
                     meta=pre_pending_transition.meta,

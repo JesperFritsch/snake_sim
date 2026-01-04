@@ -39,7 +39,7 @@
     "ai_snake_config": {
         "type": "ai_ppo",
         "args": {
-            "snapshot_dir": "basemodel_big_negative_death",
+            "snapshot_dir": "basemodel_again_no_approachreward",
             "deterministic": true,
             "auto_reload": false,
             "eager_first_load": true,
