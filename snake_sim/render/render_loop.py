@@ -70,9 +70,12 @@ class RenderLoop:
         self._backwards_key = "LEFT"
         self._fast_key = "CTRL"
         self._multi_steps_key = "SHIFT"
-        self._toggel_paus_key = "SPACE"
+        self._toggel_pause_key = "SPACE"
         self._save_state_key = "ENTER"
         self._quit_combo = ("CTRL", "C")
+        self._go_end_combo = ("CTRL", "E")
+        self._go_start_combo = ("CTRL", "S")
+        self._go_mid_combo = ("CTRL", "M")
 
         # Choose input provider
         if input_provider is not None:
@@ -125,12 +128,12 @@ class RenderLoop:
                         log.info("Terminal quit key pressed; stopping render loop")
                         self._stop_event.set()
                 else:
-                    if all(self._input.is_pressed(k) for k in self._quit_combo):
+                    if self._input.is_pressed(keys=self._quit_combo):
                         log.info("Quit combo pressed; stopping render loop")
                         self._stop_event.set()
 
                 # Toggle pause
-                if self._input.down_event(self._toggel_paus_key):
+                if self._input.down_event(self._toggel_pause_key):
                     self._paused = not self._paused
 
                 # Save state
@@ -141,6 +144,13 @@ class RenderLoop:
                         save_step_state(state)
                     else:
                         log.warning("No state builder attached; cannot save state")
+
+                if self._input.is_pressed(keys=self._go_end_combo):
+                    self._renderer.render_last_frame()
+                elif self._input.is_pressed(keys=self._go_start_combo):
+                    self._renderer.render_first_frame()
+                elif self._input.is_pressed(keys=self._go_mid_combo):
+                    self._renderer.render_middle_frame()
 
                 # Frame step triggers (edge)
                 if self._input.down_event(self._forward_key):

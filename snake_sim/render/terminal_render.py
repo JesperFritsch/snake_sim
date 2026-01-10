@@ -80,6 +80,28 @@ class TerminalRenderer(IRenderer):
         except (StopIteration, NoMoreSteps, CurrentIsFirst):
             pass
 
+    def render_first_frame(self):
+        try:
+            frame = self._map_builder.get_map(0)
+            self._render_frame(frame)
+        except (StopIteration, NoMoreSteps, CurrentIsFirst):
+            pass
+
+    def render_middle_frame(self):
+        try:
+            map_idx = self._map_builder.get_max_map_idx() // 2
+            frame = self._map_builder.get_map(map_idx)
+            self._render_frame(frame)
+        except (StopIteration, NoMoreSteps, CurrentIsFirst):
+            pass
+
+    def render_last_frame(self):
+        try:
+            frame = self._map_builder.get_map(self._map_builder.get_max_map_idx())
+            self._render_frame(frame)
+        except (StopIteration, NoMoreSteps, CurrentIsFirst):
+            pass
+
     def get_current_map_idx(self):
         return self._map_builder.get_current_map_idx()
 
