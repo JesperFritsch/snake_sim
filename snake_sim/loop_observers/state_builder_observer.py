@@ -50,6 +50,12 @@ class StateBuilderObserver(ConsumerObserver):
         self._goto_state(state_idx)
         return self.get_current_state()
 
+    def get_max_state_idx(self) -> int:
+        return len(self._steps) - 1
+
+    def get_current_step_idx(self) -> int:
+        return self._current_step_idx
+
     def get_current_state(self) -> CompleteStepState:
         self._current_state.food = set(map(lambda f: Coord(*f), self._current_state.food))
         return self._current_state.copy()

@@ -71,6 +71,30 @@ class PygameRenderer(IRenderer):
         except (StopIteration, NoMoreSteps, CurrentIsFirst):
             pass
 
+    def render_first_frame(self):
+        try:
+            frame = self._map_builder.get_map(0)
+            self._render_frame(frame)
+        except (StopIteration, NoMoreSteps, CurrentIsFirst):
+            pass
+
+    def render_middle_frame(self):
+        try:
+            max_idx = self._map_builder.get_max_map_idx()
+            mid_idx = max_idx // 2
+            frame = self._map_builder.get_map(mid_idx)
+            self._render_frame(frame)
+        except (StopIteration, NoMoreSteps, CurrentIsFirst):
+            pass
+
+    def render_last_frame(self):
+        try:
+            max_idx = self._map_builder.get_max_map_idx()
+            frame = self._map_builder.get_map(max_idx)
+            self._render_frame(frame)
+        except (StopIteration, NoMoreSteps, CurrentIsFirst):
+            pass
+
     def get_current_map_idx(self):
         return self._map_builder.get_current_map_idx()
 

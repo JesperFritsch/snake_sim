@@ -22,7 +22,7 @@ class BaseInputProvider:
     def pump(self):
         pass
 
-    def is_pressed(self, key: str) -> bool:
+    def is_pressed(self, key: str=None, keys: list[str]=None) -> bool:
         return False
 
     def down_event(self, key: str) -> bool:
@@ -197,12 +197,17 @@ class TerminalInputProvider(BaseInputProvider):
         }
         return char_map.get(ch)
 
-    def is_pressed(self, key: str) -> bool:
-        if key in self._pressed_times:
-            return True
-        if key in self._modifier_times:
-            return True
-        return False
+    def is_pressed(self, key: str=None, keys: list[str]=None) -> bool:
+        if keys is not None:
+            if all(k in self._pressed_times or k in self._modifier_times for k in keys):
+                return True
+            return False
+        else:
+            if key in self._pressed_times:
+                return True
+            if key in self._modifier_times:
+                return True
+            return False
 
     def down_event(self, key: str) -> bool:
         # Modifiers do not produce explicit down events (inferred)
@@ -250,6 +255,9 @@ class PygameInputProvider(BaseInputProvider):
             "SPACE": pygame.K_SPACE,
             "ENTER": pygame.K_RETURN,
             "C": pygame.K_c,
+            "E": pygame.K_e,
+            "S": pygame.K_s,
+            "M": pygame.K_m,
         }
 
     def pump(self):
@@ -264,7 +272,14 @@ class PygameInputProvider(BaseInputProvider):
             # If window closed, key presses won't matter; keep previous state.
             pass
 
-    def is_pressed(self, key: str) -> bool:
+    def is_pressed(self, key: str=None, keys: list[str]=None) -> bool:
+
+        if keys is not None:
+            for k in keys:
+                code = self._key_map.get(k)
+                if code is None or not self._curr[code]:
+                    return False
+            return True
         code = self._key_map.get(key)
         if code is None:
             return False

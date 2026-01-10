@@ -18,6 +18,18 @@ class IRenderer(ABC):
         pass
 
     @abstractmethod
+    def render_last_frame(self):
+        pass
+
+    @abstractmethod
+    def render_first_frame(self):
+        pass
+
+    @abstractmethod
+    def render_middle_frame(self):
+        pass
+
+    @abstractmethod
     def get_current_step_idx(self) -> int:
         pass
 

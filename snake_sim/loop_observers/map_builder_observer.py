@@ -105,7 +105,13 @@ class MapBuilderObserver(ConsumerObserver):
         map_idx = step_idx * self._expansion
         return self.get_map(map_idx)
 
-    def get_current_map_idx(self) -> int:
+    def get_max_map_idx(self):
+        return len(self._steps) * self._expansion
+    
+    def get_max_step_idx(self):
+        return len(self._steps)
+
+    def get_current_map_idx(self):
         return self._current_map_idx
 
     def get_current_step_idx(self) -> int:
