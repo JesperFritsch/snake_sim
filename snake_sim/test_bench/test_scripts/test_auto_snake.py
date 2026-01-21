@@ -293,7 +293,7 @@ if __name__ == "__main__":
     enable_debug_for('_get_food_dir')
     enable_debug_for('_best_first_search')
 
-    snake_id = 5
+    snake_id = 0
     s_map = create_map(step_state, snake_reps)
 
     color_mapping = create_color_map(step_state.env_meta_data.snake_values)
