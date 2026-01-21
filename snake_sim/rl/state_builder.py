@@ -8,12 +8,14 @@ import math
 import numpy as np
 import sys
 
+import snake_sim.rl.constants as consts
 
+import snake_sim.debugging as debug
 from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles, distance_to_tile_with_value, dist_heat_map
 from snake_sim.cpp_bindings.area_check import AreaChecker
 from snake_sim.map_utils.general import print_map
 from snake_sim.environment.types import EnvMetaData, EnvStepData, Coord, AreaCheckResult
-import snake_sim.rl.constants as consts
+
 from snake_sim.rl.types import State
 
 BASE_STATE_VERSION = 1
@@ -114,6 +116,11 @@ class BaseStateBuilder:
         channels_dict.update(additional_channels)
         order = self._default_order(include_opponents=self.include_opponents)
         map_tensor = self._build_map(channels_dict, order)
+
+        if debug.is_debug_active():
+            print(f"Built state for snake {snake_ctx.snake_id}:")
+            print_state(State(map=map_tensor, ctx=None, meta={}))
+
         return State(
             map=map_tensor,
             ctx=np.array([min(1.0, snake_ctx.length / max(1, env_meta.width * env_meta.height))], dtype=np.float32),

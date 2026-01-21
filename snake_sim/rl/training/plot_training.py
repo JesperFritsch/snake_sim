@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from snake_sim.rl.snapshot_manager import SNAPSHOT_BASE_DIR
 
-snapshot_dir = "basemodel_again_no_approachreward"
+snapshot_dir = "basemodel_again_no_approachreward_continued"
 
 df = pd.read_csv(Path(SNAPSHOT_BASE_DIR) / snapshot_dir / "training_stats.csv")
 
@@ -52,6 +52,3 @@ if any(c in df.columns for c in trap_cols):
 	plt.legend()
 	plt.title('Trapping Frequency (explicit did_trap)')
 	plt.show()
-
-# Detect when exploration was boosted
-boost_points = df[df['exploration_boosted'] == True]

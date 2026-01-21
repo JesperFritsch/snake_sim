@@ -152,25 +152,20 @@ if __name__ == "__main__":
     # Keep logs readable when launched as a script.
     logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
     config = MultiEnvConfig(
-        snapshot_dir="basemodel_again_no_approachreward",
+        snapshot_dir="basemodel_again_no_approachreward_continued",
         env_config=[
             EnvConfig(
                 num_envs=3, 
                 nr_ppo_snakes=5, 
-                food_tiles=40
+                food_tiles=5
             ),
             EnvConfig(
-                num_envs=2, 
+                num_envs=3, 
                 nr_ppo_snakes=10, 
-                food_tiles=40
+                food_tiles=5
             ),
             EnvConfig(
                 num_envs=1, 
-                nr_ppo_snakes=20, 
-                food_tiles=40
-            ),
-            EnvConfig(
-                num_envs=2, 
                 nr_ppo_snakes=1, 
                 food_tiles=5, 
                 training_maps=[

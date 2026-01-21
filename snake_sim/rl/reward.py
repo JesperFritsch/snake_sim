@@ -173,6 +173,10 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
         #     # if snake ate or food changed, distances are unreliable
         #     food_dist1 = None
         #     food_dist2 = None
+        is_last_standing = all(
+            not alive for other_id, alive in state2.snake_alive.items() if other_id != s_id
+        ) and False
+        last_standing_reward_value = last_standing_reward(is_last_standing)
         survival_chance_reward = _survival_chance_reward(best_area_checks_s2.get(s_id))
         food_reward = 0 # _food_approach_reward(food_dist1, food_dist2)
         did_eat_reward = _food_eat_reward(did_eat)
@@ -188,6 +192,7 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
                 survival_reward,
                 food_reward,
                 did_eat_reward,
+                last_standing_reward_value,
                 survival_chance_reward,
                 trapping_reward_value,
             )
@@ -251,6 +256,11 @@ def trapping_reward(is_trapping_contributor: bool) -> float:
         return 10 # Reward for directly trapping an opponent
     return 0.0
 
+def last_standing_reward(is_last_standing: bool) -> float:
+    """ Reward per step for being the last snake alive. """
+    if is_last_standing:
+        return 1  # ← RESTORED: was 5.0. Encourage survival to episode end.
+    return 0.0
 
 def _survival_reward(still_alive: bool, current_length: int = 2) -> float:
     """Small per-step survival bonus to encourage longer episodes."""
