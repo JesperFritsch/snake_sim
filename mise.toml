@@ -1,12 +1,12 @@
 [tools]
-python = "3.14"
 uv = "latest"
 
 [env]
-_.python.venv = {path = ".venv", create = true, uv_create_args = ["--seed"]}
+_.python.venv = { path = ".venv", create = true, uv_create_args = ["--seed"] }
 
 [tasks.setup]
 run = """
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
-pip install -e .
+python -m pip install -U pip
+python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
+python -m pip install -e .
 """
