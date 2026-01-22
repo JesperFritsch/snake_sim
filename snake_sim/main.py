@@ -84,6 +84,7 @@ def main():
 
         loop_repeater.start()
         if config.no_render:
+            waitable_observer.wait_until_started()
             waitable_observer.wait_until_finished()
         else:
             try:
@@ -101,12 +102,10 @@ def main():
             stop_flag.value = True
         except:
             log.debug("No stop flag to set.")
-            raise
         try:
             render_loop.stop()
         except:
             log.debug("No render loop to stop.")
-            raise
         if waitable_observer.has_started():
             waitable_observer.wait_until_finished()
         else:

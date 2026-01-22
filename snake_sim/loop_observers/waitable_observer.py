@@ -38,3 +38,7 @@ class WaitableObserver(ILoopObserver):
     def wait_until_finished(self):
         while self._has_started and not self._has_stopped:
             time.sleep(0.01)
+    
+    def wait_until_started(self):
+        while not self._has_started:
+            time.sleep(0.01)
