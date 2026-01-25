@@ -161,9 +161,11 @@ struct TileCounts
 struct RecurseCheckResult
 {
     std::unordered_map<Coord, std::unordered_map<int, float>> best_margin_fracs_at_depth;
+    std::unordered_map<Coord, std::unordered_map<int, int>> best_food_counts_at_depth;
 
     RecurseCheckResult() : 
-        best_margin_fracs_at_depth(std::unordered_map<Coord, std::unordered_map<int, float>>()) {}
+        best_margin_fracs_at_depth(std::unordered_map<Coord, std::unordered_map<int, float>>()),
+        best_food_counts_at_depth(std::unordered_map<Coord, std::unordered_map<int, int>>()) {}
 };
 
 struct RecurseCheckFrame

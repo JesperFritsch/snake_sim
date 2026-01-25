@@ -27,6 +27,10 @@ PYBIND11_MODULE(area_check, m)
             py::arg("search_first_py"),
             py::arg("target_margin"),
             py::arg("max_depth"),
-            py::arg("safe_margin_frac")
+            py::arg("safe_margin_frac"),
+            py::arg("complete_depths"),
+            py::arg("food_check"),
+            py::arg("complete_area"),
+            py::arg("exhaustive")
         );
 }
