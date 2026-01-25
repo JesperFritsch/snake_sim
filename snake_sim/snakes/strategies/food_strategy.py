@@ -1,7 +1,6 @@
 from __future__ import annotations
-from typing import List, Dict
 
-from snake_sim.environment.types import Coord, StrategyConfig, RecurseCheckResult
+from snake_sim.environment.types import Coord, StrategyConfig
 from snake_sim.environment.interfaces.snake_strategy_interface import ISnakeStrategy
 from snake_sim.utils import get_coord_parity
 
@@ -13,29 +12,26 @@ from snake_sim.cpp_bindings.area_check import AreaChecker
 class FoodSeeker(ISnakeStrategy):
     """ A simple strategy that tries to get to the closest food """
 
-    SAFE_MARGIN_FRAC = 0.06  # (margin / total_steps) >= SAFE_MARGIN_FRAC -> considered safe
-    MAX_RECURSE_DEPTH = 0
-
     def __init__(self, config: StrategyConfig):
         super().__init__(config)
         self._area_checker = None
 
-    def get_wanted_tiles(self) -> List[Coord]:
+    def get_wanted_tile(self) -> Coord:
         if self._area_checker is None:
             self._init_area_checker()
         food_dir_tile = self._get_food_dir_tile()
         if food_dir_tile is None:
-            return []
+            return None
         if self.can_close_area():
             food_map = self._get_future_available_food_map()
         else:
             food_map = {}
         debug.debug_print(f"food_map: {food_map}")
         if not food_map:
-            return [food_dir_tile]
+            return food_dir_tile
         best_food_tile = self._get_best_food_option(food_map, food_dir_tile)
         debug.debug_print(f"food_dir_tile: {food_dir_tile}, best_food_tile: {best_food_tile}, food_map: {food_map}")
-        return [Coord(*best_food_tile)]
+        return Coord(*best_food_tile)
 
     def _get_food_dir_tile(self) -> Coord:
         env_meta_data = self._snake.get_env_meta_data()
@@ -70,7 +66,7 @@ class FoodSeeker(ISnakeStrategy):
             Coord(*coord): a["food_count"]
             if a["margin"] >= a["food_count"] else 0
             for coord, a in
-            [(coord, self._area_check_wrapper(coord, food_check=True)) for coord in visitable_tiles]
+            [(coord, self._area_check_wrapper(coord)) for coord in visitable_tiles]
         }
 
         # combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks]) or self.length < 15

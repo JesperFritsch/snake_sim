@@ -79,10 +79,6 @@ def test_recurse_area_check(snake: SnakeBase, s_map, direction=Coord(1,0)):
         3,
         # 1.0,
         snake.SAFE_MARGIN_FRAC + 0.5,
-        True,
-        False,
-        False,
-        False,
     )
     print(f"Time recurse area check direction {direction}: {(time.time() - start_time) * 1000}")
     print(f"Direction: {direction}, Area check: {area_check}")
@@ -216,19 +212,19 @@ def run_tests(snake: SnakeBase, s_map: np.ndarray, step_state: CompleteStepState
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_step_data.food_value, Coord(58, 61))
     # test_get_visitable_tiles(snake, s_map, snake._head_coord)
-    # test_spatial_network_ablation(snake, s_map, step_state.food)
+    test_spatial_network_ablation(snake, s_map, step_state.food)
     test_area_funcs(snake, s_map)
 
 
 def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, env_meta_data: EnvMetaData):
     snake: SnakeBase = SnakeFactory().create_snake(
-        # snake_config=SnakeConfig.from_dict(default_config.ai_snake_config)
-        snake_config=SnakeConfig(
-            type='survivor',
-            args={},
-        )
+        snake_config=SnakeConfig.from_dict(default_config.ai_snake_config)
+        # snake_config=SnakeConfig(
+        #     type='survivor',
+        #     args={},
+        # )
     )
-    snake.set_strategy(1, SnakeStrategyFactory().create_strategy("food_seeker", StrategyConfig("food_seeker")))
+    # snake.set_strategy(1, SnakeStrategyFactory().create_strategy("food_seeker", StrategyConfig("food_seeker")))
     snake.set_id(id)
     snake.set_start_length(1)
     snake_rep = snake_reps[id]

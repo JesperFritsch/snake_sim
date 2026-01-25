@@ -1,6 +1,5 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import List
 
 from snake_sim.environment.types import Coord, StrategyConfig
 from snake_sim.environment.interfaces.strategy_snake_interface import IStrategySnake
@@ -20,5 +19,5 @@ class ISnakeStrategy(ABC):
         pass 
 
     @abstractmethod
-    def get_wanted_tiles() -> List[Coord]:
+    def get_wanted_tile() -> Coord:
         pass

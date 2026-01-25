@@ -1,7 +1,6 @@
 **/runs/
 *.mp4
 .venv/
-*venv/
 **/__pycache__/
 *.pyc
 *.weights.h5
