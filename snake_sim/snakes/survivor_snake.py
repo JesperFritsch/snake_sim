@@ -3,11 +3,10 @@ import numpy as np
 import math
 from functools import wraps
 
-from typing import Generator
 import snake_sim.debugging as debug
 
 from snake_sim.environment.interfaces.strategy_snake_interface import IStrategySnake
-from snake_sim.environment.types import Coord, RecurseCheckResult
+from snake_sim.environment.types import Coord
 from snake_sim.snakes.snake_base import SnakeBase
 from snake_sim.cpp_bindings.area_check import AreaChecker
 
@@ -32,7 +31,7 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
         self._area_checker = None # type AreaChecker, will be initialized in set_init_data
         self._current_direction: Coord = None
         self._current_map_copy: np.ndarray = None
-        self._current_strategy_tiles: Generator[List[Coord]] = None
+        self._current_strategy_tile: Coord = None
 
     def set_init_data(self, env_meta_data):
         super().set_init_data(env_meta_data)
@@ -51,9 +50,7 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
     @_step_calc_wrapper
     def _next_step(self) -> Coord:
         debug.debug_print(f"current_tile: {self._head_coord}, current_direction: {self._current_direction}")
-        current_tiles = next(self._current_strategy_tiles, [None])
-        search_first = current_tiles[0] if current_tiles else self._current_direction
-        self._current_strategy_tile = search_first
+        search_first = self._current_strategy_tile if self._current_strategy_tile is not None else self._current_direction
         if search_first is None:
             search_first = Coord(-1, -1)
         debug.debug_print(f"search_first: {search_first}")
@@ -70,18 +67,12 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
             search_first,
             target_margin,
             self.MAX_RECURSE_DEPTH,
-            self.SAFE_MARGIN_FRAC,
-            False,
-            False,
-            False,
-            False
+            self.SAFE_MARGIN_FRAC
         )
-        recurse_result = RecurseCheckResult.from_dict(result)
-        debug.debug_print(f"recurse_result: {recurse_result}")
-        # C++ binding returns: {best_margin_fracs_at_depth: {...}, best_food_counts_at_depth: {...}}
-        margin_fracs = recurse_result.best_margin_fracs_at_depth
-        return margin_fracs
-    
+        converted = {Coord(*coord): res for coord, res in result.items()}
+        debug.debug_print(f"margin_fracs: {converted}")
+        return converted
+
     def _get_best_option(self, margin_fracs: Dict[Coord, Dict[int, float]]) -> Union[Coord, None]:
         max_depth = max([len(depths) for depths in margin_fracs.values()]) if len(margin_fracs) > 0 else 0
         debug.debug_print(f"max_depth found: {max_depth}")
@@ -120,7 +111,7 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
     def _pre_step_calc(self):
         self._current_map_copy = self._map.copy()
         self._current_direction = self._head_coord - self._body_coords[1] if len(self._body_coords) > 1 else None
-        self._current_strategy_tiles = self._get_strategy_tiles()
+        self._current_strategy_tile = self._get_strategy_tile()
 
     def _post_step_calc(self):
         pass

@@ -78,9 +78,9 @@ else:
         extra_compile_args.extend(['-O3', '-march=native', '-flto'])
 
 if sys.platform == 'win32':
-    extra_compile_args.append('/std:c++17')
+    extra_compile_args.append('/std:c++11')
 else:
-    extra_compile_args.append('-std=c++17')
+    extra_compile_args.append('-std=c++11')
 
 
 ext_modules = [

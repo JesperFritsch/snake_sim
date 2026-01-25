@@ -835,11 +835,7 @@ RecurseCheckResult AreaChecker::recurse_area_check(
     Coord search_first,
     int target_margin,
     unsigned int max_depth,
-    float safe_margin_frac,
-    bool complete_depths,
-    bool food_check,
-    bool complete_area,
-    bool exhaustive
+    float safe_margin_frac
 ){
 
     auto get_margin_frac = [&] (AreaCheckResult &result) -> float {
@@ -904,7 +900,7 @@ RecurseCheckResult AreaChecker::recurse_area_check(
 
         if (
             depth >= max_depth &&
-            (!complete_depths && current_frame.best_margin_frac >= safe_margin_frac)
+            current_frame.best_margin_frac >= safe_margin_frac
         ){
             // we can stop searching this base coord, as we have found a safe margin fraction deep enough
             stack.clear();
@@ -933,30 +929,19 @@ RecurseCheckResult AreaChecker::recurse_area_check(
                 body_coords_vec,
                 next_tile,
                 target_margin,
-                food_check,
-                complete_depths,
-                exhaustive
+                false,
+                false,
+                false
             );
             auto& best_margin_fracs_for_base = result.best_margin_fracs_at_depth[base_coord];
-            auto& best_food_counts_for_base = result.best_food_counts_at_depth[base_coord];
             auto margin_frac_it = best_margin_fracs_for_base.find(depth);
             auto margin_frac = get_margin_frac(check_result);
-
-            auto food_count_it = best_food_counts_for_base.find(depth);
-            auto food_count = check_result.food_count;
 
             if (margin_frac_it == best_margin_fracs_for_base.end()){
                 best_margin_fracs_for_base[depth] = margin_frac;
             }
             else if (margin_frac > margin_frac_it->second){
                 margin_frac_it->second = margin_frac;
-            }
-
-            if (food_count_it == best_food_counts_for_base.end()){
-                best_food_counts_for_base[depth] = food_count;
-            }
-            else if (food_count > food_count_it->second){
-                food_count_it->second = food_count;
             }
 
             if (margin_frac > current_frame.best_margin_frac){
@@ -1000,11 +985,7 @@ py::dict AreaChecker::py_recurse_area_check(
     py::tuple search_first_py,
     int target_margin,
     unsigned int max_depth,
-    float safe_margin_frac,
-    bool complete_depths,
-    bool food_check,
-    bool complete_area,
-    bool exhaustive)
+    float safe_margin_frac)
 {
     auto buf = s_map.request();
     uint8_t *ptr = static_cast<uint8_t *>(buf.ptr);
@@ -1015,8 +996,7 @@ py::dict AreaChecker::py_recurse_area_check(
     }
     Coord search_first(search_first_py[0].cast<int>(), search_first_py[1].cast<int>());
     RecurseCheckResult result = recurse_area_check(
-        ptr, body_coords, search_first, target_margin, max_depth, safe_margin_frac, complete_depths, food_check, complete_area, exhaustive);
-
+        ptr, body_coords, search_first, target_margin, max_depth, safe_margin_frac);
     py::dict margin_fracs_dict;
     for (const auto& kv : result.best_margin_fracs_at_depth) {
         py::tuple coord_tuple = py::make_tuple(kv.first.x, kv.first.y);
@@ -1026,19 +1006,5 @@ py::dict AreaChecker::py_recurse_area_check(
         }
         margin_fracs_dict[coord_tuple] = depth_dict;
     }
-
-    py::dict food_counts_dict;
-    for (const auto& kv : result.best_food_counts_at_depth) {
-        py::tuple coord_tuple = py::make_tuple(kv.first.x, kv.first.y);
-        py::dict depth_dict;
-        for (const auto& depth_kv : kv.second) {
-            depth_dict[py::int_(depth_kv.first)] = py::int_(depth_kv.second);
-        }
-        food_counts_dict[coord_tuple] = depth_dict;
-    }
-
-    return py::dict(
-        py::arg("best_margin_fracs_at_depth") = margin_fracs_dict,
-        py::arg("best_food_counts_at_depth") = food_counts_dict
-    );
+    return margin_fracs_dict;
 }

@@ -1,7 +1,7 @@
 from __future__ import annotations
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Tuple, Deque, Dict, List, Generator
+from typing import Tuple, Deque, Dict
 
 # commeted because of circular import
 # from snake_sim.environment.interfaces.snake_strategy_interface import ISnakeStrategy
@@ -19,15 +19,15 @@ class IStrategySnake(ISnake, ABC):
 
     def set_strategy(self, prio: int, strategy: 'ISnakeStrategy'):
         strategy.set_snake(self)
-        if self._strategies.get(prio) is not None:
-            raise ValueError(f"A strategy with priority {prio} is already set.")
         self._strategies[prio] = strategy
 
-    def _get_strategy_tiles(self) -> Generator[List[Coord]]:
+    def _get_strategy_tile(self) -> Coord:
         for prio in sorted(self._strategies.keys()):
             strat = self._strategies[prio]
-            tiles = strat.get_wanted_tiles()
-            yield tiles or []
+            tile = strat.get_wanted_tile()
+            if tile is not None:
+                return tile
+        return Coord(0,0)
 
     def get_env_meta_data(self) -> EnvMetaData:
         return self._env_meta_data

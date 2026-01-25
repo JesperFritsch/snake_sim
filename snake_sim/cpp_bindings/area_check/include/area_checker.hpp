@@ -110,11 +110,7 @@ public:
         Coord search_first,
         int target_margin,
         unsigned int max_depth,
-        float safe_margin_frac,
-        bool complete_depths,
-        bool food_check,
-        bool complete_area,
-        bool exhaustive);
+        float safe_margin_frac);
 
     py::dict py_recurse_area_check(
         py::array_t<uint8_t> s_map,
@@ -122,11 +118,7 @@ public:
         py::tuple search_first_py,
         int target_margin,
         unsigned int max_depth,
-        float safe_margin_frac,
-        bool complete_depths,
-        bool food_check,
-        bool complete_area,
-        bool exhaustive);
+        float safe_margin_frac);
 
 private:
     uint8_t food_value;

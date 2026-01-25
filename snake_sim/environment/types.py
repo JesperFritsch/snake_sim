@@ -127,19 +127,13 @@ class AreaCheckResult:
 @dataclass
 class RecurseCheckResult:
     best_margin_fracs_at_depth: dict[Coord, dict[int, float]]  # tile -> depth -> margin_frac
-    best_food_counts_at_depth: dict[Coord, dict[int, int]]  # tile -> depth -> max food_count
 
-    @classmethod
     def from_dict(cls, data: dict) -> 'RecurseCheckResult':
         return cls(
             best_margin_fracs_at_depth={
                 Coord(*k): {int(depth): float(margin_frac) for depth, margin_frac in v.items()}
                 for k, v in data['best_margin_fracs_at_depth'].items()
-            },
-            best_food_counts_at_depth={
-                Coord(*k): {int(depth): int(food_count) for depth, food_count in v.items()}
-                for k, v in data['best_food_counts_at_depth'].items()
-            },
+            }
         )
 
 
