@@ -174,6 +174,7 @@ AreaCheckResult AreaGraph::search_best2(
         DEBUG_PRINT(std::cout << "  margin: " << best_result.margin << std::endl;);
         DEBUG_PRINT(std::cout << "  total steps: " << best_result.total_steps << std::endl;);
         DEBUG_PRINT(std::cout << "  has tail: " << best_result.has_tail << std::endl;);
+
         
         if (food_check)
         {
@@ -237,6 +238,7 @@ AreaCheckResult AreaGraph::search_best2(
     }
     return best_result;
 }
+
 
 void AreaGraph::print_nodes_debug() const {
     for (const auto& node_pair : nodes) {
@@ -517,10 +519,10 @@ TileCounts SearchNode::tile_count_on_exit(AreaNode *next_node, uint8_t *s_map, i
 {
     auto tile_counts = tile_count_on_enter();
     int new_tiles = tile_counts.new_tiles;
-    int new_food = node->food_count;
+    int new_food = tile_counts.new_food;
     if (is_conn_coord_start_cord(next_node))
     {
-        // if we are exiting through the start coord of node 0 we can ever only count one tile.
+        // if we are exiting through the start coord of node 0 we can only count one tile.
         new_tiles = 1;
         new_food = tile_has_food(s_map, width, node->start_coord, food_value) ? 1 : 0;
         tile_counts.total_tiles = new_tiles;
@@ -556,6 +558,7 @@ TileCounts SearchNode::tile_count_on_enter()
     if (first_visit())
     {
         tile_counts.new_tiles = new_tiles;
+        tile_counts.new_food = node->food_count;
         tile_counts.total_food = food_until_here + node->food_count;
         tile_counts.total_tiles = tiles_until_here + new_tiles;
     }
@@ -564,6 +567,7 @@ TileCounts SearchNode::tile_count_on_enter()
         int counted_tiles = counted_tiles_stack.size() ? counted_tiles_stack.back() : 0;
         int counted_food = counted_food_stack.size() ? counted_food_stack.back() : 0;
         tile_counts.new_tiles = new_tiles - counted_tiles;
+        tile_counts.new_food = node->food_count - counted_food;
         tile_counts.total_food = food_until_here + node->food_count - counted_food;
         tile_counts.total_tiles = tiles_until_here + new_tiles - counted_tiles;
     }

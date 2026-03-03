@@ -31,10 +31,13 @@ def print_map(
     map_rows = []
     for i, row in enumerate(s_map):
         map_row = [h_nr_strings[i]]
-        for c in row:
+        for c_i, c in enumerate(row):
             c_color = color_map.get(c)
             if c == free_value:
-                map_row.append('.')
+                if i % 2 == c_i % 2:
+                    map_row.append('.')
+                else:
+                    map_row.append(',')
             elif c == food_value:
                 if c_color:
                     map_row.append(rgb_color_text(' ', *c_color))

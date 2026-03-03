@@ -27,7 +27,7 @@ from snake_sim.environment.types import (
     AreaCheckResult,
     SnakeConfig
 )
-from snake_sim.debugging import enable_debug_for, activate_debug
+from snake_sim.debugging import enable_debug_for, activate_debug, enable_debug_for_all
 from snake_sim.utils import get_locations, profile
 from snake_sim.render.utils import create_color_map
 from snake_sim.map_utils.general import print_map
@@ -86,16 +86,15 @@ def test_recurse_area_check(snake: SnakeBase, s_map, direction=Coord(1,0)):
 def test_area_check_direction(snake: SnakeBase, s_map, direction):
     tile = Coord(*snake._head_coord) + direction
     start_time = time.time()
-    for _ in range(1):
-        area_check = snake._area_checker.area_check(
-            s_map,
-            [tuple(coord) for coord in snake._body_coords],
-            (tile.x, tile.y),
-            10,
-            False,
-            False,
-            True
-        )
+    area_check = snake._area_checker.area_check(
+        s_map,
+        [tuple(coord) for coord in snake._body_coords],
+        (tile.x, tile.y),
+        10,
+        True,
+        False,
+        False
+    )
     print(f"Time area check direction {direction}: {(time.time() - start_time) * 1000}")
     print(f"Direction: {direction}, Coord: {tile} Area check: {area_check}")
 
@@ -203,28 +202,25 @@ def test_area_funcs(snake: SnakeBase, s_map):
 # @profile()
 def run_tests(snake: SnakeBase, s_map: np.ndarray, step_state: CompleteStepState):
     # test_recurse_area_check(snake, s_map, Coord(0,-1))
-    # test_recurse_area_check(snake, s_map, Coord(0,1))
-    test_make_choice(snake, s_map, step_state.food)
-    # test_area_check(snake, s_map)
+    # test_recurse_area_check(snake, s_map, Coord(-1,0))
+    # test_make_choice(snake, s_map, step_state.food)
+    test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
     # test_area_check_direction(snake, s_map, Coord(0, -1))
-    # test_area_check_direction(snake, s_map, Coord(0, 1))
+    # test_area_check_direction(snake, s_map, Coord(-1, 0))
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_step_data.food_value, Coord(58, 61))
     # test_get_visitable_tiles(snake, s_map, snake._head_coord)
-    test_spatial_network_ablation(snake, s_map, step_state.food)
-    test_area_funcs(snake, s_map)
+    # test_spatial_network_ablation(snake, s_map, step_state.food)
+    # test_area_funcs(snake, s_map)
+    pass
 
 
 def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, env_meta_data: EnvMetaData):
     snake: SnakeBase = SnakeFactory().create_snake(
-        snake_config=SnakeConfig.from_dict(default_config.ai_snake_config)
-        # snake_config=SnakeConfig(
-        #     type='survivor',
-        #     args={},
-        # )
+        # snake_config=SnakeConfig.from_dict(default_config.ai_snake_config)
+        snake_config=SnakeConfig.from_dict(default_config.snake_config)
     )
-    # snake.set_strategy(1, SnakeStrategyFactory().create_strategy("food_seeker", StrategyConfig("food_seeker")))
     snake.set_id(id)
     snake.set_start_length(1)
     snake_rep = snake_reps[id]
@@ -287,6 +283,7 @@ if __name__ == "__main__":
     snake_reps = create_snake_reps(step_state)
 
     activate_debug()
+    enable_debug_for_all()
     enable_debug_for('SnakeBase')
     enable_debug_for("BaseStateBuilder")
     enable_debug_for('_next_step')

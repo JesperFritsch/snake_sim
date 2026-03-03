@@ -144,16 +144,19 @@ struct TileCounts
 {
     int total_tiles;
     int total_food;
+    int new_food;
     int new_tiles;
 
     TileCounts() : 
         total_tiles(0),
         total_food(0),
+        new_food(0),
         new_tiles(0) {}
 
-    TileCounts(int total_tiles, int total_food, int new_tiles) : 
+    TileCounts(int total_tiles, int total_food, int new_food, int new_tiles) : 
         total_tiles(total_tiles),
         total_food(total_food),
+        new_food(new_food),
         new_tiles(new_tiles) {}
 };
 

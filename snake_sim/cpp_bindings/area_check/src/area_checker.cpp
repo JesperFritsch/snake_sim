@@ -631,10 +631,6 @@ ExploreResults AreaChecker::explore_area(
                     {
                         to_explore.push_back(n_coord);
                     }
-                    // if (entrance_code == 2)
-                    // {
-                    //     break;
-                    // }
                 }
             }
             else if (n_coord_val == body_value || n_coord_val == head_value)
@@ -817,8 +813,6 @@ AreaCheckResult AreaChecker::area_check(
     }
 
     DEBUG_PRINT(graph.print_nodes_debug());
-
-    // return AreaCheckResult();
 
     return graph.search_best2(body_coords.size(), s_map, food_value, width, target_margin, food_check, exhaustive);
 }
