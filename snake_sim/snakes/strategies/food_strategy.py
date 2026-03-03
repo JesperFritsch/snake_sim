@@ -63,13 +63,10 @@ class FoodSeeker(ISnakeStrategy):
         )
         debug.debug_print(f"visitable_tiles: {visitable_tiles}")
         food_map = {
-            Coord(*coord): a["food_count"]
-            if a["margin"] >= a["food_count"] else 0
+            Coord(*coord): a["food_count"] if a["margin"] >= a["food_count"] else 0
             for coord, a in
-            [(coord, self._area_check_wrapper(coord)) for coord in visitable_tiles]
+            [(coord, self._area_check_wrapper(coord, food_check=False)) for coord in visitable_tiles]
         }
-
-        # combine_food = all([a['margin'] >= a['food_count'] and a["food_count"] > 0 for a in all_checks]) or self.length < 15
         return food_map
 
     def _get_best_food_option(self, food_map: dict, food_tile: Coord) -> Coord:

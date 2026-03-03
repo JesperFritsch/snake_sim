@@ -81,8 +81,8 @@ bool can_make_area_inaccessible(
 {
     //. # # # # # .
     //. # # # # # .
-    //. . . H . . .
-    //. . . N . . .
+    //. # . H . # .
+    //. # . N . # .
     // simply check if any of the hash are blocked tiles
     // if so return true
 
@@ -120,6 +120,10 @@ bool can_make_area_inaccessible(
         rot_head_coord(Coord(-1, -1)),
         rot_head_coord(Coord(1, -1)),
         rot_head_coord(Coord(2, -1)),
+        rot_head_coord(Coord(-2, 0)),
+        rot_head_coord(Coord(2, 0)),
+        rot_head_coord(Coord(-2, 1)),
+        rot_head_coord(Coord(2, 1)),
     };
 
     for (const auto& coord : check_coords) {
