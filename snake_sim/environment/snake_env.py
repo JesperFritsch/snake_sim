@@ -201,8 +201,8 @@ class SnakeEnv(ISnakeEnv):
     def resize(self, height, width):
         self._height = height
         self._width = width
-        self._map.resize((height, width))
-        self._base_map.resize((height, width))
+        self._map = np.full((height, width), self._free_value, dtype=self._map.dtype)
+        self._base_map = np.full((height, width), self._free_value, dtype=self._base_map.dtype)
         self._food_handler.resize(height, width)
 
     def load_map(self, map_img_path: str):
