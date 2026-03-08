@@ -106,11 +106,12 @@ def main():
             render_loop.stop()
         except:
             log.debug("No render loop to stop.")
-        if waitable_observer.has_started():
+        if "waitable_observer" in locals() and waitable_observer.has_started():
             waitable_observer.wait_until_finished()
         else:
             log.debug("Loop never started, no need to wait for finish.")
-        loop_repeater.close()
+        if "loop_repeater" in locals():
+            loop_repeater.close()
 
 if __name__ == '__main__':
     main()
