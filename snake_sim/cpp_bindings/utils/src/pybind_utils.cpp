@@ -70,12 +70,11 @@ PYBIND11_MODULE(utils, m)
         py::return_value_policy::copy
     );
 
-    m.def("dist_heat_map", &py_dist_heat_map,
+    m.def("dist_map", &py_dist_map,
         py::arg("s_map"),
         py::arg("width"),
         py::arg("height"),
         py::arg("free_value"),
-        py::arg("blocked_value"),
         py::arg("target_value"),
         py::return_value_policy::take_ownership
     );

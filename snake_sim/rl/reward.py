@@ -8,7 +8,7 @@ from snake_sim.map_utils.general import print_map
 from snake_sim.environment.types import CompleteStepState
 from snake_sim.environment.types import AreaCheckResult
 from snake_sim.rl.state_builder import print_state
-from snake_sim.cpp_bindings.utils import distance_to_tile_with_value
+from snake_sim.cpp_bindings.utils import distance_to_tile_with_value, distance_to_coord
 from snake_sim.cpp_bindings.area_check import AreaChecker
 from snake_sim.cpp_bindings.utils import get_visitable_tiles, area_boundary_tiles
 
@@ -39,12 +39,13 @@ def get_area_checkers(
 def get_best_area_checks(
         area_checkers: Dict[int, AreaChecker],
         state: CompleteStepState, 
-        s_map: np.ndarray
+        s_map: np.ndarray,
+        ids_to_check: set[int]
     ) -> dict[int, AreaCheckResult]:
     """ Check if each snake can access the area around it. """
     best_area_checks: dict[int, AreaCheckResult] = {}
     for snake_id, body in state.snake_bodies.items():
-        if not state.snake_alive.get(snake_id, False):
+        if snake_id not in ids_to_check:
             continue
         head_coord = body[0]
         visitable_tiles = get_visitable_tiles(
@@ -68,6 +69,17 @@ def get_best_area_checks(
             current_best = best_area_checks.get(snake_id)
             if current_best is None or current_best.margin < result['margin']:
                 best_area_checks[snake_id] = AreaCheckResult(**result)
+        if best_area_checks.get(snake_id) is None:
+            # If no visitable tiles, do a check on the head tile to get the margin (which will be negative)
+            best_area_checks[snake_id] = AreaCheckResult(
+                False,
+                0,
+                0,
+                0,
+                False,
+                -1,
+                0,
+            )
 
     return best_area_checks
 
@@ -85,8 +97,10 @@ def recently_trapped(
     for snake_id, check2 in area_checks2.items():
         check1 = area_checks1.get(snake_id)
         if check1 is not None and check2 is not None:
-            if check1.margin >= 0 and check2.margin < 0:
+            if ((check2.margin < check1.margin * 0.1) # if margin dropped significantly check if some snake contributed to the trapping
+                or (check1.margin >= 0 and check2.margin < 0)):
                 trapped_snakes.add(snake_id)
+    debug.debug_print(f"Trapped snakes: {trapped_snakes}")
     return trapped_snakes
 
 
@@ -100,7 +114,7 @@ def assign_trapping_credit(
     if state is None or not trapped_snakes:
         return {}
     
-    trapping_area_boundaries: set[int] = set()
+    trapping_area_boundaries: dict[int, set[int]] = {}
 
 
     for snake_id in trapped_snakes:
@@ -112,14 +126,37 @@ def assign_trapping_credit(
             state.env_meta_data.free_value,
             head_coord
         )
-        trapping_area_boundaries.update(boundary_tiles)
+        trapping_area_boundaries[snake_id] = set(boundary_tiles)
     contributors: dict[int, bool] = {}
-    for s_id in snake_ids:
-        if not state.snake_alive.get(s_id, False):
+    for trapping_id in snake_ids:
+        if not state.snake_alive.get(trapping_id, False):
             continue
-        head_value = state.env_meta_data.snake_values[s_id]['head_value']
-        if head_value in trapping_area_boundaries:
-            contributors[s_id] = True
+        head_value = state.env_meta_data.snake_values[trapping_id]['head_value']
+        for trapped_id, boundary_tiles in trapping_area_boundaries.items():
+            debug.debug_print("boarding_values: ", head_value, boundary_tiles)
+            if trapping_id == trapped_id:
+                continue
+            trapped_head_coord = state.snake_bodies[trapped_id][0]
+            trapping_visitable_tiles = get_visitable_tiles(
+                s_map,
+                state.env_meta_data.width,
+                state.env_meta_data.height,
+                state.snake_bodies[trapping_id][0],
+                [state.env_meta_data.free_value, state.env_meta_data.food_value]
+            )
+            distances_to_trapped_head = [distance_to_coord(
+                s_map,
+                state.env_meta_data.width,
+                state.env_meta_data.height,
+                coord,
+                tuple(trapped_head_coord),
+                [state.env_meta_data.free_value, state.env_meta_data.food_value]
+            ) for coord in trapping_visitable_tiles]
+            if head_value in boundary_tiles and any(d < 0 for d in distances_to_trapped_head):
+                # If the trapping snake's head is on the boundary of the trapped area and can reach the trapped snake's head, assign credit.
+                # but if the trapping snakes head in in the same area as the trapped snake, it shouldn't get credit (prevents rewarding snakes for being near the trapped snake if they are also trapped)
+                contributors[trapping_id] = True
+                break
     return contributors
 
 
@@ -132,15 +169,17 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
     state2, map2 = state_map2
     rewards = {}
     info = {}
-    get_area_checkers(
-        snake_values=state1.env_meta_data.snake_values,
-        free_value=state1.env_meta_data.free_value,
-        food_value=state1.env_meta_data.food_value,
-        width=state1.env_meta_data.width,
-        height=state1.env_meta_data.height,
-    )
-    best_area_checks_s1 = get_best_area_checks(area_checkers, state1, map1)
-    best_area_checks_s2 = get_best_area_checks(area_checkers, state2, map2)
+    if not len(area_checkers):
+        get_area_checkers(
+            snake_values=state1.env_meta_data.snake_values,
+            free_value=state1.env_meta_data.free_value,
+            food_value=state1.env_meta_data.food_value,
+            width=state1.env_meta_data.width,
+            height=state1.env_meta_data.height,
+        )
+    ids_to_check = set([id for id, alive in state1.snake_alive.items() if alive])
+    best_area_checks_s1 = get_best_area_checks(area_checkers, state1, map1, ids_to_check)
+    best_area_checks_s2 = get_best_area_checks(area_checkers, state2, map2, ids_to_check)
 
     trapped_snakes = recently_trapped(best_area_checks_s1, best_area_checks_s2)
     trapping_contributors = assign_trapping_credit(trapped_snakes, state2, map2, snake_ids)
@@ -152,38 +191,48 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
     for s_id in snake_ids:
         if s_id not in state_map1[0].snake_bodies or s_id not in state_map2[0].snake_bodies:
             raise ValueError(f"Snake id {s_id} not found in one of the states.")
-        # food_dist1 = distance_to_tile_with_value(
-        #     map1,
-        #     state1.env_meta_data.width,
-        #     state1.env_meta_data.height,
-        #     state1.snake_bodies[s_id][0],
-        #     state1.env_meta_data.food_value,
-        #     [state1.env_meta_data.free_value, state1.env_meta_data.food_value]
-        # )
-        # food_dist2 = distance_to_tile_with_value(
-        #     map2,
-        #     state2.env_meta_data.width,
-        #     state2.env_meta_data.height,
-        #     state2.snake_bodies[s_id][0],
-        #     state2.env_meta_data.food_value,
-        #     [state2.env_meta_data.free_value, state2.env_meta_data.food_value]
-        # )
+        if not state_map1[0].snake_alive.get(s_id, False):
+            # If the snake is dead in both states, skip reward calculation (no change)
+            rewards[s_id] = 0.0
+            info[s_id] = {
+                'survival_reward': 0.0,
+                'food_approach_reward': 0.0,
+                'food_eat_reward': 0.0,
+                'survival_chance_reward': 0.0,
+                'trapping_reward': 0.0,
+                'total_reward': 0.0,
+            }
+            continue
+
+        food_dist1 = distance_to_tile_with_value(
+            map1,
+            state1.env_meta_data.width,
+            state1.env_meta_data.height,
+            state1.snake_bodies[s_id][0],
+            state1.env_meta_data.food_value,
+            [state1.env_meta_data.free_value, state1.env_meta_data.food_value]
+        )
+        food_dist2 = distance_to_tile_with_value(
+            map2,
+            state2.env_meta_data.width,
+            state2.env_meta_data.height,
+            state2.snake_bodies[s_id][0],
+            state2.env_meta_data.food_value,
+            [state2.env_meta_data.free_value, state2.env_meta_data.food_value]
+        )
         did_eat = state2.snake_bodies[s_id][0] in state1.food
-        # if set(state1.food) != set(state2.food) or did_eat:
-        #     # if snake ate or food changed, distances are unreliable
-        #     food_dist1 = None
-        #     food_dist2 = None
+        if set(state1.food) != set(state2.food) or did_eat:
+            # if snake ate or food changed, distances are unreliable
+            food_dist1 = None
+            food_dist2 = None
         is_last_standing = all(
             not alive for other_id, alive in state2.snake_alive.items() if other_id != s_id
         ) and False
         last_standing_reward_value = last_standing_reward(is_last_standing)
         survival_chance_reward = _survival_chance_reward(best_area_checks_s2.get(s_id))
-        food_reward = 0 # _food_approach_reward(food_dist1, food_dist2)
+        food_reward = _food_approach_reward(food_dist1, food_dist2)
         did_eat_reward = _food_eat_reward(did_eat)
-        survival_reward = _survival_reward(
-            state2.snake_alive.get(s_id, False),
-            len(state2.snake_bodies[s_id]) if s_id in state2.snake_bodies else 2
-        )
+        survival_reward = _survival_reward(state2.snake_alive.get(s_id, False))
         trapping_reward_value = trapping_reward(
             trapping_contributors.get(s_id, False)
         )
@@ -228,17 +277,17 @@ def _food_approach_reward(dist1: float | None, dist2: float | None) -> float:
     if dist1 is None or dist2 is None:
         return 0.0
     if dist2 < dist1:
-        return 0.01  # ← INCREASED: was 0.05. Strong signal to seek food!
+        return 0.05  # ← INCREASED: was 0.05. Strong signal to seek food!
     elif dist2 > dist1:
-        return -0.01  # ← INCREASED penalty: was -0.05. Discourage moving away.
+        return -0.1  # Penalty for moving away from food
     else:
-        return 0.0  # no change
+        return -0.01  # no change
 
 
 def _food_eat_reward(ate_food: bool) -> float:
     """Eating food is the primary success signal."""
     if ate_food:
-        return 1.0  # ← RESTORED: was 1.0. This is the goal!
+        return 3.0  # ← RESTORED: was 1.0. This is the goal!
     return 0.0  # did not eat food
 
 
@@ -247,41 +296,27 @@ def _survival_chance_reward(area_check: AreaCheckResult) -> float:
     if area_check is not None and area_check.margin >= 0:
         return 0.0  # ← Small bonus for safe positioning (was 0.0)
     else:
-        return -0.5  # ← Moderate penalty: was -0.2. Discourage going into traps.
+        return -0.5  # Moderate penalty for entering trapped positions
 
 
 def trapping_reward(is_trapping_contributor: bool) -> float:
     """Reward for contributing to trapping an opponent."""
     if is_trapping_contributor:
-        return 10 # Reward for directly trapping an opponent
+        return 5.0  # Reward for contributing to trapping (proportional to food reward)
     return 0.0
 
 def last_standing_reward(is_last_standing: bool) -> float:
     """ Reward per step for being the last snake alive. """
     if is_last_standing:
-        return 1  # ← RESTORED: was 5.0. Encourage survival to episode end.
+        return 1.0  # ← RESTORED: was 5.0. Encourage survival to episode end.
     return 0.0
 
-def _survival_reward(still_alive: bool, current_length: int = 2) -> float:
+def _survival_reward(still_alive: bool) -> float:
     """Small per-step survival bonus to encourage longer episodes."""
     if not still_alive:
         # Death penalty only if dead
-        return -20.0  # Keep penalty for death
+        return -5.0  # Death penalty - meaningful but not overwhelming
     else:
-        # Small survival bonus - encourages long episodes needed for food exploration
-        return -0.001  # ← RESTORED: was 0 (commented out). 1 cent per step to explore!
-
-
-def _dominance_reward(still_alive: bool, total_dead: int) -> float:
-    """DISABLED: Dominance rewards cause agents to wait passively for opponents to die.
-    
-    The previous implementation (0.1 * total_dead) incentivizes sitting still:
-    - As soon as 1 opponent dies, agent gets +0.1/step bonus forever
-    - With 15 snakes, after a few die, agent gets +1.0+/step bonus for doing nothing
-    - This is stronger than food-seeking rewards, so agents learn passivity
-    
-    For now, disable this to force agents to learn food-seeking instead of waiting.
-    Once food-seeking is solid, re-enable with careful tuning.
-    """
-    return 0.0  # Disabled
+        # Small per-step cost encourages efficient food-seeking over passive survival
+        return -0.01
 

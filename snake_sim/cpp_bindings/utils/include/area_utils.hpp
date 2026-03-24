@@ -70,26 +70,24 @@ inline bool py_can_make_area_inaccessible(
 
 void print_map(uint8_t *s_map, int width, int height, int head_value, int body_value, int food_value);
 
-unsigned int* dist_heat_map(
+unsigned int* dist_map(
     uint8_t *s_map,
     int width,
     int height,
     int free_value,
-    int blocked_value,
     int target_value
 );
 
-inline py::array_t<unsigned int> py_dist_heat_map(
+inline py::array_t<unsigned int> py_dist_map(
     py::array_t<uint8_t> s_map,
     int width,
     int height,
     int free_value,
-    int blocked_value,
     int target_value
 ){
     auto buf = s_map.request();
     uint8_t *ptr = static_cast<uint8_t *>(buf.ptr);
-    unsigned int* heat_map = dist_heat_map(ptr, width, height, free_value, blocked_value, target_value);
+    unsigned int* heat_map = dist_map(ptr, width, height, free_value, target_value);
     py::array_t<unsigned int> result({height, width});
     auto res_buf = result.request();
     unsigned int *res_ptr = static_cast<unsigned int *>(res_buf.ptr);

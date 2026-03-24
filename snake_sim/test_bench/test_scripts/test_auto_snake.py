@@ -2,7 +2,7 @@ import time
 import sys
 from io import StringIO
 import numpy as np
-from typing import List, Dict
+from typing import List, Dict, cast
 from pathlib import Path
 import json
 from collections import deque
@@ -16,6 +16,7 @@ from snake_sim.environment.snake_factory import SnakeFactory
 from snake_sim.snakes.snake_base import SnakeBase
 from snake_sim.environment.snake_strategy_factory import SnakeStrategyFactory
 from snake_sim.rl.spatial_network_analyzer import SpatialNetworkAnalyzer
+from snake_sim.rl.reward import compute_rewards
 from snake_sim.environment.snake_env import SnakeRep
 from snake_sim.environment.types import (
     Coord, 
@@ -56,6 +57,8 @@ def get_state_file_path():
         raise FileNotFoundError("No state files found in the directory.")
     latest_file = max(state_files, key=lambda f: f.stat().st_mtime)
     return latest_file
+
+
 
 
 def test_make_choice(snake: SnakeBase, s_map, food_locations: List[Coord] = None):
@@ -199,12 +202,34 @@ def test_area_funcs(snake: SnakeBase, s_map):
     print(snake._env_meta_data.snake_values)
     print("Area boundary tiles:", tile_values)
 
+
+def test_check_rewards(
+        prev_s_map: np.ndarray, 
+        prev_state: CompleteStepState, 
+        s_map: np.ndarray, 
+        step_state: CompleteStepState
+    ):
+    rewards = compute_rewards(
+        state_map1=(prev_state, prev_s_map),
+        state_map2=(step_state, s_map),
+        snake_ids=set(step_state.env_meta_data.start_positions.keys())
+    )
+    print("Rewards:", rewards)
+
 # @profile()
-def run_tests(snake: SnakeBase, s_map: np.ndarray, step_state: CompleteStepState):
+def run_tests(
+        snake: SnakeBase, 
+        prev_s_map: np.ndarray,
+        prev_state: CompleteStepState,
+        s_map: np.ndarray, 
+        step_state: CompleteStepState,
+        next_s_map: np.ndarray,
+        next_state: CompleteStepState
+    ):
     # test_recurse_area_check(snake, s_map, Coord(0,-1))
     # test_recurse_area_check(snake, s_map, Coord(-1,0))
     # test_make_choice(snake, s_map, step_state.food)
-    test_area_check(snake, s_map)
+    # test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
     # test_area_check_direction(snake, s_map, Coord(0, -1))
     # test_area_check_direction(snake, s_map, Coord(-1, 0))
@@ -213,13 +238,14 @@ def run_tests(snake: SnakeBase, s_map: np.ndarray, step_state: CompleteStepState
     # test_get_visitable_tiles(snake, s_map, snake._head_coord)
     # test_spatial_network_ablation(snake, s_map, step_state.food)
     # test_area_funcs(snake, s_map)
+    test_check_rewards(prev_s_map, prev_state, s_map, step_state)
     pass
 
 
 def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, env_meta_data: EnvMetaData):
     snake: SnakeBase = SnakeFactory().create_snake(
-        # snake_config=SnakeConfig.from_dict(default_config.ai_snake_config)
-        snake_config=SnakeConfig.from_dict(default_config.snake_config)
+        snake_config=SnakeConfig.from_dict(default_config.ai_snake_config)
+        # snake_config=SnakeConfig.from_dict(default_config.snake_config)
     )
     snake.set_id(id)
     snake.set_start_length(1)
@@ -279,8 +305,10 @@ def put_food_in_frame(frame, food_coords, color, expand_factor=2, offset=(1, 1))
 if __name__ == "__main__":
     state_file_path = get_state_file_path()
     # state_file_path = r"B:\pythonStuff\snake_sim\test_bench\state_files\state_3628.json"
-    step_state: CompleteStepState = load_step_state(state_file_path)
+    prev_state, step_state, next_state = load_step_state(state_file_path)
+    prev_snake_reps = create_snake_reps(prev_state)
     snake_reps = create_snake_reps(step_state)
+    next_snake_reps = create_snake_reps(next_state)
 
     activate_debug()
     enable_debug_for_all()
@@ -291,7 +319,9 @@ if __name__ == "__main__":
     enable_debug_for('_best_first_search')
 
     snake_id = 0
+    prev_s_map = create_map(prev_state, prev_snake_reps)
     s_map = create_map(step_state, snake_reps)
+    next_s_map = create_map(next_state, next_snake_reps)
 
     color_mapping = create_color_map(step_state.env_meta_data.snake_values)
     for s_rep in snake_reps.values():
@@ -313,6 +343,14 @@ if __name__ == "__main__":
     # print("snake head value: ", test_snake.get_self_map_values()[0])
     # print("snake body value: ", test_snake.get_self_map_values()[1])
     sys.stdout.flush()
-    run_tests(test_snake, s_map, step_state)
+    run_tests(
+        test_snake, 
+        prev_s_map, 
+        prev_state, 
+        s_map, 
+        step_state, 
+        next_s_map, 
+        next_state
+    )
 
         

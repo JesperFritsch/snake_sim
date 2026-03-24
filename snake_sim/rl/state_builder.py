@@ -11,7 +11,7 @@ import sys
 import snake_sim.rl.constants as consts
 
 import snake_sim.debugging as debug
-from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles, distance_to_tile_with_value, dist_heat_map
+from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles, distance_to_tile_with_value, dist_map
 from snake_sim.cpp_bindings.area_check import AreaChecker
 from snake_sim.map_utils.general import print_map
 from snake_sim.environment.types import EnvMetaData, EnvStepData, Coord, AreaCheckResult
@@ -145,12 +145,11 @@ class BaseStateBuilder:
             - Distances <= 0 become 0.0 (including unreachable=-1).
             - Distances >= food_dist_max become 1.0.
         """
-        heat_map_array = dist_heat_map(
+        heat_map_array = dist_map(
             step_data.map,
             env_meta.width,
             env_meta.height,
             env_meta.free_value,
-            env_meta.blocked_value,
             env_meta.food_value
         )
 

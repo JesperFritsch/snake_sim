@@ -226,6 +226,9 @@ class CompleteStepState:
         state_dict["env_meta_data"] = EnvMetaData.from_dict(state_dict["env_meta_data"])
         state_dict["food"] = set([Coord(*f) for f in state_dict["food"]])
         state_dict["snake_bodies"] = {int(k): deque([Coord(*pos) for pos in v]) for k, v in state_dict["snake_bodies"].items()}
+        state_dict["snake_alive"] = {int(k): v for k, v in state_dict["snake_alive"].items()}
+        state_dict["snake_ate"] = {int(k): v for k, v in state_dict["snake_ate"].items()}
+
         instance = cls(
             **state_dict
         )

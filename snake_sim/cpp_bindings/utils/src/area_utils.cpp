@@ -135,12 +135,11 @@ bool can_make_area_inaccessible(
 }
 
 
-unsigned int* dist_heat_map(
+unsigned int* dist_map(
     uint8_t *s_map,
     int width,
     int height,
     int free_value,
-    int blocked_value,
     int target_value
 ){
     unsigned int* heat_map = new unsigned int[width * height];
@@ -176,7 +175,7 @@ unsigned int* dist_heat_map(
                 visited.find(neighbor) == visited.end()
             ) {
                 visited.insert(neighbor);
-                if (s_map[neighbor.y * width + neighbor.x] != blocked_value) {
+                if (s_map[neighbor.y * width + neighbor.x] <= free_value) {
                     unsigned int& neighbor_dist = heat_map[neighbor.y * width + neighbor.x];
                     if (current_dist + 1 < neighbor_dist) {
                         neighbor_dist = current_dist + 1;

@@ -7,6 +7,7 @@
 *.weights.h5
 *egg*
 logs/
+**/models_snapshots/
 /snake.log*
 *.log
 *.pyd
