@@ -24,16 +24,16 @@ log = logging.getLogger(Path(__file__).stem)
 
 @dataclass
 class PPOTrainerConfig:
-    gamma: float = 0.95
-    lam: float = 0.93  # GAE lambda
-    clip_range: float = 0.4  # Slightly wider clip -> larger effective updates
+    gamma: float = 0.985
+    lam: float = 0.95  # GAE lambda
+    clip_range: float = 0.1  # Slightly wider clip -> larger effective updates
     # Learning rates: the previous defaults produced near-zero policy updates
     # (ratio_std ~ 1e-4, clipfrac ~ 0). These values are still modest for PPO,
     # but should yield meaningfully non-zero updates.
-    policy_lr: float = 5e-4
+    policy_lr: float = 1e-4
     # Critic can become unstable fast in sparse/noisy-reward settings.
     # Keep value_lr lower than policy_lr unless you have very reliable return targets.
-    value_lr: float = 1e-3
+    value_lr: float = 4e-4
     minibatch_size: int = 128  # More minibatches/rollout -> more gradient steps
     rollout_size: int = 8192  # INCREASED - collect more before training (was 2048)
     train_epochs: int = 3  # More optimizer steps per rollout -> faster learning
@@ -67,7 +67,7 @@ class PPOTrainerConfig:
     # Performance / acceleration toggles
     use_amp: bool = True  # Mixed precision training (CUDA only)
     compile_model: bool = False  # torch.compile (not supported on Python 3.14+)
-    vf_clip_range: float = 0.2
+    vf_clip_range: float = 0.1
 
     # Auxiliary loss: encourage the *raw* (pre-mask) policy logits to assign low
     # preference to invalid actions, so the model internalizes action legality.

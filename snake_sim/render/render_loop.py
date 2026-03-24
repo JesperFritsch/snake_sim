@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from typing import Iterable
 from threading import Thread, Event
 from multiprocessing.sharedctypes import Synchronized
+from prompt_toolkit import PromptSession
+from prompt_toolkit.patch_stdout import patch_stdout
 
 from snake_sim.storing.state_storer import save_step_state
 from snake_sim.render.interfaces.renderer_interface import IRenderer
@@ -56,6 +58,8 @@ class RenderLoop:
         self._renderer: IRenderer = renderer
         self._stop_event: Event = Event()
         self._loop_thread: Thread = Thread(target=self._loop)
+        self._input_thread: Thread = Thread(target=self._input_loop)
+        self._prompt_session: PromptSession = None
         self._frame_step_direction = True  # True for forward
         self._frame_step_size = 1
         self._base_fps = config.fps
@@ -108,15 +112,42 @@ class RenderLoop:
                     chosen = "dummy"
             log.debug("RenderLoop input provider selected: %s", chosen)
 
-    def _loop(self):
-        self._paused = False
-        try:
-            while (
+    def _input_loop(self):
+        self._prompt_session = PromptSession()
+        with patch_stdout():
+            print("input thread started")
+            while command := self._prompt_session.prompt("> ") and self._running_condition():
+                try:
+                    self._handle_command(command)
+                except EOFError:
+                    break
+
+    def _handle_command(self, command: str):
+        parts = command.split()
+        if not parts:
+            return
+        cmd = parts[0]
+        if cmd == "step":
+            step = int(parts[1])
+            self._renderer.render_step(step)
+        elif cmd == "get":
+            if parts[1] == "step":
+                print(f"current step: {self._renderer.get_current_step_idx()}")
+        else:
+            print(f"invalid command {command}")
+
+    def _running_condition(self):
+        return (
                 (not (self._stop_flag and self._stop_flag.value))
                 and self._running
                 and self._renderer.is_running()
                 and not self._stop_event.is_set()
-            ):
+            )
+
+    def _loop(self):
+        self._paused = False
+        try:
+            while self._running_condition():
                 time.sleep(0.005)  # light sleep to reduce CPU
                 # Update input state
                 self._input.pump()
@@ -140,8 +171,10 @@ class RenderLoop:
                 if self._input.down_event(self._save_state_key):
                     if self._state_builder is not None:
                         step_idx = self._renderer.get_current_step_idx()
-                        state = self._state_builder.get_state(step_idx)
-                        save_step_state(state)
+                        prev_state = self._state_builder.get_state(step_idx - 1)
+                        curr_state = self._state_builder.get_state(step_idx)
+                        next_state = self._state_builder.get_state(step_idx + 1)
+                        save_step_state(prev_state, curr_state, next_state)
                     else:
                         log.warning("No state builder attached; cannot save state")
 
@@ -218,6 +251,7 @@ class RenderLoop:
             return
         self._running = True
         self._loop_thread.start()
+        self._input_thread.start()
 
     def stop(self) -> None:
         """Stop the loop and cleanup."""
@@ -229,6 +263,10 @@ class RenderLoop:
         try:
             self._input.stop()
         except Exception:
+            pass
+        try:
+            self._prompt_session.app.exit()
+        except:
             pass
         self._stop_event.set()
 
