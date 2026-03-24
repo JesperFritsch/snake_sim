@@ -1,9 +1,13 @@
 import argparse
 import subprocess
 import time
+import queue
+import threading
 from pathlib import Path
 from shutil import which
 from typing import Optional
+
+import cProfile
 
 import numpy as np
 
@@ -138,24 +142,11 @@ def _start_ffmpeg(
     scale_backend: str = "cpu",
     output_pix_fmt: str = "yuv444p",
 ) -> subprocess.Popen:
-    if which("ffmpeg") is None:
-        raise RuntimeError("ffmpeg not found on PATH. Install it first (e.g. pacman -S ffmpeg).")
-
-    if (out_width is None) != (out_height is None):
-        raise ValueError("out_width and out_height must be both set or both None")
-
-    # Keep tiles sharp if we scale in ffmpeg.
-    # Default output_pix_fmt is yuv444p to avoid chroma-subsampling blur/bleed around sharp edges.
     vf = None
     if out_width is not None and out_height is not None:
         if scale_backend == "cuda":
             if codec.strip() != "h264_nvenc":
                 raise ValueError("scale_backend='cuda' is only supported with codec='h264_nvenc'")
-            # Requires hwupload_cuda + scale_cuda filters.
-            # We keep frames on the GPU by outputting CUDA hwframes to the encoder.
-            # (Still does RGB->NV12 conversion on CPU before upload.)
-            # NOTE: using yuv444p avoids chroma blur. If this fails on some ffmpeg builds/drivers,
-            # fall back to --scale-backend cpu.
             if output_pix_fmt not in {"yuv444p", "nv12", "yuv420p"}:
                 raise ValueError(f"Unsupported output_pix_fmt for cuda scaling: {output_pix_fmt}")
             cuda_fmt = "yuv444p" if output_pix_fmt == "yuv444p" else "nv12"
@@ -247,10 +238,11 @@ def export_run_to_video(
     run_path: Path,
     out_path: Path,
     fps: int = 30,
-    tile_px: int = 20,
+    max_width: int = 1080,
+    max_height: int = 1080,
+    max_size: int | None = None,
     expansion: int = 1,
     crf: int = 18,
-    max_frames: int | None = None,
     codec: str = "auto",
     preset: str | None = None,
     scale_in_ffmpeg: bool = True,
@@ -261,16 +253,13 @@ def export_run_to_video(
     scale_backend: str = "cpu",
     progress_every: int = 500,
     output_pix_fmt: str = "yuv444p",
+    steps_per_second: float | None = None,
+    start_step: int = 0,
+    end_step: int | None = None,
 ):
-    codec = _pick_default_codec(codec)
-    preset = _pick_default_preset(codec, preset)
-    if print_info:
-        mode = "ffmpeg-scale" if scale_in_ffmpeg else "python-scale"
-        preset_str = preset if preset is not None else "(none)"
-        print(
-            f"export_run_to_video: codec={codec} preset={preset_str} mode={mode} "
-            f"scale_backend={scale_backend} fps={fps} tile_px={tile_px}"
-        )
+    mode = "ffmpeg-scale" if scale_in_ffmpeg else "python-scale"
+    preset_str = preset if preset is not None else "(none)"
+    # Compute tile_px to fit within max_width and max_height
     observable = FileRepeaterObservable(filepath=str(run_path))
     map_builder = MapBuilderObserver(expansion=expansion)
     waitable = WaitableObserver()
@@ -281,32 +270,45 @@ def export_run_to_video(
     observable.start()
     waitable.wait_until_started()
 
-    # Wait until MapBuilder has received start data
-    while map_builder._start_data is None:
-        time.sleep(0.01)
-
-    env_meta = map_builder._start_data.env_meta_data
+    env_meta = map_builder.get_start_data().env_meta_data
     color_map = create_color_map(env_meta.snake_values)
 
     # First frame is the initial map created in notify_start
-    first_map = map_builder.get_current_map()
+    while map_builder.get_max_step_idx() < start_step:
+        time.sleep(0.01)
+    first_map = map_builder.get_map_for_step(start_step)
+    print(map_builder.get_current_step_idx())
     grid_h, grid_w = first_map.shape
 
+    if max_size is not None:
+        max_width = max_size
+        max_height = max_size
+    tile_px_w = max(1, max_width / grid_w)
+    tile_px_h = max(1, max_height / grid_h)
+    tile_px = min(tile_px_w, tile_px_h)
+    out_w = grid_w * tile_px
+    out_h = grid_h * tile_px
+    if print_info:
+        print(
+            f"export_run_to_video: codec={codec} preset={preset_str} mode={mode} "
+            f"scale_backend={scale_backend} fps={fps} grid={grid_w}x{grid_h} tile_px={tile_px} out={out_w}x{out_h}"
+        )
     # Build LUT once (covers both map values and color-map keys)
-    max_value = int(max(int(first_map.max()), max(color_map.keys(), default=0)))
+    max_value = int(max(color_map.keys(), default=0))
     lut = _build_color_lut(color_map, max_value=max_value)
 
-    # Validate color map coverage for the initial frame (cheap once)
-    missing = set(np.unique(first_map).tolist()) - set(int(k) for k in color_map.keys())
-    if missing:
-        raise KeyError(f"No color mapping for tile values: {sorted(missing)[:20]}{'...' if len(missing) > 20 else ''}")
+    # If steps_per_second is not set, default to 1 step per frame (old behavior)
+    if steps_per_second is None:
+        steps_per_second = fps
+    # Compute how many video frames per simulation step
+    frames_per_step = fps / steps_per_second
+    maps_per_step = expansion
+    # Compute which simulation step to start and end at
+    start_step = max(0, int(start_step))
+    end_step = int(end_step) if end_step is not None else None
 
-    # Two modes:
-    # 1) scale_in_ffmpeg=False: Python scales up to final size and pushes huge frames (slow for big tile_px)
-    # 2) scale_in_ffmpeg=True : Python pushes tiny grid frames; ffmpeg scales with nearest-neighbor (much faster I/O)
     if scale_in_ffmpeg:
         in_w, in_h = grid_w, grid_h
-        out_w, out_h = grid_w * tile_px, grid_h * tile_px
         ff = _start_ffmpeg(
             out_path=out_path,
             in_width=in_w,
@@ -324,7 +326,6 @@ def export_run_to_video(
             output_pix_fmt=output_pix_fmt,
         )
     else:
-        out_w, out_h = grid_w * tile_px, grid_h * tile_px
         ff = _start_ffmpeg(
             out_path=out_path,
             in_width=out_w,
@@ -347,41 +348,61 @@ def export_run_to_video(
     frames_written = 0
     start_time = time.time()
 
-    def write_map(m: np.ndarray):
-        nonlocal frames_written
+    frame_queue: queue.Queue[np.ndarray] = queue.Queue(maxsize=100)
+    SENTINEL = None
+
+    def convert_map_to_frame(m: np.ndarray) -> np.ndarray:
         rgb = _map_to_rgb(m, lut)
         if scale_in_ffmpeg:
-            frame = rgb
+            return rgb
         else:
-            frame = _scale_nearest(rgb, tile_px)
-        frame = np.ascontiguousarray(frame, dtype=np.uint8)
-        ff.stdin.write(frame.tobytes(order="C"))
-        frames_written += 1
-        if progress_every and frames_written % progress_every == 0:
-            elapsed = time.time() - start_time
-            rate = frames_written / elapsed if elapsed > 0 else 0.0
-            print(f"frames={frames_written} elapsed={elapsed:.1f}s rate={rate:.1f} fps")
+            return _scale_nearest(rgb, tile_px)
 
-    try:
-        write_map(first_map)
-        while True:
-            if max_frames is not None and frames_written >= max_frames:
-                break
-            try:
-                m = map_builder.get_next_map()
-            except NoMoreSteps:
-                # Producer hasn't delivered the next step yet.
-                # If we already got stop_data, the next call will become StopIteration.
-                time.sleep(0.001)
-                continue
-            except StopIteration:
-                break
-            write_map(m)
-    finally:
+    def frame_producer():
+        sim_step = start_step
+        # map_in_step = 0
+        current_map_idx_floating = float(map_builder.get_current_map_idx())  # Start at the first available map step
         try:
-            ff.stdin.close()
-        except Exception:
-            pass
+            while True:
+                if end_step is not None and sim_step >= end_step:
+                    break
+                try:
+                    m = map_builder.get_map(int(current_map_idx_floating))
+                    sim_step = map_builder.get_current_step_idx()
+                    frame = convert_map_to_frame(m)
+                    frame_queue.put(frame)
+                    current_map_idx_floating += (1 / frames_per_step) * maps_per_step
+                except NoMoreSteps:
+                    time.sleep(0.001)
+                    continue
+                except StopIteration:
+                    break
+                except queue.Full:
+                    time.sleep(0.001)
+                    continue
+        finally:
+            frame_queue.put(SENTINEL)
+
+    def frame_consumer():
+        nonlocal frames_written
+        while True:
+            frame = frame_queue.get()
+            if frame is SENTINEL:
+                break
+            ff.stdin.write(frame.tobytes(order="C"))
+            frames_written += 1
+            if progress_every and frames_written % progress_every == 0:
+                elapsed = time.time() - start_time
+                rate = frames_written / elapsed if elapsed > 0 else 0.0
+                print(f"frames={frames_written} elapsed={elapsed:.1f}s rate={rate:.1f} fps")
+        ff.stdin.close()
+
+    producer_thread = threading.Thread(target=frame_producer, daemon=True)
+    consumer_thread = threading.Thread(target=frame_consumer, daemon=True)
+    producer_thread.start()
+    consumer_thread.start()
+    producer_thread.join()
+    consumer_thread.join()
 
     ret = ff.wait()
     elapsed = time.time() - start_time
@@ -397,12 +418,32 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("run_file", type=Path, help="Input run file (.run or .run_proto)")
     ap.add_argument("out", type=Path, help="Output video file (e.g. out.mp4)")
+    ap.add_argument(
+        "--steps-per-second",
+        type=float,
+        default=None,
+        help="Simulation steps per second in the video (decouples sim speed from video FPS). Default: 1 step per frame (old behavior).",
+    )
+    ap.add_argument(
+        "--start-step",
+        type=int,
+        default=0,
+        help="Simulation step to start the video from (default: 0)",
+    )
+    ap.add_argument(
+        "--end-step",
+        type=int,
+        default=None,
+        help="Simulation step to end the video at (exclusive; default: until end)",
+    )
     # Defaults are intentionally tuned for this repository's typical use on this machine:
     # - high-FPS exports
     # - ffmpeg-side scaling
     # - NVIDIA NVENC + CUDA scaling
     ap.add_argument("--fps", type=int, default=256)
-    ap.add_argument("--tile-px", type=int, default=30, help="Pixels per grid cell (square)")
+    ap.add_argument("--max-width", type=int, default=1080, help="Maximum output video width in pixels")
+    ap.add_argument("--max-height", type=int, default=1080, help="Maximum output video height in pixels")
+    ap.add_argument("--max-size", type=int, default=None, help="Maximum output video width and height in pixels (overrides max-width and max-height)")
     ap.add_argument("--expansion", type=int, default=2, help="MapBuilderObserver expansion factor")
     ap.add_argument(
         "--codec",
@@ -484,15 +525,17 @@ def main(argv: list[str] | None = None) -> int:
         help="Don't print the selected codec/preset/mode line",
     )
 
+    
     args = ap.parse_args(argv)
     export_run_to_video(
         run_path=args.run_file,
         out_path=args.out,
         fps=args.fps,
-        tile_px=args.tile_px,
+        max_width=args.max_width,
+        max_height=args.max_height,
+        max_size=args.max_size,
         expansion=args.expansion,
         crf=args.crf,
-        max_frames=args.max_frames,
         codec=args.codec,
         preset=args.preset,
         scale_in_ffmpeg=args.scale_in_ffmpeg,
@@ -503,6 +546,9 @@ def main(argv: list[str] | None = None) -> int:
         scale_backend=args.scale_backend,
         progress_every=args.progress_every,
         output_pix_fmt=args.output_pix_fmt,
+        steps_per_second=args.steps_per_second,
+        start_step=args.start_step,
+        end_step=args.end_step,
     )
     return 0
 
