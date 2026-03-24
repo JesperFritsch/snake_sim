@@ -34,7 +34,7 @@ dependencies = [
     "watchdog",
     "prompt_toolkit",
     "scipy",
-    "snake_proto_template @ git+ssh://git@github.com/JesperFritsch/snake_proto_template.git@main"
+    "snake_proto_template @ git+https://github.com/JesperFritsch/snake_proto_template.git"
 ]
 
 [project.scripts]
