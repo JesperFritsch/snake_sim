@@ -50,8 +50,7 @@ def main():
             parent_conn, child_conn = mp_ctx.Pipe()
             loop_repeater = IPCRepeaterObservable(child_conn)
             if not config.no_record:
-                store_dir = Path(config.record_dir) / f"grid_{config.grid_height}x{config.grid_width}"
-                file_persist = FilePersistObserver(store_dir=store_dir, filename=config.record_file)
+                file_persist = FilePersistObserver(store_dir=Path(config.record_dir), filename=config.record_file)
                 loop_repeater.add_observer(file_persist)
             loop_p = mp_ctx.Process(target=start_loop, args=(config, stop_flag), kwargs={'ipc_observer_pipe': parent_conn})
             loop_p.start()
