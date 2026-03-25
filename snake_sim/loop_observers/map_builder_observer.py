@@ -61,7 +61,7 @@ class MapBuilderObserver(ConsumerObserver):
         blocked_value = self._start_data.env_meta_data.blocked_value
         neighbors = [Coord(*c) for c in permutations([-1, 0, 1], 2) if abs(sum(c)) == 1]
         expanded_map = np.full(
-            (map.shape[0]*self._expansion, map.shape[1]*self._expansion),
+            ((map.shape[0]*self._expansion)-(self._expansion-1), (map.shape[1]*self._expansion)-(self._expansion-1)),
             free_value,
             dtype=map.dtype
         )
