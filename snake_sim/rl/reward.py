@@ -4,13 +4,15 @@ import numpy as np
 from typing import Dict
 
 import snake_sim.debugging as debug
-from snake_sim.map_utils.general import print_map
 from snake_sim.environment.types import CompleteStepState
 from snake_sim.environment.types import AreaCheckResult
-from snake_sim.rl.state_builder import print_state
-from snake_sim.cpp_bindings.utils import distance_to_tile_with_value, distance_to_coord
 from snake_sim.cpp_bindings.area_check import AreaChecker
-from snake_sim.cpp_bindings.utils import get_visitable_tiles, area_boundary_tiles
+from snake_sim.cpp_bindings.utils import (
+    get_visitable_tiles, 
+    area_boundary_tiles, 
+    distance_to_tile_with_value, 
+    distance_to_coord
+)
 
 
 area_checkers: Dict[int, AreaChecker] = {}
@@ -150,9 +152,11 @@ def assign_trapping_credit(
                 state.env_meta_data.height,
                 coord,
                 tuple(trapped_head_coord),
-                [state.env_meta_data.free_value, state.env_meta_data.food_value]
+                [state.env_meta_data.free_value, state.env_meta_data.food_value],
+                target_is_visitable=False
             ) for coord in trapping_visitable_tiles]
-            if head_value in boundary_tiles and any(d < 0 for d in distances_to_trapped_head):
+            debug.debug_print(f"Distances from snake {trapping_id} to trapped snake {trapped_id} head: {distances_to_trapped_head}")
+            if head_value in boundary_tiles and any(d >= 0 for d in distances_to_trapped_head):
                 # If the trapping snake's head is on the boundary of the trapped area and can reach the trapped snake's head, assign credit.
                 # but if the trapping snakes head in in the same area as the trapped snake, it shouldn't get credit (prevents rewarding snakes for being near the trapped snake if they are also trapped)
                 contributors[trapping_id] = True

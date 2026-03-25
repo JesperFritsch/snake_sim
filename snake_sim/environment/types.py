@@ -298,3 +298,11 @@ class GameConfig(SimConfig):
     player_count: int
     spm: int
     snake_game_config: SnakeConfig
+
+
+class NoMoreSteps(Exception):
+    pass
+
+
+class CurrentIsFirst(Exception):
+    pass

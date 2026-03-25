@@ -40,6 +40,7 @@ PYBIND11_MODULE(utils, m)
         py::arg("from_coord"),
         py::arg("to_coord"),
         py::arg("visitable_values"),
+        py::arg("target_is_visitable") = true,
         py::return_value_policy::copy
     );
 

@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Iterable
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 from multiprocessing.sharedctypes import Synchronized
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
@@ -58,6 +58,7 @@ class RenderLoop:
         self._renderer: IRenderer = renderer
         self._stop_event: Event = Event()
         self._loop_thread: Thread = Thread(target=self._loop)
+        self._render_lock: Lock = Lock()
         self._input_thread: Thread = Thread(target=self._input_loop)
         self._prompt_session: PromptSession = None
         self._frame_step_direction = True  # True for forward
@@ -66,7 +67,7 @@ class RenderLoop:
         self._fps = self._base_fps
         self._paused = False  # stepping frames
         self._running = False  # loop running
-        self._render_frame = False
+        self._do_render_frame = False
         self._last_render_time = time.time()
 
         # Key identifiers (mapped inside provider)
@@ -116,11 +117,19 @@ class RenderLoop:
         self._prompt_session = PromptSession()
         with patch_stdout():
             print("input thread started")
-            while command := self._prompt_session.prompt("> ") and self._running_condition():
+            while bool(command := self._prompt_session.prompt("> ")) and self._running_condition():
                 try:
                     self._handle_command(command)
                 except EOFError:
                     break
+
+    def _render_step(self, step: int):
+        with self._render_lock:
+            self._renderer.render_step(step)
+
+    def _render_frame(self, frame_idx: int):
+        with self._render_lock:
+            self._renderer.render_frame(frame_idx)
 
     def _handle_command(self, command: str):
         parts = command.split()
@@ -129,7 +138,7 @@ class RenderLoop:
         cmd = parts[0]
         if cmd == "step":
             step = int(parts[1])
-            self._renderer.render_step(step)
+            self._render_step(step)
         elif cmd == "get":
             if parts[1] == "step":
                 print(f"current step: {self._renderer.get_current_step_idx()}")
@@ -187,10 +196,10 @@ class RenderLoop:
 
                 # Frame step triggers (edge)
                 if self._input.down_event(self._forward_key):
-                    self._render_frame = True
+                    self._do_render_frame = True
                     self._fps = self._base_fps
                 elif self._input.down_event(self._backwards_key):
-                    self._render_frame = True
+                    self._do_render_frame = True
                     self._frame_step_direction = False
                     self._fps = self._base_fps
 
@@ -210,15 +219,15 @@ class RenderLoop:
                         self._frame_step_direction = False
 
                 # Execute render frame if scheduled
-                if self._render_frame:
+                if self._do_render_frame:
                     current_frame_idx = self._renderer.get_current_map_idx()
                     next_frame_idx = current_frame_idx + (
                         self._frame_step_size * (1 if self._frame_step_direction else -1)
                     )
                     next_frame_idx = max(next_frame_idx, 0)
-                    self._renderer.render_frame(next_frame_idx)
+                    self._render_frame(next_frame_idx)
                     self._last_render_time = time.time()
-                    self._render_frame = False
+                    self._do_render_frame = False
                     self._frame_step_direction = True
                     self._frame_step_size = 1
 
@@ -226,7 +235,7 @@ class RenderLoop:
                 if not self._paused and self._fps > 0:
                     fps_duration = 1 / self._fps
                     if time.time() - self._last_render_time > fps_duration:
-                        self._render_frame = True
+                        self._do_render_frame = True
 
                 # If paused disable auto FPS
                 if self._paused:
