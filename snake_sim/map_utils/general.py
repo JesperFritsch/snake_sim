@@ -32,7 +32,7 @@ def get_maps_info():
             'height': np_map.shape[0],
             'width': np_map.shape[1],
         }
-
+    return maps_info
 
 def rgb_color_text(text, r, g, b):
     return f"\033[48;2;{r};{g};{b}m{text}\033[0m"
