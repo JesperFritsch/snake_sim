@@ -256,6 +256,7 @@ def export_run_to_video(
     steps_per_second: float | None = None,
     start_step: int = 0,
     end_step: int | None = None,
+    random_colors: bool = False,
 ):
     mode = "ffmpeg-scale" if scale_in_ffmpeg else "python-scale"
     preset_str = preset if preset is not None else "(none)"
@@ -271,7 +272,7 @@ def export_run_to_video(
     waitable.wait_until_started()
 
     env_meta = map_builder.get_start_data().env_meta_data
-    color_map = create_color_map(env_meta.snake_values)
+    color_map = create_color_map(env_meta.snake_values, rand_colors=random_colors)
 
     # First frame is the initial map created in notify_start
     while map_builder.get_max_step_idx() < start_step:
