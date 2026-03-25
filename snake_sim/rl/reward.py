@@ -152,8 +152,7 @@ def assign_trapping_credit(
                 state.env_meta_data.height,
                 coord,
                 tuple(trapped_head_coord),
-                [state.env_meta_data.free_value, state.env_meta_data.food_value],
-                target_is_visitable=False
+                [state.env_meta_data.free_value, state.env_meta_data.food_value]
             ) for coord in trapping_visitable_tiles]
             debug.debug_print(f"Distances from snake {trapping_id} to trapped snake {trapped_id} head: {distances_to_trapped_head}")
             if head_value in boundary_tiles and any(d >= 0 for d in distances_to_trapped_head):
