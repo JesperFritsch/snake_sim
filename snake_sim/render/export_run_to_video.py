@@ -524,6 +524,12 @@ def main(argv: list[str] | None = None) -> int:
         default=False,
         help="Don't print the selected codec/preset/mode line",
     )
+    ap.add_argument(
+        "--random-colors",
+        action="store_true",
+        default=False,
+        help="Use random colors for snakes instead of deterministic coloring based on snake ID (for better visibility when many snakes are present)",
+    )
 
     
     args = ap.parse_args(argv)
@@ -549,6 +555,7 @@ def main(argv: list[str] | None = None) -> int:
         steps_per_second=args.steps_per_second,
         start_step=args.start_step,
         end_step=args.end_step,
+        random_colors=args.random_colors,
     )
     return 0
 

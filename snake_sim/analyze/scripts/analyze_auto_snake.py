@@ -44,7 +44,8 @@ from snake_sim.cpp_bindings.utils import (
     get_visitable_tiles,
     can_make_area_inaccessible,
     area_boundary_tiles,
-    distance_to_coord
+    distance_to_coord,
+    distance_to_tile_with_value
 )
 
 
@@ -226,10 +227,32 @@ def test_get_dist_to_tile(snake: SnakeBase, s_map, target_coord):
         snake._env_meta_data.height,
         tuple(snake._head_coord),
         tuple(target_coord),
-        [snake._env_meta_data.free_value, snake._env_meta_data.food_value]
+        [snake._env_meta_data.free_value, snake._env_meta_data.food_value],
     )
     print(f"Time distance_to_coord: {(time.time() - start_time) * 1000}")
     print(f"Distance from {snake._head_coord} to {target_coord}: {dist}")
+
+
+def test_get_dist_to_tile_with_value(snake: SnakeBase, s_map, target_value):
+    start_time = time.time()
+    coord = snake._head_coord + (0, 1)
+    visitable_tiles = get_visitable_tiles(
+        s_map,
+        snake._env_meta_data.width,
+        snake._env_meta_data.height,
+        (coord.x, coord.y),
+        [snake._env_meta_data.free_value, snake._env_meta_data.food_value]
+    )
+    dists = [distance_to_tile_with_value(
+        s_map,
+        snake._env_meta_data.width,
+        snake._env_meta_data.height,
+        tuple(coord),
+        target_value,
+        [snake._env_meta_data.free_value, snake._env_meta_data.food_value],
+    ) for coord in visitable_tiles]
+    print(f"Time distance_to_tile_with_value: {(time.time() - start_time) * 1000}")
+    print(f"Distance from {coord} to tile with value {target_value}: {dists}")
 
 # @profile()
 def run_tests(
@@ -254,6 +277,7 @@ def run_tests(
     # test_spatial_network_ablation(snake, s_map, step_state.food)
     # test_area_funcs(snake, s_map)
     test_get_dist_to_tile(snake, s_map, snake._body_coords[-1])
+    test_get_dist_to_tile_with_value(snake, s_map, snake._body_value)
     test_check_rewards(prev_s_map, prev_state, s_map, step_state)
     pass
 
