@@ -96,7 +96,8 @@ int distance_to_coord(
     int height,
     Coord from_coord,
     Coord to_coord,
-    std::vector<int> visitable_values
+    std::vector<int> visitable_values,
+    bool target_is_visitable
 ){
     std::vector<bool> visited(width * height, false);
     std::deque<std::pair<Coord, int>> coords_to_visit; // Pair of Coord and distance
@@ -110,6 +111,9 @@ int distance_to_coord(
         int current_distance = current_pair.second;
         if (current == to_coord){
             return current_distance;
+        }
+        if (!target_is_visitable && current.manhattan_distance(to_coord) == 1){
+            return current_distance + 1;
         }
         auto visitable_tiles = get_visitable_tiles(s_map, width, height, current, visitable_values);
         for (const auto& valid_coord : visitable_tiles){

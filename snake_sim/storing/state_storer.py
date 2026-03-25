@@ -14,7 +14,7 @@ STATE_CACHE: Dict[int, str] = {}
 def get_statefile_dir():
     """ Get the directory where state files are stored. """
     with resources.as_file(resources.files('snake_sim') / '__init__.py') as init_path:
-        return Path(init_path).parent / "test_bench" / "state_files"
+        return Path(init_path).parent / "analyze" / "state_files"
 
 
 def clear_state_cache():

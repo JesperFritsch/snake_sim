@@ -75,7 +75,8 @@ int distance_to_coord(
     int height,
     Coord from_coord,
     Coord to_coord,
-    std::vector<int> visitable_values
+    std::vector<int> visitable_values,
+    bool target_is_visitable = true
 );
 
 
@@ -85,13 +86,14 @@ inline int py_distance_to_coord(
     int height,
     py::tuple from_coord,
     py::tuple to_coord,
-    std::vector<int> visitable_values
+    std::vector<int> visitable_values,
+    bool target_is_visitable = true
 ){
     auto buf = s_map.request();
     uint8_t *ptr = static_cast<uint8_t *>(buf.ptr);
     Coord from(from_coord[0].cast<int>(), from_coord[1].cast<int>());
     Coord to(to_coord[0].cast<int>(), to_coord[1].cast<int>());
-    return distance_to_coord(ptr, width, height, from, to, visitable_values);
+    return distance_to_coord(ptr, width, height, from, to, visitable_values, target_is_visitable);
 }
 
 

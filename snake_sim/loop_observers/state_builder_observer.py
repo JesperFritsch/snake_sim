@@ -4,18 +4,12 @@ from collections import deque
 from snake_sim.environment.types import (
     LoopStartData,
     Coord,
-    CompleteStepState
+    CompleteStepState,
+    NoMoreSteps,
+    CurrentIsFirst,
 )
 
 from snake_sim.loop_observers.consumer_observer import ConsumerObserver
-
-
-class NoMoreSteps(Exception):
-    pass
-
-
-class CurrentIsFirst(Exception):
-    pass
 
 
 class StateBuilderObserver(ConsumerObserver):

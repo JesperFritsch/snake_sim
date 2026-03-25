@@ -8,18 +8,12 @@ from itertools import permutations
 from snake_sim.environment.types import (
     LoopStartData,
     LoopStepData,
-    Coord
+    Coord,
+    NoMoreSteps,
+    CurrentIsFirst,
 )
 
 from snake_sim.loop_observers.consumer_observer import ConsumerObserver
-
-
-class NoMoreSteps(Exception):
-    pass
-
-
-class CurrentIsFirst(Exception):
-    pass
 
 
 class MapBuilderObserver(ConsumerObserver):

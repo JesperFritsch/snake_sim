@@ -43,7 +43,8 @@ from snake_sim.cpp_bindings.utils import (
     get_dir_to_tile,
     get_visitable_tiles,
     can_make_area_inaccessible,
-    area_boundary_tiles
+    area_boundary_tiles,
+    distance_to_coord
 )
 
 
@@ -216,6 +217,20 @@ def test_check_rewards(
     )
     print("Rewards:", rewards)
 
+
+def test_get_dist_to_tile(snake: SnakeBase, s_map, target_coord):
+    start_time = time.time()
+    dist = distance_to_coord(
+        s_map,
+        snake._env_meta_data.width,
+        snake._env_meta_data.height,
+        tuple(snake._head_coord),
+        tuple(target_coord),
+        [snake._env_meta_data.free_value, snake._env_meta_data.food_value]
+    )
+    print(f"Time distance_to_coord: {(time.time() - start_time) * 1000}")
+    print(f"Distance from {snake._head_coord} to {target_coord}: {dist}")
+
 # @profile()
 def run_tests(
         snake: SnakeBase, 
@@ -238,6 +253,7 @@ def run_tests(
     # test_get_visitable_tiles(snake, s_map, snake._head_coord)
     # test_spatial_network_ablation(snake, s_map, step_state.food)
     # test_area_funcs(snake, s_map)
+    test_get_dist_to_tile(snake, s_map, snake._body_coords[-1])
     test_check_rewards(prev_s_map, prev_state, s_map, step_state)
     pass
 
