@@ -1,14 +1,38 @@
 import sys
 import numpy as np
+import json
 from typing import Dict, Tuple
 from importlib import resources
 from PIL import Image
+from snake_sim.environment.types import DotDict
+
+with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
+    default_config = DotDict(json.load(config_file))
 
 def get_map_files_mapping():
     files = list(resources.files('snake_sim.maps.map_images').iterdir())
     mapping = {f.name.split('.')[0]: f for f in files if f.is_file()}
     mapping.pop('__init__')
     return mapping
+
+def get_maps_info():
+    maps_mapping = get_map_files_mapping()
+    maps_info = {}
+    for map_name, file in maps_mapping.items():
+        np_map = convert_png_to_map(
+            file,
+            color_mapping={
+                (0, 0, 0, 0): default_config.free_value,
+                (255, 0, 0, 255): default_config.food_value,
+                (0, 0, 0, 255): default_config.blocked_value,
+            }
+        )
+
+        maps_info[map_name] = {
+            'height': np_map.shape[0],
+            'width': np_map.shape[1],
+        }
+
 
 def rgb_color_text(text, r, g, b):
     return f"\033[48;2;{r};{g};{b}m{text}\033[0m"
