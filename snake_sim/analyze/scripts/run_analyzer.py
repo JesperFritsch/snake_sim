@@ -44,6 +44,7 @@ class RunAnalisis:
     env_meta_data: EnvMetaData
     snake_ids: list[int]
     fatal_steps: dict[int, int] # snake_id -> step_idx of fatal step
+    final_step_idx: int
     tail_visible_phases: dict[int, list[TailVisiblePhase]] # snake_id -> list of phases where it can see its tail or not
 
     def to_dict(self):
@@ -52,6 +53,7 @@ class RunAnalisis:
             "env_meta_data": self.env_meta_data.to_dict(),
             "snake_ids": self.snake_ids,
             "fatal_steps": self.fatal_steps,
+            "final_step_idx": self.final_step_idx,
             "tail_visible_phases": {
                 s_id: [phase.to_dict() for phase in phases] 
                 for s_id, phases in self.tail_visible_phases.items()
@@ -128,7 +130,8 @@ def main(args):
         env_meta_data=env_meta_data,
         snake_ids=snake_ids,
         fatal_steps=fatal_steps,
-        tail_visible_phases=tail_visible_phases
+        tail_visible_phases=tail_visible_phases,
+        final_step_idx=current_step_idx
     )
     print(json.dumps(analysis.to_dict(), indent=2))
 
