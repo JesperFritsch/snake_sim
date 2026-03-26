@@ -8,7 +8,7 @@ class IFoodHandler(ABC):
         pass
 
     @abstractmethod
-    def resize(self, width, height):
+    def resize(self, height, width):
         pass
 
     @abstractmethod

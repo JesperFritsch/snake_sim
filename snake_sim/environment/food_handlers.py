@@ -64,9 +64,9 @@ class FoodHandler(IFoodHandler):
             self.locations.remove(coord)
             self.removed_food.append(coord)
 
-    def resize(self, width, height):
-        self.width = width
+    def resize(self, height, width):
         self.height = height
+        self.width = width
 
     def clear(self):
         self.locations.clear()
