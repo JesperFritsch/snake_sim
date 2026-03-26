@@ -423,9 +423,8 @@ def export_run_to_video(
             "tile_px": tile_px,
             "out_size": (out_w, out_h),
             "total_frames": frames_written,
-            "snake_colors": {k: color_map[k] for k in sorted(color_map.keys())},
-            "steps_per_second": steps_per_second,
-
+            "color_map": {k: color_map[k] for k in sorted(color_map.keys())},
+            "steps_per_second": steps_per_second
         }
         info_path = out_path.with_suffix(".json")
         import json
