@@ -17,11 +17,12 @@ log = logging.getLogger(Path(__file__).stem)
 
 class PygameRenderer(IRenderer):
     """ A simple terminal renderer that prints the state to the console. """
-    def __init__(self, map_builder: MapBuilderObserver, screen_h: int = 1000, screen_w: int = 1000):
+    def __init__(self, map_builder: MapBuilderObserver, max_screen_size: int = 1000):
         super().__init__()
         self._map_builder = map_builder
-        self._screen_h = screen_h
-        self._screen_w = screen_w
+        self._max_screen_size = max_screen_size
+        self._screen_h = 100
+        self._screen_w = 100
         self._wait_thread = Thread(target=self._finish_init, daemon=True)
         self._wait_thread.start()
         self._env_meta_data = None
@@ -33,12 +34,23 @@ class PygameRenderer(IRenderer):
         self._flip_event: Event = Event()
         self._close_event: Event = Event()
         self._pygame_thread = Thread(target=self._pygame_loop)
-        self._pygame_thread.start()
+
+    def _find_correct_screen_size(self, map_width: int, map_height: int):
+        aspect_ratio = map_width / map_height
+        if aspect_ratio >= 1:
+            self._screen_w = self._max_screen_size
+            self._screen_h = int(self._max_screen_size / aspect_ratio)
+        else:
+            self._screen_h = self._max_screen_size
+            self._screen_w = int(self._max_screen_size * aspect_ratio)
 
     def _finish_init(self):
         while self._map_builder._start_data is None:
             time.sleep(0.005)
-        self._env_meta_data = self._map_builder._start_data.env_meta_data
+        start_data = self._map_builder._start_data
+        self._env_meta_data = start_data.env_meta_data
+        self._find_correct_screen_size(start_data.env_meta_data.width, start_data.env_meta_data.height)
+        self._pygame_thread.start()
         self._color_map = create_color_map(self._env_meta_data.snake_values)
         self._free_value = self._env_meta_data.free_value
         self._food_value = self._env_meta_data.food_value
