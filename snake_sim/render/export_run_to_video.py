@@ -257,6 +257,7 @@ def export_run_to_video(
     start_step: int = 0,
     end_step: int | None = None,
     random_colors: bool = False,
+    create_info_json: bool = False,
 ):
     mode = "ffmpeg-scale" if scale_in_ffmpeg else "python-scale"
     preset_str = preset if preset is not None else "(none)"
@@ -411,6 +412,27 @@ def export_run_to_video(
         raise RuntimeError(f"ffmpeg exited with code {ret}")
 
     print(f"Wrote {frames_written} frames to {out_path} ({elapsed:.2f}s)")
+    if create_info_json:
+        info = {
+            "codec": codec,
+            "preset": preset_str,
+            "mode": mode,
+            "scale_backend": scale_backend,
+            "fps": fps,
+            "grid_size": (grid_w, grid_h),
+            "tile_px": tile_px,
+            "out_size": (out_w, out_h),
+            "total_frames": frames_written,
+            "snake_colors": {k: color_map[k] for k in sorted(color_map.keys())},
+            "steps_per_second": steps_per_second,
+
+        }
+        info_path = out_path.with_suffix(".json")
+        import json
+
+        with open(info_path, "w") as f:
+            json.dump(info, f, indent=4)
+        print(f"Wrote export info to {info_path}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -531,7 +553,12 @@ def main(argv: list[str] | None = None) -> int:
         default=False,
         help="Use random colors for snakes instead of deterministic coloring based on snake ID (for better visibility when many snakes are present)",
     )
-
+    ap.add_argument(
+        "--create-info-json",
+        action="store_true",
+        default=False,
+        help="Create a JSON file alongside the output video containing metadata about the export (codec, preset, mode, scale_backend, fps, grid size, tile_px, total frames, duration, etc.)",
+    )
     
     args = ap.parse_args(argv)
     export_run_to_video(
@@ -557,6 +584,7 @@ def main(argv: list[str] | None = None) -> int:
         start_step=args.start_step,
         end_step=args.end_step,
         random_colors=args.random_colors,
+        create_info_json=args.create_info_json,
     )
     return 0
 
