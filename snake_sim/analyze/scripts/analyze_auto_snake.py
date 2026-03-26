@@ -266,8 +266,8 @@ def run_tests(
     ):
     # test_recurse_area_check(snake, s_map, Coord(0,-1))
     # test_recurse_area_check(snake, s_map, Coord(-1,0))
-    # test_make_choice(snake, s_map, step_state.food)
-    # test_area_check(snake, s_map)
+    test_make_choice(snake, s_map, step_state.food)
+    test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
     # test_area_check_direction(snake, s_map, Coord(0, -1))
     # test_area_check_direction(snake, s_map, Coord(-1, 0))
@@ -276,16 +276,16 @@ def run_tests(
     # test_get_visitable_tiles(snake, s_map, snake._head_coord)
     # test_spatial_network_ablation(snake, s_map, step_state.food)
     # test_area_funcs(snake, s_map)
-    test_get_dist_to_tile(snake, s_map, snake._body_coords[-1])
-    test_get_dist_to_tile_with_value(snake, s_map, snake._body_value)
-    test_check_rewards(prev_s_map, prev_state, s_map, step_state)
+    # test_get_dist_to_tile(snake, s_map, snake._body_coords[-1])
+    # test_get_dist_to_tile_with_value(snake, s_map, snake._body_value)
+    # test_check_rewards(prev_s_map, prev_state, s_map, step_state)
     pass
 
 
 def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, env_meta_data: EnvMetaData):
     snake: SnakeBase = SnakeFactory().create_snake(
-        snake_config=SnakeConfig.from_dict(default_config.ai_snake_config)
-        # snake_config=SnakeConfig.from_dict(default_config.snake_config)
+        # snake_config=SnakeConfig.from_dict(default_config.ai_snake_config)
+        snake_config=SnakeConfig.from_dict(default_config.snake_config)
     )
     snake.set_id(id)
     snake.set_start_length(1)
