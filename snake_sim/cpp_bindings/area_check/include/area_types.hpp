@@ -19,6 +19,7 @@ struct AreaCheckResult
     bool has_tail;
     int margin;
     int needed_steps;
+    float margin_frac;
 
     AreaCheckResult() : 
         is_clear(false),
@@ -27,7 +28,8 @@ struct AreaCheckResult
         food_count(0),
         has_tail(false),
         margin(INT_MIN),
-        needed_steps(0) {}
+        needed_steps(0),
+        margin_frac(0.0f) {}
 
     AreaCheckResult(
         bool is_clear,
@@ -36,7 +38,8 @@ struct AreaCheckResult
         int food_count,
         bool has_tail,
         int margin,
-        int needed_steps
+        int needed_steps,
+        float margin_frac
     ) : 
         is_clear(is_clear),
         tile_count(tile_count),
@@ -44,7 +47,8 @@ struct AreaCheckResult
         food_count(food_count),
         has_tail(has_tail),
         margin(margin),
-        needed_steps(needed_steps) {}
+        needed_steps(needed_steps),
+        margin_frac(margin_frac) {}
 };
 
 

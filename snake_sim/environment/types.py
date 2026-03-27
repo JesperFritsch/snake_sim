@@ -122,6 +122,10 @@ class AreaCheckResult:
     has_tail: bool
     margin: int
     needed_steps: int
+    margin_frac: float = field(init=False)
+    
+    def __post_init__(self):
+        self.margin_frac = self.margin / self.tile_count if self.tile_count > 0 else 0.0
 
 
 @dataclass

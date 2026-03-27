@@ -31,6 +31,7 @@ class PygameRenderer(IRenderer):
         self._food_value = None
         self._blocked_value = None
         self._init_finished = False
+        self._loop_started = False
         self._flip_event: Event = Event()
         self._close_event: Event = Event()
         self._pygame_thread = Thread(target=self._pygame_loop)
@@ -58,7 +59,7 @@ class PygameRenderer(IRenderer):
         self._init_finished = True
 
     def is_init_finished(self):
-        return self._init_finished
+        return self._init_finished and self._loop_started
 
     def _render_frame(self, frame: np.ndarray):
         if not self.is_init_finished():
@@ -122,6 +123,7 @@ class PygameRenderer(IRenderer):
         try:
             self._screen = pygame.display.set_mode((self._screen_w, self._screen_h), 0, 32)
             self._surface = pygame.Surface(self._screen.get_size()).convert()
+            self._loop_started = True
             while not self._close_event.is_set():
                 if self._flip_event.is_set():
                     self._flip_event.clear()
