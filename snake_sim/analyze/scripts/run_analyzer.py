@@ -323,7 +323,8 @@ def find_traps(
 def cli(argv):
     ap = argparse.ArgumentParser(description="Run the analyzer on a run file")
     ap.add_argument("filepath", type=Path, help="Path to the run file to analyze")
-    ap.add_argument("--output", "-o", type=Path, help="Path to save the analysis result as json", default=Path("run_analysis.json"))
+    ap.add_argument("--output", "-o", type=Path, help="Path to save the analysis result as json")
+    ap.add_argument("--dump-json", "-d", action="store_true", help="Dump the analysis result as json to stdout")
     return ap.parse_args(argv)
 
 
@@ -400,8 +401,12 @@ def main(args):
         entered_separate_area=entered_separate_area_dict,
         traps_mapping=traps_mapping
     )
-    with open(args.output, "w") as f:
-        json.dump(analysis.to_dict(), f, indent=2)
+    
+    if args.dump_json:
+        print(json.dumps(analysis.to_dict(), indent=2))
+    if args.output:
+        with open(args.output, "w") as f:
+            json.dump(analysis.to_dict(), f, indent=2)
 
 
 if __name__ == "__main__":
