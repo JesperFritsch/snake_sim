@@ -82,6 +82,7 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
         strat_margin_fracs = margin_fracs[self._current_strategy_tile] if self._current_strategy_tile in margin_fracs else {}
         strat_margin_frac_max_depth = max(strat_margin_fracs.keys()) if len(strat_margin_fracs) > 0 else -1
         strat_margin_frac_at_depth = strat_margin_fracs.get(strat_margin_frac_max_depth, -1)
+        best_margin_frac_at_depth = max([fracs.get(max(fracs.keys()), -1) for fracs in margin_fracs.values()])
         debug.debug_print(f"max_depth: {strat_margin_frac_max_depth}, strat_margin_frac_at_depth: {strat_margin_frac_at_depth}")
         if strat_margin_frac_at_depth >= self.SAFE_MARGIN_FRAC:
             debug.debug_print(f"choosing strategy tile {self._current_strategy_tile} with margin frac {strat_margin_frac_at_depth}")
@@ -93,6 +94,10 @@ class SurvivorSnake(IStrategySnake, SnakeBase):
                     [coord for coord in margin_fracs if any([val == float("inf") for val in margin_fracs[coord].values()])],
                     key=lambda coord: margin_fracs[coord].get(max(margin_fracs[coord].keys()), -1)
                 )
+            # if best_margin_frac_at_depth == strat_margin_frac_at_depth:
+            #     debug.debug_print("best margin frac at max depth is the same for strategy tile and other tiles, choosing strategy tile")
+            #     return self._current_strategy_tile
+            
             debug.debug_print("choosing best available option")
             return max(
                 margin_fracs,

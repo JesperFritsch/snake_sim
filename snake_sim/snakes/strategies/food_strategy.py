@@ -27,6 +27,7 @@ class FoodSeeker(ISnakeStrategy):
         else:
             food_map = {}
         debug.debug_print(f"food_map: {food_map}")
+        debug.debug_print(f"food_dir_tile: {food_dir_tile}")
         if not food_map:
             return food_dir_tile
         best_food_tile = self._get_best_food_option(food_map, food_dir_tile)
