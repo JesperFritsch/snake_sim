@@ -222,7 +222,7 @@ class SnakeEnv(ISnakeEnv):
         if not isinstance(food_handler, IFoodHandler):
             raise ValueError("food_handler must be an instance of IFoodHandler")
         self._food_handler = food_handler
-        self._food_handler.resize(self._width, self._height)
+        self._food_handler.resize(self._height, self._width)
 
     def update_food(self):
         self._food_handler.update(self._map)
