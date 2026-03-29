@@ -151,23 +151,23 @@ class GameLoop(SimLoop):
 
     def __init__(self):
         super().__init__()
-        self._steps_per_min = None
+        self._steps_per_sec = None
         self._last_update_time = None
 
     def _post_update(self):
         # Using the post update hook to control the speed of the game
         super()._post_update()
-        sleep_time = 60 / self._steps_per_min
+        sleep_time = 1 / self._steps_per_sec
         if not self._last_update_time is None:
             sleep_time -= time.time() - self._last_update_time
         if sleep_time > 0:
             time.sleep(sleep_time)
 
     def start(self):
-        if not self._steps_per_min:
+        if not self._steps_per_sec:
             raise ValueError('Steps per minute not set')
         super().start()
 
-    def set_steps_per_min(self, spm):
-        self._steps_per_min = spm
+    def set_steps_per_sec(self, spm):
+        self._steps_per_sec = spm
 

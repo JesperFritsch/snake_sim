@@ -46,7 +46,7 @@ def main():
         if config.command == "play-file":
             loop_repeater = FileRepeaterObservable(filepath=config.filepath)
 
-        elif config.command == "compute":
+        elif config.command in ["compute", "game"]:
             parent_conn, child_conn = mp_ctx.Pipe()
             loop_repeater = IPCRepeaterObservable(child_conn)
             if not config.no_record:
@@ -55,10 +55,8 @@ def main():
             loop_p = mp_ctx.Process(target=start_loop, args=(config, stop_flag), kwargs={'ipc_observer_pipe': parent_conn})
             loop_p.start()
             Thread(target=loop_p.join).start()
-
-        elif config.command == "game":
-            raise NotImplementedError("Game mode not implemented yet")
-
+            if config.command == "game":
+                config.fps = -1
 
         if not config.no_render:
             map_builder = MapBuilderObserver(config.expansion)

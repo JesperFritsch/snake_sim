@@ -42,7 +42,7 @@ def add_run_config_arguments(parser):
 
 
 def add_playback_arguments(parser):
-    parser.add_argument('--fps', type=int, help='Frames per second')
+    parser.add_argument('--fps', type=int, help='how many frames per second to render, -1 means as fast as possible')
     parser.add_argument('--sound', action='store_true', help='Play sound')
     parser.add_argument('--renderer', type=str, help='Renderer to use', choices=['window', 'terminal'], default='window')
     parser.add_argument('--expansion', type=int, help='Expansion factor for rendering', default=2)
@@ -79,9 +79,10 @@ def cli(argv, config: DotDict):
     # Subparser for game
     game_parser = subparsers.add_parser('game', help='Play the game')
     game_parser.add_argument('--num-players', type=positive_int, help='Number of players', required=True)
-    game_parser.add_argument('--spm', type=positive_int, help='Steps per minute', default=450)
+    game_parser.add_argument('--game-sps', type=positive_int, help='Steps per second', default=5)
     add_common_arguments(game_parser)
     add_run_config_arguments(game_parser)
+    add_playback_arguments(game_parser)
 
     args = ap.parse_args(argv)
     handle_args(args, config)

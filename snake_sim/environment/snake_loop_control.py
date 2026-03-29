@@ -20,7 +20,7 @@ from snake_sim.environment.snake_factory import SnakeFactory
 from snake_sim.environment.snake_env import SnakeEnv, EnvMetaData
 from snake_sim.environment.food_handlers import FoodHandler
 from snake_sim.environment.snake_processes import SnakeProcessManager
-from snake_sim.environment.types import DotDict, SnakeConfig, SnakeProcType, SimConfig, GameConfig
+from snake_sim.environment.types import DotDict, SnakeConfig, SnakeProcType, SimConfig, GameConfig, StrategyConfig
 from snake_sim.logging_setup import setup_logging
 from snake_sim.map_utils.general import get_map_files_mapping
 
@@ -72,7 +72,7 @@ class SnakeLoopControl:
         if isinstance(self._config, GameConfig):
             # Initialize game loop add keyboard controllers
             self._loop = GameLoop()
-            self._loop.set_steps_per_min(self._config.spm)
+            self._loop.set_steps_per_sec(self._config.steps_per_sec)
 
         else:
             # Initialize simulation loop
@@ -151,6 +151,20 @@ class SnakeLoopControl:
             self._snake_handler.add_snake(snake)
 
     @_loop_check
+    def _init_player_snakes(self):
+        """ Initialize player snakes with keyboard input """
+        snake_factory = SnakeFactory()
+        snake_config = SnakeConfig(
+            type='survivor',
+            strategies={
+                1: StrategyConfig(type="manual")
+            }
+        )
+        for _ in range(self._config.player_count):
+            snake = snake_factory.create_snake(snake_config=snake_config)
+            self._snake_handler.add_snake(snake)
+
+    @_loop_check
     def add_observer(self, observer: ILoopObserver):
         """Adds an observer to the loop"""
         if not isinstance(observer, ILoopObserver):
@@ -178,6 +192,7 @@ class SnakeLoopControl:
                     self._initialize_distributed_snakes()
                 else:
                     self._initialize_inproc_snakes()
+                self._init_player_snakes()
                 self._initialize_remote_grpcs()
                 self._finalize_snakes()
             except:
@@ -224,7 +239,7 @@ def setup_loop(config) -> SnakeLoopControl:
         sim_config = GameConfig(
             **sim_config.__dict__,
             player_count=config.num_players,
-            spm=config.spm,
+            steps_per_sec=config.game_sps,
         )
     loop_control = SnakeLoopControl(sim_config)
     loop_control.init_loop()
