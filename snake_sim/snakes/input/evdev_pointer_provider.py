@@ -16,6 +16,7 @@ class EvdevPointerProvider(IInputProvider):
     def _read_loop(self):
         for event in self._device.read_loop():
             if event.type == evdev.ecodes.EV_REL:
+                self._got_event = True
                 if event.code == evdev.ecodes.REL_X:
                     self._last_x = event.value
                 elif event.code == evdev.ecodes.REL_Y:
@@ -23,6 +24,9 @@ class EvdevPointerProvider(IInputProvider):
 
     def get_angle(self) -> float:
         if self._last_x is None or self._last_y is None:
-            return 0.0
+            return None
         angle = math.atan2(-self._last_y, self._last_x) # Invert y-axis for typical screen coordinates
+        # restore the event values so that the snake continues in the same direction
+        self._last_x = None
+        self._last_y = None
         return angle

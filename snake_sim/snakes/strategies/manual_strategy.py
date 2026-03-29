@@ -6,28 +6,50 @@ from snake_sim.environment.types import StrategyConfig, Coord
 from snake_sim.snakes.input.input_provider_interface import IInputProvider
 
 
-from snake_sim.snakes.input.evdev_input_provider import EvdevPointerProvider
+from snake_sim.snakes.input.evdev_pointer_provider import EvdevPointerProvider
+from snake_sim.snakes.input.evdev_key_provider import EvdevKeyProvider
+import evdev.ecodes as ec
 
 
 class ManualStrategy(ISnakeStrategy):
-    """ This strategy does not make any decisions, it converts the user provided angle
-    to a next tile and returns it.
-    """
-
     def __init__(self, strategy_config: StrategyConfig):
         super().__init__(strategy_config)
-        self._input_provider: IInputProvider = EvdevPointerProvider(device_path="/dev/input/event16")
-
+        # self._input_provider = EvdevPointerProvider(device_path="/dev/input/event16")
+        
+        self._input_provider = EvdevKeyProvider(device_path="/dev/input/event3", key_mapping={
+            ec.KEY_UP: (0, -1),
+            ec.KEY_RIGHT: (1, 0),
+            ec.KEY_DOWN: (0, 1),
+            ec.KEY_LEFT: (-1, 0)
+        })
+        self._acc_x = 0.0
+        self._acc_y = 0.0
+        self._last_angle: float | None = None
+        self._last_direction = None
 
     def get_wanted_tile(self) -> Coord:
         angle = self._input_provider.get_angle()
-        cos_angle = math.cos(angle)
-        sin_angle = math.sin(angle)
-        dir_x = 0
-        dir_y = 0
-        if abs(cos_angle) > abs(sin_angle):
-            dir_x = round(cos_angle)
+        if angle is None:
+            if self._last_direction:
+                return self._snake.get_head_coord() + self._last_direction  
+            return
+
+        if self._last_angle is not None:
+            delta = abs(angle - self._last_angle)
+            delta = min(delta, 2 * math.pi - delta)  # shortest arc
+            if delta > math.pi / 8:  # ~22.5° threshold
+                self._acc_x = 0.0
+                self._acc_y = 0.0
+        self._last_angle = angle
+
+        self._acc_x += math.cos(angle)
+        self._acc_y += -math.sin(angle)
+
+        if abs(self._acc_x) >= abs(self._acc_y):
+            step = Coord(1 if self._acc_x > 0 else -1, 0)
+            self._acc_x -= step.x
         else:
-            dir_y = -round(sin_angle)
-        print(dir_x, dir_y)
-        return self._snake.get_head_coord() + Coord(dir_x, dir_y)
+            step = Coord(0, 1 if self._acc_y > 0 else -1)
+            self._acc_y -= step.y
+        self._last_direction = step
+        return self._snake.get_head_coord() + step
