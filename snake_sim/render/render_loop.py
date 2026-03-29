@@ -233,12 +233,15 @@ class RenderLoop:
 
                 # Auto render timing
                 if not self._paused and self._fps > 0:
-                    fps_duration = 1 / self._fps
+                    fps_duration = 1 / self._fps 
                     if time.time() - self._last_render_time > fps_duration:
                         self._do_render_frame = True
 
+                if self._base_fps == -1:
+                    self._do_render_frame = True
+
                 # If paused disable auto FPS
-                if self._paused:
+                if self._paused and self._base_fps != -1:
                     self._fps = 0
                 else:
                     self._fps = self._base_fps

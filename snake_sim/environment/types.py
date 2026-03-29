@@ -300,8 +300,7 @@ class SimConfig:
 @dataclass
 class GameConfig(SimConfig):
     player_count: int
-    spm: int
-    snake_game_config: SnakeConfig
+    steps_per_sec: int
 
 
 class NoMoreSteps(Exception):
