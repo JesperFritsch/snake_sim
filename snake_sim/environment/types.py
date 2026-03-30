@@ -294,13 +294,14 @@ class SimConfig:
     start_length: int
     external_snake_targets: List[str]
     distributed_snakes: bool
-    snake_config: SnakeConfig
+    snake_configs: list[SnakeConfig]
 
 
 @dataclass
 class GameConfig(SimConfig):
     player_count: int
     steps_per_sec: int
+    player_snake_congfigs: list[SnakeConfig]
 
 
 class NoMoreSteps(Exception):

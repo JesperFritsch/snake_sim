@@ -14,6 +14,7 @@ from snake_sim.environment.types import DotDict
 from snake_sim.cli import cli
 from snake_sim.environment.snake_loop_control import start_loop, setup_loop
 from snake_sim.environment.interfaces.loop_observable_interface import ILoopObservable
+from snake_sim.environment.types import SnakeConfig, StrategyConfig
 from snake_sim.loop_observables.ipc_repeater_observable import IPCRepeaterObservable
 from snake_sim.loop_observables.file_reader_observable import FileRepeaterObservable
 from snake_sim.loop_observers.map_builder_observer import MapBuilderObserver
@@ -22,6 +23,7 @@ from snake_sim.loop_observers.file_persist_observer import FilePersistObserver
 from snake_sim.loop_observers.waitable_observer import WaitableObserver
 from snake_sim.render.render_loop import RenderLoop, RenderConfig
 from snake_sim.render.renderer_factory import renderer_factory
+from snake_sim.snakes.input.input_utils import setup_player_input, InputConfig
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
@@ -53,10 +55,23 @@ def main():
                 file_persist = FilePersistObserver(store_dir=Path(config.record_dir), filename=config.record_file)
                 loop_repeater.add_observer(file_persist)
             loop_p = mp_ctx.Process(target=start_loop, args=(config, stop_flag), kwargs={'ipc_observer_pipe': parent_conn})
-            loop_p.start()
-            Thread(target=loop_p.join).start()
             if config.command == "game":
                 config.fps = -1
+                input_configs = setup_player_input(config.num_players)
+                config.player_snake_configs = [
+                    SnakeConfig(
+                        type="survivor",
+                        strategies={
+                            1: StrategyConfig(
+                                type="manual",
+                                params={"input_config": input_c}
+                            )
+                        }
+                    )
+                    for input_c in input_configs
+                ]
+            loop_p.start()
+            # Thread(target=loop_p.join).start()
 
         if not config.no_render:
             map_builder = MapBuilderObserver(config.expansion)
@@ -74,17 +89,17 @@ def main():
                 state_builder=state_builder,
                 stop_flag=stop_flag
             )
-            render_loop.start()
 
         waitable_observer = WaitableObserver()
         loop_repeater.add_observer(waitable_observer)
-
         loop_repeater.start()
+        waitable_observer.wait_until_started()
+
         if config.no_render:
-            waitable_observer.wait_until_started()
             waitable_observer.wait_until_finished()
         else:
             try:
+                render_loop.start()
                 render_loop.join()
             except NameError:
                 pass

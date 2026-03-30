@@ -111,11 +111,8 @@ class SnakeLoopControl:
     def _initialize_inproc_snakes(self):
         """ Initialize in-process snakes """
         snake_factory = SnakeFactory()
-        inproc_snakes = snake_factory.create_many_snakes(
-            snake_config=self._config.snake_config,
-            count=self._config.snake_count
-        )
-        for snake in inproc_snakes:
+        for snake_config in self._config.snake_configs:
+            snake = snake_factory.create_snake(snake_config=snake_config)
             self._snake_handler.add_snake(snake)
 
     @_loop_check
@@ -136,12 +133,13 @@ class SnakeLoopControl:
     @_loop_check
     def _initialize_distributed_snakes(self):
         snake_factory = SnakeFactory()
-        for _ in range(self._config.snake_count):
+        non_manuals = [sc for sc in self._config.snake_configs if not any(c.type == "manual" for c in sc.strategies)]
+        for snake_config in non_manuals:
             snake_id = self._snake_handler.get_next_snake_id()
             self._snake_proc_mngr.start(
                 id=snake_id,
                 proc_type=SnakeProcType.GRPC,
-                snake_config=self._config.snake_config
+                snake_config=snake_config
             )
             target = self._snake_proc_mngr.get_target(snake_id)
             snake = snake_factory.create_snake(
@@ -151,16 +149,9 @@ class SnakeLoopControl:
             self._snake_handler.add_snake(snake)
 
     @_loop_check
-    def _init_player_snakes(self):
-        """ Initialize player snakes with keyboard input """
+    def _initialize_player_snakes(self):
         snake_factory = SnakeFactory()
-        snake_config = SnakeConfig(
-            type='survivor',
-            strategies={
-                1: StrategyConfig(type="manual")
-            }
-        )
-        for _ in range(self._config.player_count):
+        for snake_config in self._config.player_snake_congfigs:
             snake = snake_factory.create_snake(snake_config=snake_config)
             self._snake_handler.add_snake(snake)
 
@@ -192,7 +183,7 @@ class SnakeLoopControl:
                     self._initialize_distributed_snakes()
                 else:
                     self._initialize_inproc_snakes()
-                self._init_player_snakes()
+                self._initialize_player_snakes()
                 self._initialize_remote_grpcs()
                 self._finalize_snakes()
             except:
@@ -233,13 +224,14 @@ def setup_loop(config) -> SnakeLoopControl:
         start_length=config.start_length,
         external_snake_targets=config.external_snake_targets,
         distributed_snakes=config.distributed_snakes,
-        snake_config=SnakeConfig.from_dict(config[config.snake_config_key] if config.snake_config_key else config.snake_config),
+        snake_configs=[SnakeConfig.from_dict(config[config.snake_config_key] if config.snake_config_key else config.snake_config) for _ in range(config.snake_count)],
     )
     if config.command == "game":
         sim_config = GameConfig(
             **sim_config.__dict__,
             player_count=config.num_players,
             steps_per_sec=config.game_sps,
+            player_snake_congfigs=config.player_snake_configs
         )
     loop_control = SnakeLoopControl(sim_config)
     loop_control.init_loop()
