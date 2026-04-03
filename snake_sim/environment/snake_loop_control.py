@@ -85,6 +85,7 @@ class SnakeLoopControl:
 
         self._initialize_remote_grpcs()
         self._finalize_snakes()
+        
         self._loop.set_snake_handler(self._snake_handler)
         self._loop.set_environment(self._snake_environment)
         if default_config.max_steps is not None:
@@ -186,18 +187,6 @@ class SnakeLoopControl:
                     log.debug("Stop flag set, stopping loop")
                     self._loop.stop()
                 threading.Thread(target=wait_stop_flag, args=(stop_flag,), daemon=True).start()
-            # try:
-            #     if self._config.distributed_snakes:
-            #         self._initialize_distributed_snakes()
-            #     else:
-            #         self._initialize_inproc_snakes()
-            #     self._initialize_player_snakes()
-            #     self._initialize_remote_grpcs()
-            #     self._finalize_snakes()
-            # except:
-            #     if stop_flag is not None:
-            #         stop_flag.value = True
-            #     raise
             self._loop.start()
         except KeyboardInterrupt:
             log.debug("KeyboardInterrupt received, shutting down loop")
