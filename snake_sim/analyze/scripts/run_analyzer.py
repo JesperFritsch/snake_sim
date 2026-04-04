@@ -303,7 +303,8 @@ def find_traps(
         current_state: CompleteStepState, 
         prev_map: np.ndarray, 
         current_map: np.ndarray, 
-        snake_ids: list[int]
+        snake_ids: list[int],
+        trap_threshold: int = None
     ) -> dict[int, set[TrapInfo]]:
     get_area_checkers(
         snake_values=prev_state.env_meta_data.snake_values,
@@ -316,7 +317,7 @@ def find_traps(
     best_area_checks_s1 = get_best_area_checks(AREA_CHECKERS, prev_state, prev_map, ids_to_check_for_traps)
     best_area_checks_s2 = get_best_area_checks(AREA_CHECKERS, current_state, current_map, ids_to_check_for_traps)
 
-    trapped_snakes = find_trapped_candidates(best_area_checks_s1, best_area_checks_s2)
+    trapped_snakes = find_trapped_candidates(best_area_checks_s1, best_area_checks_s2, trap_threshold=trap_threshold)
     return create_traps_set(trapped_snakes, current_state, current_map, snake_ids)
 
 
