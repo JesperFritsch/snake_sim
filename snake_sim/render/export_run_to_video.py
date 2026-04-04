@@ -1,21 +1,66 @@
 import argparse
+import os
 import subprocess
 import time
 import queue
 import threading
+import wave
+from importlib import resources
 from pathlib import Path
 from shutil import which
-from typing import Optional
-
-import cProfile
 
 import numpy as np
 
 from snake_sim.loop_observables.file_reader_observable import FileRepeaterObservable
 from snake_sim.loop_observers.map_builder_observer import MapBuilderObserver
-from snake_sim.loop_observers.map_builder_observer import NoMoreSteps
 from snake_sim.loop_observers.waitable_observer import WaitableObserver
+from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
+from snake_sim.environment.types import NoMoreSteps
 from snake_sim.render.utils import create_color_map
+
+
+AUDIO_SAMPLE_RATE = 44100
+AUDIO_CHANNELS = 2
+
+
+with resources.open_text('snake_sim.render.sounds', 'eat.wav') as eat_sound_file:
+    DEFAULT_EAT_SOUND_PATH = Path(eat_sound_file.name)
+
+
+def _load_wav(path: Path) -> np.ndarray:
+    """Load a WAV file and return float32 stereo samples at AUDIO_SAMPLE_RATE."""
+    with wave.open(str(path), "rb") as wf:
+        n_channels = wf.getnchannels()
+        sampwidth = wf.getsampwidth()
+        framerate = wf.getframerate()
+        raw = wf.readframes(wf.getnframes())
+
+    dtype_map = {1: np.int8, 2: np.int16, 4: np.int32}
+    dtype = dtype_map.get(sampwidth, np.int16)
+    samples = np.frombuffer(raw, dtype=dtype).astype(np.float32)
+    samples /= np.iinfo(dtype).max
+
+    if n_channels > 1:
+        samples = samples.reshape(-1, n_channels)
+    else:
+        samples = samples.reshape(-1, 1)
+
+    # Convert to stereo
+    if samples.shape[1] == 1:
+        samples = np.repeat(samples, 2, axis=1)
+    else:
+        samples = samples[:, :2]
+
+    # Resample if needed (simple linear interp, good enough for SFX)
+    if framerate != AUDIO_SAMPLE_RATE:
+        ratio = AUDIO_SAMPLE_RATE / framerate
+        new_len = int(len(samples) * ratio)
+        old_idx = np.linspace(0, len(samples) - 1, new_len)
+        left = np.interp(old_idx, np.arange(len(samples)), samples[:, 0])
+        right = np.interp(old_idx, np.arange(len(samples)), samples[:, 1])
+        samples = np.stack([left, right], axis=1)
+
+    return samples.astype(np.float32)
 
 
 def _build_color_lut(color_map: dict[int, tuple[int, int, int]], max_value: int) -> np.ndarray:
@@ -30,7 +75,6 @@ def _build_color_lut(color_map: dict[int, tuple[int, int, int]], max_value: int)
 
 
 def _map_to_rgb(map_array: np.ndarray, lut: np.ndarray) -> np.ndarray:
-    # Fast path: direct LUT indexing (avoids per-frame np.unique + Python dict lookups)
     idx = map_array.astype(np.intp, copy=False)
     return lut[idx]
 
@@ -56,7 +100,6 @@ def _ffmpeg_available_encoders() -> set[str]:
         return set()
     encoders: set[str] = set()
     for line in (p.stdout or "").splitlines():
-        # lines look like: " V....D h264_nvenc ..."
         parts = line.split()
         if len(parts) >= 2 and parts[0].startswith("V"):
             encoders.add(parts[1])
@@ -64,10 +107,6 @@ def _ffmpeg_available_encoders() -> set[str]:
 
 
 def _read_gpu_vendors() -> set[str]:
-    """Best-effort detection of GPU vendors present on the system.
-
-    Returns a set containing any of: {'nvidia', 'intel', 'amd'}.
-    """
     vendors: set[str] = set()
     drm_root = Path("/sys/class/drm")
     if not drm_root.exists():
@@ -94,20 +133,14 @@ def _pick_default_codec(requested: str) -> str:
     requested = (requested or "").strip()
     if requested and requested != "auto":
         return requested
-
     enc = _ffmpeg_available_encoders()
     vendors = _read_gpu_vendors()
-
-    # Prefer an encoder that matches the detected hardware.
     if "nvidia" in vendors and "h264_nvenc" in enc:
         return "h264_nvenc"
     if "intel" in vendors and "h264_qsv" in enc:
         return "h264_qsv"
-    # VAAPI is commonly available for Intel/AMD via /dev/dri.
     if _has_drm_render_node() and "h264_vaapi" in enc:
         return "h264_vaapi"
-
-    # Fallback: pick the first available hardware encoder, else CPU.
     for candidate in ("h264_nvenc", "h264_qsv", "h264_vaapi"):
         if candidate in enc:
             return candidate
@@ -120,9 +153,7 @@ def _pick_default_preset(codec: str, preset: str | None) -> str | None:
     if codec == "libx264":
         return "veryfast"
     if codec == "h264_nvenc":
-        # NVENC presets are typically p1..p7 (p1 fastest, p7 best)
         return "p4"
-    # VAAPI/QSV don't consistently support -preset; omit by default
     return None
 
 
@@ -141,6 +172,7 @@ def _start_ffmpeg(
     filter_threads: int | None = None,
     scale_backend: str = "cpu",
     output_pix_fmt: str = "yuv444p",
+    audio_pipe_path: str | None = None,
 ) -> subprocess.Popen:
     vf = None
     if out_width is not None and out_height is not None:
@@ -157,54 +189,50 @@ def _start_ffmpeg(
         else:
             vf = f"scale={out_width}:{out_height}:flags=neighbor"
 
-    # Note:
-    # - libx264 is CPU.
-    # - h264_nvenc / h264_vaapi / h264_qsv use hardware encoders (GPU/iGPU).
-    # - For vaapi you often need extra flags like -vaapi_device and hwupload; keep this simple for now.
     codec = codec.strip()
     if codec not in {"libx264", "h264_nvenc", "h264_vaapi", "h264_qsv"}:
         raise ValueError(
             f"Unsupported codec '{codec}'. Use auto|libx264|h264_nvenc|h264_vaapi|h264_qsv"
         )
 
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-hide_banner",
-        "-loglevel",
-        ffmpeg_loglevel,
-    ]
+    cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", ffmpeg_loglevel]
 
     if threads is not None:
         cmd += ["-threads", str(int(threads))]
-
     if filter_threads is not None:
         cmd += ["-filter_threads", str(int(filter_threads))]
 
+    # Video input from stdin
     cmd += [
-        "-f",
-        "rawvideo",
-        "-pix_fmt",
-        "rgb24",
-        "-s",
-        f"{in_width}x{in_height}",
-        "-r",
-        str(fps),
-        "-i",
-        "-",
+        "-f", "rawvideo",
+        "-pix_fmt", "rgb24",
+        "-s", f"{in_width}x{in_height}",
+        "-r", str(fps),
+        "-i", "-",
     ]
+
+    # Audio input from named pipe (if provided)
+    if audio_pipe_path is not None:
+        cmd += [
+            "-f", "f32le",
+            "-ar", str(AUDIO_SAMPLE_RATE),
+            "-ac", str(AUDIO_CHANNELS),
+            "-i", audio_pipe_path,
+        ]
 
     if vf is not None:
         cmd += ["-vf", vf]
 
-    # If we produced CUDA hwframes, make sure the encoder expects them
     if vf is not None and scale_backend == "cuda":
         cmd += ["-pix_fmt", "cuda"]
 
-    # Encoder-specific settings
-    cmd += ["-an", "-c:v", codec]
+    cmd += ["-c:v", codec]
 
-    # Preset (only if provided)
+    if audio_pipe_path is not None:
+        cmd += ["-c:a", "aac", "-ar", str(AUDIO_SAMPLE_RATE), "-b:a", "128k"]
+    else:
+        cmd += ["-an"]
+
     if preset is not None:
         cmd += ["-preset", str(preset)]
 
@@ -213,20 +241,14 @@ def _start_ffmpeg(
         if output_pix_fmt == "yuv444p":
             cmd += ["-profile:v", "high444"]
     elif codec == "h264_nvenc":
-        # NVENC: use constant quality mode.
         cmd += ["-rc:v", "vbr", "-cq:v", str(crf)]
         if output_pix_fmt == "yuv444p":
             cmd += ["-profile:v", "high444p"]
     elif codec == "h264_qsv":
-        # QSV: global_quality is the closest analogue.
         cmd += ["-global_quality", str(crf)]
     elif codec == "h264_vaapi":
-        # VAAPI typically needs upload to GPU; we rely on ffmpeg's implicit hwupload if it can.
-        # If this fails on your machine, pass --codec h264_nvenc or --codec libx264.
         cmd += ["-qp", str(crf)]
 
-    # Output pixel format. yuv420p is most compatible but will blur sharp colored edges.
-    # For the CUDA path we already set -pix_fmt cuda to feed hwframes to NVENC.
     if scale_backend != "cuda":
         cmd += ["-pix_fmt", output_pix_fmt]
 
@@ -258,15 +280,18 @@ def export_run_to_video(
     end_step: int | None = None,
     random_colors: bool = False,
     create_info_json: bool = False,
+    eat_sound_path: Path | None = None,
 ):
     mode = "ffmpeg-scale" if scale_in_ffmpeg else "python-scale"
     preset_str = preset if preset is not None else "(none)"
-    # Compute tile_px to fit within max_width and max_height
+
     observable = FileRepeaterObservable(filepath=str(run_path))
     map_builder = MapBuilderObserver(expansion=expansion)
+    state_builder = StateBuilderObserver()
     waitable = WaitableObserver()
 
     observable.add_observer(map_builder)
+    observable.add_observer(state_builder)
     observable.add_observer(waitable)
 
     observable.start()
@@ -274,8 +299,8 @@ def export_run_to_video(
 
     env_meta = map_builder.get_start_data().env_meta_data
     color_map = create_color_map(env_meta.snake_values, rand_colors=random_colors)
+    food_value = env_meta.food_value
 
-    # First frame is the initial map created in notify_start
     while map_builder.get_max_step_idx() < start_step:
         time.sleep(0.01)
     first_map = map_builder.get_map_for_step(start_step)
@@ -290,59 +315,54 @@ def export_run_to_video(
     tile_px = min(tile_px_w, tile_px_h)
     out_w = grid_w * tile_px
     out_h = grid_h * tile_px
+
     if print_info:
         print(
             f"export_run_to_video: codec={codec} preset={preset_str} mode={mode} "
             f"scale_backend={scale_backend} fps={fps} grid={grid_w}x{grid_h} tile_px={tile_px} out={out_w}x{out_h}"
         )
-    # Build LUT once (covers both map values and color-map keys)
+
     max_value = int(max(color_map.keys(), default=0))
     lut = _build_color_lut(color_map, max_value=max_value)
 
-    # If steps_per_second is not set, default to 1 step per frame (old behavior)
     if steps_per_second is None:
         steps_per_second = fps
-    # Compute how many video frames per simulation step
     frames_per_step = fps / steps_per_second
     maps_per_step = expansion
-    # Compute which simulation step to start and end at
     start_step = max(0, int(start_step))
     end_step = int(end_step) if end_step is not None else None
+
+    # Load eat sound if provided
+    eat_sound: np.ndarray | None = None
+    if eat_sound_path is not None:
+        eat_sound = _load_wav(eat_sound_path)
+        if print_info:
+            print(f"Loaded eat sound: {eat_sound_path} ({len(eat_sound)} samples at {AUDIO_SAMPLE_RATE}Hz)")
+
+    # Set up named pipe for audio if we have a sound
+    audio_pipe_path = None
+    if eat_sound is not None:
+        audio_pipe_path = f"/tmp/audio_pipe_{os.getpid()}"
+        if os.path.exists(audio_pipe_path):
+            os.remove(audio_pipe_path)
+        os.mkfifo(audio_pipe_path)
 
     if scale_in_ffmpeg:
         in_w, in_h = grid_w, grid_h
         ff = _start_ffmpeg(
-            out_path=out_path,
-            in_width=in_w,
-            in_height=in_h,
-            fps=fps,
-            codec=codec,
-            crf=crf,
-            preset=preset,
-            out_width=out_w,
-            out_height=out_h,
-            ffmpeg_loglevel=ffmpeg_loglevel,
-            threads=threads,
-            filter_threads=filter_threads,
-            scale_backend=scale_backend,
-            output_pix_fmt=output_pix_fmt,
+            out_path=out_path, in_width=in_w, in_height=in_h, fps=fps,
+            codec=codec, crf=crf, preset=preset, out_width=out_w, out_height=out_h,
+            ffmpeg_loglevel=ffmpeg_loglevel, threads=threads, filter_threads=filter_threads,
+            scale_backend=scale_backend, output_pix_fmt=output_pix_fmt,
+            audio_pipe_path=audio_pipe_path,
         )
     else:
         ff = _start_ffmpeg(
-            out_path=out_path,
-            in_width=out_w,
-            in_height=out_h,
-            fps=fps,
-            codec=codec,
-            crf=crf,
-            preset=preset,
-            out_width=None,
-            out_height=None,
-            ffmpeg_loglevel=ffmpeg_loglevel,
-            threads=threads,
-            filter_threads=filter_threads,
-            scale_backend="cpu",
-            output_pix_fmt=output_pix_fmt,
+            out_path=out_path, in_width=out_w, in_height=out_h, fps=fps,
+            codec=codec, crf=crf, preset=preset, out_width=None, out_height=None,
+            ffmpeg_loglevel=ffmpeg_loglevel, threads=threads, filter_threads=filter_threads,
+            scale_backend="cpu", output_pix_fmt=output_pix_fmt,
+            audio_pipe_path=audio_pipe_path,
         )
 
     assert ff.stdin is not None
@@ -350,7 +370,9 @@ def export_run_to_video(
     frames_written = 0
     start_time = time.time()
 
-    frame_queue: queue.Queue[np.ndarray] = queue.Queue(maxsize=100)
+    frame_queue: queue.Queue = queue.Queue(maxsize=100)
+    # eat_queue carries True (ate food this frame) or False, or SENTINEL
+    eat_queue: queue.Queue = queue.Queue(maxsize=200)
     SENTINEL = None
 
     def convert_map_to_frame(m: np.ndarray) -> np.ndarray:
@@ -362,17 +384,30 @@ def export_run_to_video(
 
     def frame_producer():
         sim_step = start_step
-        # map_in_step = 0
-        current_map_idx_floating = float(map_builder.get_current_map_idx())  # Start at the first available map step
+        current_map_idx_floating = float(map_builder.get_current_map_idx())
+        steps_with_audio = set()
         try:
             while True:
                 if end_step is not None and sim_step >= end_step:
                     break
                 try:
-                    m = map_builder.get_map(int(current_map_idx_floating))
+                    map_idx = int(current_map_idx_floating)
+                    m = map_builder.get_map(map_idx)
                     sim_step = map_builder.get_current_step_idx()
+
                     frame = convert_map_to_frame(m)
                     frame_queue.put(frame)
+
+                    # Detect food eating: only when there is one snake in the sim.
+
+                    if eat_sound is not None:
+                        only_one_snake = len(state_builder.get_start_data().env_meta_data.snake_values) == 1
+                        current_state = state_builder.get_state(sim_step)
+                        snake_ate = any(current_state.snake_ate.values())
+                        add_sound = only_one_snake and snake_ate and sim_step not in steps_with_audio
+                        eat_queue.put(add_sound)
+                        steps_with_audio.add(sim_step)
+
                     current_map_idx_floating += (1 / frames_per_step) * maps_per_step
                 except NoMoreSteps:
                     time.sleep(0.001)
@@ -384,6 +419,8 @@ def export_run_to_video(
                     continue
         finally:
             frame_queue.put(SENTINEL)
+            if eat_sound is not None:
+                eat_queue.put(SENTINEL)
 
     def frame_consumer():
         nonlocal frames_written
@@ -399,12 +436,83 @@ def export_run_to_video(
                 print(f"frames={frames_written} elapsed={elapsed:.1f}s rate={rate:.1f} fps")
         ff.stdin.close()
 
-    producer_thread = threading.Thread(target=frame_producer, daemon=True)
-    consumer_thread = threading.Thread(target=frame_consumer, daemon=True)
-    producer_thread.start()
-    consumer_thread.start()
-    producer_thread.join()
-    consumer_thread.join()
+    def audio_producer():
+        """Generate PCM audio stream, mixing eat sound at food eating frames."""
+        samples_per_frame = AUDIO_SAMPLE_RATE / fps  # float, we'll round per frame
+        sound_len = len(eat_sound)
+
+        # Rolling buffer: holds pending audio to be mixed in future frames
+        # Large enough to hold the full sound effect
+        buffer_size = sound_len + int(samples_per_frame) * 4
+        buffer = np.zeros((buffer_size, AUDIO_CHANNELS), dtype=np.float32)
+        write_pos = 0  # position in buffer where next frame starts
+
+        with open(audio_pipe_path, "wb") as pipe:
+            frame_idx = 0
+            accumulated = 0.0  # fractional sample accumulator
+
+            while True:
+                ate = eat_queue.get()
+                if ate is SENTINEL:
+                    break
+
+                if ate:
+                    end = write_pos + sound_len
+                    if end <= buffer_size:
+                        buffer[write_pos:end] += eat_sound
+                    else:
+                        # wrap around instead of clamping
+                        space = buffer_size - write_pos
+                        buffer[write_pos:] += eat_sound[:space]
+                        remainder = end - buffer_size
+                        buffer[:remainder] += eat_sound[space:]
+
+                # How many samples for this frame
+                accumulated += samples_per_frame
+                n_samples = int(accumulated)
+                accumulated -= n_samples
+
+                # Write samples from buffer
+                end = write_pos + n_samples
+                if end <= buffer_size:
+                    chunk = buffer[write_pos:end].copy()
+                    buffer[write_pos:end] = 0.0  # clear after reading
+                else:
+                    # wrap around
+                    part1 = buffer[write_pos:].copy()
+                    buffer[write_pos:] = 0.0
+                    remainder = end - buffer_size
+                    part2 = buffer[:remainder].copy()
+                    buffer[:remainder] = 0.0
+                    chunk = np.concatenate([part1, part2])
+
+                # Clamp to [-1, 1] to prevent clipping
+                np.clip(chunk, -1.0, 1.0, out=chunk)
+                pipe.write(chunk.astype(np.float32).tobytes())
+
+                write_pos = end % buffer_size
+                frame_idx += 1
+
+    threads_list = [
+        threading.Thread(target=frame_producer, daemon=True),
+        threading.Thread(target=frame_consumer, daemon=True),
+    ]
+    if eat_sound is not None:
+        # Audio producer must start before ffmpeg tries to open the pipe
+        audio_thread = threading.Thread(target=audio_producer, daemon=True)
+        audio_thread.start()
+
+    for t in threads_list:
+        t.start()
+    for t in threads_list:
+        t.join()
+
+    if eat_sound is not None:
+        audio_thread.join()
+        try:
+            os.remove(audio_pipe_path)
+        except OSError:
+            pass
 
     ret = ff.wait()
     elapsed = time.time() - start_time
@@ -412,6 +520,7 @@ def export_run_to_video(
         raise RuntimeError(f"ffmpeg exited with code {ret}")
 
     print(f"Wrote {frames_written} frames to {out_path} ({elapsed:.2f}s)")
+
     if create_info_json:
         info = {
             "codec": codec,
@@ -424,11 +533,10 @@ def export_run_to_video(
             "out_size": (out_w, out_h),
             "total_frames": frames_written,
             "color_map": {k: color_map[k] for k in sorted(color_map.keys())},
-            "steps_per_second": steps_per_second
+            "steps_per_second": steps_per_second,
         }
         info_path = out_path.with_suffix(".json")
         import json
-
         with open(info_path, "w") as f:
             json.dump(info, f, indent=4)
         print(f"Wrote export info to {info_path}")
@@ -440,125 +548,47 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("run_file", type=Path, help="Input run file (.run or .run_proto)")
     ap.add_argument("out", type=Path, help="Output video file (e.g. out.mp4)")
-    ap.add_argument(
-        "--steps-per-second",
-        type=float,
-        default=None,
-        help="Simulation steps per second in the video (decouples sim speed from video FPS). Default: 1 step per frame (old behavior).",
-    )
-    ap.add_argument(
-        "--start-step",
-        type=int,
-        default=0,
-        help="Simulation step to start the video from (default: 0)",
-    )
-    ap.add_argument(
-        "--end-step",
-        type=int,
-        default=None,
-        help="Simulation step to end the video at (exclusive; default: until end)",
-    )
-    # Defaults are intentionally tuned for this repository's typical use on this machine:
-    # - high-FPS exports
-    # - ffmpeg-side scaling
-    # - NVIDIA NVENC + CUDA scaling
+    ap.add_argument("--steps-per-second", type=float, default=None)
+    ap.add_argument("--start-step", type=int, default=0)
+    ap.add_argument("--end-step", type=int, default=None)
     ap.add_argument("--fps", type=int, default=256)
-    ap.add_argument("--max-width", type=int, default=1080, help="Maximum output video width in pixels")
-    ap.add_argument("--max-height", type=int, default=1080, help="Maximum output video height in pixels")
-    ap.add_argument("--max-size", type=int, default=None, help="Maximum output video width and height in pixels (overrides max-width and max-height)")
-    ap.add_argument("--expansion", type=int, default=2, help="MapBuilderObserver expansion factor")
+    ap.add_argument("--max-width", type=int, default=1080)
+    ap.add_argument("--max-height", type=int, default=1080)
+    ap.add_argument("--max-size", type=int, default=None)
+    ap.add_argument("--expansion", type=int, default=2)
     ap.add_argument(
-        "--codec",
-        type=str,
-        default="h264_nvenc",
+        "--codec", type=str, default="h264_nvenc",
         choices=["auto", "libx264", "h264_nvenc", "h264_vaapi", "h264_qsv"],
-        help="Video encoder. Default is h264_nvenc on this machine; 'auto' picks the best available (nvenc/vaapi/qsv/libx264).",
     )
+    ap.add_argument("--preset", type=str, default=None)
+    ap.add_argument("--crf", type=int, default=18)
     ap.add_argument(
-        "--preset",
-        type=str,
-        default=None,
-        help="Encoder preset override (default depends on codec; e.g. libx264=veryfast, nvenc=p4)",
-    )
-    ap.add_argument(
-        "--crf",
-        type=int,
-        default=18,
-        help="Quality control. For libx264 this is CRF (18-28 typical). For hw encoders this is mapped to cq.",
-    )
-    ap.add_argument(
-        "--output-pix-fmt",
-        type=str,
-        default="yuv444p",
+        "--output-pix-fmt", type=str, default="yuv444p",
         choices=["yuv444p", "yuv420p"],
-        help="Output pixel format. Use yuv444p (default) for crisp colored tile edges; yuv420p for maximum compatibility.",
     )
     scale_group = ap.add_mutually_exclusive_group()
-    scale_group.add_argument(
-        "--scale-in-ffmpeg",
-        dest="scale_in_ffmpeg",
-        action="store_true",
-        default=True,
-        help="(Default) Send small grid frames to ffmpeg and let ffmpeg do nearest-neighbor scaling.",
-    )
-    scale_group.add_argument(
-        "--scale-in-python",
-        dest="scale_in_ffmpeg",
-        action="store_false",
-        help="Scale frames in Python (slow for large outputs; mostly for debugging).",
-    )
-    ap.add_argument("--max-frames", type=int, default=None, help="Optional cap on number of frames")
+    scale_group.add_argument("--scale-in-ffmpeg", dest="scale_in_ffmpeg", action="store_true", default=True)
+    scale_group.add_argument("--scale-in-python", dest="scale_in_ffmpeg", action="store_false")
+    ap.add_argument("--max-frames", type=int, default=None)
     ap.add_argument(
-        "--ffmpeg-loglevel",
-        type=str,
-        default="warning",
+        "--ffmpeg-loglevel", type=str, default="warning",
         choices=["quiet", "panic", "fatal", "error", "warning", "info"],
-        help="ffmpeg log verbosity (use info to confirm which encoder is actually used)",
     )
+    ap.add_argument("--threads", type=int, default=None)
+    ap.add_argument("--filter-threads", type=int, default=None)
     ap.add_argument(
-        "--threads",
-        type=int,
-        default=None,
-        help="ffmpeg worker threads (-threads). For libx264 this can help; for NVENC it mostly affects filters.",
-    )
-    ap.add_argument(
-        "--filter-threads",
-        type=int,
-        default=None,
-        help="ffmpeg filter threads (-filter_threads). Useful if scaling/filtering is CPU-bound.",
-    )
-    ap.add_argument(
-        "--scale-backend",
-        type=str,
-        default="cuda",
+        "--scale-backend", type=str, default="cuda",
         choices=["cpu", "cuda"],
-        help="Scaling backend when using --scale-in-ffmpeg. Use 'cuda' to offload scaling via scale_cuda (best with h264_nvenc).",
     )
+    ap.add_argument("--progress-every", type=int, default=0)
+    ap.add_argument("--no-print-info", action="store_true", default=False)
+    ap.add_argument("--random-colors", action="store_true", default=False)
+    ap.add_argument("--create-info-json", action="store_true", default=False)
     ap.add_argument(
-        "--progress-every",
-        type=int,
-        default=0,
-        help="Print progress every N frames (0 disables).",
+        "--eat-sound", type=Path, default=DEFAULT_EAT_SOUND_PATH,
+        help="Path to a WAV file to play when the snake eats food",
     )
-    ap.add_argument(
-        "--no-print-info",
-        action="store_true",
-        default=False,
-        help="Don't print the selected codec/preset/mode line",
-    )
-    ap.add_argument(
-        "--random-colors",
-        action="store_true",
-        default=False,
-        help="Use random colors for snakes instead of deterministic coloring based on snake ID (for better visibility when many snakes are present)",
-    )
-    ap.add_argument(
-        "--create-info-json",
-        action="store_true",
-        default=False,
-        help="Create a JSON file alongside the output video containing metadata about the export (codec, preset, mode, scale_backend, fps, grid size, tile_px, total frames, duration, etc.)",
-    )
-    
+
     args = ap.parse_args(argv)
     export_run_to_video(
         run_path=args.run_file,
@@ -584,6 +614,7 @@ def main(argv: list[str] | None = None) -> int:
         end_step=args.end_step,
         random_colors=args.random_colors,
         create_info_json=args.create_info_json,
+        eat_sound_path=args.eat_sound,
     )
     return 0
 
