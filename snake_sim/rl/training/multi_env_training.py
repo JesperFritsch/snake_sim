@@ -189,7 +189,6 @@ if __name__ == "__main__":
                 nr_ppo_snakes=1, 
                 food_tiles=5, 
                 training_maps=[
-                    "comps2",
                     "comps",
                     "lil_sign",
                     "face",
