@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from snake_sim.cpp_bindings.area_check import AreaChecker
+from snake_sim.cpp_bindings.utils import get_visitable_tiles
 from snake_sim.environment.types import AreaCheckResult
 from snake_sim.environment.snake_env import SnakeEnv
 from snake_sim.environment.food_handlers import FoodHandler
@@ -14,11 +15,23 @@ env.set_food_handler(FoodHandler(0, 0, 0))
 env.load_map(map_path)
 
 env.print_map()
-start_coord = (0,0)
-result = AreaChecker(0, 1, 0, 0, env._width, env._height).area_check(env._base_map.flatten(), [(0, 0), (0, 1)], start_coord, 0, False, True, True)
-check_result = AreaCheckResult(**result)
-
-print(check_result)
+s_map = env._base_map.flatten() 
+env_meta_data = env.get_init_data()
+devide_coord = (15, 32)
+visitable_values = [env_meta_data.free_value, env_meta_data.food_value]
+visitable_tiles = get_visitable_tiles(
+    s_map,
+    env._width,
+    env._height,
+    devide_coord,
+    visitable_values
+)
+for tile in visitable_tiles:
+    edited_map = env._base_map.copy()
+    edited_map[devide_coord[1], devide_coord[0]] = env_meta_data.blocked_value
+    result = AreaChecker(0, 1, 0, 0, env._width, env._height).area_check(edited_map.flatten(), [(0, 0), (0, 1)], tile, 0, False, True, True)
+    check_result = AreaCheckResult(**result)
+    print(tile, check_result)
 
 def rot_head_coord(rel_pos, head_pos, direction):
     """

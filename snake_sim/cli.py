@@ -33,7 +33,7 @@ def add_run_config_arguments(parser):
     parser.add_argument('--food', type=int, help='Number of food to spawn')
     parser.add_argument('--food-decay', type=int, help='Number of steps before food decays, 0 for no decay')
     parser.add_argument('--calc-timeout', type=int, help='Timeout for calculation')
-    parser.add_argument('--map', type=str, help='Path to map file')
+    parser.add_argument('--map', type=str, help='name of a map or path to a map png file')
     parser.add_argument('--start-length', type=int, help='Starting length of the snakes')
     parser.add_argument('--external-snake-targets', type=str, nargs='+', help='External snake targets')
     parser.add_argument('--distributed-snakes', action="store_true", help='Run snakes in distributed mode, each snake in its own process', default=False)

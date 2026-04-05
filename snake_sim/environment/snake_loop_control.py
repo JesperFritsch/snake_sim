@@ -54,9 +54,12 @@ class SnakeLoopControl:
         self._snake_environment.set_food_handler(self._food_handler)
         if config.map:
             map_files_mapping = get_map_files_mapping()
-            if config.map not in map_files_mapping:
-                raise ValueError(f'Map {config.map} not found')
-            self._snake_environment.load_map(map_files_mapping[config.map])
+            if config.map in map_files_mapping:
+                map_path = map_files_mapping[config.map]
+            else:
+                log.debug(f"Map with name '{config.map}' not found")
+                map_path = config.map
+            self._snake_environment.load_map(map_path)
         self._is_shutdown = False
 
     def _loop_check(func):

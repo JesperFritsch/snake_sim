@@ -278,7 +278,7 @@ def run_tests(
     # test_area_funcs(snake, s_map)
     # test_get_dist_to_tile(snake, s_map, snake._body_coords[-1])
     # test_get_dist_to_tile_with_value(snake, s_map, snake._body_value)
-    test_check_rewards(prev_s_map, prev_state, s_map, step_state)
+    # test_check_rewards(prev_s_map, prev_state, s_map, step_state)
     pass
 
 
