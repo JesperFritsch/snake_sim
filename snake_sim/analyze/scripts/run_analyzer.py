@@ -198,7 +198,7 @@ def get_best_area_checks(
 def find_trapped_candidates(
     area_checks1: dict[int, AreaCheckResult],
     area_checks2: dict[int, AreaCheckResult],
-    trap_threshold: float = 0.8
+    trap_threshold: float | None = None
 ) -> set[int]:
     """ Detect snakes that have recently become trapped.
     A snake is considered recently trapped if its area check margin has dropped by more then the specified threshold percentage.
@@ -211,6 +211,7 @@ def find_trapped_candidates(
     returns:         A set of snake IDs that are considered trapped between the two checks.
 
     """
+    trap_threshold = trap_threshold if trap_threshold is not None else 0.8
     trapped_snakes = set()
     for snake_id, check2 in area_checks2.items():
         check1 = area_checks1.get(snake_id)
