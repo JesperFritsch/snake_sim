@@ -130,8 +130,7 @@ def convert_png_to_map(
         file_path: str,
         color_mapping: Dict[Tuple[int, int, int, int], int], # RGBA to map value
     ) -> np.ndarray:
-
-    img = Image.open(file_path)
+    img = Image.open(file_path)    
     img_array = np.array(img)
     _validate_map_values(img_array, color_mapping)
     vectorized_map = np.vectorize(lambda x: color_mapping[tuple(x)], signature='(n)->()', otypes=[np.uint8])
