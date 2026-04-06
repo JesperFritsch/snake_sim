@@ -11,6 +11,7 @@ logs/
 /snake.log*
 *.log
 *.pyd
+*.lock
 build/
 dist/
 *.so
