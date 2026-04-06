@@ -10,6 +10,7 @@ from dataclasses import dataclass, asdict
 from snake_sim.snakes.input.input_provider_interface import IInputProvider
 from snake_sim.snakes.input.evdev_pointer_provider import EvdevPointerProvider
 from snake_sim.snakes.input.evdev_key_provider import EvdevKeyProvider
+from snake_sim.snakes.input.evdev_gamepad_provider import EvdevGamepadProvider
 
 
 PRECONFIGURED_KEY_MAPPINGS = {
@@ -90,10 +91,10 @@ def _discover_linux_inputs() -> list[LinuxInput]:
     devices = [evdev.InputDevice(path) for path in paths]
     compatible_devices = []
     for device in devices:
-        capabilities = device.capabilities()
+        capabilities = device.capabilities(absinfo=False)
         if ec.EV_REL in capabilities:
             rel_events = capabilities[ec.EV_REL]
-            if ec.REL_X in rel_events and ec.REL_Y in rel_events and ec.REL_X in rel_events:
+            if ec.REL_X in rel_events and ec.REL_Y in rel_events:
                 compatible_devices.append(LinuxInput(
                     name=device.name,
                     input_type=InputType.POINTER,
@@ -105,6 +106,17 @@ def _discover_linux_inputs() -> list[LinuxInput]:
                 compatible_devices.append(LinuxInput(
                     name=device.name,
                     input_type=InputType.KEYBOARD,
+                    device_path=device.path
+                ))
+        if ec.EV_ABS in capabilities:
+            abs_events = capabilities[ec.EV_ABS]
+            key_events = capabilities.get(ec.EV_KEY, [])
+            has_sticks = ec.ABS_X in abs_events and ec.ABS_Y in abs_events
+            has_gamepad_btn = any(btn in key_events for btn in (ec.BTN_A, ec.BTN_SOUTH, ec.BTN_GAMEPAD))
+            if has_sticks and has_gamepad_btn:
+                compatible_devices.append(LinuxInput(
+                    name=device.name,
+                    input_type=InputType.GAMEPAD,
                     device_path=device.path
                 ))
     return compatible_devices
@@ -138,7 +150,7 @@ def create_input_provider(input_config: InputConfig) -> IInputProvider:
         if input_config.input.input_type == InputType.POINTER:
             return EvdevPointerProvider(input_config.input.device_path)
         elif input_config.input.input_type == InputType.GAMEPAD:
-            raise NotImplementedError("Gamepad input provider is not implemented yet")
+            return EvdevGamepadProvider(input_config.input.device_path)
         elif input_config.input.input_type == InputType.KEYBOARD:
             return EvdevKeyProvider(input_config.input.device_path, input_config.params["key_mapping"])
     elif isinstance(input_config.input, WindowsInput):
