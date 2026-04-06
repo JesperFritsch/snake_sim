@@ -152,7 +152,7 @@ if __name__ == "__main__":
     # Keep logs readable when launched as a script.
     logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
     config = MultiEnvConfig(
-        snapshot_dir="old_model_again4",
+        snapshot_dir="new_trapping",
         env_config=[
             EnvConfig(
                 num_envs=1, 
