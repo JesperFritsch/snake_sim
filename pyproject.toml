@@ -16,8 +16,8 @@ requires-python = ">=3.9"
 
 dependencies = [
     "pillow",
-    "numpy", 
-    "opencv-python", 
+    "numpy",
+    "opencv-python",
     "pygame",
     "pynput",
     "pybind11",
@@ -28,17 +28,21 @@ dependencies = [
     "tqdm",
     "grpcio-tools",
     "pyzmq",
-    "bitarray", 
+    "bitarray",
     "networkx",
     "zstandard",
-    "torch",
-    "torchvision",
     "watchdog",
     "prompt_toolkit",
     "scipy",
     "snake_proto_template @ git+https://github.com/JesperFritsch/snake_proto_template.git",
     "evdev",
     "questionary",
+]
+
+[project.optional-dependencies]
+ml = [
+    "torch",
+    "torchvision",
 ]
 
 [project.scripts]
