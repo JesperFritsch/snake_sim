@@ -1,6 +1,6 @@
 import json
 import logging
-import Path
+from pathlib import Path
 from typing import List
 
 from importlib import resources
