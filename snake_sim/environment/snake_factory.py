@@ -1,5 +1,7 @@
-from typing import List
 import json
+import logging
+import Path
+from typing import List
 
 from importlib import resources
 from snake_sim.utils import SingletonMeta
@@ -7,15 +9,25 @@ from snake_sim.snakes.snake_base import ISnake
 from snake_sim.snakes.grpc_proxy_snake import GRPCProxySnake
 from snake_sim.snakes.shm_proxy_snake import SHMProxySnake
 from snake_sim.snakes.survivor_snake import SurvivorSnake
-from snake_sim.rl.snakes.ppo_snake import PPOSnake
 from snake_sim.environment.types import DotDict, SnakeConfig, SnakeProcType
 from snake_sim.snakes.strategies.utils import apply_strategies
 
 
+log = logging.getLogger(Path(__file__).stem)
+
+try:
+    from snake_sim.rl.snakes.ppo_snake import PPOSnake
+except ImportError:
+    PPOSnake = None
+    log.warning("Could not import PPOSnake, it will not be available in the snake factory")
+
+
 TYPENAME_TO_CLASS = {
     'survivor': SurvivorSnake,
-    'ai_ppo': PPOSnake,
 }
+
+if PPOSnake:
+    TYPENAME_TO_CLASS["ai_ppo"] = PPOSnake
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
