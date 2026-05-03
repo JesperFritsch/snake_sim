@@ -152,7 +152,7 @@ if __name__ == "__main__":
     # Keep logs readable when launched as a script.
     logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
     config = MultiEnvConfig(
-        snapshot_dir="new_arch",
+        snapshot_dir="new_arch_voronoi_higher",
         env_config=[
             EnvConfig(
                 num_envs=1, 

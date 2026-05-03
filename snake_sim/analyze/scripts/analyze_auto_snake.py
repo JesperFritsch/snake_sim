@@ -364,7 +364,7 @@ if __name__ == "__main__":
     enable_debug_for('_get_food_dir')
     enable_debug_for('_best_first_search')
 
-    snake_id = 0
+    snake_id = 2
     prev_s_map = create_map(prev_state, prev_snake_reps)
     s_map = create_map(step_state, snake_reps)
     next_s_map = create_map(next_state, next_snake_reps)

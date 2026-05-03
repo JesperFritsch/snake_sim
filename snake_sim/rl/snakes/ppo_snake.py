@@ -113,7 +113,7 @@ class PPOSnake(RLSnakeBase):
                 self._scripted = True
                 log.info("PPOSnake: scripted inference model active")
             except Exception as e:
-                log.warning(f"TorchScript trace failed; continuing without scripting: {e}")
+                log.warning(f"TorchScript trace failed; continuing without scripting")
         if self._snapshot_manager:
             def model_creator():
                 return model_factory(in_channels, ctx_dim)
