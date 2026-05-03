@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from snake_sim.rl.snapshot_manager import SNAPSHOT_BASE_DIR
 
-snapshot_dir = ""
+snapshot_dir = "new_arch"
 stats_file = ""
 
 if not stats_file:
@@ -23,7 +23,6 @@ def rolling(col, scale=1.0):
 plt.figure(figsize=(12, 6))
 plt.plot(df['update'], rolling('returns_mean', 0.1), label='Returns')
 plt.plot(df['update'], rolling('best_return', 0.1), label='Best Return', linestyle='--')
-plt.plot(df['update'], rolling('path_mixer_alpha'), label='Path Mixer Alpha', linestyle=':')
 plt.plot(df['update'], rolling('illegal_logit_loss'), label='Illegal Logit Loss', linestyle='-.')
 plt.plot(df['update'], rolling('entropy'), label='Entropy', linestyle='-')
 plt.xlabel('Update')

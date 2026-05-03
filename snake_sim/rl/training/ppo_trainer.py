@@ -207,8 +207,6 @@ class PPOTrainer:
                 'invalid_action_frac',
                 'illegal_logit_loss',
                 # Model diagnostics
-                'path_mixer_raw',
-                'path_mixer_alpha',
                 # Explicit behavior metrics
                 'foods_eaten',
                 'foods_per_1k_steps',
@@ -288,8 +286,6 @@ class PPOTrainer:
                 stats.get('invalid_action_frac', ''),
                 stats.get('illegal_logit_loss', ''),
                 # Model diagnostics
-                stats.get('path_mixer_raw', ''),
-                stats.get('path_mixer_alpha', ''),
                 # Explicit behavior metrics
                 stats.get('foods_eaten', ''),
                 stats.get('foods_per_1k_steps', ''),
@@ -381,23 +377,10 @@ class PPOTrainer:
             values.clear()  # Clear after computing averages to save memory
         return averages
 
-    def _get_policy_mixer_stats(self) -> dict:
-        """Return pathway mixer diagnostics.
-
-        Intentionally assumes required fields exist (crash loudly if they don't).
-        """
-        with torch.no_grad():
-            mixer_raw = float(self.model.pathway_mixer.detach().cpu().item())
-            alpha = float(torch.sigmoid(self.model.pathway_mixer.detach()).cpu().item())
-        return {
-            'path_mixer_raw': mixer_raw,
-            'path_mixer_alpha': alpha,
-        }
 
     def _log_detailed_metrics(self, stats: dict):
         """Log detailed training metrics with trends and running averages."""
         # Add model-specific diagnostics (if available)
-        stats.update(self._get_policy_mixer_stats())
 
         self._update_metrics_history(stats)
         
@@ -426,11 +409,6 @@ class PPOTrainer:
             log.info(f"  Exploration: entropy_coef={self.cfg.entropy_coef:.4f} | Best Return: {self._best_return:.3f}")
             log.info(f"  Stagnation: {self._updates_since_improvement} updates without improvement")
 
-            log.info(
-                f"  Mixer: raw={stats['path_mixer_raw']:+.3f} | "
-                f"alpha(sigmoid)={stats['path_mixer_alpha']:.3f} "
-                f"(0=safety, 1=spatial)"
-            )
 
             # PPO diagnostics (helps answer: "are we actually updating?")
             if 'clipfrac' in stats:
@@ -1042,11 +1020,6 @@ class PPOTrainer:
         except Exception:
             pass
 
-        # Add model diagnostics (needed for CSV; _log_detailed_metrics also adds these)
-        try:
-            stats.update(self._get_policy_mixer_stats())
-        except Exception as e:
-            log.debug(f"Mixer stats unavailable: {e}")
         # De-normalized value prediction logging for diagnostics
         try:
             if self._enable_value_norm:
