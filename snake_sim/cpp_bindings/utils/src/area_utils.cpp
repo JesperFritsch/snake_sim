@@ -143,11 +143,9 @@ unsigned int* dist_map(
     int target_value
 ){
     unsigned int* heat_map = new unsigned int[width * height];
-    std::fill(heat_map, heat_map + width * height, 255); // Initialize all distances to "infinity" (255)
+    std::fill(heat_map, heat_map + width * height, static_cast<unsigned int>(-1)); // Initialize all distances to "infinity" (max unsigned int)
 
     std::queue<Coord> to_visit;
-
-    std::unordered_set<Coord> visited;
 
     // Initialize the queue with all target positions
     for (int y = 0; y < height; ++y) {
@@ -167,21 +165,10 @@ unsigned int* dist_map(
         unsigned int current_dist = heat_map[current.y * width + current.x];
         for (const auto& dir : directions) {
             Coord neighbor(current.x + dir.x, current.y + dir.y);
-            if (
-                neighbor.x >= 0 && 
-                neighbor.x < width && 
-                neighbor.y >= 0 && 
-                neighbor.y < height && 
-                visited.find(neighbor) == visited.end()
-            ) {
-                visited.insert(neighbor);
-                if (s_map[neighbor.y * width + neighbor.x] <= free_value) {
-                    unsigned int& neighbor_dist = heat_map[neighbor.y * width + neighbor.x];
-                    if (current_dist + 1 < neighbor_dist) {
-                        neighbor_dist = current_dist + 1;
-                        to_visit.push(neighbor);
-                    }
-                }
+            unsigned int idx = neighbor.y * width + neighbor.x;
+            if (heat_map[idx] == static_cast<unsigned int>(-1) && s_map[idx] <= free_value) {
+                heat_map[idx] = current_dist + 1;
+                to_visit.push(neighbor);
             }
         }
     }
