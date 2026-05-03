@@ -88,12 +88,16 @@ inline py::array_t<unsigned int> py_dist_map(
     auto buf = s_map.request();
     uint8_t *ptr = static_cast<uint8_t *>(buf.ptr);
     unsigned int* heat_map = dist_map(ptr, width, height, free_value, target_value);
-    py::array_t<unsigned int> result({height, width});
-    auto res_buf = result.request();
-    unsigned int *res_ptr = static_cast<unsigned int *>(res_buf.ptr);
-    std::copy(heat_map, heat_map + width * height, res_ptr);
-    delete[] heat_map;
-    return result;
+    py::capsule free_when_done(heat_map, [](void *p) {
+        delete[] static_cast<unsigned int*>(p);
+    });
+
+    return py::array_t<unsigned int>(
+        {height, width},                                          // shape
+        {sizeof(unsigned int) * width, sizeof(unsigned int)},     // strides
+        heat_map,                                                 // data ptr
+        free_when_done                                            // owner
+    );
 }
 
 std::vector<int> area_boundary_tiles(
