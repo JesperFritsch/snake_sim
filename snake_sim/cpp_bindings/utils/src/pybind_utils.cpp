@@ -87,4 +87,15 @@ PYBIND11_MODULE(utils, m)
         py::arg("area_start"),
         py::return_value_policy::copy
     );
+
+    m.def("voronoi_maps", &py_voronoi_maps,
+        py::arg("s_map"),
+        py::arg("width"),
+        py::arg("height"),
+        py::arg("free_value"),
+        py::arg("owners"),
+        py::arg("ownership_map"),
+        py::arg("distance_map"),
+        py::return_value_policy::copy
+    );
 } 
