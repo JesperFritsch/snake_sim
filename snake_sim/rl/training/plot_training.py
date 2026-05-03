@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from snake_sim.rl.snapshot_manager import SNAPSHOT_BASE_DIR
 
-snapshot_dir = "new_arch"
+snapshot_dir = "new_arch_voronoi_higher"  
 stats_file = ""
 
 if not stats_file:
@@ -69,5 +69,16 @@ if any(c in df.columns for c in trap_cols):
     plt.title('Trapping Frequency (explicit did_trap, Running Avg)')
     plt.savefig(OUTPUT_DIR / 'trapping_frequency.png', dpi=150, bbox_inches='tight')
     plt.close()
+
+# policy_loss and value_loss can be very noisy, so we plot them with a rolling average and on a secondary axis
+plt.figure(figsize=(12, 6))
+plt.plot(df['update'], rolling('policy_loss'), label='Policy Loss', linestyle='-')
+plt.plot(df['update'], rolling('value_loss'), label='Value Loss', linestyle='--')
+plt.xlabel('Update')
+plt.ylabel('Loss')
+plt.legend()
+plt.title('Losses (Running Average)')
+plt.savefig(OUTPUT_DIR / 'losses.png', dpi=150, bbox_inches='tight')
+plt.close()
 
 print(f"Plots saved to {OUTPUT_DIR}")

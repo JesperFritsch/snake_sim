@@ -28,8 +28,8 @@ def get_voronoi_results(state: CompleteStepState, map: np.ndarray) -> Dict[int, 
         state.env_meta_data.height,
         state.env_meta_data.free_value,
         alive_snake_coords,
-        np.array(map.shape, dtype=np.int32),
-        np.array(map.shape, dtype=np.int32)
+        np.full(map.shape, -1, dtype=np.int32),
+        np.full(map.shape, -1, dtype=np.int32)
     )
     return voronoi
 
@@ -212,4 +212,7 @@ def _voronoi_control_reward(prev_voronoi: Dict[int, int], curr_voronoi: Dict[int
     curr_sum_other_voronoi = sum(v for other_id, v in curr_voronoi.items() if other_id != s_id)
     phi_prev = prev_self_voronoi - prev_sum_other_voronoi
     phi_curr = curr_self_voronoi - curr_sum_other_voronoi
+    if debug.is_debug_active():
+        print(f"Voronoi for snake {s_id}: prev_self={prev_voronoi.get(s_id, 0)}, curr_self={curr_voronoi.get(s_id, 0)}, prev_others_sum={sum(v for other_id, v in prev_voronoi.items() if other_id != s_id)}, curr_others_sum={sum(v for other_id, v in curr_voronoi.items() if other_id != s_id)}")
+        print(f"Voronoi control (phi) for snake {s_id}: prev={phi_prev}, curr={phi_curr}, delta={phi_curr - phi_prev}")
     return 0.01 * (phi_curr - phi_prev)  # Scale down to keep as a minor component of the reward signal
