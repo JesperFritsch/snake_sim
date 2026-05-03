@@ -135,16 +135,16 @@ bool can_make_area_inaccessible(
 }
 
 
-unsigned int* dist_map(
+int32_t* dist_map(
     uint8_t *s_map,
     int width,
     int height,
     int free_value,
     int target_value
 ){
-    unsigned int* heat_map = new unsigned int[width * height];
-    std::fill(heat_map, heat_map + width * height, static_cast<unsigned int>(-1)); // Initialize all distances to "infinity" (max unsigned int)
-
+    int32_t UNREACHABLE = -1;
+    int32_t* heat_map = new int32_t[width * height];
+    std::fill(heat_map, heat_map + width * height, UNREACHABLE); // Initialize all distances to "infinity" (max int32_t)
     std::queue<Coord> to_visit;
 
     // Initialize the queue with all target positions
@@ -162,13 +162,20 @@ unsigned int* dist_map(
     while (!to_visit.empty()) {
         Coord current = to_visit.front();
         to_visit.pop();
-        unsigned int current_dist = heat_map[current.y * width + current.x];
+        int32_t current_dist = heat_map[current.y * width + current.x];
         for (const auto& dir : directions) {
             Coord neighbor(current.x + dir.x, current.y + dir.y);
-            unsigned int idx = neighbor.y * width + neighbor.x;
-            if (heat_map[idx] == static_cast<unsigned int>(-1) && s_map[idx] <= free_value) {
-                heat_map[idx] = current_dist + 1;
-                to_visit.push(neighbor);
+            if (
+                neighbor.x >= 0 && 
+                neighbor.x < width && 
+                neighbor.y >= 0 && 
+                neighbor.y < height
+            ) {
+                unsigned int idx = neighbor.y * width + neighbor.x;
+                if (heat_map[idx] == UNREACHABLE && s_map[idx] <= free_value) {
+                    heat_map[idx] = current_dist + 1;
+                    to_visit.push(neighbor);
+                }
             }
         }
     }
@@ -223,3 +230,65 @@ std::vector<int> area_boundary_tiles(
 
     return std::vector<int>(boundary_tiles.begin(), boundary_tiles.end());
 }
+
+std::unordered_map<int, int> voronoi_maps(
+    const uint8_t* s_map,
+    int width,
+    int height,
+    int free_value,
+    const std::unordered_map<int32_t, Coord>& owners,
+    int32_t* ownership_map,
+    int32_t* distance_map
+) {
+    constexpr int32_t UNCLAIMED = -1;
+    constexpr int32_t CONTESTED = -2;
+    std::unordered_map<int, int> ownership_result;
+    std::fill(ownership_map, ownership_map + width * height, UNCLAIMED);
+    std::fill(distance_map,  distance_map  + width * height, UNCLAIMED);
+
+    std::queue<Coord> to_visit;
+    for (const auto& [owner_id, coord] : owners) {
+        int idx = coord.y * width + coord.x;
+        ownership_map[idx] = owner_id;
+        distance_map[idx]  = 0;
+        ownership_result[owner_id] = 0; // Initialize ownership result with distance 0 for each owner
+        to_visit.push(coord);
+    }
+
+    static const Coord dirs[4] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+
+    while (!to_visit.empty()) {
+        Coord current = to_visit.front();
+        to_visit.pop();
+        int current_idx = current.y * width + current.x;
+
+        // Contested cells don't propagate ownership.
+        if (ownership_map[current_idx] == CONTESTED) continue;
+
+        int32_t current_dist  = distance_map[current_idx];
+        int32_t current_owner = ownership_map[current_idx];
+        ownership_result[current_owner] += 1; // increment the count of cells owned by this owner
+        
+        for (const auto& dir : dirs) {
+            int nx = current.x + dir.x;
+            int ny = current.y + dir.y;
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+
+            int nidx = ny * width + nx;
+            if (s_map[nidx] > free_value) continue;  // blocked
+
+            int32_t new_distance = current_dist + 1;
+
+            if (distance_map[nidx] == UNCLAIMED) {
+                distance_map[nidx]  = new_distance;
+                ownership_map[nidx] = current_owner;
+                to_visit.push({nx, ny});
+            } else if (distance_map[nidx] == new_distance &&
+                       ownership_map[nidx] != current_owner &&
+                       ownership_map[nidx] != CONTESTED) {
+                ownership_map[nidx] = CONTESTED;
+            }
+        }
+    }
+    return ownership_result;
+}  

@@ -63,9 +63,9 @@ def get_state_file_path():
 
 
 
-def test_make_choice(snake: SnakeBase, s_map, food_locations: List[Coord] = None):
+def test_make_choice(snake: SnakeBase, s_map, step_state: CompleteStepState):
     print("head coord:", snake._head_coord)
-    env_step_data = EnvStepData(s_map, {}, food_locations)
+    env_step_data = EnvStepData(s_map, {s_id: {"is_alive": step_state.snake_alive[s_id], "length": len(step_state.snake_bodies[s_id])} for s_id in step_state.snake_alive}, step_state.food)
     snake._set_new_head = lambda x: print(f"New head: {x}")
     start_time = time.time()
     for _ in range(1):
@@ -211,6 +211,12 @@ def test_check_rewards(
         s_map: np.ndarray, 
         step_state: CompleteStepState
     ):
+
+    print("Previous state:")
+    print_map(prev_s_map, free_value=prev_state.env_meta_data.free_value, food_value=prev_state.env_meta_data.food_value, blocked_value=prev_state.env_meta_data.blocked_value)
+    print("Current state:")
+    print_map(s_map, free_value=step_state.env_meta_data.free_value, food_value=step_state.env_meta_data.food_value, blocked_value=step_state.env_meta_data.blocked_value)
+
     rewards = compute_rewards(
         state_map1=(prev_state, prev_s_map),
         state_map2=(step_state, s_map),
@@ -266,8 +272,8 @@ def run_tests(
     ):
     # test_recurse_area_check(snake, s_map, Coord(0,-1))
     # test_recurse_area_check(snake, s_map, Coord(-1,0))
-    test_make_choice(snake, s_map, step_state.food)
-    test_area_check(snake, s_map)
+    test_make_choice(snake, s_map, step_state)
+    # test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
     # test_area_check_direction(snake, s_map, Coord(0, -1))
     # test_area_check_direction(snake, s_map, Coord(-1, 0))
@@ -278,14 +284,14 @@ def run_tests(
     # test_area_funcs(snake, s_map)
     # test_get_dist_to_tile(snake, s_map, snake._body_coords[-1])
     # test_get_dist_to_tile_with_value(snake, s_map, snake._body_value)
-    # test_check_rewards(prev_s_map, prev_state, s_map, step_state)
+    test_check_rewards(prev_s_map, prev_state, s_map, step_state)
     pass
 
 
 def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, env_meta_data: EnvMetaData):
     snake: SnakeBase = SnakeFactory().create_snake(
-        # snake_config=SnakeConfig.from_dict(default_config.ai_snake_config)
-        snake_config=SnakeConfig.from_dict(default_config.snake_config)
+        snake_config=SnakeConfig.from_dict(default_config.ai_snake_config)
+        # snake_config=SnakeConfig.from_dict(default_config.snake_config)
     )
     snake.set_id(id)
     snake.set_start_length(1)

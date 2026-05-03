@@ -11,7 +11,13 @@ import sys
 import snake_sim.rl.constants as consts
 
 import snake_sim.debugging as debug
-from snake_sim.cpp_bindings.utils import get_dir_to_tile, get_visitable_tiles, distance_to_tile_with_value, dist_map
+from snake_sim.cpp_bindings.utils import (
+    get_dir_to_tile, 
+    get_visitable_tiles, 
+    distance_to_tile_with_value, 
+    dist_map,
+    voronoi_maps
+)
 from snake_sim.cpp_bindings.area_check import AreaChecker
 from snake_sim.map_utils.general import print_map
 from snake_sim.environment.types import EnvMetaData, EnvStepData, Coord, AreaCheckResult
@@ -40,7 +46,11 @@ def print_state(state: State):
     print_channel(state.map[1], body_value=1)
     print_channel(state.map[2], food_value=1)
     print_channel(state.map[3], blocked_value=1)
-    _print_red_heatmap(state.map[4])
+    print_channel(state.map[4], head_value=1)
+    print_channel(state.map[5], body_value=1)
+    _print_red_heatmap(state.map[6])
+    _print_red_heatmap(state.map[7])
+    _print_red_heatmap(state.map[8])
     print("State context:", state.ctx)
     print("State meta:", state.meta)
     sys.stdout.flush()
@@ -103,18 +113,15 @@ class IStateAdapter(Protocol):
 
 
 class BaseStateBuilder:
-    def __init__(
-        self,
-        include_opponents: bool = True,
-    ):
-        self.include_opponents = include_opponents
-
+    def __init__(self):
+        pass
+        
     # New flexible build: per-channel buffers
     def build(self, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> State:
         channels_dict = self._build_channels(env_meta, step_data, snake_ctx)
         additional_channels = self._additional_channels(env_meta, step_data, snake_ctx)
         channels_dict.update(additional_channels)
-        order = self._default_order(include_opponents=self.include_opponents)
+        order = self._default_order()
         map_tensor = self._build_map(channels_dict, order)
 
         if debug.is_debug_active():
@@ -135,6 +142,26 @@ class BaseStateBuilder:
             }
         )
 
+    def _normalize_heat_map(self, heat_map: np.ndarray) -> np.ndarray:
+        """Normalize a heat map of integer distances to [0,1] float32.
+
+        Distances are expected to be:
+            - 0 for target tiles
+            - positive integers for reachable tiles (distance in steps)
+            - negative (e.g. -1) for unreachable tiles
+
+        Normalization:
+            - Unreachable tiles become 1.0 (max distance)
+            - Target tiles become 0.0
+            - Reachable tiles are scaled by a factor and clipped to [0,1].
+              We use a tanh-based scaling to compress larger distances more aggressively.
+        """
+        distances = np.asarray(heat_map, dtype=np.float32)
+        unreachable = (distances < 0)
+        distances_norm = np.tanh(distances / 20)  # Scale factor controls compression aggressiveness
+        distances_norm[unreachable] = 1.0
+        return distances_norm.astype(np.float32)
+
     def _create_food_dist_heat_map(self, env_meta: EnvMetaData, step_data: EnvStepData) -> np.ndarray:
         """Create a normalized food-distance channel.
 
@@ -153,27 +180,50 @@ class BaseStateBuilder:
             env_meta.food_value
         )
 
-        # Convert to float32 and normalize into [0,1].
-        distances = np.asarray(heat_map_array, dtype=np.float32)
-        food_dist_max = (env_meta.width + env_meta.height) / 1.1
+        return self._normalize_heat_map(heat_map_array)
+    
+    def _create_voronoi_maps(self, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> tuple[np.ndarray, np.ndarray]:
+        """Create self and others voronoi area ownership and distance maps as additional channels.
+        """
 
-        # Treat unreachable or negative distances as 0 ("no signal").
-        distances = np.maximum(distances, 0.0)
-        norm = np.clip(distances / food_dist_max, 0.0, 1.0).astype(np.float32)
-
-        # print("Food distance heatmap (red = close):")
-
-        # # for row in norm:
-        # #     print(" ".join([f"{val:4.2f}" for val in row]))
-
-        # _print_red_heatmap(norm)
-
-        return norm
+        # find the coords of all snakes heads
+        s_map = step_data.map
+        head_coords = {}
+        for sid, vals in env_meta.snake_values.items():
+            hv = vals.get('head_value')
+            if not step_data.snakes[sid]['is_alive']:
+                continue
+            if hv is not None:
+                coords = np.argwhere(s_map == hv)
+                if len(coords) == 1:
+                    head_coords[sid] = Coord(x=coords[0][1], y=coords[0][0])
+                else: 
+                    raise ValueError(f"Expected exactly one head tile for snake {sid}, found {len(coords)}")
+        owners_map = np.full((env_meta.height, env_meta.width), fill_value=-1, dtype=np.int32)
+        distance_map = np.full((env_meta.height, env_meta.width), fill_value=-1, dtype=np.int32)
+        voronoi_maps(
+            s_map,
+            env_meta.width,
+            env_meta.height,
+            env_meta.free_value,
+            head_coords,
+            owners_map,
+            distance_map
+        )
+        # create one distance map for the snake itself and one for all others areas combined
+        self_distance_map = np.where(owners_map == snake_ctx.snake_id, distance_map, -1)
+        others_distance_map = np.where((owners_map != snake_ctx.snake_id) & (owners_map != -1), distance_map, -1)
+        return self_distance_map, others_distance_map
 
     def _additional_channels(self, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> Dict[str, np.ndarray]:
         """Override to add more channels beyond the base ones."""
+        self_voronoi_map, others_voronoi_map = self._create_voronoi_maps(env_meta, step_data, snake_ctx)
+        self_voronoi_map_norm = self._normalize_heat_map(self_voronoi_map)
+        others_voronoi_map_norm = self._normalize_heat_map(others_voronoi_map)
         return {
-            "food_dist": self._create_food_dist_heat_map(env_meta, step_data)
+            "food_dist": self._create_food_dist_heat_map(env_meta, step_data),
+            "self_voronoi_dist": self_voronoi_map_norm,
+            "others_voronoi_dist": others_voronoi_map_norm
         }
     
     def _build_channels(self, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> Dict[str, np.ndarray]:
@@ -195,26 +245,25 @@ class BaseStateBuilder:
             'food': food,
             'blocked': blocked,
         }
-        if self.include_opponents:
-            opp_heads = np.zeros((H, W), dtype=np.float32)
-            opp_bodies = np.zeros((H, W), dtype=np.float32)
-            opponent_head_vals: List[int] = []
-            opponent_body_vals: List[int] = []
-            for sid, vals in env_meta.snake_values.items():
-                if sid == snake_ctx.snake_id or sid not in step_data.snakes or not step_data.snakes[sid].get('is_alive', False):
-                    continue
-                hv = vals.get('head_value')
-                bv = vals.get('body_value')
-                if hv is not None:
-                    opponent_head_vals.append(hv)
-                if bv is not None:
-                    opponent_body_vals.append(bv)
-            if opponent_head_vals:
-                opp_heads[np.isin(s_map, opponent_head_vals)] = 1.0
-            if opponent_body_vals:
-                opp_bodies[np.isin(s_map, opponent_body_vals)] = 1.0
-            channels['opp_heads'] = opp_heads
-            channels['opp_bodies'] = opp_bodies
+        opp_heads = np.zeros((H, W), dtype=np.float32)
+        opp_bodies = np.zeros((H, W), dtype=np.float32)
+        opponent_head_vals: List[int] = []
+        opponent_body_vals: List[int] = []
+        for sid, vals in env_meta.snake_values.items():
+            if sid == snake_ctx.snake_id or sid not in step_data.snakes or not step_data.snakes[sid].get('is_alive', False):
+                continue
+            hv = vals.get('head_value')
+            bv = vals.get('body_value')
+            if hv is not None:
+                opponent_head_vals.append(hv)
+            if bv is not None:
+                opponent_body_vals.append(bv)
+        if opponent_head_vals:
+            opp_heads[np.isin(s_map, opponent_head_vals)] = 1.0
+        if opponent_body_vals:
+            opp_bodies[np.isin(s_map, opponent_body_vals)] = 1.0
+        channels['opp_heads'] = opp_heads
+        channels['opp_bodies'] = opp_bodies
         return channels
 
     def _build_map(self, channels: Dict[str, np.ndarray], order: Sequence[str]) -> np.ndarray:
@@ -229,10 +278,18 @@ class BaseStateBuilder:
         stacked = np.stack([channels[name] for name in order], axis=0).astype(np.float32)
         return stacked
 
-    def _default_order(self, include_opponents: bool = True) -> List[str]:
-        base = ['head', 'body', 'food', 'blocked', 'food_dist']
-        if include_opponents and self.include_opponents:
-            base += ['opp_heads', 'opp_bodies']
+    def _default_order(self) -> List[str]:
+        base = [
+            'head', 
+            'body', 
+            'food', 
+            'blocked', 
+            'opp_heads', 
+            'opp_bodies',
+            'food_dist', 
+            'self_voronoi_dist',
+            'others_voronoi_dist'
+        ]
         return base
 
 
@@ -247,11 +304,12 @@ class CompleteStateBuilder:
         for adapter in self.adapters:
             adapter.apply(state, step_data, env_meta, snake_ctx)
         area_ctx = state.meta['area_ctx']  # shape (A,) - margin_frac for each action
-        # Keep only margin_frac as action features. This gives spatial signal without giving away optimal actions.
+        voronoi_ctx = state.meta['voronoi_ctx']  # shape (A,) - voronoi distances for each action
+        # Keep only margin_frac and voronoi_ctx as action features. This gives spatial signal without giving away optimal actions.
         # Removed: safety_ctx (binary safe/unsafe) and food_ctx (direction to food) as they bypass learning.
-        action_features = area_ctx.reshape(-1, 1).astype(np.float32)  # (A, 1)
+        action_features = np.column_stack([area_ctx, voronoi_ctx]).astype(np.float32)  # (A, 2)
         state.meta['action_features'] = action_features
-        state.meta['action_feature_names'] = ['margin_frac']
+        state.meta['action_feature_names'] = ['margin_frac', 'voronoi_ctx']
         return state
 
 
@@ -282,19 +340,25 @@ class DirectionHintsAdapter:
         # Compute per-action area safety (margin fraction) and directional food hints.
         area_checks = self._get_area_checks(step_data.map, env_meta, step_data, snake_ctx)
         area_ctx = self._create_area_ctx(area_checks)  # (A,)
+        state.meta['area_ctx'] = area_ctx.astype(np.float32)
+        state.meta['area_ctx_labels'] = ['area_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
+
         safety_ctx = self._create_safety_ctx(area_checks)  # (A,)
-        close_food_ctx = self._create_close_food_ctx(env_meta, step_data, snake_ctx)  # (A,)
+        state.meta['safety_ctx'] = safety_ctx.astype(np.float32)
+        state.meta['safety_ctx_labels'] = ['safety_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
+
+        voronoi_ctx = self._create_voronoi_ctx(env_meta, step_data, snake_ctx)  # (A,)
+        state.meta['voronoi_ctx'] = voronoi_ctx.astype(np.float32)
+        state.meta['voronoi_ctx_labels'] = ['voronoi_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
+
+        # close_food_ctx = self._create_close_food_ctx(env_meta, step_data, snake_ctx)  # (A,)
+        # state.meta['close_food_ctx'] = close_food_ctx.astype(np.float32)
+        # state.meta['close_food_ctx_labels'] = ['close_food_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
 
         # Store them separately in meta (don't extend global ctx; keep it lean).
-        state.meta['area_ctx'] = area_ctx.astype(np.float32)
-        state.meta['safety_ctx'] = safety_ctx.astype(np.float32)
-        state.meta['close_food_ctx'] = close_food_ctx.astype(np.float32)
         state.meta.setdefault('adapters', []).append(self.name)
         # For traceability we still record ordering labels but we do NOT bump context_size.
         state.meta.setdefault('context_order', ['length_ratio'])
-        state.meta['area_ctx_labels'] = ['area_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
-        state.meta['safety_ctx_labels'] = ['safety_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
-        state.meta['close_food_ctx_labels'] = ['close_food_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
 
     def _get_area_checks(self, s_map: np.ndarray, env_meta: EnvMetaData, step_data: EnvStepData, ctx: SnakeContext) -> Dict[Coord, AreaCheckResult]:
         head_coord = ctx.head
@@ -374,6 +438,58 @@ class DirectionHintsAdapter:
 
         return ctx
 
+    def _create_voronoi_ctx(self, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> np.ndarray:
+        curr_voronois = self._create_voronoi_maps(snake_ctx.head, env_meta, step_data, snake_ctx)
+        self_voronoi = curr_voronois[snake_ctx.snake_id]
+        others_voronoi = sum([v for sid, v in curr_voronois.items() if sid != snake_ctx.snake_id])
+        visitable_tiles = _get_visitable_tiles(
+            step_data.map,
+            env_meta,
+            snake_ctx.head
+        )
+        ctx = _clean_dir_ctx()
+        for c_dir, index in consts.ACTION_ORDER.items():
+            next_tile = snake_ctx.head + c_dir
+            if next_tile not in visitable_tiles:
+                voronoi_hint = 0.0
+            else:
+                next_voronois = self._create_voronoi_maps(next_tile, env_meta, step_data, snake_ctx)
+                next_self_voronoi = next_voronois[snake_ctx.snake_id]
+                next_others_voronoi = sum([v for sid, v in next_voronois.items() if sid != snake_ctx.snake_id])
+                # Simple heuristic: if moving to the next tile increases our Voronoi distance while decreasing others', it's a good sign.
+                self_diff = next_self_voronoi - self_voronoi
+                others_diff = next_others_voronoi - others_voronoi
+                voronoi_hint = 0.5 + (0.5 * math.tanh((self_diff - others_diff) / 10))  # Scale factor controls sensitivity
+            ctx[index] = voronoi_hint
+        return ctx
+
+    def _create_voronoi_maps(self, self_head: Coord, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> dict[int, int]:
+        s_map = step_data.map
+        head_coords = {}
+        for sid, vals in env_meta.snake_values.items():
+            hv = vals.get('head_value')
+            if not step_data.snakes[sid]['is_alive']:
+                continue
+            if hv is not None:
+                coords = np.argwhere(s_map == hv)
+                if len(coords) == 1:
+                    head_coords[sid] = Coord(x=coords[0][1], y=coords[0][0])
+                else: 
+                    raise ValueError(f"Expected exactly one head tile for snake {sid}, found {len(coords)}")
+        head_coords[snake_ctx.snake_id] = self_head  # Ensure our snake's head is included with correct coord
+        owners_map = np.full((env_meta.height, env_meta.width), fill_value=-1, dtype=np.int32)
+        distance_map = np.full((env_meta.height, env_meta.width), fill_value=-1, dtype=np.int32)
+        s_map_copy = s_map.copy()  # Make a copy to avoid modifying original map if voronoi_maps mutates it
+        s_map_copy[self_head.y, self_head.x] = env_meta.snake_values[snake_ctx.snake_id]['head_value']  # Ensure our head is correctly represented in the map
+        return voronoi_maps(
+            s_map_copy,
+            env_meta.width,
+            env_meta.height,
+            env_meta.free_value,
+            head_coords,
+            owners_map,
+            distance_map
+        )
 
 # ActionMaskAdapter removed: masking is disabled; policy learns safety from features
 

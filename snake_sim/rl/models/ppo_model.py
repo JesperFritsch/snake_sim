@@ -67,7 +67,7 @@ class SnakePPONet(nn.Module):
     """
 
     NUM_ACTIONS = 4
-    ACTION_FEAT_DIM = 1  # margin_frac. Bump this if you add Voronoi deltas etc.
+    ACTION_FEAT_DIM = 2  # margin_frac. Bump this if you add Voronoi deltas etc.
 
     # Architecture hyperparameters
     EMBED_DIM = 128

@@ -70,7 +70,7 @@ inline bool py_can_make_area_inaccessible(
 
 void print_map(uint8_t *s_map, int width, int height, int head_value, int body_value, int food_value);
 
-unsigned int* dist_map(
+int32_t* dist_map(
     uint8_t *s_map,
     int width,
     int height,
@@ -78,7 +78,7 @@ unsigned int* dist_map(
     int target_value
 );
 
-inline py::array_t<unsigned int> py_dist_map(
+inline py::array_t<int32_t> py_dist_map(
     py::array_t<uint8_t> s_map,
     int width,
     int height,
@@ -87,14 +87,14 @@ inline py::array_t<unsigned int> py_dist_map(
 ){
     auto buf = s_map.request();
     uint8_t *ptr = static_cast<uint8_t *>(buf.ptr);
-    unsigned int* heat_map = dist_map(ptr, width, height, free_value, target_value);
+    int32_t* heat_map = dist_map(ptr, width, height, free_value, target_value);
     py::capsule free_when_done(heat_map, [](void *p) {
-        delete[] static_cast<unsigned int*>(p);
+        delete[] static_cast<int32_t*>(p);
     });
 
-    return py::array_t<unsigned int>(
+    return py::array_t<int32_t>(
         {height, width},                                          // shape
-        {sizeof(unsigned int) * width, sizeof(unsigned int)},     // strides
+        {sizeof(int32_t) * width, sizeof(int32_t)},               // strides
         heat_map,                                                 // data ptr
         free_when_done                                            // owner
     );
@@ -124,4 +124,40 @@ inline py::list py_area_boundary_tiles(
         result.append(tile);
     }
     return result;
+}
+
+std::unordered_map<int, int> voronoi_maps(
+    const uint8_t* s_map,
+    int width,
+    int height,
+    int free_value,
+    const std::unordered_map<int32_t, Coord>& owners,
+    int32_t* ownership_map,
+    int32_t* distance_map
+);
+
+inline std::unordered_map<int, int> py_voronoi_maps(
+    py::array_t<uint8_t> s_map,
+    int width,
+    int height,
+    int free_value,
+    const std::unordered_map<int32_t, std::pair<int, int>>& owners_py,
+    py::array_t<int32_t> ownership_map,
+    py::array_t<int32_t> distance_map
+) {
+    auto buf = s_map.request();
+    const uint8_t* ptr = static_cast<const uint8_t*>(buf.ptr);
+
+    std::unordered_map<int32_t, Coord> owners_cpp;
+    owners_cpp.reserve(owners_py.size());
+    for (const auto& [k, v] : owners_py) {
+        owners_cpp.emplace(k, Coord(v.first, v.second));
+    }
+
+    int32_t* ownership_ptr = static_cast<int32_t*>(ownership_map.request().ptr);
+    int32_t* distance_ptr  = static_cast<int32_t*>(distance_map.request().ptr);
+
+    return voronoi_maps(ptr, width, height, free_value, owners_cpp,
+                 ownership_ptr, distance_ptr);
+
 }

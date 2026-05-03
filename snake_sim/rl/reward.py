@@ -5,11 +5,33 @@ from typing import Dict
 
 import snake_sim.debugging as debug
 from snake_sim.environment.types import AreaCheckResult, CompleteStepState
-from snake_sim.analyze.scripts.run_analyzer import find_traps, get_area_checkers, get_best_area_checks
+from snake_sim.analyze.scripts.run_analyzer import (
+    find_traps, 
+    get_area_checkers, 
+    get_best_area_checks
+)
 from snake_sim.cpp_bindings.utils import (
     distance_to_tile_with_value, 
+    voronoi_maps
 )
 
+
+def get_voronoi_results(state: CompleteStepState, map: np.ndarray) -> Dict[int, int]:
+    """Get Voronoi map results for each snake."""
+    alive_snake_coords = {
+        s_id: state.snake_bodies[s_id][0]  # head coordinate
+        for s_id, alive in state.snake_alive.items() if alive
+    }
+    voronoi = voronoi_maps(
+        map,
+        state.env_meta_data.width,
+        state.env_meta_data.height,
+        state.env_meta_data.free_value,
+        alive_snake_coords,
+        np.array(map.shape, dtype=np.int32),
+        np.array(map.shape, dtype=np.int32)
+    )
+    return voronoi
 
 def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
                 state_map2: tuple[CompleteStepState, np.ndarray],
@@ -31,6 +53,9 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
     best_area_checks = get_best_area_checks(area_checkers, state2, map2, ids_to_check)
 
     traps_set = find_traps(state1, state2, map1, map2, snake_ids) if len(snake_ids) > 1 else set()
+
+    curr_voronoi = get_voronoi_results(state2, map2)
+    prev_voronoi = get_voronoi_results(state1, map1)
 
     if debug.is_debug_active():
         print("Best area checks:")
@@ -92,6 +117,7 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
         trapping_reward_value = trapping_reward(
             any(s_id in trap.trapping_ids for trap in traps_set)
         )
+        voronoi_reward = _voronoi_control_reward(prev_voronoi, curr_voronoi, s_id)
         total_reward = sum(
             (
                 survival_reward,
@@ -100,6 +126,7 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
                 last_standing_reward_value,
                 survival_chance_reward,
                 trapping_reward_value,
+                voronoi_reward
             )
         )
         # Scale overall reward signal to increase training SNR
@@ -111,6 +138,7 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
             'food_eat_reward': did_eat_reward,
             'survival_chance_reward': survival_chance_reward,
             'trapping_reward': trapping_reward_value,
+            'voronoi_reward': voronoi_reward,
             'total_reward': total_reward,
         }
 
@@ -118,7 +146,7 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
             print(
                 f"🎯 Rewards for snake {s_id}:, survival={survival_reward:.2f}, "
                 f"food_approach={food_reward:.2f}, food_eat={did_eat_reward:.2f}, "
-                f"survival_chance={survival_chance_reward:.2f}, trapping={trapping_reward_value:.2f}, total={total_reward:.2f}"
+                f"survival_chance={survival_chance_reward:.2f}, trapping={trapping_reward_value:.2f}, voronoi={voronoi_reward:.2f}, total={total_reward:.2f}"
             )
     
     return rewards, info
@@ -176,3 +204,12 @@ def _survival_reward(still_alive: bool) -> float:
         # Small per-step cost encourages efficient food-seeking over passive survival
         return -0.01
 
+def _voronoi_control_reward(prev_voronoi: Dict[int, int], curr_voronoi: Dict[int, int], s_id: int) -> float:
+    """Reward for increasing Voronoi control (number of tiles closer to snake than any other)."""
+    prev_self_voronoi = prev_voronoi.get(s_id, 0)
+    curr_self_voronoi = curr_voronoi.get(s_id, 0)
+    prev_sum_other_voronoi = sum(v for other_id, v in prev_voronoi.items() if other_id != s_id)
+    curr_sum_other_voronoi = sum(v for other_id, v in curr_voronoi.items() if other_id != s_id)
+    phi_prev = prev_self_voronoi - prev_sum_other_voronoi
+    phi_curr = curr_self_voronoi - curr_sum_other_voronoi
+    return 0.01 * (phi_curr - phi_prev)  # Scale down to keep as a minor component of the reward signal
