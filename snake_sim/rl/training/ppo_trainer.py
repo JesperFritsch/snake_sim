@@ -421,18 +421,7 @@ class PPOTrainer:
                     stats.get('explained_variance', float('nan')),
                     stats.get('invalid_action_frac', float('nan')),
                 )
-            
-            # Learning indicators
-            if returns_trend > 0.01:
-                log.info("  🚀 Snakes showing improvement in returns!")
-            elif returns_trend < -0.01:
-                log.info("  📉 Returns declining - possible overfitting or poor exploration")
-            
-            if entropy_avg < 0.5:
-                log.info("  ⚠️  Low entropy - snakes may be too deterministic")
-            elif entropy_avg > 1.5:
-                log.info("  🎲 High entropy - snakes exploring actively")
-            
+        
             # Stagnation warning
             patience_remaining = self.cfg.stagnation_patience - self._updates_since_improvement
             if patience_remaining <= 10 and patience_remaining > 0 and not self._exploration_boosted:

@@ -40,7 +40,6 @@ class PPOSnake(RLSnakeBase):
         auto_reload: bool = True,
         eager_first_load: bool = True,
         deterministic: bool = True,  # Set True for deployment/evaluation
-        deterministic_temperature: float = 0.0,
         fast_mode: bool = True,  # Enable inference speed optimizations
         use_half: bool = True,   # Convert model & inputs to FP16 if GPU available
     ):
@@ -69,7 +68,6 @@ class PPOSnake(RLSnakeBase):
         self._deterministic = deterministic
         # If > 0, deterministic mode becomes "low-temperature sampling" instead of hard argmax.
         # This reduces brittleness when the top-1 and top-2 logits are close.
-        self._deterministic_temperature = float(deterministic_temperature)
         self._hot_reload_lock = threading.Lock()
         self._fast_mode = fast_mode and (self._device.type == 'cuda')
         self._use_half = use_half and (self._device.type == 'cuda')
@@ -225,18 +223,9 @@ class PPOSnake(RLSnakeBase):
             print("State meta:", state.meta)
             self._print_map()
         if self._deterministic:
-            if self._deterministic_temperature and self._deterministic_temperature > 0.0:
-                # Less-brittle "deterministic": sample with low temperature.
-                # T -> 0 approaches argmax; small T keeps occasional alternative when top-2 are close.
-                t = max(self._deterministic_temperature, 1e-6)
-                temp_logits = (logits.squeeze(0) / t)
-                temp_dist = torch.distributions.Categorical(logits=temp_logits)
-                action_tensor = temp_dist.sample()
-                log_prob = float(temp_dist.log_prob(action_tensor).item())
-            else:
-                # Deterministic mode: pick best action from logits
-                action_tensor = logits.squeeze(0).argmax()
-                log_prob = float(dist.log_prob(action_tensor).item())
+            # Deterministic mode: pick best action from logits
+            action_tensor = logits.squeeze(0).argmax()
+            log_prob = float(dist.log_prob(action_tensor).item())
         else:
             # Stochastic mode: sample from distribution (for training/exploration)
             action_tensor = dist.sample()

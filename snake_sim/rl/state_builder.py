@@ -307,12 +307,12 @@ class CompleteStateBuilder:
         for adapter in self.adapters:
             adapter.apply(state, step_data, env_meta, snake_ctx)
         area_ctx = state.meta['area_ctx']  # shape (A,) - margin_frac for each action
-        voronoi_ctx = state.meta['voronoi_ctx']  # shape (A,) - voronoi distances for each action
+        # voronoi_ctx = state.meta['voronoi_ctx']  # shape (A,) - voronoi distances for each action
         # Keep only margin_frac and voronoi_ctx as action features. This gives spatial signal without giving away optimal actions.
         # Removed: safety_ctx (binary safe/unsafe) and food_ctx (direction to food) as they bypass learning.
-        action_features = np.column_stack([area_ctx, voronoi_ctx]).astype(np.float32)  # (A, 2)
+        action_features = np.column_stack([area_ctx]).astype(np.float32)  # (A, 2)
         state.meta['action_features'] = action_features
-        state.meta['action_feature_names'] = ['margin_frac', 'voronoi_ctx']
+        state.meta['action_feature_names'] = ['margin_frac']
         return state
 
 
@@ -350,9 +350,9 @@ class DirectionHintsAdapter:
         state.meta['safety_ctx'] = safety_ctx.astype(np.float32)
         state.meta['safety_ctx_labels'] = ['safety_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
 
-        voronoi_ctx = self._create_voronoi_ctx(env_meta, step_data, snake_ctx)  # (A,)
-        state.meta['voronoi_ctx'] = voronoi_ctx.astype(np.float32)
-        state.meta['voronoi_ctx_labels'] = ['voronoi_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
+        # voronoi_ctx = self._create_voronoi_ctx(env_meta, step_data, snake_ctx)  # (A,)
+        # state.meta['voronoi_ctx'] = voronoi_ctx.astype(np.float32)
+        # state.meta['voronoi_ctx_labels'] = ['voronoi_' + str(d_coord) for d_coord in consts.ACTION_ORDER]
 
         # close_food_ctx = self._create_close_food_ctx(env_meta, step_data, snake_ctx)  # (A,)
         # state.meta['close_food_ctx'] = close_food_ctx.astype(np.float32)

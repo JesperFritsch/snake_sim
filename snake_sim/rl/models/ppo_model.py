@@ -1,16 +1,21 @@
-"""SnakePPONet — conv frontend + transformer trunk + head-anchored policy head.
+"""SnakePPONet — conv frontend + transformer trunk + dual-path heads.
 
 Architecture overview
 ---------------------
 1. Conv frontend (2 layers): cheap local feature extraction.
 2. Transformer encoder (2 layers, pre-norm): every cell can attend to every
    other cell, giving true global context regardless of board distance.
-3. Head-anchored policy head: per-action logits are produced from
-   (head_feat, action_cell_feat, scalar_action_features). The action_cell_feat
-   is gathered at (head + action_offset) AFTER the attention layers, so its
-   activation already encodes whole-board context — including geometry on the
-   opposite side of the head.
-4. Value head: mean over all tokens + ctx → V(s).
+3. Two parallel paths read from the trunk feature map:
+   a) Targeted gathers — features at own head + 4 action cells. Precise
+      per-action information at strategically important positions.
+   b) Shape-aware conv-pool — three stride-2 convs followed by adaptive
+      avg-pool to a fixed (4, 4) spatial output, then flatten. Captures
+      global shape and territory geometry the head-anchored gather misses.
+4. Policy head: per-action MLP over (head_feat, action_cell_feat,
+   shape_feat, scalar_action_features).
+5. Value head: shape_feat + ctx → V(s). The shape_feat replaces the previous
+   mean-pool global summary; it carries spatial structure rather than a
+   pooled mean.
 
 Inputs (dict): same contract as the previous model.
 - 'map':              (B, C, H, W)
@@ -60,20 +65,28 @@ def _build_2d_sincos_pos_embedding(h: int, w: int, dim: int,
 
 
 class SnakePPONet(nn.Module):
-    """PPO network with attention-based global reasoning and head-anchored policy.
+    """PPO network with attention-based global reasoning, head-anchored policy,
+    and a parallel conv-pool path for shape awareness.
 
     Compatible drop-in replacement for the previous SnakePPONet: same input dict
     keys, same NUM_ACTIONS / ACTION_FEAT_DIM constants used by the trainer.
     """
 
     NUM_ACTIONS = 4
-    ACTION_FEAT_DIM = 2  # margin_frac. Bump this if you add Voronoi deltas etc.
+    ACTION_FEAT_DIM = 1  # margin_frac. Bump this if you add Voronoi deltas etc.
 
     # Architecture hyperparameters
     EMBED_DIM = 128
     NUM_HEADS = 4
     NUM_TRANSFORMER_LAYERS = 2
     FFN_MULT = 2
+
+    # Conv-pool (shape-awareness) path: three stride-2 convs reduce channels
+    # 128 -> 64 -> 32 -> 16, then an adaptive pool fixes the spatial size to
+    # (SHAPE_OUT_SIZE, SHAPE_OUT_SIZE) regardless of input board dims.
+    SHAPE_OUT_CHANNELS = 16
+    SHAPE_OUT_SIZE = 4
+    # Final flattened dim of the shape feature: 16 * 4 * 4 = 256.
 
     # Channel index of the own-head one-hot in the input map.
     # Matches BaseStateBuilder._default_order: ['head', 'body', 'food', ...].
@@ -114,9 +127,27 @@ class SnakePPONet(nn.Module):
             num_layers=self.NUM_TRANSFORMER_LAYERS,
         )
 
+        # ---- Shape-aware conv-pool path ----
+        # Three stride-2 convs progressively downsample the trunk feature map
+        # while shrinking channel count. AdaptiveAvgPool2d at the end pins the
+        # spatial output size so the flatten dim is stable across board sizes.
+        self.shape_pool = nn.Sequential(
+            nn.Conv2d(self.EMBED_DIM, 64, kernel_size=3, stride=2, padding=1),
+            nn.GELU(),
+            nn.Conv2d(64, 32, kernel_size=3, stride=2, padding=1),
+            nn.GELU(),
+            nn.Conv2d(32, self.SHAPE_OUT_CHANNELS, kernel_size=3, stride=2, padding=1),
+            nn.GELU(),
+            nn.AdaptiveAvgPool2d((self.SHAPE_OUT_SIZE, self.SHAPE_OUT_SIZE)),
+        )
+        self.shape_dim = (
+            self.SHAPE_OUT_CHANNELS * self.SHAPE_OUT_SIZE * self.SHAPE_OUT_SIZE
+        )
+
         # ---- Policy head ----
-        # Per-action input: [head_feat (E), action_cell_feat (E), action_features (F)]
-        policy_in = self.EMBED_DIM * 2 + self.ACTION_FEAT_DIM
+        # Per-action input:
+        #   [head_feat (E), action_cell_feat (E), shape_feat (S), action_features (F)]
+        policy_in = self.EMBED_DIM * 2 + self.shape_dim + self.ACTION_FEAT_DIM
         self.policy_head = nn.Sequential(
             nn.Linear(policy_in, 128),
             nn.GELU(),
@@ -126,8 +157,10 @@ class SnakePPONet(nn.Module):
         )
 
         # ---- Value head ----
-        # Mean-pool global summary + ctx -> scalar value.
-        value_in = self.EMBED_DIM + ctx_dim
+        # Use the shape feature (preserves spatial structure) plus ctx. This
+        # replaces the previous mean-pool global summary, which threw away
+        # all spatial information.
+        value_in = self.shape_dim + ctx_dim
         self.value_head = nn.Sequential(
             nn.Linear(value_in, 256),
             nn.GELU(),
@@ -190,11 +223,19 @@ class SnakePPONet(nn.Module):
         tokens = tokens + pos.unsqueeze(0)
         tokens = self.transformer(tokens)            # (B, H*W, E)
 
-        # ---- Reshape back to spatial; pad by 1 so head-adjacent gathers are safe ----
+        # ---- Reshape back to spatial ----
         feat = tokens.transpose(1, 2).reshape(B, self.EMBED_DIM, H, W)
-        feat_padded = F.pad(feat, (1, 1, 1, 1))      # (B, E, H+2, W+2), zero pad
 
-        # ---- Head-anchored gather ----
+        # ---- Shape-aware conv-pool path ----
+        # Process the full feature map through strided convs to capture
+        # global shape and territory geometry. Output is fixed-size
+        # regardless of board dimensions.
+        shape_feat = self.shape_pool(feat).flatten(1)    # (B, shape_dim)
+
+        # ---- Targeted gathers ----
+        # Pad by 1 so head-adjacent action cells stay in bounds for
+        # head positions on the board edge.
+        feat_padded = F.pad(feat, (1, 1, 1, 1))      # (B, E, H+2, W+2), zero pad
         head_y, head_x = self._extract_head_pos(map_tensor)
         head_y_p = head_y + 1
         head_x_p = head_x + 1
@@ -212,16 +253,19 @@ class SnakePPONet(nn.Module):
         action_cell_feats = torch.stack(action_cell_feats_list, dim=1)
 
         # ---- Policy head ----
+        # head_feat and shape_feat are global w.r.t. the action choice — they
+        # don't depend on which direction we're scoring — so broadcast across A.
         head_feat_expanded = head_feat.unsqueeze(1).expand(B, A, self.EMBED_DIM)
+        shape_feat_expanded = shape_feat.unsqueeze(1).expand(B, A, self.shape_dim)
         policy_input = torch.cat(
-            [head_feat_expanded, action_cell_feats, action_features], dim=2
-        )                                                # (B, A, 2E + F)
+            [head_feat_expanded, action_cell_feats, shape_feat_expanded, action_features],
+            dim=2,
+        )                                                # (B, A, 2E + S + F)
         policy_input_flat = policy_input.reshape(B * A, -1)
         action_logits = self.policy_head(policy_input_flat).reshape(B, A)
 
         # ---- Value head ----
-        global_summary = tokens.mean(dim=1)              # (B, E)
-        value_input = torch.cat([global_summary, ctx], dim=1)
+        value_input = torch.cat([shape_feat, ctx], dim=1)
         values = self.value_head(value_input)            # (B, 1)
 
         return action_logits, values
@@ -229,5 +273,5 @@ class SnakePPONet(nn.Module):
 
 def model_factory(in_channels: int, ctx_dim: int) -> nn.Module:
     """Factory used by ppo_trainer / ppo_snake. Signature unchanged."""
-    log.info("Creating SnakePPONet (transformer) model")
+    log.info("Creating SnakePPONet (transformer + conv-pool) model")
     return SnakePPONet(in_channels, ctx_dim)
