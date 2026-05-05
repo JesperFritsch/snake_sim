@@ -164,11 +164,11 @@ def test_get_visitable_tiles(snake: SnakeBase, s_map, center_coord):
     print(f"Visitable tiles from {center_coord}: {visitable_tiles}")
 
 
-def test_spatial_network_ablation(snake: SnakeBase, s_map, food_locations: List[Coord] = None):
+def test_spatial_network_ablation(snake: SnakeBase, s_map: np.ndarray, step_state: CompleteStepState):
     """
     Run spatial ablation analysis using the already created snake, matching the style of other test functions.
     """
-    env_step_data = EnvStepData(s_map, {}, food_locations)
+    env_step_data = EnvStepData(s_map, {s_id: {"is_alive": step_state.snake_alive[s_id], "length": len(step_state.snake_bodies[s_id])} for s_id in step_state.snake_alive}, step_state.food)
     rl_state = snake._get_state(env_step_data)
     # Sanity-check and build tensors
     print("RL state map shape:", rl_state.map.shape)
@@ -280,11 +280,11 @@ def run_tests(
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_step_data.food_value, Coord(58, 61))
     # test_get_visitable_tiles(snake, s_map, snake._head_coord)
-    # test_spatial_network_ablation(snake, s_map, step_state.food)
+    test_spatial_network_ablation(snake, s_map, step_state)
     # test_area_funcs(snake, s_map)
     # test_get_dist_to_tile(snake, s_map, snake._body_coords[-1])
     # test_get_dist_to_tile_with_value(snake, s_map, snake._body_value)
-    test_check_rewards(prev_s_map, prev_state, s_map, step_state)
+    # test_check_rewards(prev_s_map, prev_state, s_map, step_state)
     pass
 
 
@@ -364,7 +364,7 @@ if __name__ == "__main__":
     enable_debug_for('_get_food_dir')
     enable_debug_for('_best_first_search')
 
-    snake_id = 2
+    snake_id = 0
     prev_s_map = create_map(prev_state, prev_snake_reps)
     s_map = create_map(step_state, snake_reps)
     next_s_map = create_map(next_state, next_snake_reps)

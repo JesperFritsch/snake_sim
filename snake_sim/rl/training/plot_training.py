@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from snake_sim.rl.snapshot_manager import SNAPSHOT_BASE_DIR
 
-snapshot_dir = "new_arch_voronoi_higher"  
+snapshot_dir = "new_arch_again_voronoi2_adjusted_rewards"  
 stats_file = ""
 
 if not stats_file:
@@ -11,8 +11,9 @@ if not stats_file:
 else:
     df = pd.read_csv(Path("/home/jesper/Downloads/training_stats.csv"))
 
-OUTPUT_DIR = Path("/home/jesper/Downloads")
-ROLLING_WINDOW = 200
+OUTPUT_DIR = Path().home() / "Downloads" / "training_plots" / snapshot_dir
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+ROLLING_WINDOW = 2000
 
 def rolling(col, scale=1.0):
     if col in df.columns:
@@ -79,6 +80,47 @@ plt.ylabel('Loss')
 plt.legend()
 plt.title('Losses (Running Average)')
 plt.savefig(OUTPUT_DIR / 'losses.png', dpi=150, bbox_inches='tight')
+plt.close()
+
+
+# --- Critic health: are predictions tracking returns? ---
+plt.figure(figsize=(12, 6))
+plt.plot(df['update'], rolling('explained_variance'), label='Explained Variance')
+plt.axhline(0, color='gray', linestyle=':', alpha=0.5)
+plt.axhline(1, color='gray', linestyle=':', alpha=0.5)
+plt.xlabel('Update')
+plt.ylabel('Explained Variance')
+plt.title('Critic Quality (1 = perfect, 0 = mean baseline, negative = worse)')
+plt.legend()
+plt.savefig(OUTPUT_DIR / 'critic_health.png', dpi=150, bbox_inches='tight')
+plt.close()
+
+# --- Update dynamics: is the policy actually moving? ---
+fig, ax1 = plt.subplots(figsize=(12, 6))
+ax1.plot(df['update'], rolling('approx_kl'), label='Approx KL', color='C0')
+ax1.plot(df['update'], rolling('ratio_std'), label='Ratio Std', color='C1')
+ax1.set_xlabel('Update')
+ax1.set_ylabel('KL / Ratio Std')
+ax1.legend(loc='upper left')
+
+ax2 = ax1.twinx()
+ax2.plot(df['update'], rolling('clipfrac'), label='Clipfrac', color='C2', linestyle='--')
+ax2.set_ylabel('Clipfrac')
+ax2.legend(loc='upper right')
+
+plt.title('Update Dynamics (is the policy moving?)')
+plt.savefig(OUTPUT_DIR / 'update_dynamics.png', dpi=150, bbox_inches='tight')
+plt.close()
+
+# --- Behavior rates (rate-normalized, not raw counts) ---
+plt.figure(figsize=(12, 6))
+plt.plot(df['update'], rolling('foods_per_1k_steps'), label='Foods / 1k steps')
+plt.plot(df['update'], rolling('traps_per_1k_steps', scale=100), label='Traps / 1k steps')
+plt.xlabel('Update')
+plt.ylabel('Events per 1k steps')
+plt.title('Behavior Rates')
+plt.legend()
+plt.savefig(OUTPUT_DIR / 'behavior_rates.png', dpi=150, bbox_inches='tight')
 plt.close()
 
 print(f"Plots saved to {OUTPUT_DIR}")

@@ -15,6 +15,18 @@ from snake_sim.cpp_bindings.utils import (
     voronoi_maps
 )
 
+FOOD_TO_TRAPS_RATIO = 10  # Relative value of eating food vs contributing to a trap (tune based on training dynamics)
+
+EAT_FOOD_REWARD = 0.3
+APPROACH_FOOD_REWARD = 0.01
+MOVE_AWAY_FROM_FOOD_PENALTY = -0.01
+SURVIVAL_REWARD = -0.01  # Small per-step penalty to encourage efficient food-seeking
+DEATH_PENALTY = -5.0  # Penalty for dying
+TRAPPING_REWARD = FOOD_TO_TRAPS_RATIO * EAT_FOOD_REWARD  # Reward for contributing to trapping (proportional to food reward)
+LAST_STANDING_REWARD = 0.05  # Per-step reward for being the last snake alive (encourages survival to episode end)
+SURVIVAL_CHANCE_PENALTY = -0.1  # Penalty for being in a position with no escape (trapped
+VORONOI_REWARD_SCALE = 0.005  # Scale for Voronoi control reward to keep it as a minor component of the overall reward signal
+
 
 def get_voronoi_results(state: CompleteStepState, map: np.ndarray) -> Dict[int, int]:
     """Get Voronoi map results for each snake."""
@@ -108,7 +120,7 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
             food_dist2 = None
         is_last_standing = all(
             not alive for other_id, alive in state2.snake_alive.items() if other_id != s_id
-        ) and False
+        )
         last_standing_reward_value = last_standing_reward(is_last_standing)
         survival_chance_reward = _survival_chance_reward(best_area_checks.get(s_id))
         food_reward = _food_approach_reward(food_dist1, food_dist2)
@@ -161,18 +173,16 @@ def _food_approach_reward(dist1: float | None, dist2: float | None) -> float:
     if dist1 is None or dist2 is None:
         return 0.0
     if dist2 < dist1:
-        return 0.05  # ← INCREASED: was 0.05. Strong signal to seek food!
+        return APPROACH_FOOD_REWARD
     elif dist2 > dist1:
-        return -0.1  # Penalty for moving away from food
+        return MOVE_AWAY_FROM_FOOD_PENALTY  # Penalty for moving away from food
     else:
-        return -0.01  # no change
+        return MOVE_AWAY_FROM_FOOD_PENALTY  # no change
 
 
 def _food_eat_reward(ate_food: bool) -> float:
     """Eating food is the primary success signal."""
-    if ate_food:
-        return 3.0  # ← RESTORED: was 1.0. This is the goal!
-    return 0.0  # did not eat food
+    return EAT_FOOD_REWARD if ate_food else 0.0  # No penalty for not eating, just no reward
 
 
 def _survival_chance_reward(area_check: AreaCheckResult) -> float:
@@ -180,29 +190,24 @@ def _survival_chance_reward(area_check: AreaCheckResult) -> float:
     if area_check is not None and area_check.margin >= 0:
         return 0.0  # ← Small bonus for safe positioning (was 0.0)
     else:
-        return -0.5  # Moderate penalty for entering trapped positions
+        return SURVIVAL_CHANCE_PENALTY  # Moderate penalty for entering trapped positions
 
 
 def trapping_reward(is_trapping_contributor: bool) -> float:
     """Reward for contributing to trapping an opponent."""
     if is_trapping_contributor:
-        return 5.0  # Reward for contributing to trapping (proportional to food reward)
+        return TRAPPING_REWARD  # Reward for contributing to trapping (proportional to food reward)
     return 0.0
 
 def last_standing_reward(is_last_standing: bool) -> float:
     """ Reward per step for being the last snake alive. """
     if is_last_standing:
-        return 1.0  # ← RESTORED: was 5.0. Encourage survival to episode end.
+        return LAST_STANDING_REWARD  # ← RESTORED: was 5.0. Encourage survival to episode end.
     return 0.0
 
 def _survival_reward(still_alive: bool) -> float:
     """Small per-step survival bonus to encourage longer episodes."""
-    if not still_alive:
-        # Death penalty only if dead
-        return -5.0  # Death penalty - meaningful but not overwhelming
-    else:
-        # Small per-step cost encourages efficient food-seeking over passive survival
-        return -0.01
+    return DEATH_PENALTY if not still_alive else SURVIVAL_REWARD
 
 def _voronoi_control_reward(prev_voronoi: Dict[int, int], curr_voronoi: Dict[int, int], s_id: int) -> float:
     """Reward for increasing Voronoi control (number of tiles closer to snake than any other)."""
@@ -215,4 +220,4 @@ def _voronoi_control_reward(prev_voronoi: Dict[int, int], curr_voronoi: Dict[int
     if debug.is_debug_active():
         print(f"Voronoi for snake {s_id}: prev_self={prev_voronoi.get(s_id, 0)}, curr_self={curr_voronoi.get(s_id, 0)}, prev_others_sum={sum(v for other_id, v in prev_voronoi.items() if other_id != s_id)}, curr_others_sum={sum(v for other_id, v in curr_voronoi.items() if other_id != s_id)}")
         print(f"Voronoi control (phi) for snake {s_id}: prev={phi_prev}, curr={phi_curr}, delta={phi_curr - phi_prev}")
-    return 0.01 * (phi_curr - phi_prev)  # Scale down to keep as a minor component of the reward signal
+    return VORONOI_REWARD_SCALE * (phi_curr - phi_prev)  # Scale down to keep as a minor component of the reward signal
