@@ -200,6 +200,7 @@ class SnapshotManager:
         *,
         policy_state: bool = True,
         optimizers: Optional[Dict[str, torch.optim.Optimizer]] = None,
+        extras: Optional[dict] = None,  
     ) -> Path:
         """Save a snapshot for hot-reload and optionally archive a copy every N steps.
 
@@ -217,6 +218,8 @@ class SnapshotManager:
             for name, opt in optimizers.items():
                 payload[f'optimizer_{name}'] = opt.state_dict()
 
+        if extras is not None:
+            payload['extras'] = extras
         # Save latest (hot-reload target)
         latest_path = atomic_save(payload, self.dir, self.base_name, step=step)
 

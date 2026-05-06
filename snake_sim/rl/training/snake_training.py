@@ -59,7 +59,7 @@ def setup_training_loop(config: RLTrainingConfig, snapshot_dir: str = None, tran
             0)
     snake_env.set_food_handler(food_handler)
     snake_handler = SnakeHandler()
-    add_snakes(snake_env, snake_handler, snapshot_dir, ppo_count=config.nr_snakes)
+    add_snakes(snake_env, snake_handler, snapshot_dir, ppo_count=config.nr_snakes, opponent_count=config.algo_snakes)
     training_loop = RLTrainingLoop(config, transition_queue=transition_queue)
     training_loop.set_environment(snake_env)
     training_loop.set_snake_handler(snake_handler)
@@ -96,10 +96,7 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
         count=max(1, ppo_count)
     )
     regular_snakes = snake_factory.create_many_snakes(
-        snake_config=SnakeConfig(
-            type='survivor',
-            strategies={1: StrategyConfig(type='food_seeker')}
-        ),
+        snake_config=SnakeConfig.from_dict(default_config.snake_config),
         count=max(0, opponent_count)
     )
     for snake in ppo_snakes + regular_snakes:

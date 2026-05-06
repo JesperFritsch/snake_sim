@@ -47,7 +47,9 @@ def get_voronoi_results(state: CompleteStepState, map: np.ndarray) -> Dict[int, 
 
 def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
                 state_map2: tuple[CompleteStepState, np.ndarray],
-                snake_ids: set[int]) -> tuple[dict[int, float], dict[int, dict[str, float]]]:
+                snake_ids: set[int],
+                alive_snake_ids: set[int],
+    ) -> tuple[dict[int, float], dict[int, dict[str, float]]]:
     """ Computes rewards for each snake between two states.
     """
     state1, map1 = state_map1
@@ -64,7 +66,7 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
     ids_to_check = set([id for id, alive in state1.snake_alive.items() if alive])
     best_area_checks = get_best_area_checks(area_checkers, state2, map2, ids_to_check)
 
-    traps_set = find_traps(state1, state2, map1, map2, snake_ids) if len(snake_ids) > 1 else set()
+    traps_set = find_traps(state1, state2, map1, map2, alive_snake_ids) if len(alive_snake_ids) > 1 else set()
 
     curr_voronoi = get_voronoi_results(state2, map2)
     prev_voronoi = get_voronoi_results(state1, map1)

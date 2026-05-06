@@ -220,7 +220,8 @@ def test_check_rewards(
     rewards = compute_rewards(
         state_map1=(prev_state, prev_s_map),
         state_map2=(step_state, s_map),
-        snake_ids=set(step_state.env_meta_data.start_positions.keys())
+        snake_ids=set(step_state.env_meta_data.start_positions.keys()),
+        alive_snake_ids=set(s_id for s_id, alive in step_state.snake_alive.items() if alive)
     )
     print("Rewards:", rewards)
 

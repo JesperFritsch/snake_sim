@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from snake_sim.rl.snapshot_manager import SNAPSHOT_BASE_DIR
 
-snapshot_dir = "new_arch_again_voronoi2_adjusted_rewards"  
+snapshot_dir = "new_arch_vs_algo"  
 stats_file = ""
 
 if not stats_file:

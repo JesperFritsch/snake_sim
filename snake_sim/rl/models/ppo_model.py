@@ -79,7 +79,7 @@ class SnakePPONet(nn.Module):
     EMBED_DIM = 128
     NUM_HEADS = 4
     NUM_TRANSFORMER_LAYERS = 2
-    FFN_MULT = 2
+    FFN_MULT = 2  # was 2
 
     # Conv-pool (shape-awareness) path: three stride-2 convs reduce channels
     # 128 -> 64 -> 32 -> 16, then an adaptive pool fixes the spatial size to

@@ -145,7 +145,7 @@ class BaseStateBuilder:
             }
         )
 
-    def _normalize_heat_map(self, heat_map: np.ndarray) -> np.ndarray:
+    def _normalize_heat_map(self, heat_map: np.ndarray, env_meta: EnvMetaData) -> np.ndarray:
         """Normalize a heat map of integer distances to [0,1] float32.
 
         Distances are expected to be:
@@ -161,9 +161,17 @@ class BaseStateBuilder:
         """
         distances = np.asarray(heat_map, dtype=np.float32)
         unreachable = (distances < 0)
-        distances_norm = np.tanh(distances / 20)  # Scale factor controls compression aggressiveness
+        distances_norm = np.tanh(distances / 40)  # Scale factor controls compression aggressiveness
         distances_norm[unreachable] = 1.0
         return distances_norm.astype(np.float32)
+
+    # def _normalize_heat_map(self, heat_map: np.ndarray, env_meta: EnvMetaData) -> np.ndarray:
+    #     distances = np.asarray(heat_map, dtype=np.float32)
+    #     unreachable = (distances < 0)
+    #     max_dist = float(env_meta.width * env_meta.height) / 3  # heuristic scaling factor; adjust as needed based on typical distance ranges in your maps
+    #     distances_norm = np.clip(distances / max_dist, 0.0, 1.0)
+    #     distances_norm[unreachable] = 1.0
+    #     return distances_norm.astype(np.float32)
 
     def _create_food_dist_heat_map(self, env_meta: EnvMetaData, step_data: EnvStepData) -> np.ndarray:
         """Create a normalized food-distance channel.
@@ -183,7 +191,7 @@ class BaseStateBuilder:
             env_meta.food_value
         )
 
-        return self._normalize_heat_map(heat_map_array)
+        return self._normalize_heat_map(heat_map_array, env_meta)
     
     def _create_voronoi_maps(self, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> tuple[np.ndarray, np.ndarray]:
         """Create self and others voronoi area ownership and distance maps as additional channels.
@@ -221,8 +229,8 @@ class BaseStateBuilder:
     def _additional_channels(self, env_meta: EnvMetaData, step_data: EnvStepData, snake_ctx: SnakeContext) -> Dict[str, np.ndarray]:
         """Override to add more channels beyond the base ones."""
         self_voronoi_map, others_voronoi_map = self._create_voronoi_maps(env_meta, step_data, snake_ctx)
-        self_voronoi_map_norm = self._normalize_heat_map(self_voronoi_map)
-        others_voronoi_map_norm = self._normalize_heat_map(others_voronoi_map)
+        self_voronoi_map_norm = self._normalize_heat_map(self_voronoi_map, env_meta)
+        others_voronoi_map_norm = self._normalize_heat_map(others_voronoi_map, env_meta)
         return {
             "food_dist": self._create_food_dist_heat_map(env_meta, step_data),
             "self_voronoi_dist": self_voronoi_map_norm,

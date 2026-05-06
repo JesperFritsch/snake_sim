@@ -25,8 +25,9 @@ log = logging.getLogger(Path(__file__).stem)
 @dataclass
 class EnvConfig:
     num_envs: int
-    nr_ppo_snakes: int
     food_tiles: int
+    nr_ppo_snakes: int
+    nr_algo_snakes: int = 0
     training_maps: Optional[list[str | None]] = field(default_factory=lambda: [None])
     width: int = 32
     height: int = 32
@@ -52,6 +53,7 @@ def _actor_process_main(
     training_maps: Optional[list[str]],
     food_tiles: int,
     nr_snakes: int,
+    algo_snakes: int,
     out_queue,
 ):
     """Run one environment loop and push transitions to the learner over out_queue."""
@@ -64,6 +66,7 @@ def _actor_process_main(
         training_maps=training_maps,
         food_tiles=food_tiles,
         nr_snakes=nr_snakes,
+        algo_snakes=algo_snakes
     )
 
     queue = RLMetaDataQueue(queue=out_queue)
@@ -117,6 +120,7 @@ def main(cfg: MultiEnvConfig):
                     "training_maps": env_cfg.training_maps,
                     "food_tiles": env_cfg.food_tiles,
                     "nr_snakes": env_cfg.nr_ppo_snakes,
+                    "algo_snakes": env_cfg.nr_algo_snakes,
                     "out_queue": q,
                 },
                 daemon=True,
@@ -152,42 +156,96 @@ if __name__ == "__main__":
     # Keep logs readable when launched as a script.
     logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
     config = MultiEnvConfig(
-        snapshot_dir="new_arch_again_voronoi2_adjusted_rewards_again",
+        snapshot_dir="new_arch_vs_algo",
+        # env_config=[
+        #     EnvConfig(
+        #         num_envs=1, 
+        #         nr_ppo_snakes=5, 
+        #         food_tiles=5
+        #     ),
+        #     EnvConfig(
+        #         num_envs=2, 
+        #         nr_ppo_snakes=5, 
+        #         food_tiles=10
+        #     ),
+        #     EnvConfig(
+        #         num_envs=1, 
+        #         nr_ppo_snakes=5, 
+        #         food_tiles=20
+        #     ),
+        #     EnvConfig(
+        #         num_envs=1, 
+        #         nr_ppo_snakes=10, 
+        #         food_tiles=5
+        #     ),
+        #     EnvConfig(
+        #         num_envs=2, 
+        #         nr_ppo_snakes=10, 
+        #         food_tiles=10
+        #     ),
+        #     EnvConfig(
+        #         num_envs=1, 
+        #         nr_ppo_snakes=10, 
+        #         food_tiles=20
+        #     ),
+        #     EnvConfig(
+        #         num_envs=2, 
+        #         nr_ppo_snakes=1, 
+        #         food_tiles=5, 
+        #         training_maps=[
+        #             "comps",
+        #             "lil_sign",
+        #             "face",
+        #             "patterns",
+        #             "quarters",
+        #             "wavy",
+        #             "tricky",
+        #             "items",
+        #             # None
+        #         ]
+        #     ),
+        # ],
         env_config=[
             EnvConfig(
-                num_envs=1, 
-                nr_ppo_snakes=5, 
+                num_envs=3, 
+                nr_ppo_snakes=1,
+                nr_algo_snakes=4, 
                 food_tiles=5
             ),
             EnvConfig(
-                num_envs=2, 
-                nr_ppo_snakes=5, 
-                food_tiles=10
-            ),
-            EnvConfig(
-                num_envs=1, 
-                nr_ppo_snakes=5, 
-                food_tiles=20
-            ),
-            EnvConfig(
-                num_envs=1, 
-                nr_ppo_snakes=10, 
-                food_tiles=5
-            ),
-            EnvConfig(
-                num_envs=2, 
-                nr_ppo_snakes=10, 
-                food_tiles=10
-            ),
-            EnvConfig(
-                num_envs=1, 
-                nr_ppo_snakes=10, 
-                food_tiles=20
-            ),
-            EnvConfig(
-                num_envs=2, 
+                num_envs=3, 
                 nr_ppo_snakes=1, 
-                food_tiles=5, 
+                nr_algo_snakes=4,
+                food_tiles=10
+            ),
+            EnvConfig(
+                num_envs=3, 
+                nr_ppo_snakes=1, 
+                nr_algo_snakes=4,
+                food_tiles=20
+            ),
+            EnvConfig(
+                num_envs=3, 
+                nr_ppo_snakes=1, 
+                nr_algo_snakes=9,
+                food_tiles=5
+            ),
+            EnvConfig(
+                num_envs=3, 
+                nr_ppo_snakes=1,
+                nr_algo_snakes=9, 
+                food_tiles=10
+            ),
+            EnvConfig(
+                num_envs=3, 
+                nr_ppo_snakes=1, 
+                nr_algo_snakes=9,
+                food_tiles=20
+            ),
+            EnvConfig(
+                num_envs=3, 
+                nr_ppo_snakes=1, 
+                food_tiles=10, 
                 training_maps=[
                     "comps",
                     "lil_sign",

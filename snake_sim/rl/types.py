@@ -84,6 +84,7 @@ class RLTrainingConfig:
     episodes: int
     food_tiles: int
     nr_snakes: int
+    algo_snakes: int = 0
     max_steps_per_episode: Optional[int] = None
     training_maps: list[str] = field(default_factory=list)
     max_no_food_steps: Optional[int] = None

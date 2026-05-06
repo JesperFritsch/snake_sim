@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 import snake_sim.debugging as debug
 from snake_sim.loop_observables.main_loop import SimLoop
+from snake_sim.rl.snakes.ppo_snake import PPOSnake
 from snake_sim.environment.types import LoopStepData
 from snake_sim.rl.environment.rl_snake_env import RLSnakeEnv
 from snake_sim.rl.training.rl_data_queue import RLPendingTransitCache, RLMetaDataQueue
@@ -55,8 +56,9 @@ class RLTrainingLoop(SimLoop):
     def _post_update(self):
         super()._post_update()
         current_pending_transitions = self._pending_transition_cache.get_transitions()
-        snake_ids = set(current_pending_transitions.keys())
-        if not snake_ids:
+        rl_snake_ids = set(current_pending_transitions.keys())
+        alive_snake_ids = set(self._env.get_state().snake_alive.keys())
+        if not rl_snake_ids:
             return
         current_sim_state = self._env.get_state()
         current_sim_map = self._env.get_map()
@@ -66,13 +68,18 @@ class RLTrainingLoop(SimLoop):
             rewards, reward_info = compute_rewards(
                 (self._prev_sim_state, self._prev_sim_map),
                 (current_sim_state, current_sim_map),
-                snake_ids,
+                rl_snake_ids,
+                alive_snake_ids=alive_snake_ids
             )   
             self._finalize_pending_transitions(current_pending_transitions, rewards, reward_info)
         self._prev_sim_state = current_sim_state
         self._prev_sim_map = current_sim_map
         self._previous_pending_transitions = current_pending_transitions
         self._pending_transition_cache.clear()
+
+        rl_snakes = [sid for sid, s in self._snake_handler.get_snakes().items() if isinstance(s, PPOSnake)]
+        if not any(self._env.snake_is_alive(snake_id) for snake_id in rl_snakes):
+            self.stop()
 
     def _finalize_pending_transitions(self, current_pending_transitions: dict[int, PendingTransition], rewards: dict[int, float], reward_info: dict[int, dict[str, float]]) -> dict[int, PendingTransition]:
         """Gathers pending transitions from all snakes in the environment.
