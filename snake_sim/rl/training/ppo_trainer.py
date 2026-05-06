@@ -26,15 +26,15 @@ log = logging.getLogger(Path(__file__).stem)
 class PPOTrainerConfig:
     gamma: float = 0.985
     lam: float = 0.95  # GAE lambda
-    clip_range: float = 0.1  # Slightly wider clip -> larger effective updates
+    clip_range: float = 0.2  # Slightly wider clip -> larger effective updates
     # Learning rates: the previous defaults produced near-zero policy updates
     # (ratio_std ~ 1e-4, clipfrac ~ 0). These values are still modest for PPO,
     # but should yield meaningfully non-zero updates.
-    policy_lr: float = 1e-4
+    policy_lr: float = 8e-5
     # Critic can become unstable fast in sparse/noisy-reward settings.
     # Keep value_lr lower than policy_lr unless you have very reliable return targets.
     value_lr: float = 4e-4
-    minibatch_size: int = 128  # More minibatches/rollout -> more gradient steps
+    minibatch_size: int = 256  # More minibatches/rollout -> more gradient steps
     rollout_size: int = 8192  # INCREASED - collect more before training (was 2048)
     train_epochs: int = 3  # More optimizer steps per rollout -> faster learning
     entropy_coef: float = 0.015  # Slightly lower entropy to reduce overly random updates
@@ -439,12 +439,42 @@ class PPOTrainer:
                 loaded_info = self._snapshot_manager._last_loaded
                 self._update_counter = loaded_info.step
                 log.debug(f"📁 Loaded snapshot from {loaded_info.path}, resuming from step {self._update_counter}")
-                # Also load optimizer states if available
+
+                # Reload the full payload to restore optimizer + extras.
                 data = torch.load(loaded_info.path, map_location=self.device)
                 if isinstance(data, dict):
-                    if 'optimizer' in data and self.optimizer:
-                        self.optimizer.load_state_dict(data['optimizer'])
-                        log.debug("📈 Restored optimizer state")
+                    # Optimizer state lives under 'optimizer_<name>' (see SnapshotManager.save).
+                    # The trainer uses a single optimizer named 'optimizer' → key 'optimizer_optimizer'.
+                    opt_key = 'optimizer_optimizer'
+                    if opt_key in data and self.optimizer:
+                        try:
+                            self.optimizer.load_state_dict(data[opt_key])
+                            log.info("📈 Restored optimizer state")
+                        except Exception as e:
+                            log.warning(f"Failed to restore optimizer state: {e}")
+
+                    # Restore trainer-side running stats (return normalization etc.)
+                    extras = data.get('extras')
+                    if isinstance(extras, dict):
+                        self._return_mean = float(extras.get('return_mean', self._return_mean))
+                        self._return_std = float(extras.get('return_std', self._return_std))
+                        self._return_count = int(extras.get('return_count', self._return_count))
+                        self._best_return = float(extras.get('best_return', self._best_return))
+                        self._updates_since_improvement = int(extras.get('updates_since_improvement', 0))
+                        self._exploration_boosted = bool(extras.get('exploration_boosted', False))
+                        # Note: don't override entropy_coef from extras unless desired —
+                        # the loaded value reflects past adaptive boosts that may not match
+                        # current config intent. Logged for visibility only.
+                        log.info(
+                            "📊 Restored stats: return_mean=%.3f std=%.3f count=%d best=%.3f",
+                            self._return_mean, self._return_std,
+                            self._return_count, self._best_return,
+                        )
+                    else:
+                        log.warning(
+                            "Snapshot has no 'extras' key — running stats reset. "
+                            "Expect transient instability for the first few rollouts."
+                        )
         except Exception as e:
             log.warning(f"Failed to load snapshot: {e}")
 
@@ -1232,10 +1262,20 @@ class PPOTrainer:
             return
         try:
             optimizers = {'optimizer': self.optimizer}
+            extras = {
+                'return_mean': float(self._return_mean),
+                'return_std': float(self._return_std),
+                'return_count': int(self._return_count),
+                'best_return': float(self._best_return),
+                'updates_since_improvement': int(self._updates_since_improvement),
+                'exploration_boosted': bool(self._exploration_boosted),
+                'entropy_coef': float(self.cfg.entropy_coef),
+            }
             path = self._snapshot_manager.save(
                 step=self._update_counter,
                 model=self.model,
-                optimizers=optimizers
+                optimizers=optimizers,
+                extras=extras
             )
             log.debug(f"Saved snapshot {path}")
             # Prune old snapshots (keep last 2)

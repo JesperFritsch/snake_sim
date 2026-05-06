@@ -65,7 +65,8 @@ while True:
             rewards, info = compute_rewards(
                 (prev_state, prev_map),
                 (current_state, current_map),
-                snake_ids
+                snake_ids,
+                alive_snake_ids=set(s_id for s_id, alive in current_state.snake_alive.items() if alive)
             )
             rewards_per_step[current_step_idx] = info
             prev_state = current_state
