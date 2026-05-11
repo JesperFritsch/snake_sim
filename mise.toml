@@ -6,7 +6,6 @@ _.python.venv = { path = ".venv", create = true, uv_create_args = ["--seed"] }
 
 [tasks.setup]
 run = """
-python -m pip install -U pip
-python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
-python -m pip install -e .
+uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
+uv pip install -e .
 """

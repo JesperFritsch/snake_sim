@@ -19,7 +19,6 @@ dependencies = [
     "numpy",
     "opencv-python",
     "pygame",
-    "pynput",
     "pybind11",
     "pyvirtualdisplay",
     "protobuf",
@@ -31,7 +30,6 @@ dependencies = [
     "bitarray",
     "networkx",
     "zstandard",
-    "watchdog",
     "prompt_toolkit",
     "scipy",
     "snake_proto_template @ git+https://github.com/JesperFritsch/snake_proto_template.git",
@@ -41,8 +39,12 @@ dependencies = [
 
 [project.optional-dependencies]
 ml = [
+    "watchdog",
     "torch",
     "torchvision",
+]
+game = [
+    "evdev",
 ]
 
 [project.scripts]

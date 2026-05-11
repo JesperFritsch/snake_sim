@@ -1,5 +1,7 @@
 import grpc
 import json
+import queue
+
 from snake_proto_template.python import remote_snake_pb2, remote_snake_pb2_grpc
 from snake_sim.environment.interfaces.snake_interface import ISnake
 from snake_sim.environment.types import Coord, EnvMetaData, EnvStepData
@@ -20,6 +22,9 @@ class GRPCProxySnake(ISnake):
         super().__init__()
         self.target = target
         self.timeout = timeout
+        self._send_queue = queue.Queue(maxsize=1)
+        self._response_iterator = None
+        self._stream_started = False
         self.channel = grpc.insecure_channel(target)
         self.stub = remote_snake_pb2_grpc.RemoteSnakeStub(self.channel)
         self._log = logging.getLogger(f"{self.__class__.__name__}-{target}")
@@ -35,9 +40,26 @@ class GRPCProxySnake(ISnake):
             self._log.error(f"Timeout waiting for connection to {self.target}")
             raise ConnectionError(f"Failed to connect to {self.target} within {self.timeout}s")
 
+    def _request_iterator(self):
+        while True:
+            try:
+                env_step_data_proto = self._send_queue.get()
+                if env_step_data_proto is None:
+                    break
+                yield env_step_data_proto
+            except Exception as e:
+                self._log.error(f"Error in request iterator: {e}")
+                break
+
+    def _start_update_stream(self):
+        if not self._stream_started:
+            self._response_iterator = self.stub.Update(self._request_iterator())
+            self._stream_started = True
+
     @handle_connection_loss
     def kill(self):
         super().kill()
+        self._send_queue.put(None)  # Signal the request iterator to stop
         self.stub.Kill(remote_snake_pb2.Empty())
         self.channel.close()
 
@@ -81,16 +103,21 @@ class GRPCProxySnake(ISnake):
     @handle_connection_loss
     def update(self, env_step_data: EnvStepData):
         # print(f"{self.target}: Updating")
+        self._start_update_stream()
         env_step_data_proto = remote_snake_pb2.EnvData(
             map=env_step_data.map.tobytes(),
             snakes={k: remote_snake_pb2.SnakeRep(is_alive=v["is_alive"], length=v["length"]) for k, v in env_step_data.snakes.items()},
             food_locations=[remote_snake_pb2.Coord(x=coord[0], y=coord[1]) for coord in env_step_data.food_locations] if env_step_data.food_locations else []
         )
-        response_iterator = self.stub.Update(iter([env_step_data_proto]))
-        for response in response_iterator:
-            if not response.HasField("direction"):
-                return None
-            return Coord(x=response.direction.x, y=response.direction.y)
+        self._send_queue.put(env_step_data_proto)
+        try:
+            response = next(self._response_iterator)
+        except StopIteration:
+            self._log.error(f"Update stream closed by server {self.target}")
+            raise ConnectionError(f"Connection to {self.target} lost during update")
+        if not response.HasField("direction"):
+            return None
+        return Coord(x=response.direction.x, y=response.direction.y)
 
 
     def __reduce__(self):

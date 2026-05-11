@@ -3,26 +3,13 @@ import math
 
 from snake_sim.environment.interfaces.snake_strategy_interface import ISnakeStrategy
 from snake_sim.environment.types import StrategyConfig, Coord
-from snake_sim.snakes.input.input_provider_interface import IInputProvider
 
-from snake_sim.snakes.input.input_utils import create_input_provider, AvailableInput
-from snake_sim.snakes.input.evdev_pointer_provider import EvdevPointerProvider
-from snake_sim.snakes.input.evdev_key_provider import EvdevKeyProvider
-import evdev.ecodes as ec
+from snake_sim.snakes.input.input_utils import create_input_provider
 
 
 class ManualStrategy(ISnakeStrategy):
     def __init__(self, strategy_config: StrategyConfig):
         super().__init__(strategy_config)
-        # # self._input_provider = EvdevPointerProvider(device_path="/dev/input/event16")
-        
-        # self._input_provider = EvdevKeyProvider(device_path="/dev/input/event3", key_mapping={
-        #     ec.KEY_UP: (0, -1),
-        #     ec.KEY_RIGHT: (1, 0),
-        #     ec.KEY_DOWN: (0, 1),
-        #     ec.KEY_LEFT: (-1, 0)
-        # })
-        print(strategy_config)
         self._input_provider = create_input_provider(
             strategy_config.params["input_config"]
         )
