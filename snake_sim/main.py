@@ -39,7 +39,7 @@ def main():
         with open(cfg_path) as config_file:
             config = DotDict(json.load(config_file))
         config = cli(argv, config)
-        setup_logging(config.log_level)
+        setup_logging(config.log_level, config.log_dir)
 
         loop_repeater: ILoopObservable = None
         mp_ctx = mp.get_context("spawn")

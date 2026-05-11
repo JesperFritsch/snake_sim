@@ -96,6 +96,7 @@ def cli(argv):
     m_group.add_argument('-c', '--snake-config-name', type=str, help='Name of snake config to use from default configs.')
     m_group.add_argument('-m', '--snake-module-file', type=str, help='Path to snake module for importing snake class')
     parser.add_argument('--log-level', type=str, default='INFO', help='Logging level')
+    parser.add_argument('--log-dir', type=Path, help='Directory to store log files', default=Path(__file__).parent / 'logs')
     args = parser.parse_args(argv)
     return args
 
@@ -106,10 +107,11 @@ def serve(
         snake_config_name=None,
         snake_config: SnakeConfig=None,
         stop_flag: Optional[Synchronized] = None,
-        log_level=logging.INFO):
+        log_level=logging.INFO,
+        log_dir=None):
     # set up logging if on Windows
     if not logging.getLogger().hasHandlers():
-        setup_logging(log_level)
+        setup_logging(log_level, log_dir)
 
 
     log = logging.getLogger(f"{target}")
@@ -155,10 +157,11 @@ def serve(
 
 if __name__ == '__main__':
     args = cli(sys.argv[1:])
-    setup_logging(args.log_level)
+    setup_logging(args.log_level, args.log_dir)
     serve(
         args.target, 
         args.snake_module_file, 
         snake_config_name=args.snake_config_name,
-        log_level=args.log_level
+        log_level=args.log_level,
+        log_dir=args.log_dir
     )
