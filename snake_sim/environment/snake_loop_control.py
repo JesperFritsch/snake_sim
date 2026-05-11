@@ -242,7 +242,7 @@ def setup_loop(config) -> SnakeLoopControl:
 
 def start_loop(config: DotDict, stop_flag: Synchronized, ipc_observer_pipe=None):
     if not logging.getLogger().hasHandlers():
-        setup_logging(config.log_level)
+        setup_logging(config.log_level, config.log_dir)
     loop_control = setup_loop(config)
     if ipc_observer_pipe:
         loop_control.add_observer(IPCRepeaterObserver(ipc_observer_pipe))
