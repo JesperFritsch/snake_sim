@@ -6,9 +6,11 @@ import grpc
 import argparse
 import sys
 import time
+import json
 import numpy as np
 
 from pathlib import Path
+from importlib import resources
 from concurrent import futures
 from typing import Optional
 from multiprocessing.sharedctypes import Synchronized
@@ -16,6 +18,7 @@ from multiprocessing.sharedctypes import Synchronized
 from snake_proto_template.python import remote_snake_pb2, remote_snake_pb2_grpc
 from snake_sim.snakes.snake_base import ISnake
 from snake_sim.environment.types import Coord, EnvMetaData, EnvStepData, SnakeConfig
+from snake_sim.environment.snake_factory import SnakeFactory
 from snake_sim.logging_setup import setup_logging
 
 import logging
@@ -89,7 +92,9 @@ def import_snake_module(snake_module_file):
 def cli(argv):
     parser = argparse.ArgumentParser("Remote Snake Server")
     parser.add_argument('-t', '--target', type=str, required=True, help='Server address or socket path to bind to')
-    parser.add_argument('-m', '--snake_module_file', type=str, required=True, default=None, help='Path to snake module for importing snake class')
+    m_group = parser.add_mutually_exclusive_group(required=True)
+    m_group.add_argument('-c', '--snake-config-name', type=str, help='Name of snake config to use from default configs.')
+    m_group.add_argument('-m', '--snake-module-file', type=str, help='Path to snake module for importing snake class')
     parser.add_argument('--log-level', type=str, default='INFO', help='Logging level')
     args = parser.parse_args(argv)
     return args
@@ -98,6 +103,7 @@ def cli(argv):
 def serve(
         target,
         snake_module_file=None,
+        snake_config_name=None,
         snake_config: SnakeConfig=None,
         stop_flag: Optional[Synchronized] = None,
         log_level=logging.INFO):
@@ -109,16 +115,17 @@ def serve(
     log = logging.getLogger(f"{target}")
 
     try:
-        if not bool(snake_module_file) ^ bool(snake_config):
+        if not bool(snake_module_file) ^ bool(snake_config) and not snake_config_name:
             raise ValueError("Either snake_module_file or snake_config must be provided, but not both and not neither")
 
         if snake_module_file:
             snake_module = import_snake_module(snake_module_file)
             snake_instance = snake_module.MySnake()
-
-        elif snake_config:
-            # Only import here to avoid letting snake_module_file see our environment and code.
-            from snake_sim.environment.snake_factory import SnakeFactory
+        else:
+            if snake_config_name:
+                with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
+                    default_config = json.load(config_file)
+                    snake_config = SnakeConfig.from_dict(default_config[snake_config_name])
             factory = SnakeFactory()
             snake_instance = factory.create_snake(
                 snake_config=snake_config
@@ -149,4 +156,9 @@ def serve(
 if __name__ == '__main__':
     args = cli(sys.argv[1:])
     setup_logging(args.log_level)
-    serve(args.target, args.snake_module_file, log_level=args.log_level)
+    serve(
+        args.target, 
+        args.snake_module_file, 
+        snake_config_name=args.snake_config_name,
+        log_level=args.log_level
+    )

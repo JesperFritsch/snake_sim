@@ -23,7 +23,7 @@ from snake_sim.loop_observers.file_persist_observer import FilePersistObserver
 from snake_sim.loop_observers.waitable_observer import WaitableObserver
 from snake_sim.render.render_loop import RenderLoop, RenderConfig
 from snake_sim.render.renderer_factory import renderer_factory
-from snake_sim.snakes.input.input_utils import setup_player_input, InputConfig
+from snake_sim.snakes.input.input_utils import setup_player_input
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
