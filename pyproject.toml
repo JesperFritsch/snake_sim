@@ -33,7 +33,6 @@ dependencies = [
     "prompt_toolkit",
     "scipy",
     "snake_proto_template @ git+https://github.com/JesperFritsch/snake_proto_template.git",
-    "evdev",
     "questionary",
 ]
 
