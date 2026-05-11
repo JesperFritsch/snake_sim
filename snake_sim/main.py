@@ -106,9 +106,6 @@ def main():
 
     except KeyboardInterrupt:
         pass
-    except Exception as e:
-        log.error(e)
-        log.debug("TRACE: ", exc_info=True)
     finally:
         try:
             stop_flag.value = True

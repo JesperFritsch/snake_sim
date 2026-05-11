@@ -13,28 +13,6 @@ from snake_sim.snakes.input.evdev_key_provider import EvdevKeyProvider
 from snake_sim.snakes.input.evdev_gamepad_provider import EvdevGamepadProvider
 
 
-PRECONFIGURED_KEY_MAPPINGS = {
-    "Arrow keys": {
-        ec.KEY_UP: (0, -1),
-        ec.KEY_RIGHT: (1, 0),
-        ec.KEY_DOWN: (0, 1),
-        ec.KEY_LEFT: (-1, 0),
-    },
-    "WASD": {
-        ec.KEY_W: (0, -1),
-        ec.KEY_D: (1, 0),
-        ec.KEY_S: (0, 1),
-        ec.KEY_A: (-1, 0),
-    },
-    "IJKL": {
-        ec.KEY_I: (0, -1),
-        ec.KEY_L: (1, 0),
-        ec.KEY_K: (0, 1),
-        ec.KEY_J: (-1, 0),
-    },
-}
-
-
 class InputType(Enum):
     POINTER = "pointer"
     GAMEPAD = "gamepad"
@@ -161,6 +139,28 @@ def create_input_provider(input_config: InputConfig) -> IInputProvider:
 
 def _pick_key_mapping(used_mappings: set) -> tuple[str, dict]:
     """Let the player pick a key mapping, excluding already-used ones."""
+
+    PRECONFIGURED_KEY_MAPPINGS = {
+        "Arrow keys": {
+            ec.KEY_UP: (0, -1),
+            ec.KEY_RIGHT: (1, 0),
+            ec.KEY_DOWN: (0, 1),
+            ec.KEY_LEFT: (-1, 0),
+        },
+        "WASD": {
+            ec.KEY_W: (0, -1),
+            ec.KEY_D: (1, 0),
+            ec.KEY_S: (0, 1),
+            ec.KEY_A: (-1, 0),
+        },
+        "IJKL": {
+            ec.KEY_I: (0, -1),
+            ec.KEY_L: (1, 0),
+            ec.KEY_K: (0, 1),
+            ec.KEY_J: (-1, 0),
+        },
+    }
+
     available = {
         name: mapping
         for name, mapping in PRECONFIGURED_KEY_MAPPINGS.items()
