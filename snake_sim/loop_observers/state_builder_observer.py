@@ -1,10 +1,15 @@
+import time
 
 from typing import Dict, List, Set, Deque
 from collections import deque
+
+from threading import Condition
+
 from snake_sim.environment.types import (
     LoopStartData,
     Coord,
     CompleteStepState,
+    LoopStepData,
     NoMoreSteps,
     CurrentIsFirst,
 )
@@ -20,6 +25,7 @@ class StateBuilderObserver(ConsumerObserver):
         self._snake_bodies: Dict[int, Deque] = {}
         self._current_step_idx = 0
         self._current_state: CompleteStepState = None
+        self._new_step_condition = Condition()
 
     def notify_start(self, start_data: LoopStartData):
         super().notify_start(start_data)
@@ -33,6 +39,22 @@ class StateBuilderObserver(ConsumerObserver):
         )
         for s_id, pos in init_data.start_positions.items():
             self._current_state.snake_bodies[s_id] = deque([pos])
+
+    def notify_step(self, step_data: LoopStepData):
+        super().notify_step(step_data)
+        with self._new_step_condition:
+            self._new_step_condition.notify_all()
+
+    def notify_stop(self, stop_data):
+        super().notify_stop(stop_data)
+        with self._new_step_condition:
+            self._new_step_condition.notify_all()
+
+    def _wait_for_state(self, idx: int):
+        with self._new_step_condition:
+            self._new_step_condition.wait_for(
+                lambda: len(self._steps) > idx or self._stop_data is not None
+            )
 
     def reset(self):
         self._snake_bodies.clear()
@@ -51,7 +73,6 @@ class StateBuilderObserver(ConsumerObserver):
         return self._current_step_idx
 
     def get_current_state(self) -> CompleteStepState:
-        self._current_state.food = set(map(lambda f: Coord(*f), self._current_state.food))
         return self._current_state.copy()
 
     def get_next_state(self) -> CompleteStepState:
@@ -83,6 +104,7 @@ class StateBuilderObserver(ConsumerObserver):
         self._current_state.snake_alive.update(step_data.alive_states)
         self._current_state.food.update(step_data.new_food)
         self._current_state.food.difference_update(step_data.removed_food)
+        self._current_state.food = set(map(lambda f: Coord(*f), self._current_state.food))
         for s_id, dir in step_data.decisions.items():
             body = self._current_state.snake_bodies[s_id]
             new_head = body[0] + dir
@@ -101,6 +123,7 @@ class StateBuilderObserver(ConsumerObserver):
         self._current_state.snake_alive.update(curr_step_data.alive_states)
         self._current_state.food.difference_update(curr_step_data.new_food)
         self._current_state.food.update(curr_step_data.removed_food)
+        self._current_state.food = set(map(lambda f: Coord(*f), self._current_state.food))
         for s_id, tail_dir in curr_step_data.tail_directions.items():
             body = self._current_state.snake_bodies[s_id]
             popped_tile = body.popleft()
@@ -109,3 +132,13 @@ class StateBuilderObserver(ConsumerObserver):
                 old_tail = body[-1] - tail_dir if len(body) > 1 else popped_tile - tail_dir
                 body.append(old_tail)
 
+    def __iter__(self):
+        state_counter = 0
+        while True:
+            try:
+                yield self.get_state(state_counter)
+                state_counter += 1
+            except NoMoreSteps:
+                self._wait_for_state(state_counter)
+            except StopIteration:
+                return
