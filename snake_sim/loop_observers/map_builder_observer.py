@@ -1,9 +1,11 @@
 
-
+import time
 import numpy as np
 
 from typing import Dict, List
 from itertools import permutations
+
+from threading import Condition
 
 from snake_sim.environment.types import (
     LoopStartData,
@@ -30,6 +32,7 @@ class MapBuilderObserver(ConsumerObserver):
         self._current_map: np.ndarray = None
         self._current_map_idx = 0
         self._backing = False
+        self._new_step_condition = Condition()
 
     def notify_start(self, start_data: LoopStartData):
         super().notify_start(start_data)
@@ -41,6 +44,22 @@ class MapBuilderObserver(ConsumerObserver):
             self._ex_tail_coords[s_id] = s_pos
             self._head_coords[s_id] = pos
             self._current_map[s_pos.y, s_pos.x] = init_data.snake_values[s_id]['head_value']
+
+    def notify_step(self, step_data: LoopStepData):
+        super().notify_step(step_data)
+        with self._new_step_condition:
+            self._new_step_condition.notify_all()
+
+    def notify_stop(self, stop_data):
+        super().notify_stop(stop_data)
+        with self._new_step_condition:
+            self._new_step_condition.notify_all()
+
+    def _wait_for_step(self, idx: int):
+        with self._new_step_condition:
+            self._new_step_condition.wait_for(
+                lambda: len(self._steps) > idx or self._stop_data is not None
+            )
 
     def reset(self):
         self._current_map = None
@@ -188,3 +207,16 @@ class MapBuilderObserver(ConsumerObserver):
             for food in step_data.removed_food:
                 ex_food = self._ex_coord(food)
                 self._current_map[ex_food.y, ex_food.x] = init_data.food_value
+
+
+    def __iter__(self):
+        yield self.get_current_map()
+        while True:
+            try:
+                self._goto_next_map()
+            except NoMoreSteps:
+                time.sleep(0.001)
+                continue
+            except StopIteration:
+                return
+            yield self.get_current_map()
