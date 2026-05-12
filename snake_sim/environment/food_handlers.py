@@ -36,7 +36,7 @@ class FoodHandler(IFoodHandler):
         empty_tiles = get_locations(s_map, config.free_value, self.width, self.height)
         for _ in range(self.max_food - len(self.locations)):
             if empty_tiles:
-                new_food = random.choice(empty_tiles)
+                new_food = Coord(*random.choice(empty_tiles))
                 empty_tiles.remove(new_food)
                 self.add_new(new_food)
                 self.new_food.append(new_food)
