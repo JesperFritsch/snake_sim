@@ -3,6 +3,7 @@ import numpy as np
 import struct
 import logging
 import pickle
+import os
 
 from functools import wraps
 from pathlib import Path
@@ -97,6 +98,8 @@ class ProtoRunFileHandler(IRunFileHandler):
         logging.info(f"Writing run file to '{self._filepath}'")
         with open(self._filepath, "wb") as f:
             f.write(run_record.SerializeToString())
+            f.flush()
+            os.fsync(f.fileno())
 
     def _coord_to_proto(self, coord: Coord) -> run_proto.Coord:
         p = run_proto.Coord()
