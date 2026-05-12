@@ -55,7 +55,7 @@ class MapBuilderObserver(ConsumerObserver):
         with self._new_step_condition:
             self._new_step_condition.notify_all()
 
-    def _wait_for_step(self, idx: int):
+    def _wait_for_map(self, idx: int):
         with self._new_step_condition:
             self._new_step_condition.wait_for(
                 lambda: len(self._steps) > idx or self._stop_data is not None
@@ -210,13 +210,13 @@ class MapBuilderObserver(ConsumerObserver):
 
 
     def __iter__(self):
-        yield self.get_current_map()
+        state_counter = 0
+        self._wait_for_map(state_counter)
         while True:
             try:
-                self._goto_next_map()
+                yield self.get_map(state_counter)
+                state_counter += 1
             except NoMoreSteps:
-                time.sleep(0.001)
-                continue
+                self._wait_for_map(state_counter)
             except StopIteration:
                 return
-            yield self.get_current_map()
