@@ -134,6 +134,7 @@ class StateBuilderObserver(ConsumerObserver):
 
     def __iter__(self):
         state_counter = 0
+        self._wait_for_state(state_counter)
         while True:
             try:
                 yield self.get_state(state_counter)
