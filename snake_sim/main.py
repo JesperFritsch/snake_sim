@@ -21,6 +21,7 @@ from snake_sim.loop_observers.map_builder_observer import MapBuilderObserver
 from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
 from snake_sim.loop_observers.file_persist_observer import FilePersistObserver
 from snake_sim.loop_observers.waitable_observer import WaitableObserver
+from snake_sim.loop_observers.socket_observer import SocketObserver
 from snake_sim.render.render_loop import RenderLoop, RenderConfig
 from snake_sim.render.renderer_factory import renderer_factory
 from snake_sim.snakes.input.input_utils import setup_player_input
@@ -51,9 +52,16 @@ def main():
         elif config.command in ["compute", "game"]:
             parent_conn, child_conn = mp_ctx.Pipe()
             loop_repeater = IPCRepeaterObservable(child_conn)
+
             if not config.no_record:
                 file_persist = FilePersistObserver(store_dir=Path(config.record_dir), filename=config.record_file)
                 loop_repeater.add_observer(file_persist)
+
+            for addr in config.socket_observer:
+                host, port = addr.split(":")
+                socket_observer = SocketObserver(host=host, port=int(port))
+                loop_repeater.add_observer(socket_observer)
+
             loop_p = mp_ctx.Process(target=start_loop, args=(config, stop_flag), kwargs={'ipc_observer_pipe': parent_conn})
             if config.command == "game":
                 config.fps = -1
@@ -71,7 +79,6 @@ def main():
                     for input_c in input_configs
                 ]
             loop_p.start()
-            # Thread(target=loop_p.join).start()
 
         if not config.no_render:
             map_builder = MapBuilderObserver(config.expansion)

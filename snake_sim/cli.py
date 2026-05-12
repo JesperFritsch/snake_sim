@@ -20,13 +20,13 @@ class EnsureDirAction(argparse.Action):
         setattr(namespace, self.dest, path)
 
 def add_common_arguments(parser):
-    parser.add_argument('--no-record', action='store_true', help='Do not record the run', default=False)
-    parser.add_argument('--record-dir', type=Path, action=EnsureDirAction, help='where to put the recording file', default=Path(__file__).parent / 'runs')
-    parser.add_argument('--record-file', type=str, help='Name of the recording file', default="")
     parser.add_argument('--log-level', type=str, help='Logging level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO')
     parser.add_argument('--log-dir', type=Path, help='Directory to store log files', default=Path(__file__).parent / 'logs')
 
 def add_run_config_arguments(parser):
+    parser.add_argument('--no-record', action='store_true', help='Do not record the run', default=False)
+    parser.add_argument('--record-dir', type=Path, action=EnsureDirAction, help='where to put the recording file', default=Path(__file__).parent / 'runs')
+    parser.add_argument('--record-file', type=str, help='Name of the recording file', default="")
     parser.add_argument('--snake-count', type=int, help='Number of snakes to simulate')
     parser.add_argument('--grid-width', type=int, help='Width of the grid')
     parser.add_argument('--grid-height', type=int, help='Height of the grid')
@@ -40,6 +40,7 @@ def add_run_config_arguments(parser):
     parser.add_argument('--distributed-snakes', action="store_true", help='Run snakes in distributed mode, each snake in its own process', default=False)
     parser.add_argument('--rate-meter', action="store_true", help='Rate meter for steps per second for all snakes combined', default=False)
     parser.add_argument('--snake-config-key', type=str, help='key in the snake configuration dictionary to use for all snakes')
+    parser.add_argument('--socket-observer', type=str, action="append", help='Address to a socket observable like host:port', default=[])
 
 
 def add_playback_arguments(parser):
