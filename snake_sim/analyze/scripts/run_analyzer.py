@@ -322,15 +322,7 @@ def find_traps(
     return create_traps_set(trapped_snakes, current_state, current_map, snake_ids)
 
 
-def cli(argv):
-    ap = argparse.ArgumentParser(description="Run the analyzer on a run file")
-    ap.add_argument("filepath", type=Path, help="Path to the run file to analyze")
-    ap.add_argument("--output", "-o", type=Path, help="Path to save the analysis result as json")
-    ap.add_argument("--dump-json", "-d", action="store_true", help="Dump the analysis result as json to stdout")
-    return ap.parse_args(argv)
-
-
-def main(args):
+def analyze(run_file: Path, trap_threshold: int = None) -> RunAnalysis:
     loop_repeater = FileRepeaterObservable(filepath=args.filepath)
 
     state_builder = StateBuilderObserver()
@@ -393,7 +385,7 @@ def main(args):
             cleaned_step_idxs.append(idx)
         entered_separate_area_dict[s_id] = cleaned_step_idxs
         
-    analysis = RunAnalysis(
+    return RunAnalysis(
         run_file=args.filepath,
         env_meta_data=env_meta_data,
         snake_ids=snake_ids,
@@ -403,7 +395,18 @@ def main(args):
         entered_separate_area=entered_separate_area_dict,
         traps_mapping=traps_mapping
     )
-    
+
+
+def cli(argv):
+    ap = argparse.ArgumentParser(description="Run the analyzer on a run file")
+    ap.add_argument("filepath", type=Path, help="Path to the run file to analyze")
+    ap.add_argument("--output", "-o", type=Path, help="Path to save the analysis result as json")
+    ap.add_argument("--dump-json", "-d", action="store_true", help="Dump the analysis result as json to stdout")
+    return ap.parse_args(argv)
+
+
+def main(args):
+    analysis = analyze(args.filepath)
     if args.dump_json:
         print(json.dumps(analysis.to_dict(), indent=2))
     if args.output:
