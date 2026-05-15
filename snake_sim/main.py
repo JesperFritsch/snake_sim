@@ -113,6 +113,8 @@ def main():
                 render_loop.join()
             except NameError:
                 pass
+        elif waitable_observer.has_started():
+            waitable_observer.wait_until_finished()
 
     except KeyboardInterrupt:
         pass
