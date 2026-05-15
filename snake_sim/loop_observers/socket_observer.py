@@ -76,7 +76,7 @@ class SocketObserver(ILoopObserver):
         super().__init__()
         self._host = host
         self._port = port
-        self._sock = socket.create_connection((host, port), timeout=connect_timeout_s)
+        self._sock = socket.create_connection((host, port), timeout=connect_timeout_ms)
         self._sock.settimeout(None)
         self._queue: Queue = Queue()
         self._stop_event: Event = Event()
