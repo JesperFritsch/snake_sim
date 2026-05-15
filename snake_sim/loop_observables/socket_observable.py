@@ -173,8 +173,6 @@ class SocketObservable(ILoopObservable):
             self._listener.close()
         except OSError:
             pass
-        if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=5)
 
     def close(self):
         self.stop()
