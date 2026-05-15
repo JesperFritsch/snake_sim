@@ -20,11 +20,12 @@ with resources.open_text('snake_sim.config', 'default_config.json') as config_fi
 
 
 class SnakeRep:
-    def __init__(self, id: int, h_value: int, b_value: int, start_position: Coord, start_length: int=1):
+    def __init__(self, id: int, name: str, h_value: int, b_value: int, start_position: Coord, start_length: int=1):
         self._start_length = start_length
         self.move_count = 0
         self.last_ate = 0
         self.id = id
+        self.name = name
         self.head_value = h_value
         self.body_value = b_value
         self._length = start_length
@@ -79,11 +80,11 @@ class SnakeEnv(ISnakeEnv):
         self._snake_reps: Dict[int, SnakeRep] = {}
         self._used_map_values = set([self._free_value, self._blocked_value, self._food_value])
 
-    def add_snake(self, id: int, start_position: Optional[Coord]=None, start_length: int=1) -> Coord:
+    def add_snake(self, id: int, tag: str, start_position: Optional[Coord]=None, start_length: int=1) -> Coord:
         if start_position is None:
             start_position = self._random_free_tile()
         head_value, body_value = self._assign_map_values()
-        snake_rep = SnakeRep(id, head_value, body_value, start_position, start_length)
+        snake_rep = SnakeRep(id, tag, head_value, body_value, start_position, start_length)
         self._snake_reps[id] = snake_rep
         self._place_snake_on_map(snake_rep)
         return start_position
@@ -194,6 +195,7 @@ class SnakeEnv(ISnakeEnv):
             self._free_value,
             self._blocked_value,
             self._food_value,
+            {s_rep.id: s_rep.name for s_rep in self._snake_reps.values()},
             {s_rep.id: {"head_value": s_rep.head_value, "body_value": s_rep.body_value} for s_rep in self._snake_reps.values()},
             {s_rep.id: s_rep.get_head() for s_rep in self._snake_reps.values()},
             self.get_base_map())

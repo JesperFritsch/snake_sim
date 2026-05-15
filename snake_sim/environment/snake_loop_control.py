@@ -103,9 +103,10 @@ class SnakeLoopControl:
         """ Finalize snakes """
         snakes_dict = self._snake_handler.get_snakes().copy()
         for id, snake in snakes_dict.items():
-            start_pos = self._snake_environment.add_snake(id, start_length=self._config.start_length)
+            tag = self._snake_handler.get_snake_tag(id)
+            start_pos = self._snake_environment.add_snake(id, tag, start_length=self._config.start_length)
             try:
-                log.debug(f"Snake {id} start position: {start_pos}")
+                log.debug(f"Snake {id} ({tag}) start position: {start_pos}")
                 snake.set_id(id)
                 snake.set_start_length(self._config.start_length)
                 snake.set_start_position(start_pos)
@@ -123,9 +124,10 @@ class SnakeLoopControl:
     def _initialize_inproc_snakes(self):
         """ Initialize in-process snakes """
         snake_factory = SnakeFactory()
-        for snake_config in self._config.snake_configs:
+        for i, snake_config in enumerate(self._config.snake_configs):
             snake = snake_factory.create_snake(snake_config=snake_config)
-            self._snake_handler.add_snake(snake)
+            tag = f"{snake.__class__.__name__}_{i}"
+            self._snake_handler.add_snake(snake, tag)
 
     @_loop_check
     def _initialize_remote_grpcs(self):
@@ -138,14 +140,14 @@ class SnakeLoopControl:
                     proc_type=SnakeProcType.GRPC,
                     target=target
                 )
-                self._snake_handler.add_snake(snake)
+                self._snake_handler.add_snake(snake, target)
             except Exception as e:
                 log.exception(e)
 
     @_loop_check
     def _initialize_distributed_snakes(self):
         snake_factory = SnakeFactory()
-        non_manuals = [sc for sc in self._config.snake_configs if not any(c.type == "manual" for c in sc.strategies)]
+        non_manuals = [sc for sc in self._config.snake_configs if not any(c.type == "manual" for c in sc.strategies.values())]
         for snake_config in non_manuals:
             snake_id = self._snake_handler.get_next_snake_id()
             self._snake_proc_mngr.start(
@@ -158,14 +160,16 @@ class SnakeLoopControl:
                 proc_type=SnakeProcType.GRPC,
                 target=target
             )
-            self._snake_handler.add_snake(snake)
+            tag = f"{snake.__class__.__name__}_{snake_id}"
+            self._snake_handler.add_snake(snake, tag)
 
     @_loop_check
     def _initialize_player_snakes(self):
         snake_factory = SnakeFactory()
-        for snake_config in self._config.player_snake_congfigs:
+        for i, snake_config in enumerate(self._config.player_snake_congfigs):
             snake = snake_factory.create_snake(snake_config=snake_config)
-            self._snake_handler.add_snake(snake)
+            tag = f"Manual_{i}"
+            self._snake_handler.add_snake(snake, tag)
 
     @_loop_check
     def add_observer(self, observer: ILoopObserver):

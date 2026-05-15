@@ -41,6 +41,7 @@ SNAKE_UPDATER_MAP = {
 class SnakeHandler(ISnakeHandler):
     def __init__(self):
         self._snakes: Dict[int, ISnake] = {}
+        self._snake_tags: Dict[int, str] = {}
         self._dead_snakes = set()
         self._executor = ThreadPoolExecutor(max_workers=len(SNAKE_UPDATER_MAP))
         self._updaters: Dict[type, ISnakeUpdater] = {}
@@ -57,6 +58,9 @@ class SnakeHandler(ISnakeHandler):
 
     def get_snakes(self) -> Dict[int, ISnake]:
         return self._snakes.copy()
+
+    def get_snake_tag(self, id: int) -> str:
+        return self._snake_tags.get(id, f"Snake_{id}")
 
     def kill_snake(self, id):
         log.debug(f"Killing snake with id {id}")
@@ -90,11 +94,12 @@ class SnakeHandler(ISnakeHandler):
         updater_batches = self._split_batch_by_updater(batch_data)
         return self._gather_decisions(updater_batches)
 
-    def add_snake(self, snake: ISnake):
+    def add_snake(self, snake: ISnake, tag: str):
         if snake in self._snakes.values():
             return
         snake_id = self.get_next_snake_id()
         self._snakes[snake_id] = snake
+        self._snake_tags[snake_id] = tag
         updater = self._get_updater(snake)
         updater.register_snake(snake)
 

@@ -155,6 +155,7 @@ class EnvMetaData:
     free_value: int
     blocked_value: int
     food_value: int
+    snake_tags: Dict[int, str]
     snake_values: Dict[int, Dict[str, int]]
     start_positions: Dict[int, Coord]
     base_map: np.ndarray
@@ -177,6 +178,7 @@ class EnvMetaData:
             blocked_value=meta_dict['blocked_value'],
             food_value=meta_dict['food_value'],
             snake_values={int(k): v for k, v in meta_dict['snake_values'].items()},
+            snake_tags={int(k): v for k, v in meta_dict['snake_tags'].items()},
             start_positions={int(k): Coord(*v) for k, v in meta_dict['start_positions'].items()},
             base_map=np.array(meta_dict['base_map'], dtype=dtype),
             base_map_dtype=dtype

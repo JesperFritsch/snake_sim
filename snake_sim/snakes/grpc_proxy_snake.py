@@ -88,6 +88,7 @@ class GRPCProxySnake(ISnake):
             free_value=env_meta_data.free_value,
             blocked_value=env_meta_data.blocked_value,
             food_value=env_meta_data.food_value,
+            snake_tags={k: v for k, v in env_meta_data.snake_tags.items()},
             snake_values={k: remote_snake_pb2.SnakeValues(head_value=v["head_value"], body_value=v["body_value"]) for k, v in env_meta_data.snake_values.items()},
             start_positions={k: remote_snake_pb2.Coord(x=v.x, y=v.y) for k, v in env_meta_data.start_positions.items()},
             base_map=env_meta_data.base_map.tobytes(),
