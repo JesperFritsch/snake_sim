@@ -114,6 +114,7 @@ class ProtoRunFileHandler(IRunFileHandler):
         p.free_value = int(env.free_value)
         p.blocked_value = int(env.blocked_value)
         p.food_value = int(env.food_value)
+        p.snake_tags.update({int(k): v for k, v in env.snake_tags.items()})
         for sid, sval in env.snake_values.items():
             sv = run_proto.SnakeValues()
             sv.head_value = sval['head_value']
@@ -178,6 +179,7 @@ class ProtoRunFileHandler(IRunFileHandler):
         return Coord(p.x, p.y)
 
     def _proto_to_envinit(self, p: ProtoEnvMetaData) -> EnvMetaData:
+        snake_tags = {sid: name for sid, name in p.snake_tags.items()}
         snake_values = {sid: {'head_value': sv.head_value, 'body_value': sv.body_value} for sid, sv in p.snake_values.items()}
         start_positions = {sid: self._proto_to_coord(c) for sid, c in p.start_positions.items()}
         base_map = self._read_base_map(p)
@@ -187,6 +189,7 @@ class ProtoRunFileHandler(IRunFileHandler):
             free_value=p.free_value,
             blocked_value=p.blocked_value,
             food_value=p.food_value,
+            snake_tags=snake_tags,
             snake_values=snake_values,
             start_positions=start_positions,
             base_map=base_map,

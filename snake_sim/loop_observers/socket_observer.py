@@ -32,6 +32,7 @@ def _serialize_start(data: LoopStartData) -> bytes:
             free_value=md.free_value,
             blocked_value=md.blocked_value,
             food_value=md.food_value,
+            snake_tags={k: v for k, v in md.snake_tags.items()},
             snake_values={
                 k: simrun_pb2.SnakeValues(head_value=v["head_value"], body_value=v["body_value"])
                 for k, v in md.snake_values.items()
