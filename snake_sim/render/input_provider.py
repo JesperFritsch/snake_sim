@@ -242,6 +242,7 @@ class PygameInputProvider(BaseInputProvider):
         if pygame is None:
             raise RuntimeError("pygame not available for PygameInputProvider")
         # Ensure initialization (safe if already done)
+
         if not pygame.get_init():
             pygame.init()
         self._prev = pygame.key.get_pressed()
