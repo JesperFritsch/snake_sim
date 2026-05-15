@@ -297,6 +297,7 @@ class SimConfig:
     external_snake_targets: List[str]
     distributed_snakes: bool
     snake_configs: list[SnakeConfig]
+    decision_timeout: int
 
 
 @dataclass

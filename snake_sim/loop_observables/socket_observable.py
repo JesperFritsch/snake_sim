@@ -89,7 +89,7 @@ class SocketObservable(ILoopObservable):
     Forwards every received start/step/stop event to attached observers.
     """
 
-    def __init__(self, bind_host: str = "0.0.0.0", bind_port: int = 0, accept_timeout_s: float = 30.0):
+    def __init__(self, bind_host: str = "0.0.0.0", bind_port: int = 0, accept_timeout_ms: int = 30.0):
         super().__init__()
         self._listener = socket.socket()
         self._listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

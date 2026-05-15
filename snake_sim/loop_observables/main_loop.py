@@ -34,6 +34,7 @@ class SimLoop(IMainLoop):
         self._env: ISnakeEnv = None
         self._max_no_food_steps = None
         self._max_steps = None
+        self._decision_timeout_s = None
         self._steps = 0
         self._current_step_data: LoopStepData = None
         self._step_start_time = None
@@ -59,7 +60,7 @@ class SimLoop(IMainLoop):
 
     def _update_batch(self, batch: List[int]):
         batch_data = self._prepare_batch(batch)
-        decisions = self._snake_handler.get_decisions(batch_data)
+        decisions = self._snake_handler.get_decisions(batch_data, self._decision_timeout_s)
         self._apply_decisions(decisions)
 
     def _apply_decisions(self, decisions: Dict[int, Coord]):
@@ -145,6 +146,10 @@ class SimLoop(IMainLoop):
 
     def set_environment(self, env: ISnakeEnv):
         self._env = env
+
+    def set_decision_timout(self, timeout_ms: int):
+        if timeout_ms is not None:
+            self._decision_timeout_s = timeout_ms / 1000
 
 
 class GameLoop(SimLoop):

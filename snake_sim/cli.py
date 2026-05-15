@@ -41,6 +41,7 @@ def add_run_config_arguments(parser):
     parser.add_argument('--rate-meter', action="store_true", help='Rate meter for steps per second for all snakes combined', default=False)
     parser.add_argument('--snake-config-key', type=str, help='key in the snake configuration dictionary to use for all snakes')
     parser.add_argument('--socket-observer', type=str, action="append", help='Address to a socket observable like host:port', default=[])
+    parser.add_argument('--decision-timeout-ms', type=int, help="The time in milliseconds for each snake to make its decision each step. 0=None")
 
 
 def add_playback_arguments(parser):

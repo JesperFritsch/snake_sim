@@ -79,20 +79,19 @@ class SnakeHandler(ISnakeHandler):
             updater_batches.setdefault(updater, ([], env_step_data))[0].append(snake)
         return updater_batches
 
-    def _gather_decisions(self, updater_batches: Dict[ISnakeUpdater, Tuple[List[ISnake], EnvStepData]]) -> Dict[int, Coord]:
+    def _gather_decisions(self, updater_batches: Dict[ISnakeUpdater, Tuple[List[ISnake], EnvStepData]], timeout_s: float | None) -> Dict[int, Coord]:
         decisions = {}
-        timeout = default_config["decision_timeout_ms"] / 1000
         futures = [
-            self._executor.submit(updater.get_decisions, snakes, env_step_data, timeout)
+            self._executor.submit(updater.get_decisions, snakes, env_step_data, timeout_s)
             for updater, (snakes, env_step_data) in updater_batches.items()
         ]
         for future in as_completed(futures):
             decisions.update(future.result())
         return decisions
 
-    def get_decisions(self, batch_data: Dict[int, EnvStepData]) -> Dict[int, Coord]:
+    def get_decisions(self, batch_data: Dict[int, EnvStepData], timeout_s: float | None) -> Dict[int, Coord]:
         updater_batches = self._split_batch_by_updater(batch_data)
-        return self._gather_decisions(updater_batches)
+        return self._gather_decisions(updater_batches, timeout_s=timeout_s)
 
     def add_snake(self, snake: ISnake, tag: str):
         if snake in self._snakes.values():

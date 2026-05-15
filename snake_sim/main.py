@@ -46,6 +46,8 @@ def main():
         mp_ctx = mp.get_context("spawn")
         stop_flag = mp_ctx.Value(ctypes.c_bool, False)
 
+        waitable_observer = WaitableObserver()
+
         if config.command == "play-file":
             loop_repeater = FileRepeaterObservable(filepath=config.filepath)
 
@@ -78,7 +80,12 @@ def main():
                     )
                     for input_c in input_configs
                 ]
+
             loop_p.start()
+            def _cancel_waitable():
+                loop_p.join()
+                waitable_observer.cancel()
+            Thread(target=_cancel_waitable, daemon=True).start()
 
         if not config.no_render:
             map_builder = MapBuilderObserver(config.expansion)
@@ -97,14 +104,10 @@ def main():
                 stop_flag=stop_flag
             )
 
-        waitable_observer = WaitableObserver()
         loop_repeater.add_observer(waitable_observer)
         loop_repeater.start()
         waitable_observer.wait_until_started()
-
-        if config.no_render:
-            waitable_observer.wait_until_finished()
-        else:
+        if not config.no_render and waitable_observer.has_started():
             try:
                 render_loop.start()
                 render_loop.join()
@@ -113,20 +116,22 @@ def main():
 
     except KeyboardInterrupt:
         pass
+    except Exception as e:
+        log.exception(e)
     finally:
         try:
             stop_flag.value = True
         except:
             log.debug("No stop flag to set.")
+        if waitable_observer.has_started():
+            waitable_observer.wait_until_finished()
+        else:
+            log.debug("Loop never started, no need to wait for finish.")
         try:
             render_loop.stop()
         except:
             log.debug("No render loop to stop.")
-        if "waitable_observer" in locals() and waitable_observer.has_started():
-            waitable_observer.wait_until_finished()
-        else:
-            log.debug("Loop never started, no need to wait for finish.")
-        if "loop_repeater" in locals():
+        if loop_repeater is not None:
             loop_repeater.close()
 
 if __name__ == '__main__':

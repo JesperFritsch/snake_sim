@@ -72,7 +72,7 @@ class SocketObserver(ILoopObserver):
     [1 byte: msg_type][4 bytes: big-endian length][N bytes: protobuf].
     """
 
-    def __init__(self, host: str, port: int, connect_timeout_s: float = 5.0):
+    def __init__(self, host: str, port: int, connect_timeout_ms: int = 5.0):
         super().__init__()
         self._host = host
         self._port = port
