@@ -107,14 +107,15 @@ def main():
         loop_repeater.add_observer(waitable_observer)
         loop_repeater.start()
         waitable_observer.wait_until_started()
-        if not config.no_render and waitable_observer.has_started():
-            try:
-                render_loop.start()
-                render_loop.join()
-            except NameError:
-                pass
-        elif waitable_observer.has_started():
-            waitable_observer.wait_until_finished()
+        if waitable_observer.has_started():
+            if not config.no_render:
+                try:
+                    render_loop.start()
+                    render_loop.join()
+                except NameError:
+                    pass
+            else:
+                waitable_observer.wait_until_finished()
 
     except KeyboardInterrupt:
         pass

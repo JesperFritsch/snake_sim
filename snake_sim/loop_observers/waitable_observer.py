@@ -41,24 +41,18 @@ class WaitableObserver(ILoopObserver):
         return self._is_cancelled
 
     def wait_for_step(self, step: int):
-        if self._is_cancelled:
-            raise RuntimeError("WaitableObserver is already cancelled")
         with self._cond:
             self._cond.wait_for(
                 lambda: self._current_step >= step or self._is_cancelled
             )
 
     def wait_until_finished(self):
-        if self._is_cancelled:
-            raise RuntimeError("WaitableObserver is already cancelled")
         with self._cond:
             self._cond.wait_for(
                 lambda: self._has_stopped or self._is_cancelled
             )
     
     def wait_until_started(self):
-        if self._is_cancelled:
-            raise RuntimeError("WaitableObserver is already cancelled")
         with self._cond:
             self._cond.wait_for(
                 lambda: self._has_started or self._is_cancelled
