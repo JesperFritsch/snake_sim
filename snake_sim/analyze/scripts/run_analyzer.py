@@ -78,7 +78,7 @@ class RunAnalysis:
 
     def to_dict(self):
         return {
-            "run_file": str(self.run_file),
+            "run_file": str(self.run_file.absolute()),
             "env_meta_data": self.env_meta_data.to_dict(),
             "snake_ids": self.snake_ids,
             "fatal_steps": self.fatal_steps,
@@ -386,7 +386,7 @@ def analyze(run_file: Path, trap_threshold: int = None) -> RunAnalysis:
         entered_separate_area_dict[s_id] = cleaned_step_idxs
         
     return RunAnalysis(
-        run_file=args.filepath,
+        run_file=run_file,
         env_meta_data=env_meta_data,
         snake_ids=snake_ids,
         fatal_steps=fatal_steps,
