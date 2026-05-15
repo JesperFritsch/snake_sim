@@ -27,11 +27,11 @@ class SHMUpdater(ConcurrentUpdater):
         self._managed_snakes.remove(snake)
         super().unregister_snake(snake)
 
-    def get_decisions(self, snakes: List[SHMProxySnake], env_step_data: EnvStepData, timeout: float) -> dict[int, Coord]:
+    def get_decisions(self, snakes: List[SHMProxySnake], env_step_data: EnvStepData, timeout_s: float | None) -> dict[int, Coord]:
         if any(not isinstance(snake, SHMProxySnake) for snake in snakes):
             raise TypeError("All snakes must be instances of SHMProxySnake.")
         self._shm_writer.write_frame(env_step_data.map.tobytes())
-        return super().get_decisions(snakes, env_step_data, timeout)
+        return super().get_decisions(snakes, env_step_data, timeout_s)
 
     def close(self):
         if self._shm_writer is not None:

@@ -1,6 +1,7 @@
 import time
 
 from typing import List
+from threading import Condition
 
 from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver
 
@@ -8,37 +9,61 @@ from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserv
 class WaitableObserver(ILoopObserver):
     """ Base class for loop data consumers. Just stores all data in memory. """
     def __init__(self):
-        self._wait_step = None
+        self._cond = Condition()
+        self._is_cancelled = False
         self._has_started = False
         self._has_stopped = False
         self._current_step = None
-        self._is_waiting = False
+
+    def _notify_cond(self):
+        with self._cond:
+            self._cond.notify_all()
 
     def notify_start(self, start_data):
         self._has_started = True
+        self._notify_cond()
 
     def notify_step(self, step_data):
         self._current_step = step_data.step
-        if self._wait_step is not None and self._current_step >= self._wait_step:
-            self._is_waiting = False
+        self._notify_cond()
 
     def notify_stop(self, stop_data):
         self._has_stopped = True
-        self._is_waiting = False
-
-    def wait_for_step(self, step: int):
-        self._wait_step = step
-        self._is_waiting = True
-        while self._is_waiting and not self._has_stopped:
-            time.sleep(0.01)
+        self._notify_cond()
 
     def has_started(self) -> bool:
         return self._has_started
 
+    def has_stopped(self) -> bool:
+        return self._has_stopped
+
+    def is_cancelled(self) -> bool:
+        return self._is_cancelled
+
+    def wait_for_step(self, step: int):
+        if self._is_cancelled:
+            raise RuntimeError("WaitableObserver is already cancelled")
+        with self._cond:
+            self._cond.wait_for(
+                lambda: self._current_step >= step or self._is_cancelled
+            )
+
     def wait_until_finished(self):
-        while self._has_started and not self._has_stopped:
-            time.sleep(0.01)
+        if self._is_cancelled:
+            raise RuntimeError("WaitableObserver is already cancelled")
+        with self._cond:
+            self._cond.wait_for(
+                lambda: self._has_stopped or self._is_cancelled
+            )
     
     def wait_until_started(self):
-        while not self._has_started:
-            time.sleep(0.01)
+        if self._is_cancelled:
+            raise RuntimeError("WaitableObserver is already cancelled")
+        with self._cond:
+            self._cond.wait_for(
+                lambda: self._has_started or self._is_cancelled
+            )
+
+    def cancel(self):
+        self._is_cancelled = True
+        self._notify_cond()

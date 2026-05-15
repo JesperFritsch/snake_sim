@@ -10,7 +10,7 @@ class InprocUpdater(ISnakeUpdater):
         super().__init__()
         pass
 
-    def get_decisions(self, snakes: List[ISnake], env_step_data: EnvStepData, timeout: float) -> Dict[int, Coord]:
+    def get_decisions(self, snakes: List[ISnake], env_step_data: EnvStepData, timeout_s: float | None) -> Dict[int, Coord]:
         decisions = {}
         for snake in snakes:
             decisions[snake.get_id()] = snake.update(env_step_data)

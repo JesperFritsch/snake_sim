@@ -9,7 +9,7 @@ from snake_sim.environment.interfaces.snake_interface import ISnake
 class ISnakeHandler(ABC):
 
     @abstractmethod
-    def get_decisions(self, batch_data: Dict[int, EnvStepData]) -> Dict[int, Coord]:
+    def get_decisions(self, batch_data: Dict[int, EnvStepData], timeout_s: float | None) -> Dict[int, Coord]:
         pass
 
     @abstractmethod

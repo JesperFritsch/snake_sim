@@ -16,7 +16,7 @@ class ISnakeUpdater(ABC):
         self._finalized = False
 
     @abstractmethod
-    def get_decisions(self, snakes: List[ISnake], env_step_data: EnvStepData, timeout: float) -> Dict[int, Coord]: # -> dict of snake id to direction
+    def get_decisions(self, snakes: List[ISnake], env_step_data: EnvStepData, timeout_s: float | None) -> Dict[int, Coord]: # -> dict of snake id to direction
         pass
 
     @property

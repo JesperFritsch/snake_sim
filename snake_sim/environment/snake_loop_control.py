@@ -72,31 +72,36 @@ class SnakeLoopControl:
 
     def init_loop(self):
         """Initializes the loop"""
-        if isinstance(self._config, GameConfig):
-            # Initialize game loop add keyboard controllers
-            self._loop = GameLoop()
-            self._loop.set_steps_per_sec(self._config.steps_per_sec)
-            self._initialize_player_snakes()
-        else:
-            # Initialize simulation loop
-            self._loop = SimLoop()
+        try:
+            if isinstance(self._config, GameConfig):
+                # Initialize game loop add keyboard controllers
+                self._loop = GameLoop()
+                self._loop.set_steps_per_sec(self._config.steps_per_sec)
+                self._initialize_player_snakes()
+            else:
+                # Initialize simulation loop
+                self._loop = SimLoop()
 
-        if self._config.distributed_snakes:
-            self._initialize_distributed_snakes()
-        else:
-            self._initialize_inproc_snakes()
+            if self._config.distributed_snakes:
+                self._initialize_distributed_snakes()
+            else:
+                self._initialize_inproc_snakes()
 
-        self._initialize_remote_grpcs()
-        self._finalize_snakes()
-        
-        self._loop.set_snake_handler(self._snake_handler)
-        self._loop.set_environment(self._snake_environment)
-        if default_config.max_steps is not None:
-            self._loop.set_max_steps(default_config.max_steps)
-        if default_config.max_no_food_steps is not None:
-            self._loop.set_max_no_food_steps(default_config.max_no_food_steps)
-        else:
-            self._loop.set_max_no_food_steps((self._snake_environment.get_init_data().height * self._snake_environment.get_init_data().width) // 2)
+            self._initialize_remote_grpcs()
+            self._finalize_snakes()
+            
+            self._loop.set_snake_handler(self._snake_handler)
+            self._loop.set_environment(self._snake_environment)
+            if default_config.max_steps is not None:
+                self._loop.set_max_steps(default_config.max_steps)
+            self._loop.set_decision_timout(self._config.decision_timeout)
+            if default_config.max_no_food_steps is not None:
+                self._loop.set_max_no_food_steps(default_config.max_no_food_steps)
+            else:
+                self._loop.set_max_no_food_steps((self._snake_environment.get_init_data().height * self._snake_environment.get_init_data().width) // 2)
+        except:
+            self.shutdown()
+            raise
 
     @_loop_check
     def _finalize_snakes(self):
@@ -229,6 +234,7 @@ def setup_loop(config) -> SnakeLoopControl:
         external_snake_targets=config.external_snake_targets,
         distributed_snakes=config.distributed_snakes,
         snake_configs=[SnakeConfig.from_dict(config[config.snake_config_key] if config.snake_config_key else config.snake_config) for _ in range(config.snake_count)],
+        decision_timeout=config.decision_timeout_ms if config.decision_timeout_ms > 0 else None
     )
     if config.command == "game":
         sim_config = GameConfig(
@@ -245,10 +251,16 @@ def setup_loop(config) -> SnakeLoopControl:
     return loop_control
 
 def start_loop(config: DotDict, stop_flag: Synchronized, ipc_observer_pipe=None):
-    if not logging.getLogger().hasHandlers():
-        setup_logging(config.log_level, config.log_dir)
-    loop_control = setup_loop(config)
-    if ipc_observer_pipe:
-        loop_control.add_observer(IPCRepeaterObserver(ipc_observer_pipe))
-    loop_control.run(stop_flag)
-    sys.stdout.flush()
+    try:
+        if not logging.getLogger().hasHandlers():
+            setup_logging(config.log_level, config.log_dir)
+        loop_control = setup_loop(config)
+        if ipc_observer_pipe:
+            loop_control.add_observer(IPCRepeaterObserver(ipc_observer_pipe))
+        loop_control.run(stop_flag)
+        sys.stdout.flush()
+    except:
+        try:
+            loop_control.shutdown()
+        except:
+            pass
