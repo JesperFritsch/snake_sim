@@ -323,7 +323,7 @@ def find_traps(
 
 
 def analyze(run_file: Path, trap_threshold: int = None) -> RunAnalysis:
-    loop_repeater = FileRepeaterObservable(filepath=args.filepath)
+    loop_repeater = FileRepeaterObservable(filepath=run_file)
 
     state_builder = StateBuilderObserver()
     map_builder = MapBuilderObserver()
@@ -352,7 +352,7 @@ def analyze(run_file: Path, trap_threshold: int = None) -> RunAnalysis:
             current_step_idx = state_builder.get_current_step_idx()
             current_map = map_builder.get_map_for_step(current_step_idx)
 
-            traps_found = find_traps(prev_state, current_state, prev_map, current_map, snake_ids) if len(snake_ids) > 1 else {}
+            traps_found = find_traps(prev_state, current_state, prev_map, current_map, snake_ids, trap_threshold=trap_threshold) if len(snake_ids) > 1 else {}
             if traps_found:
                 traps_mapping[current_step_idx].update(traps_found)
             for s_id in snake_ids:
