@@ -40,6 +40,7 @@ def _deserialize_start(payload: bytes) -> LoopStartData:
             free_value=md.free_value,
             blocked_value=md.blocked_value,
             food_value=md.food_value,
+            snake_tags={int(k): v for k, v in md.snake_tags.items()},
             snake_values={
                 k: {"head_value": v.head_value, "body_value": v.body_value}
                 for k, v in md.snake_values.items()
