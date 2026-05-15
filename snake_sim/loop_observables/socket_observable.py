@@ -95,7 +95,7 @@ class SocketObservable(ILoopObservable):
         self._listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._listener.bind((bind_host, bind_port))
         self._listener.listen(1)
-        self._listener.settimeout(accept_timeout_s)
+        self._listener.settimeout(accept_timeout_ms)
         self._bound_port = self._listener.getsockname()[1]
         self._stop_event: Event = Event()
         self._thread: Optional[Thread] = None
