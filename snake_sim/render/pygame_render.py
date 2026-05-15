@@ -15,10 +15,6 @@ from snake_sim.render.utils import create_color_map
 
 log = logging.getLogger(Path(__file__).stem)
 
-# This variable forces the window to be x11 style and not handled in waylands tiling system like regular windows on wayland
-if os.environ.get("WAYLAND_DISPLAY") and "SDL_VIDEODRIVER" not in os.environ:
-    os.environ["SDL_VIDEODRIVER"] = "x11"
-
 class PygameRenderer(IRenderer):
     """ A simple terminal renderer that prints the state to the console. """
     def __init__(self, map_builder: MapBuilderObserver, max_screen_size: int = 1000):
