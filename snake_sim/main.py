@@ -137,8 +137,11 @@ def main():
             render_loop.stop()
         except:
             log.debug("No render loop to stop.")
-        if loop_repeater is not None:
-            loop_repeater.close()
+        try:
+            if loop_repeater is not None:
+                loop_repeater.close()
+        except:
+            pass
 
 if __name__ == '__main__':
     main()
