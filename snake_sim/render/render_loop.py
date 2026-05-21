@@ -116,7 +116,6 @@ class RenderLoop:
     def _input_loop(self):
         self._prompt_session = PromptSession()
         with patch_stdout():
-            print("input thread started")
             while bool(command := self._prompt_session.prompt("> ")) and self._running_condition():
                 try:
                     self._handle_command(command)

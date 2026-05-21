@@ -141,7 +141,6 @@ class SnakeLoopControl:
         for s_config in self._config.external_snake_configs:
             try:
                 snake = snake_factory.create_snake(s_config)
-                print(s_config)
                 self._snake_handler.add_snake(snake, s_config.args["target"])
             except Exception as e:
                 log.exception(e)
@@ -246,7 +245,6 @@ def setup_loop(config) -> SnakeLoopControl:
         ],
         decision_timeout=config.decision_timeout_ms if config.decision_timeout_ms > 0 else None
     )
-    print(config)
     if config.command == "game":
         sim_config = GameConfig(
             **sim_config.__dict__,
