@@ -138,14 +138,11 @@ class SnakeLoopControl:
     def _initialize_remote_grpcs(self):
         """ Initialize remote snakes """
         snake_factory = SnakeFactory()
-        remote_snake_targets = self._config.external_snake_targets.copy()
-        for target in remote_snake_targets:
+        for s_config in self._config.external_snake_configs:
             try:
-                snake = snake_factory.create_snake(
-                    proc_type=SnakeProcType.GRPC,
-                    target=target
-                )
-                self._snake_handler.add_snake(snake, target)
+                snake = snake_factory.create_snake(s_config)
+                print(s_config)
+                self._snake_handler.add_snake(snake, s_config.args["target"])
             except Exception as e:
                 log.exception(e)
 
@@ -231,11 +228,25 @@ def setup_loop(config) -> SnakeLoopControl:
         snake_count=config.snake_count,
         calc_timeout=config.calc_timeout,
         start_length=config.start_length,
-        external_snake_targets=config.external_snake_targets,
         distributed_snakes=config.distributed_snakes,
-        snake_configs=[SnakeConfig.from_dict(config[config.snake_config_key] if config.snake_config_key else config.snake_config) for _ in range(config.snake_count)],
+        external_snake_configs=[
+            SnakeConfig(
+                "remote",
+                DotDict(
+                    target=target,
+                    timeout=config.ext_conn_timeout,
+                    init_timeout=config.ext_init_timeout
+                )
+            )
+            for target in config.ext_targets
+        ],
+        snake_configs=[
+            SnakeConfig.from_dict(config[config.snake_config_key] if config.snake_config_key else config.snake_config) 
+            for _ in range(config.snake_count)
+        ],
         decision_timeout=config.decision_timeout_ms if config.decision_timeout_ms > 0 else None
     )
+    print(config)
     if config.command == "game":
         sim_config = GameConfig(
             **sim_config.__dict__,
@@ -259,7 +270,8 @@ def start_loop(config: DotDict, stop_flag: Synchronized, ipc_observer_pipe=None)
             loop_control.add_observer(IPCRepeaterObserver(ipc_observer_pipe))
         loop_control.run(stop_flag)
         sys.stdout.flush()
-    except:
+    except Exception as e:
+        log.exception(e)
         try:
             loop_control.shutdown()
         except:

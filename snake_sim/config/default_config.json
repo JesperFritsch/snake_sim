@@ -46,6 +46,9 @@
             "fast_mode": true
         }
     },
+    "ext_targets": [],
+    "ext_conn_timeout": null,
+    "ext_init_timeout": null,
     "log_level": "DEBUG",
     "dirs": {
         "up": [0, -1],
