@@ -18,10 +18,12 @@ def handle_connection_loss(func):
 
 
 class GRPCProxySnake(ISnake):
-    def __init__(self, target: str, timeout: float = 5.0):
+    def __init__(self, target: str, timeout: float = 5.0, init_timeout: float = 2.0):
+        print(f"Creating snake with {timeout}")
         super().__init__()
         self.target = target
         self.timeout = timeout
+        self.init_timeout = init_timeout
         self._send_queue = queue.Queue(maxsize=1)
         self._response_iterator = None
         self._stream_started = False
@@ -60,24 +62,24 @@ class GRPCProxySnake(ISnake):
     def kill(self):
         super().kill()
         self._send_queue.put(None)  # Signal the request iterator to stop
-        self.stub.Kill(remote_snake_pb2.Empty())
+        self.stub.Kill(remote_snake_pb2.Empty(), timeout=self.init_timeout)
         self.channel.close()
 
     @handle_connection_loss
     def set_id(self, id: int):
         super().set_id(id)
-        self.stub.SetId(remote_snake_pb2.SnakeId(id=id), wait_for_ready=True, timeout=self.timeout)
+        self.stub.SetId(remote_snake_pb2.SnakeId(id=id), wait_for_ready=True, timeout=self.init_timeout)
 
     @handle_connection_loss
     def set_start_length(self, start_length: int):
         super().set_start_length(start_length)
-        self.stub.SetStartLength(remote_snake_pb2.StartLength(length=start_length))
+        self.stub.SetStartLength(remote_snake_pb2.StartLength(length=start_length), timeout=self.init_timeout)
 
     @handle_connection_loss
     def set_start_position(self, start_position: Coord):
         super().set_start_position(start_position)
         start_pos = remote_snake_pb2.StartPosition(start_position=remote_snake_pb2.Coord(x=start_position.x, y=start_position.y))
-        self.stub.SetStartPosition(start_pos)
+        self.stub.SetStartPosition(start_pos, timeout=self.init_timeout)
 
     @handle_connection_loss
     def set_init_data(self, env_meta_data: EnvMetaData):
@@ -94,12 +96,12 @@ class GRPCProxySnake(ISnake):
             base_map=env_meta_data.base_map.tobytes(),
             base_map_dtype=str(env_meta_data.base_map_dtype)
         )
-        self.stub.SetInitData(env_meta_data_proto)
+        self.stub.SetInitData(env_meta_data_proto, timeout=self.init_timeout)
 
     @handle_connection_loss
     def reset(self):
         super().reset()
-        self.stub.Reset(remote_snake_pb2.Empty())
+        self.stub.Reset(remote_snake_pb2.Empty(), timeout=self.init_timeout)
 
     @handle_connection_loss
     def update(self, env_step_data: EnvStepData):
@@ -122,7 +124,7 @@ class GRPCProxySnake(ISnake):
 
 
     def __reduce__(self):
-        return (self.__class__, (self.target, self.timeout))
+        return (self.__class__, (self.target, self.timeout, self.init_timeout))
 
     def __del__(self):
         try:
