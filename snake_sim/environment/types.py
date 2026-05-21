@@ -294,7 +294,7 @@ class SimConfig:
     snake_count: int
     calc_timeout: int
     start_length: int
-    external_snake_configs: List[str]
+    external_snake_configs: List[SnakeConfig]
     distributed_snakes: bool
     snake_configs: list[SnakeConfig]
     decision_timeout: int
