@@ -2,6 +2,7 @@
 import logging
 import socket
 import struct
+import numpy as np
 from pathlib import Path
 from threading import Thread, Event
 from typing import Optional
@@ -31,8 +32,11 @@ def _coord(c) -> Coord:
 def _deserialize_start(payload: bytes) -> LoopStartData:
     proto = simrun_pb2.LoopStartData.FromString(payload)
     md = proto.env_meta_data
-    # NOTE: base_map is bytes here; if your LoopStartData consumers need a numpy array
-    # you can reshape with np.frombuffer(md.base_map, dtype=md.base_map_dtype).reshape(md.height, md.width)
+    # base_map crosses the wire as raw bytes; reshape into a proper 2D ndarray
+    # so EnvMetaData holds a real array (model_dump then emits it as a list).
+    base_map = np.frombuffer(
+        md.base_map, dtype=np.dtype(md.base_map_dtype)
+    ).reshape(md.height, md.width)
     return LoopStartData(
         env_meta_data=EnvMetaData(
             height=md.height,
@@ -46,7 +50,7 @@ def _deserialize_start(payload: bytes) -> LoopStartData:
                 for k, v in md.snake_values.items()
             },
             start_positions={k: _coord(v) for k, v in md.start_positions.items()},
-            base_map=md.base_map,
+            base_map=base_map,
             base_map_dtype=md.base_map_dtype,
         )
     )
