@@ -79,7 +79,7 @@ class RunAnalysis:
     def to_dict(self):
         return {
             "run_file": str(self.run_file.absolute()),
-            "env_meta_data": self.env_meta_data.to_dict(),
+            "env_meta_data": self.env_meta_data.model_dump(),
             "snake_ids": self.snake_ids,
             "fatal_steps": self.fatal_steps,
             "final_step_idx": self.final_step_idx,

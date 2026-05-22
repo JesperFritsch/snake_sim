@@ -19,6 +19,7 @@ dependencies = [
     "numpy",
     "opencv-python",
     "pygame",
+    "pydantic",
     "pybind11",
     "pyvirtualdisplay",
     "protobuf",

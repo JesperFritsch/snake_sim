@@ -15,7 +15,7 @@ from snake_sim.environment.types import (
 
 log = logging.getLogger(Path(__file__).stem)
 
-class RunFileHandler(IRunFileHandler):
+class PickleRunFileHandler(IRunFileHandler):
 
     file_format = ".run"
 

@@ -1,10 +1,25 @@
 import math
 from enum import Enum
+import numpy as np
 from dataclasses import dataclass, field
 from collections import deque
 from collections.abc import Iterable
-from typing import Optional, List, Dict, Deque, Set, Any
-import numpy as np
+from typing import Optional, List, Dict, Deque, Set, Any, Annotated
+from pydantic import (
+    BaseModel, ConfigDict, Field,
+    BeforeValidator, PlainSerializer, model_validator,
+)
+
+NdArray = Annotated[
+    np.ndarray,
+    BeforeValidator(lambda v: v if isinstance(v, np.ndarray) else np.array(v)),
+    PlainSerializer(lambda a: a.tolist(), return_type=list),
+]
+NpDtype = Annotated[
+    np.dtype,
+    BeforeValidator(lambda v: np.dtype(v)),         # accepts "uint8" or np.dtype
+    PlainSerializer(lambda d: str(d), return_type=str),
+]
 
 
 class DotDict(dict):
@@ -141,56 +156,51 @@ class RecurseCheckResult:
         )
 
 
-@dataclass
-class EnvStepData:
-    map: np.ndarray
+class EnvStepData(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    map: NdArray
     snakes: dict[int, dict[str, Any]] # 'is_alive': bool, 'length': int
     food_locations: Optional[List[Coord]]
 
 
-@dataclass
-class EnvMetaData:
+
+class EnvMetaData(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     height: int
     width: int
     free_value: int
     blocked_value: int
     food_value: int
-    snake_tags: Dict[int, str]
-    snake_values: Dict[int, Dict[str, int]]
-    start_positions: Dict[int, Coord]
-    base_map: np.ndarray
-    base_map_dtype: np.dtype = field(default=np.dtype(np.uint8)) # default to uint8
+    snake_tags: dict[int, str]
+    snake_values: dict[int, dict[str, int]]
+    start_positions: dict[int, Coord]
+    base_map: NdArray
+    base_map_dtype: NpDtype = Field(default_factory=lambda: np.dtype(np.uint8))
+
+    @model_validator(mode="after")
+    def _apply_dtype(self):
+        # base_map came back from JSON as a list → np.array infers int64;
+        # cast it to the declared dtype.
+        if self.base_map.dtype != self.base_map_dtype:
+            self.base_map = self.base_map.astype(self.base_map_dtype)
+        return self
 
     def to_dict(self):
-        meta_dict = self.__dict__.copy()
-        meta_dict['base_map'] = self.base_map.tolist()
-        meta_dict['start_positions'] = {k: (v.x, v.y) for k, v in self.start_positions.items()}
-        meta_dict['base_map_dtype'] = str(self.base_map_dtype)
-        return meta_dict
+        return self.model_dump()
 
     @classmethod
-    def from_dict(cls, meta_dict):
-        dtype = np.dtype(meta_dict['base_map_dtype'])
-        return cls(
-            height=meta_dict['height'],
-            width=meta_dict['width'],
-            free_value=meta_dict['free_value'],
-            blocked_value=meta_dict['blocked_value'],
-            food_value=meta_dict['food_value'],
-            snake_values={int(k): v for k, v in meta_dict['snake_values'].items()},
-            snake_tags={int(k): v for k, v in meta_dict['snake_tags'].items()},
-            start_positions={int(k): Coord(*v) for k, v in meta_dict['start_positions'].items()},
-            base_map=np.array(meta_dict['base_map'], dtype=dtype),
-            base_map_dtype=dtype
-        )
+    def from_dict(cls, d: dict) -> "EnvMetaData":
+        return cls.model_validate(d)
 
-@dataclass
-class LoopStartData:
+
+class LoopStartData(BaseModel):
     env_meta_data: EnvMetaData
 
 
-@dataclass
-class LoopStepData:
+class LoopStepData(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     # decisions, snake_grew and snake_times will only have values for alive snakes
     step: int
     total_time: float
@@ -204,8 +214,7 @@ class LoopStepData:
     removed_food: List[Coord]
 
 
-@dataclass
-class LoopStopData:
+class LoopStopData(BaseModel):
     final_step: int
 
 

@@ -42,16 +42,16 @@ class RemoteSnakeServicer(remote_snake_pb2_grpc.RemoteSnakeServicer):
 
     def SetInitData(self, request, context):
         init_data = EnvMetaData(
-            request.height,
-            request.width,
-            request.free_value,
-            request.blocked_value,
-            request.food_value,
-            {int(k): v for k, v in request.snake_tags.items()},
-            {int(k): {"head_value": v.head_value, "body_value": v.body_value} for k, v in request.snake_values.items()},
-            {int(k): Coord(x=v.x, y=v.y) for k, v in request.start_positions.items()},
-            np.frombuffer(request.base_map, dtype=np.dtype(request.base_map_dtype)).reshape(request.height, request.width),
-            request.base_map_dtype
+            height=request.height,
+            width=request.width,
+            free_value=request.free_value,
+            blocked_value=request.blocked_value,
+            food_value=request.food_value,
+            snake_tags={int(k): v for k, v in request.snake_tags.items()},
+            snake_values={int(k): {"head_value": v.head_value, "body_value": v.body_value} for k, v in request.snake_values.items()},
+            start_positions={int(k): Coord(x=v.x, y=v.y) for k, v in request.start_positions.items()},
+            base_map=np.frombuffer(request.base_map, dtype=np.dtype(request.base_map_dtype)).reshape(request.height, request.width),
+            base_map_dtype=request.base_map_dtype
         )
         self._snake_instance.set_init_data(init_data)
         return remote_snake_pb2.Empty()
