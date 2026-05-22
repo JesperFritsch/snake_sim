@@ -28,12 +28,12 @@ class JsonRunFileHandler(IRunFileHandler):
         self._filepath = Path(filepath)
         self._create_new = new
         self._file = None
-        self._type_indicators: dict[LoopData, int] = {
-            LoopStartData: 1,
-            LoopStepData: 2,
-            LoopStopData: 3
+        self._type_indicators: dict[type[LoopData], str] = {
+            LoopStartData: "start",
+            LoopStepData: "step",
+            LoopStopData: "stop",
         }
-        self._type_indicators_rev: dict[int, LoopData] = {v: k for k, v in self._type_indicators.items()}
+        self._type_indicators_rev: dict[str, type[LoopData]] = {v: k for k, v in self._type_indicators.items()}
 
     def write_start(self, start_data: LoopStartData):
         self._write_line(start_data)
@@ -51,9 +51,9 @@ class JsonRunFileHandler(IRunFileHandler):
     def iter_steps(self):
         self._file.seek(0)
         self._file.readline()
-        for line in self._file.readlines():
-            if line == "":
-                break
+        for line in self._file:
+            if not line.strip():
+                continue
             loop_data = self._parse_line(line)
             if isinstance(loop_data, LoopStepData):
                 yield loop_data
@@ -89,13 +89,14 @@ class JsonRunFileHandler(IRunFileHandler):
         self._file.write("\n")
 
     def _open_for_append(self):
-        self._file = open(self._filepath, "r+a")
+        self._file = open(self._filepath, "a")
 
     def _open_for_write(self):
         self._file = open(self._filepath, "w")
 
     def _open_for_read(self):
-        self._file = open(self._filepath, "r")
+        # Binary so _last_line() can do negative seeks; json.loads handles bytes.
+        self._file = open(self._filepath, "rb")
 
     def __enter__(self):
         log.debug(f"Opening run file at '{self._filepath}' (new={self._create_new})")
