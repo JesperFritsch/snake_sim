@@ -49,13 +49,16 @@ class JsonRunFileHandler(IRunFileHandler):
         return self._parse_line(self._file.readline())
 
     def iter_steps(self):
-        while True:
-            self._file.seek(0)
-            self._file.readline()
-            for line in self._file.readlines():
-                if line == "":
-                    break
-                yield self._parse_line(line)
+        self._file.seek(0)
+        self._file.readline()
+        for line in self._file.readlines():
+            if line == "":
+                break
+            loop_data = self._parse_line(line)
+            if isinstance(loop_data, LoopStepData):
+                yield loop_data
+            else:
+                break
             
     def get_stop_data(self) -> LoopStopData:
         last_line = self._last_line()
@@ -68,18 +71,19 @@ class JsonRunFileHandler(IRunFileHandler):
                 self._file.seek(-2, os.SEEK_CUR)
         except OSError:                    
             self._file.seek(0)
-        return self._file.readline().decode()
+        return self._file.readline()
 
     def _parse_line(self, line: str) -> LoopData:
         obj = json.loads(line)
-        type = obj["type"]
-        return self._type_indicators_rev[type].validate_model(obj["data"])
+        data_type = obj["type"]
+        cls = self._type_indicators_rev[data_type]
+        return cls.model_validate(obj["data"])
 
     def _write_line(self, object: LoopData):
         type_ind = self._type_indicators[type(object)]
         line_obj = {
             "type": type_ind,
-            "data": object.model_dump_json()
+            "data": object.model_dump(mode="json")
         }
         self._file.write(json.dumps(line_obj))
         self._file.write("\n")

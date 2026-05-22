@@ -16,7 +16,6 @@ def create_run_file_handler(
         JsonRunFileHandler
     ):
         if handler._get_file_format() == file_format:
-            print(f"Found handler {type(handler)} for format {file_format}")
             return handler(filepath=filepath, *args, **kwargs)
     else:
         raise ValueError(f"Unknown file format: {file_format}")

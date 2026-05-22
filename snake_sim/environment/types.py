@@ -5,9 +5,11 @@ from dataclasses import dataclass, field
 from collections import deque
 from collections.abc import Iterable
 from typing import Optional, List, Dict, Deque, Set, Any, Annotated
+from pydantic_core import core_schema
 from pydantic import (
     BaseModel, ConfigDict, Field,
     BeforeValidator, PlainSerializer, model_validator,
+    GetCoreSchemaHandler
 )
 
 NdArray = Annotated[
@@ -109,6 +111,24 @@ class Coord(tuple):
 
     def __hash__(self):
         return hash((self.x, self.y))
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        return core_schema.no_info_after_validator_function(
+            cls._coerce,                                   # build the Coord
+            core_schema.list_schema(                       # accept [int, int]
+                core_schema.int_schema(), min_length=2, max_length=2,
+            ),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda c: [c[0], c[1]],                    # emit [x, y]
+            ),
+        )
+
+    @classmethod
+    def _coerce(cls, value):
+        return value if isinstance(value, cls) else cls(*value)
 
     @property
     def x(self) -> int:
