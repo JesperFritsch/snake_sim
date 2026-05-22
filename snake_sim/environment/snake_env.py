@@ -183,22 +183,25 @@ class SnakeEnv(ISnakeEnv):
     def get_env_step_data(self, for_id: Optional[int] = None) -> EnvStepData:
         # id is not used yet, but it is preparing for being able to send different data to different snakes
         return EnvStepData(
-            self.get_map(),
-            {id: {'is_alive': snake_rep.is_alive, 'length': len(snake_rep.body)} for id, snake_rep in self._snake_reps.items()},
-            self.get_food()
+            map=self.get_map(),
+            snakes={id: {'is_alive': snake_rep.is_alive, 'length': len(snake_rep.body)} for id, snake_rep in self._snake_reps.items()},
+            food_locations=self.get_food()
         )
 
     def get_init_data(self) -> EnvMetaData:
+        base_map = self.get_base_map()
         return EnvMetaData(
-            self._height,
-            self._width,
-            self._free_value,
-            self._blocked_value,
-            self._food_value,
-            {s_rep.id: s_rep.name for s_rep in self._snake_reps.values()},
-            {s_rep.id: {"head_value": s_rep.head_value, "body_value": s_rep.body_value} for s_rep in self._snake_reps.values()},
-            {s_rep.id: s_rep.get_head() for s_rep in self._snake_reps.values()},
-            self.get_base_map())
+            height=self._height,
+            width=self._width,
+            free_value=self._free_value,
+            blocked_value=self._blocked_value,
+            food_value=self._food_value,
+            snake_tags={s_rep.id: s_rep.name for s_rep in self._snake_reps.values()},
+            snake_values={s_rep.id: {"head_value": s_rep.head_value, "body_value": s_rep.body_value} for s_rep in self._snake_reps.values()},
+            start_positions={s_rep.id: s_rep.get_head() for s_rep in self._snake_reps.values()},
+            base_map=base_map,
+            base_map_dtype=str(base_map.dtype)
+        )
 
     def resize(self, height, width):
         self._height = height
