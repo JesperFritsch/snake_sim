@@ -20,12 +20,12 @@ with resources.open_text('snake_sim.config', 'default_config.json') as config_fi
 
 
 class SnakeRep:
-    def __init__(self, id: int, name: str, h_value: int, b_value: int, start_position: Coord, start_length: int=1):
+    def __init__(self, id: int, tag: str, h_value: int, b_value: int, start_position: Coord, start_length: int=1):
         self._start_length = start_length
         self.move_count = 0
         self.last_ate = 0
         self.id = id
-        self.name = name
+        self.tag = tag
         self.head_value = h_value
         self.body_value = b_value
         self._length = start_length
@@ -196,7 +196,7 @@ class SnakeEnv(ISnakeEnv):
             free_value=self._free_value,
             blocked_value=self._blocked_value,
             food_value=self._food_value,
-            snake_tags={s_rep.id: s_rep.name for s_rep in self._snake_reps.values()},
+            snake_tags={s_rep.id: s_rep.tag for s_rep in self._snake_reps.values()},
             snake_values={s_rep.id: {"head_value": s_rep.head_value, "body_value": s_rep.body_value} for s_rep in self._snake_reps.values()},
             start_positions={s_rep.id: s_rep.get_head() for s_rep in self._snake_reps.values()},
             base_map=base_map,

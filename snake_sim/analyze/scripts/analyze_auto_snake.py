@@ -65,7 +65,7 @@ def get_state_file_path():
 
 def test_make_choice(snake: SnakeBase, s_map, step_state: CompleteStepState):
     print("head coord:", snake._head_coord)
-    env_step_data = EnvStepData(s_map, {s_id: {"is_alive": step_state.snake_alive[s_id], "length": len(step_state.snake_bodies[s_id])} for s_id in step_state.snake_alive}, step_state.food)
+    env_step_data = EnvStepData(map=s_map, snakes={s_id: {"is_alive": step_state.snake_alive[s_id], "length": len(step_state.snake_bodies[s_id])} for s_id in step_state.snake_alive}, food_locations=step_state.food)
     snake._set_new_head = lambda x: print(f"New head: {x}")
     start_time = time.time()
     for _ in range(1):
@@ -168,7 +168,7 @@ def test_spatial_network_ablation(snake: SnakeBase, s_map: np.ndarray, step_stat
     """
     Run spatial ablation analysis using the already created snake, matching the style of other test functions.
     """
-    env_step_data = EnvStepData(s_map, {s_id: {"is_alive": step_state.snake_alive[s_id], "length": len(step_state.snake_bodies[s_id])} for s_id in step_state.snake_alive}, step_state.food)
+    env_step_data = EnvStepData(map=s_map, snakes={s_id: {"is_alive": step_state.snake_alive[s_id], "length": len(step_state.snake_bodies[s_id])} for s_id in step_state.snake_alive}, food_locations=step_state.food)
     rl_state = snake._get_state(env_step_data)
     # Sanity-check and build tensors
     print("RL state map shape:", rl_state.map.shape)
@@ -274,14 +274,14 @@ def run_tests(
     # test_recurse_area_check(snake, s_map, Coord(0,-1))
     # test_recurse_area_check(snake, s_map, Coord(-1,0))
     test_make_choice(snake, s_map, step_state)
-    # test_area_check(snake, s_map)
+    test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
     # test_area_check_direction(snake, s_map, Coord(0, -1))
     # test_area_check_direction(snake, s_map, Coord(-1, 0))
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_step_data.food_value, Coord(58, 61))
     # test_get_visitable_tiles(snake, s_map, snake._head_coord)
-    test_spatial_network_ablation(snake, s_map, step_state)
+    # test_spatial_network_ablation(snake, s_map, step_state)
     # test_area_funcs(snake, s_map)
     # test_get_dist_to_tile(snake, s_map, snake._body_coords[-1])
     # test_get_dist_to_tile_with_value(snake, s_map, snake._body_value)
@@ -291,8 +291,8 @@ def run_tests(
 
 def create_test_snake(id, snake_reps: Dict[int, SnakeRep], s_map, env_meta_data: EnvMetaData):
     snake: SnakeBase = SnakeFactory().create_snake(
-        snake_config=SnakeConfig.from_dict(default_config.ai_snake_config)
-        # snake_config=SnakeConfig.from_dict(default_config.snake_config)
+        # snake_config=SnakeConfig.from_dict(default_config.ai_snake_config)
+        snake_config=SnakeConfig.from_dict(default_config.snake_config)
     )
     snake.set_id(id)
     snake.set_start_length(1)
@@ -336,7 +336,8 @@ def create_snake_reps(step_state: CompleteStepState) -> Dict[int, SnakeRep]:
         snake_id_int = int(snake_id)
         body_val = step_state.env_meta_data.snake_values[snake_id]["body_value"]
         head_val = step_state.env_meta_data.snake_values[snake_id]["head_value"]
-        snake_rep = SnakeRep(snake_id_int, head_val, body_val, Coord(0, 0))
+        tag = step_state.env_meta_data.snake_tags[snake_id]
+        snake_rep = SnakeRep(snake_id_int, tag, head_val, body_val, Coord(0, 0))
         snake_rep._length = len(snake_body)
         snake_rep.body = deque([Coord(*coord) for coord in snake_body])
         snake_reps[snake_rep.id] = snake_rep
