@@ -2,7 +2,7 @@ import logging
 import sys
 from pathlib import Path
 from abc import ABC, abstractmethod
-from typing import Tuple, List, Dict, Set
+from typing import Callable, Tuple, List, Dict, Set
 
 from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData
 from snake_sim.environment.interfaces.snake_interface import ISnake
@@ -16,7 +16,17 @@ class ISnakeUpdater(ABC):
         self._finalized = False
 
     @abstractmethod
-    def get_decisions(self, snakes: List[ISnake], env_step_data: EnvStepData, timeout_s: float | None) -> Dict[int, Coord]: # -> dict of snake id to direction
+    def get_decisions(
+        self,
+        snakes: List[ISnake],
+        env_step_data: EnvStepData,
+        timeout_s: float | None,
+        on_response: Callable[[int], None],
+    ) -> Dict[int, Coord]: # -> dict of snake id to direction
+        # `on_response(snake_id)` is invoked as soon as each snake's
+        # decision is in (or after a ConnectionError from that snake).
+        # Not called for snakes that fail to respond within timeout_s.
+        # Part of the loop contract — implementations must invoke it.
         pass
 
     @property

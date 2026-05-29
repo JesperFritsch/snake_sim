@@ -23,6 +23,7 @@ log = logging.getLogger(__name__)
 MSG_START = 1
 MSG_STEP = 2
 MSG_STOP = 3
+MSG_DECISION = 4  # payload: 4-byte big-endian uint32 snake_id
 
 
 def _coord(c) -> Coord:
@@ -153,6 +154,9 @@ class SocketObservable(ILoopObservable):
                     step = _deserialize_step(payload)
                     for observer in self._observers:
                         observer.notify_step(step)
+                elif msg_type == MSG_DECISION:
+                    (snake_id,) = struct.unpack(">I", payload)
+                    self._notify_decision(snake_id)
                 elif msg_type == MSG_STOP:
                     self._latest_stop = _deserialize_stop(payload)
                     self._notify_stop()

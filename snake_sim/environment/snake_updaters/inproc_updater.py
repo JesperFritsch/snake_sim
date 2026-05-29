@@ -1,5 +1,5 @@
 
-from typing import Tuple, List, Dict
+from typing import Callable, Tuple, List, Dict
 
 from snake_sim.environment.interfaces.snake_updater_interface import ISnakeUpdater
 from snake_sim.environment.interfaces.snake_interface import ISnake
@@ -10,8 +10,16 @@ class InprocUpdater(ISnakeUpdater):
         super().__init__()
         pass
 
-    def get_decisions(self, snakes: List[ISnake], env_step_data: EnvStepData, timeout_s: float | None) -> Dict[int, Coord]:
+    def get_decisions(
+        self,
+        snakes: List[ISnake],
+        env_step_data: EnvStepData,
+        timeout_s: float | None,
+        on_response: Callable[[int], None],
+    ) -> Dict[int, Coord]:
         decisions = {}
         for snake in snakes:
-            decisions[snake.get_id()] = snake.update(env_step_data)
+            sid = snake.get_id()
+            decisions[sid] = snake.update(env_step_data)
+            on_response(sid)
         return decisions

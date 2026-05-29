@@ -63,6 +63,10 @@ class ILoopObservable:
         for observer in self._observers:
             observer.notify_step(step_data)
 
+    def _notify_decision(self, snake_id: int):
+        for observer in self._observers:
+            observer.notify_decision(snake_id)
+
     def _notify_stop(self):
         if self._did_notify_stop: return
         log.debug(f"{self.__class__.__name__} notifying observers of loop stop")

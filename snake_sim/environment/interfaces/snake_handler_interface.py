@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Callable, Dict, List
 
 from snake_sim.environment.snake_env import EnvStepData, EnvMetaData
 from snake_sim.environment.types import Coord
@@ -9,7 +9,12 @@ from snake_sim.environment.interfaces.snake_interface import ISnake
 class ISnakeHandler(ABC):
 
     @abstractmethod
-    def get_decisions(self, batch_data: Dict[int, EnvStepData], timeout_s: float | None) -> Dict[int, Coord]:
+    def get_decisions(
+        self,
+        batch_data: Dict[int, EnvStepData],
+        timeout_s: float | None,
+        on_response: Callable[[int], None],
+    ) -> Dict[int, Coord]:
         pass
 
     @abstractmethod
