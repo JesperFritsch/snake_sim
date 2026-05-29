@@ -17,6 +17,7 @@ log = logging.getLogger(Path(__file__).stem)
 MSG_START = 1
 MSG_STEP = 2
 MSG_STOP = 3
+MSG_DECISION = 4  # payload: 4-byte big-endian uint32 snake_id
 
 
 def _coord(c: Coord) -> simrun_pb2.Coord:
@@ -124,6 +125,11 @@ class SocketObserver(ILoopObserver):
         if self._failed.is_set():
             return
         self._queue.put((MSG_STOP, _serialize_stop(data)))
+
+    def notify_decision(self, snake_id: int):
+        if self._failed.is_set():
+            return
+        self._queue.put((MSG_DECISION, struct.pack(">I", snake_id)))
 
     def reset(self):
         pass  # not meaningful for a one-shot run

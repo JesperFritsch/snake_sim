@@ -4,7 +4,7 @@ from pathlib import Path
 
 from concurrent.futures import ThreadPoolExecutor, wait, as_completed
 from concurrent.futures import TimeoutError as concurrentTimeoutError
-from typing import Tuple, List
+from typing import Callable, Tuple, List
 
 from snake_sim.environment.interfaces.snake_updater_interface import ISnakeUpdater
 from snake_sim.environment.interfaces.snake_interface import ISnake
@@ -17,7 +17,13 @@ class ConcurrentUpdater(ISnakeUpdater):
         super().__init__()
         self._executor: ThreadPoolExecutor = None
 
-    def get_decisions(self, snakes: List[ISnake], env_step_data: EnvStepData, timeout_s: float | None) -> dict[int, Coord]:
+    def get_decisions(
+        self,
+        snakes: List[ISnake],
+        env_step_data: EnvStepData,
+        timeout_s: float | None,
+        on_response: Callable[[int], None],
+    ) -> dict[int, Coord]:
         futures = {self._executor.submit(snake.update, env_step_data): snake.get_id() for snake in snakes}
         decisions = {snake.get_id(): None for snake in snakes}
         completed_futures = set()
@@ -29,6 +35,10 @@ class ConcurrentUpdater(ISnakeUpdater):
                     decisions[id] = future.result()
                 except ConnectionError:
                     log.debug(f"Snake with id {id} disconnected.")
+                try:
+                    on_response(id)
+                except Exception:
+                    log.exception("on_response callback failed for snake %s", id)
         except concurrentTimeoutError:
             pass
         # Snakes whose futures did not complete in time

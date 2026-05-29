@@ -4,7 +4,7 @@ import json
 import random
 import bisect
 
-from typing import Dict, List, Tuple, Set
+from typing import Callable, Dict, List, Tuple, Set
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from importlib import resources
@@ -79,19 +79,29 @@ class SnakeHandler(ISnakeHandler):
             updater_batches.setdefault(updater, ([], env_step_data))[0].append(snake)
         return updater_batches
 
-    def _gather_decisions(self, updater_batches: Dict[ISnakeUpdater, Tuple[List[ISnake], EnvStepData]], timeout_s: float | None) -> Dict[int, Coord]:
+    def _gather_decisions(
+        self,
+        updater_batches: Dict[ISnakeUpdater, Tuple[List[ISnake], EnvStepData]],
+        timeout_s: float | None,
+        on_response: Callable[[int], None],
+    ) -> Dict[int, Coord]:
         decisions = {}
         futures = [
-            self._executor.submit(updater.get_decisions, snakes, env_step_data, timeout_s)
+            self._executor.submit(updater.get_decisions, snakes, env_step_data, timeout_s, on_response)
             for updater, (snakes, env_step_data) in updater_batches.items()
         ]
         for future in as_completed(futures):
             decisions.update(future.result())
         return decisions
 
-    def get_decisions(self, batch_data: Dict[int, EnvStepData], timeout_s: float | None) -> Dict[int, Coord]:
+    def get_decisions(
+        self,
+        batch_data: Dict[int, EnvStepData],
+        timeout_s: float | None,
+        on_response: Callable[[int], None],
+    ) -> Dict[int, Coord]:
         updater_batches = self._split_batch_by_updater(batch_data)
-        return self._gather_decisions(updater_batches, timeout_s=timeout_s)
+        return self._gather_decisions(updater_batches, timeout_s, on_response)
 
     def add_snake(self, snake: ISnake, tag: str):
         if snake in self._snakes.values():

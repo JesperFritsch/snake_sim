@@ -60,7 +60,11 @@ class SimLoop(IMainLoop):
 
     def _update_batch(self, batch: List[int]):
         batch_data = self._prepare_batch(batch)
-        decisions = self._snake_handler.get_decisions(batch_data, self._decision_timeout_s)
+        decisions = self._snake_handler.get_decisions(
+            batch_data,
+            self._decision_timeout_s,
+            on_response=self._notify_decision,
+        )
         self._apply_decisions(decisions)
 
     def _apply_decisions(self, decisions: Dict[int, Coord]):
