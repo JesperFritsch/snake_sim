@@ -88,10 +88,10 @@ class SimLoop(IMainLoop):
         if not self._env:
             raise ValueError('Environment not set')
         try:
-            self._notify_start()
+            self._notify_start(LoopStartData(env_meta_data=self._env.get_init_data()))
             self._loop()
         finally:
-            self._notify_stop()
+            self._notify_stop(LoopStopData(final_step=self._steps))
 
     def stop(self):
         self._is_running = False
@@ -126,18 +126,7 @@ class SimLoop(IMainLoop):
         self._current_step_data.lengths = {id: snake['length'] for id, snake in self._env.get_env_step_data().snakes.items()}
         self._current_step_data.total_time = total_time
         if len(self._current_step_data.decisions):
-            self._notify_step()
-
-    def _get_start_data(self) -> LoopStartData:
-        return LoopStartData(
-            env_meta_data=self._env.get_init_data()
-        )
-
-    def _get_step_data(self) -> LoopStepData:
-        return LoopStepData(**self._current_step_data)
-
-    def _get_stop_data(self) -> LoopStopData:
-        return LoopStopData(final_step=self._steps)
+            self._notify_step(LoopStepData(**self._current_step_data))
 
     def set_snake_handler(self, snake_handler: ISnakeHandler):
         self._snake_handler = snake_handler

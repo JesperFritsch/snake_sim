@@ -38,40 +38,25 @@ class ILoopObservable:
     def get_observers(self) -> List[ILoopObserver]:
         return self._observers
 
-    @abstractmethod
-    def _get_start_data(self) -> LoopStartData:
-        pass
-
-    @abstractmethod
-    def _get_step_data(self) -> LoopStepData:
-        pass
-
-    @abstractmethod
-    def _get_stop_data(self) -> LoopStopData:
-        pass
-
-    def _notify_start(self):
+    def _notify_start(self, start_data: LoopStartData):
         if self._did_notify_start: return
         log.debug(f"{self.__class__.__name__} notifying observers of loop start")
         self._did_notify_start = True
-        start_data = self._get_start_data()
         for observer in self._observers:
             observer.notify_start(start_data)
 
-    def _notify_step(self):
-        step_data = self._get_step_data()
+    def _notify_step(self, step_data: LoopStepData):
         for observer in self._observers:
             observer.notify_step(step_data)
 
-    def _notify_decision(self, snake_id: int):
+    def _notify_decision(self, decision_id_data):
         for observer in self._observers:
-            observer.notify_decision(snake_id)
+            observer.notify_decision(decision_id_data)
 
-    def _notify_stop(self):
+    def _notify_stop(self, stop_data: LoopStopData):
         if self._did_notify_stop: return
         log.debug(f"{self.__class__.__name__} notifying observers of loop stop")
         self._did_notify_stop = True
-        stop_data = self._get_stop_data()
         for observer in self._observers:
             observer.notify_stop(stop_data)
 
