@@ -130,8 +130,6 @@ def main():
             if waitable_observer.has_started():
                 waitable_observer.wait_until_finished()
         except:
-            pass
-        else:
             log.debug("Loop never started, no need to wait for finish.")
         try:
             render_loop.stop()

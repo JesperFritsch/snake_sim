@@ -22,24 +22,14 @@ class FileRepeaterObservable(ILoopObservable):
     def _worker(self):
         file_handler = create_run_file_handler(str(self._filepath))
         with file_handler:
-            self._current_data = file_handler.get_start_data()
-            self._notify_start()
+            start_data = file_handler.get_start_data()
+            self._notify_start(start_data)
             for step_data in file_handler.iter_steps():
                 if self._stop_event.is_set():
                     break
-                self._current_data = step_data
-                self._notify_step()
-            self._current_data = file_handler.get_stop_data()
-            self._notify_stop()
-
-    def _get_start_data(self) -> LoopStartData:
-        return self._current_data
-
-    def _get_step_data(self) -> LoopStepData:
-        return self._current_data
-
-    def _get_stop_data(self) -> LoopStopData:
-        return self._current_data
+                self._notify_step(step_data)
+            stop_data = file_handler.get_stop_data()
+            self._notify_stop(stop_data)
 
     def start(self):
         self._worker_thread.start()

@@ -65,6 +65,11 @@ class IPCRepeaterObserver(ILoopObserver):
     def notify_stop(self, stop_data: LoopStopData):
         self._data_queue.put(("_notify_stop", stop_data))
 
+    @_check_worker
+    def notify_decision(self, snake_id: int):
+        self._data_queue.put(("_notify_decision", snake_id))
+
+    @_check_worker
     def reset(self):
         self._data_queue.put(("_reset", None))
 

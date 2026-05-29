@@ -105,21 +105,10 @@ class SocketObservable(ILoopObservable):
         self._stop_event: Event = Event()
         self._thread: Optional[Thread] = None
         self._conn: Optional[socket.socket] = None
-        self._latest_start: Optional[LoopStartData] = None
-        self._latest_stop: Optional[LoopStopData] = None
 
     @property
     def port(self) -> int:
         return self._bound_port
-
-    def _get_start_data(self) -> LoopStartData:
-        return self._latest_start
-
-    def _get_step_data(self) -> LoopStepData:
-        raise NotImplementedError  # we forward directly, never queried
-
-    def _get_stop_data(self) -> LoopStopData:
-        return self._latest_stop
 
     def start(self):
         self._thread = Thread(target=self._reader, daemon=True)
@@ -148,18 +137,17 @@ class SocketObservable(ILoopObservable):
                     return
 
                 if msg_type == MSG_START:
-                    self._latest_start = _deserialize_start(payload)
-                    self._notify_start()
+                    start_data = _deserialize_start(payload)
+                    self._notify_start(start_data)
                 elif msg_type == MSG_STEP:
-                    step = _deserialize_step(payload)
-                    for observer in self._observers:
-                        observer.notify_step(step)
+                    step_data = _deserialize_step(payload)
+                    self._notify_step(step_data)
                 elif msg_type == MSG_DECISION:
                     (snake_id,) = struct.unpack(">I", payload)
                     self._notify_decision(snake_id)
                 elif msg_type == MSG_STOP:
-                    self._latest_stop = _deserialize_stop(payload)
-                    self._notify_stop()
+                    stop_data = _deserialize_stop(payload)
+                    self._notify_stop(stop_data)
                     return
                 else:
                     log.warning("SocketObservable: unknown msg type %d", msg_type)
