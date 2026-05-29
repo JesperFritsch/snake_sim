@@ -33,9 +33,6 @@ from snake_sim.cpp_bindings.utils import (
 from snake_sim.cpp_bindings.area_check import AreaChecker
 
 
-AREA_CHECKERS = {}
-
-
 @dataclass
 class TailVisiblePhase:
     start_step_idx: int
@@ -130,29 +127,25 @@ def entered_separate_area(state: CompleteStepState, s_map: np.ndarray, snake_id:
     return visitable_tiles and all(dist == -1  for dist in dists_to_body)
 
 
-def get_area_checkers(
-        snake_values: dict[int, dict[str, int]], 
-        free_value: int, 
-        food_value: int, 
-        width: int,
-        height: int,
-    ) ->  dict[int, AreaChecker]:
-    global AREA_CHECKERS
-    if not AREA_CHECKERS:
-        debug.debug_print("Initializing area checkers...")
-    else:
-        return AREA_CHECKERS
-    for snake_id, values in snake_values.items():
-        if snake_id not in AREA_CHECKERS:
-            AREA_CHECKERS[snake_id] = AreaChecker(
-                food_value,
-                free_value,
-                values['body_value'],
-                values['head_value'],
-                width,
-                height,
-            )
-    return AREA_CHECKERS
+def build_area_checkers(env_meta_data) -> dict[int, AreaChecker]:
+    """Construct one AreaChecker per snake from env_meta_data.
+
+    snake_values is fixed at sim start, so callers should build this once
+    per analyze() and thread it through. Previously this was a module-level
+    cache that early-returned after first init, which dropped new snake_ids
+    and leaked stale entries across analyze() calls in the same process.
+    """
+    return {
+        sid: AreaChecker(
+            env_meta_data.food_value,
+            env_meta_data.free_value,
+            vals['body_value'],
+            vals['head_value'],
+            env_meta_data.width,
+            env_meta_data.height,
+        )
+        for sid, vals in env_meta_data.snake_values.items()
+    }
 
 
 def get_best_area_checks(
@@ -300,23 +293,17 @@ def create_traps_set(
 
 
 def find_traps(
-        prev_state: CompleteStepState, 
-        current_state: CompleteStepState, 
-        prev_map: np.ndarray, 
-        current_map: np.ndarray, 
+        prev_state: CompleteStepState,
+        current_state: CompleteStepState,
+        prev_map: np.ndarray,
+        current_map: np.ndarray,
         snake_ids: list[int],
+        area_checkers: dict[int, AreaChecker],
         trap_threshold: int = None
     ) -> dict[int, set[TrapInfo]]:
-    get_area_checkers(
-        snake_values=prev_state.env_meta_data.snake_values,
-        free_value=prev_state.env_meta_data.free_value,
-        food_value=prev_state.env_meta_data.food_value,
-        width=prev_state.env_meta_data.width,
-        height=prev_state.env_meta_data.height,
-    )
     ids_to_check_for_traps = set([id for id, alive in prev_state.snake_alive.items() if alive])
-    best_area_checks_s1 = get_best_area_checks(AREA_CHECKERS, prev_state, prev_map, ids_to_check_for_traps)
-    best_area_checks_s2 = get_best_area_checks(AREA_CHECKERS, current_state, current_map, ids_to_check_for_traps)
+    best_area_checks_s1 = get_best_area_checks(area_checkers, prev_state, prev_map, ids_to_check_for_traps)
+    best_area_checks_s2 = get_best_area_checks(area_checkers, current_state, current_map, ids_to_check_for_traps)
 
     trapped_snakes = find_trapped_candidates(best_area_checks_s1, best_area_checks_s2, trap_threshold=trap_threshold)
     return create_traps_set(trapped_snakes, current_state, current_map, snake_ids)
@@ -340,6 +327,7 @@ def analyze(run_file: Path, trap_threshold: int = None) -> RunAnalysis:
     start_data = state_builder.get_start_data()
     snake_ids = list(start_data.env_meta_data.snake_values.keys())
     env_meta_data = start_data.env_meta_data
+    area_checkers = build_area_checkers(env_meta_data)
     fatal_steps = {}
     tail_visible_phases: dict[int, list[TailVisiblePhase]] = {s_id: [] for s_id in snake_ids}
     entered_separate_area_dict: dict[int, list[int]] = {s_id: [] for s_id in snake_ids}
@@ -352,7 +340,7 @@ def analyze(run_file: Path, trap_threshold: int = None) -> RunAnalysis:
             current_step_idx = state_builder.get_current_step_idx()
             current_map = map_builder.get_map_for_step(current_step_idx)
 
-            traps_found = find_traps(prev_state, current_state, prev_map, current_map, snake_ids, trap_threshold=trap_threshold) if len(snake_ids) > 1 else {}
+            traps_found = find_traps(prev_state, current_state, prev_map, current_map, snake_ids, area_checkers, trap_threshold=trap_threshold) if len(snake_ids) > 1 else {}
             if traps_found:
                 traps_mapping[current_step_idx].update(traps_found)
             for s_id in snake_ids:

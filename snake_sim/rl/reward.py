@@ -6,9 +6,9 @@ from typing import Dict
 import snake_sim.debugging as debug
 from snake_sim.environment.types import AreaCheckResult, CompleteStepState
 from snake_sim.analyze.scripts.run_analyzer import (
-    find_traps, 
-    get_area_checkers, 
-    get_best_area_checks
+    build_area_checkers,
+    find_traps,
+    get_best_area_checks,
 )
 from snake_sim.cpp_bindings.utils import (
     distance_to_tile_with_value, 
@@ -56,17 +56,11 @@ def compute_rewards(state_map1: tuple[CompleteStepState, np.ndarray],
     state2, map2 = state_map2
     rewards = {}
     info = {}
-    area_checkers = get_area_checkers(
-        snake_values=state1.env_meta_data.snake_values,
-        free_value=state1.env_meta_data.free_value,
-        food_value=state1.env_meta_data.food_value,
-        width=state1.env_meta_data.width,
-        height=state1.env_meta_data.height,
-    )
+    area_checkers = build_area_checkers(state1.env_meta_data)
     ids_to_check = set([id for id, alive in state1.snake_alive.items() if alive])
     best_area_checks = get_best_area_checks(area_checkers, state2, map2, ids_to_check)
 
-    traps_set = find_traps(state1, state2, map1, map2, alive_snake_ids) if len(alive_snake_ids) > 1 else set()
+    traps_set = find_traps(state1, state2, map1, map2, alive_snake_ids, area_checkers) if len(alive_snake_ids) > 1 else set()
 
     curr_voronoi = get_voronoi_results(state2, map2)
     prev_voronoi = get_voronoi_results(state1, map1)
