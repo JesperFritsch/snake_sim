@@ -295,6 +295,7 @@ class StrategyConfig:
 @dataclass
 class SnakeConfig:
     type: str
+    tag: str
     args: DotDict = field(default_factory=DotDict)
     # strategies is a dict of priority (int) -> StrategyConfig
     strategies: Dict[int, StrategyConfig] = field(default_factory=dict)
@@ -305,7 +306,7 @@ class SnakeConfig:
             int(k): StrategyConfig(**v)
             for k, v in config_dict.get('strategies', {}).items()
         }
-        return cls(type=config_dict['type'], strategies=strategies, args=DotDict(config_dict.get('args', {})))
+        return cls(type=config_dict['type'], tag=config_dict['tag'], strategies=strategies, args=DotDict(config_dict.get('args', {})))
 
 
 class SnakeProcType(Enum):
@@ -322,6 +323,8 @@ class SimConfig:
     food_decay: int
     snake_count: int
     calc_timeout: int
+    ext_conn_timeout: int
+    ext_init_timeout: int
     start_length: int
     external_snake_configs: List[SnakeConfig]
     distributed_snakes: bool
@@ -333,7 +336,7 @@ class SimConfig:
 class GameConfig(SimConfig):
     player_count: int
     steps_per_sec: int
-    player_snake_congfigs: list[SnakeConfig]
+    player_snake_configs: list[SnakeConfig]
 
 
 class NoMoreSteps(Exception):

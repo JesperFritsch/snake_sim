@@ -19,7 +19,6 @@ def handle_connection_loss(func):
 
 class GRPCProxySnake(ISnake):
     def __init__(self, target: str, timeout: float = 5.0, init_timeout: float = 2.0):
-        print(f"Creating snake with {timeout}")
         super().__init__()
         self.target = target
         self.timeout = timeout

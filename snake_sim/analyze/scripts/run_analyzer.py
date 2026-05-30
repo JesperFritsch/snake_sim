@@ -334,6 +334,12 @@ def analyze(run_file: Path, trap_threshold: int = None) -> RunAnalysis:
     traps_mapping: dict[int, set[TrapInfo]] = defaultdict(set) # step_idx -> set of TrapInfo for traps detected in that step
     prev_state = state_builder.get_state(0)
     prev_map = map_builder.get_map(0)
+    # Seed current_step_idx in case the loop body never runs — that
+    # happens for degenerate runs with zero step events (e.g. every
+    # snake's gRPC init failed, sim went straight from start_data to
+    # stop_data). Without this seed line 382's `final_step_idx=...`
+    # raises UnboundLocalError and the bundle never gets written.
+    current_step_idx = state_builder.get_current_step_idx()
     while True:
         try:
             current_state = state_builder.get_next_state()

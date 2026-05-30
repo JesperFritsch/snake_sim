@@ -2,7 +2,7 @@
 import logging
 from pathlib import Path
 
-from concurrent.futures import ThreadPoolExecutor, wait, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from concurrent.futures import TimeoutError as concurrentTimeoutError
 from typing import Callable, Tuple, List
 
