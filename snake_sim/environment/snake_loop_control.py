@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Union, List, Optional
 from importlib import resources as pkg_resources
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as concurrentTimeoutError
 from multiprocessing.sharedctypes import Synchronized
 
 from snake_sim.loop_observers.ipc_repeater_observer import IPCRepeaterObserver
@@ -134,14 +136,26 @@ class SnakeLoopControl:
             tag = f"{snake.__class__.__name__}_{i}"
             self._snake_handler.add_snake(snake, tag)
 
+    def _initialize_single_remote_snake(self, snake_factory: SnakeFactory, s_config: SnakeConfig):
+        try:
+            snake = snake_factory.create_snake(snake_config=s_config)
+            self._snake_handler.add_snake(snake, s_config.tag)
+        except Exception as e:
+            log.exception(e)
+
     @_loop_check
     def _initialize_remote_grpcs(self):
         """ Initialize remote snakes """
+        if not self._config.external_snake_configs:
+            return
+        threadpool = ThreadPoolExecutor(max_workers=len(self._config.external_snake_configs))
         snake_factory = SnakeFactory()
+        futures = []
         for s_config in self._config.external_snake_configs:
+            futures.append(threadpool.submit(self._initialize_single_remote_snake, snake_factory, s_config))
+        for future in as_completed(futures):
             try:
-                snake = snake_factory.create_snake(s_config)
-                self._snake_handler.add_snake(snake, s_config.args["target"])
+                future.result()
             except Exception as e:
                 log.exception(e)
 
@@ -157,12 +171,16 @@ class SnakeLoopControl:
                 snake_config=snake_config
             )
             target = self._snake_proc_mngr.get_target(snake_id)
-            snake = snake_factory.create_snake(
-                proc_type=SnakeProcType.GRPC,
-                target=target
+            proxy_config = SnakeConfig(
+                type="remote",
+                tag=target,
+                args=DotDict(
+                    target=target,
+                    timeout=self._config.ext_conn_timeout,
+                    init_timeout=self._config.ext_init_timeout
+                )
             )
-            tag = f"{snake.__class__.__name__}_{snake_id}"
-            self._snake_handler.add_snake(snake, tag)
+            self._initialize_single_remote_snake(snake_factory, proxy_config)
 
     @_loop_check
     def _initialize_player_snakes(self):
@@ -228,9 +246,12 @@ def setup_loop(config) -> SnakeLoopControl:
         calc_timeout=config.calc_timeout,
         start_length=config.start_length,
         distributed_snakes=config.distributed_snakes,
+        ext_conn_timeout=config.ext_conn_timeout,
+        ext_init_timeout=config.ext_init_timeout,
         external_snake_configs=[
             SnakeConfig(
                 "remote",
+                target,
                 DotDict(
                     target=target,
                     timeout=config.ext_conn_timeout,
@@ -240,8 +261,8 @@ def setup_loop(config) -> SnakeLoopControl:
             for target in config.ext_targets
         ],
         snake_configs=[
-            SnakeConfig.from_dict(config[config.snake_config_key] if config.snake_config_key else config.snake_config) 
-            for _ in range(config.snake_count)
+            SnakeConfig.from_dict({**config[config.snake_config_key], "tag": f"Snake_{i}"} if config.snake_config_key else {**config.snake_config, "tag": f"Snake_{i}"})
+            for i in range(config.snake_count)
         ],
         decision_timeout=config.decision_timeout_ms if config.decision_timeout_ms > 0 else None
     )

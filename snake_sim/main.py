@@ -70,6 +70,7 @@ def main():
                 input_configs = setup_player_input(config.num_players)
                 config.player_snake_configs = [
                     SnakeConfig(
+                        tag=f"Player_{input_c.input.input_type}_{input_c.input.name}",
                         type="survivor",
                         strategies={
                             1: StrategyConfig(

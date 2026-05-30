@@ -81,6 +81,7 @@ def add_snakes(snake_env: RLSnakeEnv, snake_handler: SnakeHandler, snapshot_dir:
     """
     snake_factory = SnakeFactory()
     ppo_snake_config = SnakeConfig(
+        tag="PPO_Snake",
         type='ai_ppo',
         args={
             'snapshot_dir': snapshot_dir,
