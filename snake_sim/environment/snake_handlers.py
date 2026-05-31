@@ -59,8 +59,8 @@ class SnakeHandler(ISnakeHandler):
 
     def get_next_snake_id(self) -> int:
         with self._t_lock:
-            self._next_id += 1
             s_id = self._next_id
+            self._next_id += 1
         return s_id
 
     def get_snakes(self) -> Dict[int, ISnake]:
