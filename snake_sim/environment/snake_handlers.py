@@ -7,6 +7,7 @@ import bisect
 from typing import Callable, Dict, List, Tuple, Set
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
 from importlib import resources
 
 from snake_sim.environment.snake_processes import SnakeProcessManager
@@ -46,15 +47,21 @@ class SnakeHandler(ISnakeHandler):
         self._executor = ThreadPoolExecutor(max_workers=len(SNAKE_UPDATER_MAP))
         self._updaters: Dict[type, ISnakeUpdater] = {}
         self._finalized = False
+        self._next_id = 0
+        self._t_lock = Lock()
 
     def _get_updater(self, snake: ISnake) -> ISnakeUpdater:
-        for snake_type, updater in SNAKE_UPDATER_MAP.items():
-            if isinstance(snake, snake_type):
-                updater = self._updaters.setdefault(snake_type, updater())
-                return updater
+        with self._t_lock:
+            for snake_type, updater in SNAKE_UPDATER_MAP.items():
+                if isinstance(snake, snake_type):
+                    updater = self._updaters.setdefault(snake_type, updater())
+                    return updater
 
     def get_next_snake_id(self) -> int:
-        return len(self._snakes)
+        with self._t_lock:
+            self._next_id += 1
+            s_id = self._next_id
+        return s_id
 
     def get_snakes(self) -> Dict[int, ISnake]:
         return self._snakes.copy()
