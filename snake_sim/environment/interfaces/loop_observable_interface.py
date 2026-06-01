@@ -3,7 +3,7 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import List
 from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver
-from snake_sim.environment.types import LoopStartData, LoopStepData, LoopStopData
+from snake_sim.environment.types import LoopStartData, LoopStepData, LoopStopData, LoopDecisionData
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -49,9 +49,9 @@ class ILoopObservable:
         for observer in self._observers:
             observer.notify_step(step_data)
 
-    def _notify_decision(self, decision_id_data):
+    def _notify_decision(self, decision_data: LoopDecisionData):
         for observer in self._observers:
-            observer.notify_decision(decision_id_data)
+            observer.notify_decision(decision_data)
 
     def _notify_stop(self, stop_data: LoopStopData):
         if self._did_notify_stop: return

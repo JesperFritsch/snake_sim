@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from snake_sim.environment.types import LoopStartData, LoopStepData, LoopStopData
+from snake_sim.environment.types import LoopStartData, LoopStepData, LoopStopData, LoopDecisionData
 
 class ILoopObserver(ABC):
 
@@ -15,7 +15,7 @@ class ILoopObserver(ABC):
     def notify_stop(self, stop_data: LoopStopData):
         pass
 
-    def notify_decision(self, snake_id: int):
+    def notify_decision(self, decision_data: LoopDecisionData):
         """Fired when a single snake's decision for the current step has
         arrived from its updater. Lets out-of-process observers know which
         snakes are still pending mid-step (e.g. wall-clock budget

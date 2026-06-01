@@ -6,9 +6,14 @@ from pathlib import Path
 from queue import Queue, Empty
 from threading import Thread, Event
 
-from snake_sim.environment.types import LoopStartData, LoopStepData, LoopStopData
 from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver
-from snake_sim.environment.types import EnvMetaData, Coord
+from snake_sim.environment.types import (
+    LoopStartData, 
+    LoopStepData, 
+    LoopStopData, 
+    LoopDecisionData,
+    Coord
+    )
 from snake_sim.protobuf import simrun_pb2  # generated from your proto
 
 log = logging.getLogger(Path(__file__).stem)
@@ -17,7 +22,7 @@ log = logging.getLogger(Path(__file__).stem)
 MSG_START = 1
 MSG_STEP = 2
 MSG_STOP = 3
-MSG_DECISION = 4  # payload: 4-byte big-endian uint32 snake_id
+MSG_DECISION = 4  # payload: 4-byte big-endian uint32 snake_id, 8-byte big-endian double wall_time
 
 
 def _coord(c: Coord) -> simrun_pb2.Coord:
@@ -58,6 +63,14 @@ def _serialize_step(data: LoopStepData) -> bytes:
         lengths=dict(data.lengths),
         new_food=[_coord(c) for c in data.new_food],
         removed_food=[_coord(c) for c in data.removed_food],
+    )
+    return proto.SerializeToString()
+
+
+def _serialize_decision(data: LoopDecisionData) -> bytes:
+    proto = simrun_pb2.LoopDecisionData(
+        snake_id=data.snake_id,
+        wall_time_ns=data.wall_time_ns
     )
     return proto.SerializeToString()
 
@@ -126,10 +139,10 @@ class SocketObserver(ILoopObserver):
             return
         self._queue.put((MSG_STOP, _serialize_stop(data)))
 
-    def notify_decision(self, snake_id: int):
+    def notify_decision(self, data: LoopDecisionData):
         if self._failed.is_set():
             return
-        self._queue.put((MSG_DECISION, struct.pack(">I", snake_id)))
+        self._queue.put((MSG_DECISION, _serialize_decision(data)))
 
     def reset(self):
         pass  # not meaningful for a one-shot run

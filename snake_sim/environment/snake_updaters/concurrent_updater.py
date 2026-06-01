@@ -1,5 +1,6 @@
 
 import logging
+import time
 from pathlib import Path
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -8,7 +9,7 @@ from typing import Callable, Tuple, List
 
 from snake_sim.environment.interfaces.snake_updater_interface import ISnakeUpdater
 from snake_sim.environment.interfaces.snake_interface import ISnake
-from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData
+from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData, LoopDecisionData
 
 log = logging.getLogger(Path(__file__).stem)
 
@@ -22,13 +23,15 @@ class ConcurrentUpdater(ISnakeUpdater):
         snakes: List[ISnake],
         env_step_data: EnvStepData,
         timeout_s: float | None,
-        on_response: Callable[[int], None],
+        on_response: Callable[[LoopDecisionData], None],
     ) -> dict[int, Coord]:
-        futures = {self._executor.submit(snake.update, env_step_data): snake.get_id() for snake in snakes}
         decisions = {snake.get_id(): None for snake in snakes}
         completed_futures = set()
+        start_time = time.monotonic_ns()
+        futures = {self._executor.submit(snake.update, env_step_data): snake.get_id() for snake in snakes}
         try:
             for future in as_completed(futures, timeout=timeout_s):
+                decision_wall_time = time.monotonic_ns() - start_time
                 id = futures[future]
                 completed_futures.add(future)
                 try:
@@ -36,7 +39,7 @@ class ConcurrentUpdater(ISnakeUpdater):
                 except ConnectionError:
                     log.debug(f"Snake with id {id} disconnected.")
                 try:
-                    on_response(id)
+                    on_response(LoopDecisionData(snake_id=id, wall_time_ns=decision_wall_time))
                 except Exception:
                     log.exception("on_response callback failed for snake %s", id)
         except concurrentTimeoutError:

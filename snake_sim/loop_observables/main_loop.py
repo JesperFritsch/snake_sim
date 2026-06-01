@@ -15,6 +15,7 @@ from snake_sim.environment.interfaces.snake_env_interface import ISnakeEnv
 from snake_sim.environment.types import (
     LoopStartData,
     LoopStepData,
+    LoopDecisionData,
     LoopStopData,
     DotDict,
     Coord
@@ -76,7 +77,6 @@ class SimLoop(IMainLoop):
                 self._snake_handler.kill_snake(id)
                 decision = Coord(0, 0)  # No move if dead
             self._current_step_data.alive_states[id] = alive
-            self._current_step_data.snake_times[id] = 0 # TODO: Implement snake times
             self._current_step_data.decisions[id] = decision
             self._current_step_data.tail_directions[id] = tail_direction
             self._current_step_data.snake_grew[id] = grew
@@ -99,7 +99,7 @@ class SimLoop(IMainLoop):
 
     def _pre_update(self):
         self._env.update_food()
-        self._current_step_data = DotDict(
+        self._current_step_data = LoopStepData(
             step=0,
             total_time=0,
             alive_states={},
@@ -125,8 +125,15 @@ class SimLoop(IMainLoop):
         total_time = time.time() - self._step_start_time
         self._current_step_data.lengths = {id: snake['length'] for id, snake in self._env.get_env_step_data().snakes.items()}
         self._current_step_data.total_time = total_time
+        for sid in self._current_step_data.decisions:
+            self._current_step_data.snake_times.setdefault(sid, total_time)
         if len(self._current_step_data.decisions):
-            self._notify_step(LoopStepData(**self._current_step_data))
+            self._notify_step(self._current_step_data)
+    
+    def _notify_decision(self, decision_data: LoopDecisionData):
+        wall_time_s = decision_data.wall_time_ns / 1e9
+        self._current_step_data.snake_times[decision_data.snake_id] = wall_time_s
+        return super()._notify_decision(decision_data)
 
     def set_snake_handler(self, snake_handler: ISnakeHandler):
         self._snake_handler = snake_handler

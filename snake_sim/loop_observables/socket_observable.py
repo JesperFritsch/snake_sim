@@ -11,6 +11,7 @@ from snake_sim.environment.interfaces.loop_observable_interface import ILoopObse
 from snake_sim.environment.types import (
     LoopStartData,
     LoopStepData,
+    LoopDecisionData,
     LoopStopData,
     EnvMetaData,
     Coord,
@@ -70,6 +71,14 @@ def _deserialize_step(payload: bytes) -> LoopStepData:
         lengths=dict(proto.lengths),
         new_food=[_coord(c) for c in proto.new_food],
         removed_food=[_coord(c) for c in proto.removed_food],
+    )
+
+
+def _deserialize_decision(payload: bytes) -> LoopDecisionData:
+    proto = simrun_pb2.LoopDecisionData.FromString(payload)
+    return LoopDecisionData(
+        snake_id=proto.snake_id,
+        wall_time_ns=proto.wall_time_ns,
     )
 
 
@@ -143,8 +152,8 @@ class SocketObservable(ILoopObservable):
                     step_data = _deserialize_step(payload)
                     self._notify_step(step_data)
                 elif msg_type == MSG_DECISION:
-                    (snake_id,) = struct.unpack(">I", payload)
-                    self._notify_decision(snake_id)
+                    decision_data = _deserialize_decision(payload)
+                    self._notify_decision(decision_data)
                 elif msg_type == MSG_STOP:
                     stop_data = _deserialize_stop(payload)
                     self._notify_stop(stop_data)
