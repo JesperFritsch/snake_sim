@@ -16,7 +16,7 @@ class InprocUpdater(ISnakeUpdater):
         snakes: List[ISnake],
         env_step_data: EnvStepData,
         timeout_s: float | None,
-        on_response: Callable[[LoopDecisionData], None],
+        on_response: Callable[[int, int], None],
     ) -> Dict[int, Coord]:
         decisions = {}
         for snake in snakes:
@@ -24,5 +24,5 @@ class InprocUpdater(ISnakeUpdater):
             start_time = time.monotonic_ns()
             decisions[sid] = snake.update(env_step_data)
             end_time = time.monotonic_ns()
-            on_response(LoopDecisionData(snake_id=sid, wall_time_ns=end_time - start_time))
+            on_response(sid, end_time - start_time)
         return decisions

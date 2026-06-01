@@ -90,7 +90,7 @@ class SnakeHandler(ISnakeHandler):
         self,
         updater_batches: Dict[ISnakeUpdater, Tuple[List[ISnake], EnvStepData]],
         timeout_s: float | None,
-        on_response: Callable[[LoopDecisionData], None],
+        on_response: Callable[[int, int], None],
     ) -> Dict[int, Coord]:
         decisions = {}
         futures = [
@@ -105,7 +105,7 @@ class SnakeHandler(ISnakeHandler):
         self,
         batch_data: Dict[int, EnvStepData],
         timeout_s: float | None,
-        on_response: Callable[[LoopDecisionData], None],
+        on_response: Callable[[int, int], None],
     ) -> Dict[int, Coord]:
         updater_batches = self._split_batch_by_updater(batch_data)
         return self._gather_decisions(updater_batches, timeout_s, on_response)

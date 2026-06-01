@@ -21,9 +21,9 @@ class ISnakeUpdater(ABC):
         snakes: List[ISnake],
         env_step_data: EnvStepData,
         timeout_s: float | None,
-        on_response: Callable[[LoopDecisionData], None],
+        on_response: Callable[[int, int], None],
     ) -> Dict[int, Coord]: # -> dict of snake id to direction
-        # `on_response(snake_id)` is invoked as soon as each snake's
+        # `on_response(snake_id, wall_time_ns)` is invoked as soon as each snake's
         # decision is in (or after a ConnectionError from that snake).
         # Not called for snakes that fail to respond within timeout_s.
         # Part of the loop contract — implementations must invoke it.

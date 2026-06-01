@@ -70,6 +70,7 @@ def _serialize_step(data: LoopStepData) -> bytes:
 def _serialize_decision(data: LoopDecisionData) -> bytes:
     proto = simrun_pb2.LoopDecisionData(
         snake_id=data.snake_id,
+        step_idx=data.step_idx,
         wall_time_ns=data.wall_time_ns
     )
     return proto.SerializeToString()
