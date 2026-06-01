@@ -48,7 +48,8 @@ message LoopStopData {
 
 message LoopDecisionData {
   uint32 snake_id = 1;
-  uint64 wall_time_ns = 2;
+  uint32 step_idx = 2;
+  uint64 wall_time_ns = 3;
 }
 
 // For a simple file: start, many steps, stop.

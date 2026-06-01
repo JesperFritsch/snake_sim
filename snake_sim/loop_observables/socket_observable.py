@@ -78,6 +78,7 @@ def _deserialize_decision(payload: bytes) -> LoopDecisionData:
     proto = simrun_pb2.LoopDecisionData.FromString(payload)
     return LoopDecisionData(
         snake_id=proto.snake_id,
+        step_idx=proto.step_idx,
         wall_time_ns=proto.wall_time_ns,
     )
 

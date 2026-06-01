@@ -23,7 +23,7 @@ class ConcurrentUpdater(ISnakeUpdater):
         snakes: List[ISnake],
         env_step_data: EnvStepData,
         timeout_s: float | None,
-        on_response: Callable[[LoopDecisionData], None],
+        on_response: Callable[[int, int], None],
     ) -> dict[int, Coord]:
         decisions = {snake.get_id(): None for snake in snakes}
         completed_futures = set()
@@ -39,7 +39,7 @@ class ConcurrentUpdater(ISnakeUpdater):
                 except ConnectionError:
                     log.debug(f"Snake with id {id} disconnected.")
                 try:
-                    on_response(LoopDecisionData(snake_id=id, wall_time_ns=decision_wall_time))
+                    on_response(id, decision_wall_time)
                 except Exception:
                     log.exception("on_response callback failed for snake %s", id)
         except concurrentTimeoutError:

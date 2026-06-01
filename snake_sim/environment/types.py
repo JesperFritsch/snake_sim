@@ -240,6 +240,7 @@ class LoopStopData(BaseModel):
 
 class LoopDecisionData(BaseModel):
     snake_id: int
+    step_idx: int
     wall_time_ns: int
 
 

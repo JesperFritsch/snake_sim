@@ -13,7 +13,7 @@ class ISnakeHandler(ABC):
         self,
         batch_data: Dict[int, EnvStepData],
         timeout_s: float | None,
-        on_response: Callable[[LoopDecisionData], None],
+        on_response: Callable[[int, int], None],
     ) -> Dict[int, Coord]:
         pass
 

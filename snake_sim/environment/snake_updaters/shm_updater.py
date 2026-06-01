@@ -32,7 +32,7 @@ class SHMUpdater(ConcurrentUpdater):
         snakes: List[SHMProxySnake],
         env_step_data: EnvStepData,
         timeout_s: float | None,
-        on_response: Callable[[LoopDecisionData], None],
+        on_response: Callable[[int, int], None],
     ) -> dict[int, Coord]:
         if any(not isinstance(snake, SHMProxySnake) for snake in snakes):
             raise TypeError("All snakes must be instances of SHMProxySnake.")

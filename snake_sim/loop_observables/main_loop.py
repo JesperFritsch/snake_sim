@@ -64,7 +64,7 @@ class SimLoop(IMainLoop):
         decisions = self._snake_handler.get_decisions(
             batch_data,
             self._decision_timeout_s,
-            on_response=self._notify_decision,
+            on_response=self._decision_callback,
         )
         self._apply_decisions(decisions)
 
@@ -130,10 +130,16 @@ class SimLoop(IMainLoop):
         if len(self._current_step_data.decisions):
             self._notify_step(self._current_step_data)
     
-    def _notify_decision(self, decision_data: LoopDecisionData):
-        wall_time_s = decision_data.wall_time_ns / 1e9
-        self._current_step_data.snake_times[decision_data.snake_id] = wall_time_s
-        return super()._notify_decision(decision_data)
+    def _decision_callback(self, snake_id: int, wall_time_ns: int):
+        wall_time_s = wall_time_ns / 1e9
+        self._current_step_data.snake_times[snake_id] = wall_time_s
+        return super()._notify_decision(
+            LoopDecisionData(
+                snake_id=snake_id, 
+                step_idx=self._current_step_data.step, 
+                wall_time_ns=wall_time_ns
+            )
+        )
 
     def set_snake_handler(self, snake_handler: ISnakeHandler):
         self._snake_handler = snake_handler
