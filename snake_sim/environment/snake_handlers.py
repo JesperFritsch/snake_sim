@@ -13,7 +13,7 @@ from importlib import resources
 from snake_sim.environment.snake_processes import SnakeProcessManager
 from snake_sim.environment.interfaces.snake_handler_interface import ISnakeHandler
 from snake_sim.environment.interfaces.snake_interface import ISnake
-from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData
+from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData, LoopDecisionData
 
 from snake_sim.environment.snake_updaters.inproc_updater import InprocUpdater
 from snake_sim.environment.snake_updaters.shm_updater import SHMUpdater
@@ -90,7 +90,7 @@ class SnakeHandler(ISnakeHandler):
         self,
         updater_batches: Dict[ISnakeUpdater, Tuple[List[ISnake], EnvStepData]],
         timeout_s: float | None,
-        on_response: Callable[[int], None],
+        on_response: Callable[[LoopDecisionData], None],
     ) -> Dict[int, Coord]:
         decisions = {}
         futures = [
@@ -105,7 +105,7 @@ class SnakeHandler(ISnakeHandler):
         self,
         batch_data: Dict[int, EnvStepData],
         timeout_s: float | None,
-        on_response: Callable[[int], None],
+        on_response: Callable[[LoopDecisionData], None],
     ) -> Dict[int, Coord]:
         updater_batches = self._split_batch_by_updater(batch_data)
         return self._gather_decisions(updater_batches, timeout_s, on_response)

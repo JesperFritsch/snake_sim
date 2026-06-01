@@ -46,6 +46,11 @@ message LoopStopData {
   uint32 final_step = 1;
 }
 
+message LoopDecisionData {
+  uint32 snake_id = 1;
+  uint64 wall_time_ns = 2;
+}
+
 // For a simple file: start, many steps, stop.
 message RunRecord {
   LoopStartData start = 1;

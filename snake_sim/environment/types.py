@@ -238,6 +238,11 @@ class LoopStopData(BaseModel):
     final_step: int
 
 
+class LoopDecisionData(BaseModel):
+    snake_id: int
+    wall_time_ns: int
+
+
 @dataclass
 class CompleteStepState:
 

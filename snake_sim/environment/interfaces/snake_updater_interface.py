@@ -4,7 +4,7 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import Callable, Tuple, List, Dict, Set
 
-from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData
+from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData, LoopDecisionData
 from snake_sim.environment.interfaces.snake_interface import ISnake
 
 log = logging.getLogger(Path(__file__).stem)
@@ -21,7 +21,7 @@ class ISnakeUpdater(ABC):
         snakes: List[ISnake],
         env_step_data: EnvStepData,
         timeout_s: float | None,
-        on_response: Callable[[int], None],
+        on_response: Callable[[LoopDecisionData], None],
     ) -> Dict[int, Coord]: # -> dict of snake id to direction
         # `on_response(snake_id)` is invoked as soon as each snake's
         # decision is in (or after a ConnectionError from that snake).

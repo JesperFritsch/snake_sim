@@ -8,7 +8,7 @@ from queue import Queue, Empty
 from threading import Thread, Event
 from multiprocessing.connection import Connection
 
-from snake_sim.environment.types import LoopStartData, LoopStepData, LoopStopData
+from snake_sim.environment.types import LoopStartData, LoopStepData, LoopStopData, LoopDecisionData
 from snake_sim.environment.interfaces.loop_observer_interface import ILoopObserver
 
 
@@ -66,8 +66,8 @@ class IPCRepeaterObserver(ILoopObserver):
         self._data_queue.put(("_notify_stop", stop_data))
 
     @_check_worker
-    def notify_decision(self, snake_id: int):
-        self._data_queue.put(("_notify_decision", snake_id))
+    def notify_decision(self, decision_data: LoopDecisionData):
+        self._data_queue.put(("_notify_decision", decision_data))
 
     @_check_worker
     def reset(self):

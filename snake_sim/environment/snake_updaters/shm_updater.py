@@ -6,7 +6,7 @@ from pathlib import Path
 from uuid import uuid4
 from snake_sim.environment.snake_updaters.concurrent_updater import ConcurrentUpdater
 from snake_sim.snakes.shm_proxy_snake import SHMProxySnake
-from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData
+from snake_sim.environment.types import Coord, EnvStepData, EnvMetaData, LoopDecisionData
 from snake_sim.environment.shm_update import SharedMemoryWriter
 
 log = logging.getLogger(Path(__file__).stem)
@@ -32,7 +32,7 @@ class SHMUpdater(ConcurrentUpdater):
         snakes: List[SHMProxySnake],
         env_step_data: EnvStepData,
         timeout_s: float | None,
-        on_response: Callable[[int], None],
+        on_response: Callable[[LoopDecisionData], None],
     ) -> dict[int, Coord]:
         if any(not isinstance(snake, SHMProxySnake) for snake in snakes):
             raise TypeError("All snakes must be instances of SHMProxySnake.")

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Callable, Dict, List
 
 from snake_sim.environment.snake_env import EnvStepData, EnvMetaData
-from snake_sim.environment.types import Coord
+from snake_sim.environment.types import Coord, LoopDecisionData
 from snake_sim.environment.interfaces.snake_interface import ISnake
 
 
@@ -13,7 +13,7 @@ class ISnakeHandler(ABC):
         self,
         batch_data: Dict[int, EnvStepData],
         timeout_s: float | None,
-        on_response: Callable[[int], None],
+        on_response: Callable[[LoopDecisionData], None],
     ) -> Dict[int, Coord]:
         pass
 
