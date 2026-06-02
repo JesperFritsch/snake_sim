@@ -42,6 +42,11 @@ class SimLoop(IMainLoop):
         self._is_running = False
         self._did_notify_start = False
         self._did_notify_stop = False
+        self._end_on_last_standing_when_longest = False
+        self._end_when_dead_tag: str | None = None
+        self._end_when_dead_buffer_steps = 0
+        self._watched_snake_id: int | None = None
+        self._watched_died_at_step: int | None = None
 
     # @profile("cumtime")
     def _loop(self):
@@ -123,10 +128,42 @@ class SimLoop(IMainLoop):
         if self._max_steps is not None and self._steps > self._max_steps:
             self.stop()
         total_time = time.time() - self._step_start_time
-        self._current_step_data.lengths = {id: snake['length'] for id, snake in self._env.get_env_step_data().snakes.items()}
+        snakes = self._env.get_env_step_data().snakes
+        self._current_step_data.lengths = {id: snake['length'] for id, snake in snakes.items()}
         self._current_step_data.total_time = total_time
         for sid in self._current_step_data.decisions:
             self._current_step_data.snake_times.setdefault(sid, total_time)
+
+        if self._end_on_last_standing_when_longest:
+            alive_ids = [sid for sid, s in snakes.items() if s['is_alive']]
+            if len(alive_ids) == 1:
+                longest = max(s['length'] for s in snakes.values())
+                if snakes[alive_ids[0]]['length'] >= longest:
+                    self.stop()
+
+        if self._end_when_dead_tag is not None:
+            if self._watched_snake_id is None and self._watched_died_at_step is None:
+                for sid in self._snake_handler.get_snakes():
+                    if self._snake_handler.get_snake_tag(sid) == self._end_when_dead_tag:
+                        self._watched_snake_id = sid
+                        break
+                else:
+                    log.warning(
+                        f"end-when-dead tag {self._end_when_dead_tag!r} matches no snake — disabling"
+                    )
+                    self._end_when_dead_tag = None
+            if (
+                self._watched_snake_id is not None
+                and self._watched_died_at_step is None
+                and not snakes.get(self._watched_snake_id, {}).get('is_alive', True)
+            ):
+                self._watched_died_at_step = self._steps
+            if (
+                self._watched_died_at_step is not None
+                and self._steps - self._watched_died_at_step >= self._end_when_dead_buffer_steps
+            ):
+                self.stop()
+
         if len(self._current_step_data.decisions):
             self._notify_step(self._current_step_data)
     
@@ -149,6 +186,15 @@ class SimLoop(IMainLoop):
 
     def set_max_steps(self, steps):
         self._max_steps = steps
+
+    def set_end_on_last_standing_when_longest(self, enabled: bool):
+        self._end_on_last_standing_when_longest = enabled
+
+    def set_end_when_dead_tag(self, tag: str | None, buffer_steps: int = 0):
+        self._end_when_dead_tag = tag
+        self._end_when_dead_buffer_steps = max(0, buffer_steps)
+        self._watched_snake_id = None
+        self._watched_died_at_step = None
 
     def set_environment(self, env: ISnakeEnv):
         self._env = env

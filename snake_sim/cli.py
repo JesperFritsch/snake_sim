@@ -44,6 +44,9 @@ def add_run_config_arguments(parser):
     parser.add_argument('--snake-config-key', type=str, help='key in the snake configuration dictionary to use for all snakes')
     parser.add_argument('--socket-observer', type=str, action="append", help='Address to a socket observable like host:port', default=[])
     parser.add_argument('--decision-timeout-ms', type=int, help="The time in milliseconds for each snake to make its decision each step. 0=None")
+    parser.add_argument('--end-on-last-standing-when-longest', action='store_true', default=None, help='Stop once one snake remains alive AND is the longest (>= every other snake length)')
+    parser.add_argument('--end-when-dead-tag', type=str, help='Stop the match when the snake with this tag dies')
+    parser.add_argument('--end-when-dead-buffer-steps', type=int, help='Extra sim steps to run after the --end-when-dead-tag snake dies (default 0)')
 
 
 def add_playback_arguments(parser):

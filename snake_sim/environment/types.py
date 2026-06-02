@@ -336,6 +336,9 @@ class SimConfig:
     distributed_snakes: bool
     snake_configs: list[SnakeConfig]
     decision_timeout: int
+    end_on_last_standing_when_longest: bool = field(default=False, kw_only=True)
+    end_when_dead_tag: str | None = field(default=None, kw_only=True)
+    end_when_dead_buffer_steps: int = field(default=0, kw_only=True)
 
 
 @dataclass
