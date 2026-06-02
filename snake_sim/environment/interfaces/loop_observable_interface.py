@@ -50,7 +50,6 @@ class ILoopObservable:
             observer.notify_step(step_data)
 
     def _notify_decision(self, decision_data: LoopDecisionData):
-        print(f"Notifying observers of decision: {decision_data}")
         for observer in self._observers:
             observer.notify_decision(decision_data)
 
