@@ -43,6 +43,8 @@ class SimLoop(IMainLoop):
         self._did_notify_start = False
         self._did_notify_stop = False
         self._end_on_last_standing_when_longest = False
+        self._end_on_last_standing_buffer_steps: int | None = None
+        self._alone_and_longest_since: int | None = None
         self._end_when_dead_tag: str | None = None
         self._end_when_dead_buffer_steps = 0
         self._watched_snake_id: int | None = None
@@ -139,7 +141,11 @@ class SimLoop(IMainLoop):
             if len(alive_ids) == 1:
                 longest = max(s['length'] for s in snakes.values())
                 if snakes[alive_ids[0]]['length'] >= longest:
-                    self.stop()
+                    if self._alone_and_longest_since is None:
+                        self._alone_and_longest_since = self._steps
+                    buffer = self._end_on_last_standing_buffer_steps or 0
+                    if self._steps - self._alone_and_longest_since >= buffer:
+                        self.stop()
 
         if self._end_when_dead_tag is not None:
             if self._watched_snake_id is None and self._watched_died_at_step is None:
@@ -189,6 +195,12 @@ class SimLoop(IMainLoop):
 
     def set_end_on_last_standing_when_longest(self, enabled: bool):
         self._end_on_last_standing_when_longest = enabled
+
+    def set_end_on_last_standing_buffer_steps(self, buffer_steps: int | None):
+        self._end_on_last_standing_buffer_steps = (
+            max(0, buffer_steps) if buffer_steps is not None else None
+        )
+        self._alone_and_longest_since = None
 
     def set_end_when_dead_tag(self, tag: str | None, buffer_steps: int = 0):
         self._end_when_dead_tag = tag

@@ -27,6 +27,10 @@ class IMainLoop(ABC, ILoopObservable):
         pass
 
     @abstractmethod
+    def set_end_on_last_standing_buffer_steps(self, buffer_steps: int | None):
+        pass
+
+    @abstractmethod
     def set_end_when_dead_tag(self, tag: str | None, buffer_steps: int = 0):
         pass
 

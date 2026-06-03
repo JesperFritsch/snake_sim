@@ -23,6 +23,7 @@
     "max_no_food_steps": null,
     "max_steps": null,
     "end_on_last_standing_when_longest": false,
+    "end_on_last_standing_buffer_steps": null,
     "end_when_dead_tag": null,
     "end_when_dead_buffer_steps": 0,
     "norm_head": 3,
