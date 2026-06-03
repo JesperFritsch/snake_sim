@@ -71,6 +71,8 @@ class RunAnalysis:
     final_step_idx: int
     tail_visible_phases: dict[int, list[TailVisiblePhase]] # snake_id -> list of phases where it can see its tail or not
     entered_separate_area: dict[int, list[int]] # snake_id -> list of step idx where it entered a separate area (cannot reach its body anymore)
+    start_lengths: dict[int, int] = field(default_factory=dict) # snake_id -> body length at step 0
+    final_lengths: dict[int, int] = field(default_factory=dict) # snake_id -> body length at the last state seen
     traps_mapping: dict[int, set[TrapInfo]] = field(default_factory=dict) # step_idx -> set of TrapInfo for traps detected in that step
 
     def to_dict(self):
@@ -81,10 +83,12 @@ class RunAnalysis:
             "fatal_steps": self.fatal_steps,
             "final_step_idx": self.final_step_idx,
             "tail_visible_phases": {
-                s_id: [phase.to_dict() for phase in phases] 
+                s_id: [phase.to_dict() for phase in phases]
                 for s_id, phases in self.tail_visible_phases.items()
             },
             "entered_separate_area": self.entered_separate_area,
+            "start_lengths": self.start_lengths,
+            "final_lengths": self.final_lengths,
             "traps_mapping": {
                 step_idx: [trap_info.to_dict() for trap_info in trap_infos]
                 for step_idx, trap_infos in self.traps_mapping.items()
@@ -334,6 +338,11 @@ def analyze(run_file: Path, trap_threshold: int = None) -> RunAnalysis:
     traps_mapping: dict[int, set[TrapInfo]] = defaultdict(set) # step_idx -> set of TrapInfo for traps detected in that step
     prev_state = state_builder.get_state(0)
     prev_map = map_builder.get_map(0)
+    # Capture starting body lengths from the initial state. We keep final
+    # lengths in sync each iteration so they reflect the last state we saw
+    # even if the loop bails on StopIteration mid-step.
+    start_lengths = {sid: len(body) for sid, body in prev_state.snake_bodies.items()}
+    final_lengths = dict(start_lengths)
     # Seed current_step_idx in case the loop body never runs — that
     # happens for degenerate runs with zero step events (e.g. every
     # snake's gRPC init failed, sim went straight from start_data to
@@ -369,6 +378,8 @@ def analyze(run_file: Path, trap_threshold: int = None) -> RunAnalysis:
             break
         except NoMoreSteps:
             continue
+    final_state = state_builder.get_current_state()
+    final_lengths = {sid: len(body) for sid, body in final_state.snake_bodies.items()}
             
     # clean up entered area lists, remove values incrementing by 1 from the end
     for s_id, step_idxs in entered_separate_area_dict.items():
@@ -387,6 +398,8 @@ def analyze(run_file: Path, trap_threshold: int = None) -> RunAnalysis:
         tail_visible_phases=tail_visible_phases,
         final_step_idx=current_step_idx,
         entered_separate_area=entered_separate_area_dict,
+        start_lengths=start_lengths,
+        final_lengths=final_lengths,
         traps_mapping=traps_mapping
     )
 
