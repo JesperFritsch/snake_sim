@@ -22,7 +22,6 @@ class StateBuilderObserver(ConsumerObserver):
     Creates new frames either next or previous from the current one. """
     def __init__(self):
         super().__init__()
-        self._snake_bodies: Dict[int, Deque] = {}
         self._current_step_idx = 0
         self._current_state: CompleteStepState = None
         self._new_step_condition = Condition()
@@ -57,7 +56,6 @@ class StateBuilderObserver(ConsumerObserver):
             )
 
     def reset(self):
-        self._snake_bodies.clear()
         self._current_step_idx = 0
         self._current_state = None
         return super().reset()
