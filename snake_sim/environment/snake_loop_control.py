@@ -104,6 +104,9 @@ class SnakeLoopControl:
             self._loop.set_end_on_last_standing_when_longest(
                 self._config.end_on_last_standing_when_longest
             )
+            self._loop.set_end_on_last_standing_buffer_steps(
+                self._config.end_on_last_standing_buffer_steps
+            )
             if self._config.end_when_dead_tag is not None:
                 self._loop.set_end_when_dead_tag(
                     self._config.end_when_dead_tag,
@@ -274,6 +277,11 @@ def setup_loop(config) -> SnakeLoopControl:
         ],
         decision_timeout=config.decision_timeout_ms if config.decision_timeout_ms > 0 else None,
         end_on_last_standing_when_longest=bool(config.end_on_last_standing_when_longest),
+        end_on_last_standing_buffer_steps=(
+            int(config.end_on_last_standing_buffer_steps)
+            if config.end_on_last_standing_buffer_steps is not None
+            else None
+        ),
         end_when_dead_tag=config.end_when_dead_tag,
         end_when_dead_buffer_steps=int(config.end_when_dead_buffer_steps or 0),
     )
