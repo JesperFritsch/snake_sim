@@ -103,67 +103,67 @@ AreaCheckResult AreaGraph::search(
         }
         
         
-        DEBUG_PRINT(std::cout << "\n####### NODE #######" << std::endl;);
-        DEBUG_PRINT(std::cout << (forward ? "--> Forward" : "<-- Backward") << std::endl;);
-        DEBUG_PRINT(std::cout << "nr_visits: " << step_data->nr_visits << std::endl;);
-        DEBUG_PRINT(std::cout << "Current node: " << current_node->id << std::endl;);
-        DEBUG_PRINT(std::cout << "start coord: (" << current_node->start_coord.x << ", " << current_node->start_coord.y << ")" << std::endl;);
-        DEBUG_PRINT(std::cout << "node tile count: " << current_node->tile_count << std::endl;);
-        DEBUG_PRINT(std::cout << "node food count: " << current_node->food_count << std::endl;);
-        DEBUG_PRINT(std::cout << "max body pair: (" << max_body_index_pair.first.first <<  ", " << max_body_index_pair.first.second << ")" << ", (" << max_body_index_pair.second.x << ", " << max_body_index_pair.second.y << ")), " << std::endl;);
-        DEBUG_PRINT(std::cout << "Body tiles: ";);
-        DEBUG_PRINT(for(auto body_tile : current_node->body_tiles){ std::cout << "(" << body_tile.first.first <<  ", " << body_tile.first.second << ")" << ", (" << body_tile.second.x << ", " << body_tile.second.y << ")), "; });
-        DEBUG_PRINT(std::cout << std::endl;);
-        DEBUG_PRINT(std::cout << "has body: " << current_node->has_body << std::endl;);
-        DEBUG_PRINT(std::cout << "has only head: " << current_node->has_only_head << std::endl;);
-        DEBUG_PRINT(std::cout << "nr body tiles: " << current_node->body_tiles.size() << std::endl;);
-        DEBUG_PRINT(std::cout << "coord parity diff: " << current_node->coord_parity_diff << std::endl;);
-        DEBUG_PRINT(std::cout << "jagged edge discount: " << current_node->jagged_edge_discount << std::endl;);
-        DEBUG_PRINT(std::cout << "is one dim: " << current_node->is_one_dim << std::endl;);
-        DEBUG_PRINT(std::cout << "has tail: " << current_node->has_tail << std::endl;);
-        DEBUG_PRINT(std::cout << "Tiles before: " << tiles_before << std::endl;);
-        DEBUG_PRINT(std::cout << "Food before: " << food_before << std::endl;);
-        DEBUG_PRINT(std::cout << "current node new tiles: " << curr_tile_counts.new_tiles << std::endl;);
-        DEBUG_PRINT(std::cout << "tiles until here: " << step_data->tiles_until_here << std::endl;);
-        DEBUG_PRINT(std::cout << "food until here: " << step_data->food_until_here << std::endl;);
-        DEBUG_PRINT(std::cout << "needed steps: " << needed_steps << std::endl;);
-        DEBUG_PRINT(std::cout << "total steps: " << total_steps << std::endl;);
-        DEBUG_PRINT(std::cout << "margin: " << margin << std::endl;);
-        DEBUG_PRINT(std::cout << "searched edges now: ";);
-        DEBUG_PRINT(for(auto edge : step_data->searched_edges.back()){ std::cout << edge << ", "; });
-        DEBUG_PRINT(std::cout << std::endl;);
-        DEBUG_PRINT(std::cout << "used edges: ";);
-        DEBUG_PRINT(for(auto edge : step_data->used_edges){ std::cout << edge << ", "; });
-        DEBUG_PRINT(std::cout << std::endl;);
-        DEBUG_PRINT(std::cout << "edge nodes: ";);
-        DEBUG_PRINT(for(auto edge_node : step_data->node->edge_nodes){ std::cout << "(" << edge_node.first->id << ", " << edge_node.second << "), "; });
-        DEBUG_PRINT(std::cout << std::endl;);
-        DEBUG_PRINT(std::cout << "search stack: (";);
-        DEBUG_PRINT(for(auto node : search_stack){ std::cout << node->node->id << ", "; });
-        DEBUG_PRINT(std::cout << ")" << std::endl;);
-        DEBUG_PRINT(std::cout << "total tile count stack: (";);
-        DEBUG_PRINT(for(auto count : total_tile_count_stack){ std::cout << count << ", "; });
-        DEBUG_PRINT(std::cout << ")" << std::endl;);
-        DEBUG_PRINT(std::cout << "total food count stack: (";);
-        DEBUG_PRINT(for(auto count : total_food_count_stack){ std::cout << count << ", "; });
-        DEBUG_PRINT(std::cout << ")" << std::endl;);
-        DEBUG_PRINT(std::cout << std::endl;);
-        DEBUG_PRINT(std::cout << "current result: \n";);
-        DEBUG_PRINT(std::cout << "  is clear: " << current_result.is_clear << std::endl;);
-        DEBUG_PRINT(std::cout << "  tile count: " << current_result.tile_count << std::endl;);
-        DEBUG_PRINT(std::cout << "  food count: " << current_result.food_count << std::endl;);
-        DEBUG_PRINT(std::cout << "  needed steps: " << current_result.needed_steps << std::endl;);
-        DEBUG_PRINT(std::cout << "  margin: " << current_result.margin << std::endl;);
-        DEBUG_PRINT(std::cout << "  total steps: " << current_result.total_steps << std::endl;);
-        DEBUG_PRINT(std::cout << "  has tail: " << current_result.has_tail << std::endl;);
-        DEBUG_PRINT(std::cout << "best result: \n";);
-        DEBUG_PRINT(std::cout << "  is clear: " << best_result.is_clear << std::endl;);
-        DEBUG_PRINT(std::cout << "  tile count: " << best_result.tile_count << std::endl;);
-        DEBUG_PRINT(std::cout << "  food count: " << best_result.food_count << std::endl;);
-        DEBUG_PRINT(std::cout << "  needed steps: " << best_result.needed_steps << std::endl;);
-        DEBUG_PRINT(std::cout << "  margin: " << best_result.margin << std::endl;);
-        DEBUG_PRINT(std::cout << "  total steps: " << best_result.total_steps << std::endl;);
-        DEBUG_PRINT(std::cout << "  has tail: " << best_result.has_tail << std::endl;);
+        DEBUG_ONLY(std::cout << "\n####### NODE #######" << std::endl;);
+        DEBUG_ONLY(std::cout << (forward ? "--> Forward" : "<-- Backward") << std::endl;);
+        DEBUG_ONLY(std::cout << "nr_visits: " << step_data->nr_visits << std::endl;);
+        DEBUG_ONLY(std::cout << "Current node: " << current_node->id << std::endl;);
+        DEBUG_ONLY(std::cout << "start coord: (" << current_node->start_coord.x << ", " << current_node->start_coord.y << ")" << std::endl;);
+        DEBUG_ONLY(std::cout << "node tile count: " << current_node->tile_count << std::endl;);
+        DEBUG_ONLY(std::cout << "node food count: " << current_node->food_count << std::endl;);
+        DEBUG_ONLY(std::cout << "max body pair: (" << max_body_index_pair.first.first <<  ", " << max_body_index_pair.first.second << ")" << ", (" << max_body_index_pair.second.x << ", " << max_body_index_pair.second.y << ")), " << std::endl;);
+        DEBUG_ONLY(std::cout << "Body tiles: ";);
+        DEBUG_ONLY(for(auto body_tile : current_node->body_tiles){ std::cout << "(" << body_tile.first.first <<  ", " << body_tile.first.second << ")" << ", (" << body_tile.second.x << ", " << body_tile.second.y << ")), "; });
+        DEBUG_ONLY(std::cout << std::endl;);
+        DEBUG_ONLY(std::cout << "has body: " << current_node->has_body << std::endl;);
+        DEBUG_ONLY(std::cout << "has only head: " << current_node->has_only_head << std::endl;);
+        DEBUG_ONLY(std::cout << "nr body tiles: " << current_node->body_tiles.size() << std::endl;);
+        DEBUG_ONLY(std::cout << "coord parity diff: " << current_node->coord_parity_diff << std::endl;);
+        DEBUG_ONLY(std::cout << "jagged edge discount: " << current_node->jagged_edge_discount << std::endl;);
+        DEBUG_ONLY(std::cout << "is one dim: " << current_node->is_one_dim << std::endl;);
+        DEBUG_ONLY(std::cout << "has tail: " << current_node->has_tail << std::endl;);
+        DEBUG_ONLY(std::cout << "Tiles before: " << tiles_before << std::endl;);
+        DEBUG_ONLY(std::cout << "Food before: " << food_before << std::endl;);
+        DEBUG_ONLY(std::cout << "current node new tiles: " << curr_tile_counts.new_tiles << std::endl;);
+        DEBUG_ONLY(std::cout << "tiles until here: " << step_data->tiles_until_here << std::endl;);
+        DEBUG_ONLY(std::cout << "food until here: " << step_data->food_until_here << std::endl;);
+        DEBUG_ONLY(std::cout << "needed steps: " << needed_steps << std::endl;);
+        DEBUG_ONLY(std::cout << "total steps: " << total_steps << std::endl;);
+        DEBUG_ONLY(std::cout << "margin: " << margin << std::endl;);
+        DEBUG_ONLY(std::cout << "searched edges now: ";);
+        DEBUG_ONLY(for(auto edge : step_data->searched_edges.back()){ std::cout << edge << ", "; });
+        DEBUG_ONLY(std::cout << std::endl;);
+        DEBUG_ONLY(std::cout << "used edges: ";);
+        DEBUG_ONLY(for(auto edge : step_data->used_edges){ std::cout << edge << ", "; });
+        DEBUG_ONLY(std::cout << std::endl;);
+        DEBUG_ONLY(std::cout << "edge nodes: ";);
+        DEBUG_ONLY(for(auto edge_node : step_data->node->edge_nodes){ std::cout << "(" << edge_node.first->id << ", " << edge_node.second << "), "; });
+        DEBUG_ONLY(std::cout << std::endl;);
+        DEBUG_ONLY(std::cout << "search stack: (";);
+        DEBUG_ONLY(for(auto node : search_stack){ std::cout << node->node->id << ", "; });
+        DEBUG_ONLY(std::cout << ")" << std::endl;);
+        DEBUG_ONLY(std::cout << "total tile count stack: (";);
+        DEBUG_ONLY(for(auto count : total_tile_count_stack){ std::cout << count << ", "; });
+        DEBUG_ONLY(std::cout << ")" << std::endl;);
+        DEBUG_ONLY(std::cout << "total food count stack: (";);
+        DEBUG_ONLY(for(auto count : total_food_count_stack){ std::cout << count << ", "; });
+        DEBUG_ONLY(std::cout << ")" << std::endl;);
+        DEBUG_ONLY(std::cout << std::endl;);
+        DEBUG_ONLY(std::cout << "current result: \n";);
+        DEBUG_ONLY(std::cout << "  is clear: " << current_result.is_clear << std::endl;);
+        DEBUG_ONLY(std::cout << "  tile count: " << current_result.tile_count << std::endl;);
+        DEBUG_ONLY(std::cout << "  food count: " << current_result.food_count << std::endl;);
+        DEBUG_ONLY(std::cout << "  needed steps: " << current_result.needed_steps << std::endl;);
+        DEBUG_ONLY(std::cout << "  margin: " << current_result.margin << std::endl;);
+        DEBUG_ONLY(std::cout << "  total steps: " << current_result.total_steps << std::endl;);
+        DEBUG_ONLY(std::cout << "  has tail: " << current_result.has_tail << std::endl;);
+        DEBUG_ONLY(std::cout << "best result: \n";);
+        DEBUG_ONLY(std::cout << "  is clear: " << best_result.is_clear << std::endl;);
+        DEBUG_ONLY(std::cout << "  tile count: " << best_result.tile_count << std::endl;);
+        DEBUG_ONLY(std::cout << "  food count: " << best_result.food_count << std::endl;);
+        DEBUG_ONLY(std::cout << "  needed steps: " << best_result.needed_steps << std::endl;);
+        DEBUG_ONLY(std::cout << "  margin: " << best_result.margin << std::endl;);
+        DEBUG_ONLY(std::cout << "  total steps: " << best_result.total_steps << std::endl;);
+        DEBUG_ONLY(std::cout << "  has tail: " << best_result.has_tail << std::endl;);
 
         
         if (food_check)
@@ -198,7 +198,7 @@ AreaCheckResult AreaGraph::search(
             // also if we have used the connection coord already in the path we can not enter the node on that coord again
             if (!step_data->can_enter_next_node(next_node) || !next_step_data->can_enter_from_node(current_node))
             {
-                DEBUG_PRINT(std::cout << "Cannot enter node: " << next_node->id << std::endl;);
+                DEBUG_ONLY(std::cout << "Cannot enter node: " << next_node->id << std::endl;);
                 step_data->add_searched_edge(node_edge_pair.second);
                 skipped_one = true;
                 continue;
@@ -361,10 +361,10 @@ int SearchNode::path_tile_adjustment(AreaNode *next_node)
     auto next_connection_info = node->get_connection_info(next_node->id);
     Coord entry_coord = get_entry_coord();
     Coord exit_coord = next_connection_info.self_coord;
-    DEBUG_PRINT(std::cout << "Entry coord: (" << entry_coord.x << ", " << entry_coord.y << "), Exit coord: (" << exit_coord.x << ", " << exit_coord.y << ")" << std::endl;);
+    DEBUG_ONLY(std::cout << "Entry coord: (" << entry_coord.x << ", " << entry_coord.y << "), Exit coord: (" << exit_coord.x << ", " << exit_coord.y << ")" << std::endl;);
     if (node->is_one_dim || entry_coord == exit_coord)
     {
-        DEBUG_PRINT(std::cout << "Path tile adjustment from node " << node->id << " to node " << next_node->id << " is 0 (one_dim or same coord)" << std::endl;);
+        DEBUG_ONLY(std::cout << "Path tile adjustment from node " << node->id << " to node " << next_node->id << " is 0 (one_dim or same coord)" << std::endl;);
         return 0;
     }
     int adjustment = 0;
@@ -417,7 +417,7 @@ int SearchNode::path_parity_tile_adjustment(Coord enter, Coord exit){
             adjustment = 1;
         }
     }
-    DEBUG_PRINT(std::cout << "Path parity tile adjustment from (" << enter.x << ", " << enter.y << ") to (" << exit.x << ", " << exit.y << ") is " << adjustment << std::endl;);
+    DEBUG_ONLY(std::cout << "Path parity tile adjustment from (" << enter.x << ", " << enter.y << ") to (" << exit.x << ", " << exit.y << ") is " << adjustment << std::endl;);
     return adjustment;
 }
 
@@ -475,7 +475,7 @@ bool SearchNode::is_conn_coord_used(AreaNode *other_node)
     }
     auto next_connection_info = node->get_connection_info(other_node->id);
     Coord conn_coord = next_connection_info.self_coord;
-    DEBUG_PRINT(std::cout << "Used coords: "; for (const auto& coord : used_coords) { std::cout << "(" << coord.x << ", " << coord.y << ") "; } std::cout << std::endl;);
+    DEBUG_ONLY(std::cout << "Used coords: "; for (const auto& coord : used_coords) { std::cout << "(" << coord.x << ", " << coord.y << ") "; } std::cout << std::endl;);
     return get_coord_used_count(conn_coord) > 0;
 }
 
@@ -486,7 +486,7 @@ bool SearchNode::is_conn_coord_start_cord(AreaNode *next_node)
     }
     auto next_connection_info = node->get_connection_info(next_node->id);
     Coord exit_coord = next_connection_info.self_coord;
-    DEBUG_PRINT(std::cout << "is start coord blocking exit Start coord: (" << node->start_coord.x << ", " << node->start_coord.y << "), Exit coord: (" << exit_coord.x << ", " << exit_coord.y << ")" << std::endl;);
+    DEBUG_ONLY(std::cout << "is start coord blocking exit Start coord: (" << node->start_coord.x << ", " << node->start_coord.y << "), Exit coord: (" << exit_coord.x << ", " << exit_coord.y << ")" << std::endl;);
     if (node->start_coord == exit_coord && node->id == 0){
         return true;
     }
@@ -497,7 +497,7 @@ bool SearchNode::can_enter_next_node(AreaNode *next_node){
     auto next_connection_info = node->get_connection_info(next_node->id);
     Coord conn_coord = next_connection_info.self_coord;
     Coord enter_coord = get_entry_coord();
-    DEBUG_PRINT(std::cout << "Entry coord: (" << enter_coord.x << ", " << enter_coord.y << "), Connection coord: (" << conn_coord.x << ", " << conn_coord.y << ")" << std::endl;);
+    DEBUG_ONLY(std::cout << "Entry coord: (" << enter_coord.x << ", " << enter_coord.y << "), Connection coord: (" << conn_coord.x << ", " << conn_coord.y << ")" << std::endl;);
     auto conn_coord_used_count = get_coord_used_count(conn_coord);
     if (enter_coord == conn_coord && conn_coord_used_count < 2){
         return true;
@@ -532,12 +532,12 @@ TileCounts SearchNode::tile_count_on_exit(AreaNode *next_node, uint8_t *s_map, i
     counted_tiles_stack.push_back(new_tiles + (counted_tiles_stack.size() ? counted_tiles_stack.back() : 0));
     counted_food_stack.push_back(new_food + (counted_food_stack.size() ? counted_food_stack.back() : 0));
     
-    DEBUG_PRINT(std::cout << "new tiles on exit: " << new_tiles << std::endl;);
-    DEBUG_PRINT(std::cout << "new food on exit: " << new_food << std::endl;);
-    DEBUG_PRINT(std::cout << "total tiles on exit: " << tile_counts.total_tiles << std::endl;);
-    DEBUG_PRINT(std::cout << "total food on exit: " << tile_counts.total_food << std::endl;);
-    DEBUG_PRINT(std::cout << "Counted tiles stack: "; for (const auto& count : counted_tiles_stack) { std::cout << count << ", "; } std::cout << std::endl;);
-    DEBUG_PRINT(std::cout << "Counted food stack: "; for (const auto& count : counted_food_stack) { std::cout << count << ", "; } std::cout << std::endl;);
+    DEBUG_ONLY(std::cout << "new tiles on exit: " << new_tiles << std::endl;);
+    DEBUG_ONLY(std::cout << "new food on exit: " << new_food << std::endl;);
+    DEBUG_ONLY(std::cout << "total tiles on exit: " << tile_counts.total_tiles << std::endl;);
+    DEBUG_ONLY(std::cout << "total food on exit: " << tile_counts.total_food << std::endl;);
+    DEBUG_ONLY(std::cout << "Counted tiles stack: "; for (const auto& count : counted_tiles_stack) { std::cout << count << ", "; } std::cout << std::endl;);
+    DEBUG_ONLY(std::cout << "Counted food stack: "; for (const auto& count : counted_food_stack) { std::cout << count << ", "; } std::cout << std::endl;);
     return tile_counts;
 }
 
@@ -566,7 +566,7 @@ TileCounts SearchNode::tile_count_on_enter()
         if (connection_info.is_bad_gateway_from_here)
         // we are actually coming in to the current node, but the naming is from the perspective of insdide the node.
         {
-            DEBUG_PRINT(std::cout << "Reducing new tile count by 1 because of bad gateway from here" << std::endl;);
+            DEBUG_ONLY(std::cout << "Reducing new tile count by 1 because of bad gateway from here" << std::endl;);
             tile_counts.new_tiles -= 1;
         }
 
@@ -620,7 +620,7 @@ void SearchNode::enter_unwind(int tiles, int food)
 
 void SearchNode::exit_to(AreaNode *next_node){
     auto connection_info = node->get_connection_info(next_node->id);
-    DEBUG_PRINT(std::cout << "Going to node: " << next_node->id << " through coord: (" << connection_info.self_coord.x << ", " << connection_info.self_coord.y << ")" << std::endl;);
+    DEBUG_ONLY(std::cout << "Going to node: " << next_node->id << " through coord: (" << connection_info.self_coord.x << ", " << connection_info.self_coord.y << ")" << std::endl;);
     used_coords.push_back(connection_info.self_coord);
 }
 
