@@ -236,8 +236,8 @@ int AreaChecker::calculate_jagged_edge_discount(const uint8_t *s_map, const std:
     auto jagged_edges = find_jagged_edges(jagged_edge_tiles);
     std::unordered_set<Coord> combined_tiles(jagged_edge_tiles.begin(), jagged_edge_tiles.end());
 
-    DEBUG_PRINT(std::cout << "Found jagged edge groups: " << jagged_edges.size() << std::endl;);
-    DEBUG_PRINT(std::cout << "Group tiles: ";
+    DEBUG_ONLY(std::cout << "Found jagged edge groups: " << jagged_edges.size() << std::endl;);
+    DEBUG_ONLY(std::cout << "Group tiles: ";
         for (const auto &group : jagged_edges) {
             std::cout << "[ ";
             for (const auto &tile : group) {
@@ -304,7 +304,7 @@ int AreaChecker::calculate_jagged_edge_discount(const uint8_t *s_map, const std:
         parity_counts[parity]++;
     }
 
-    DEBUG_PRINT(std::cout << "tiles by parity: " << parity_counts[true] << ", " << parity_counts[false] << std::endl;);
+    DEBUG_ONLY(std::cout << "tiles by parity: " << parity_counts[true] << ", " << parity_counts[false] << std::endl;);
 
     // if any of the parities has 0 tiles then return 0, because its going to be accounted for by
     // coord_parity_diff in the serach nodes.
@@ -723,7 +723,7 @@ AreaCheckResult AreaChecker::area_check(
         int current_id = current_area_data.area_id;
         prev_node = current_area_data.prev_node;
 
-        DEBUG_PRINT(std::cout << "Exporing Node: " << current_id << std::endl;);
+        DEBUG_ONLY(std::cout << "Exporing Node: " << current_id << std::endl;);
 
         if (checked[current_coord.y * width + current_coord.x] != unexplored_area_id)
         {
@@ -812,7 +812,7 @@ AreaCheckResult AreaChecker::area_check(
         }
     }
 
-    DEBUG_PRINT(graph.print_nodes_debug());
+    DEBUG_ONLY(graph.print_nodes_debug());
 
     return graph.search(body_coords.size(), s_map, food_value, width, target_margin, food_check, exhaustive);
 }
