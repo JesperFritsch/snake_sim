@@ -1,4 +1,8 @@
 #pragma once
+// area_utils.hpp pulls in pybind11 -> Python.h, which must be included before any
+// standard headers (pyconfig.h owns the _POSIX_C_SOURCE/_XOPEN_SOURCE feature macros).
+#include "area_utils.hpp"
+
 #include <vector>
 #include <unordered_map>
 #include <algorithm>
@@ -8,7 +12,6 @@
 
 #include "area_types.hpp"
 #include "area_node.hpp"
-#include "area_utils.hpp"
 
 
 

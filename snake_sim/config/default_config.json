@@ -33,6 +33,7 @@
     "snake_config_key": null,
     "snake_config": {
         "type": "survivor",
+        "tag": "default_survivor",
         "strategies" : {
             "1": {
                 "type": "food_seeker",
@@ -42,6 +43,7 @@
     },
     "ai_snake_config": {
         "type": "ai_ppo",
+        "tag": "ppo_snake",
         "args": {
             "snapshot_dir": "new_arch_vs_algo",
             "deterministic": true,

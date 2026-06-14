@@ -208,8 +208,6 @@ std::unordered_set<Coord> AreaChecker::get_overlapping_jagged_tiles(
     auto s_index_delta_abs = std::abs(s_index_delta);
     auto check_index = s_index_delta_abs / 2;
 
-    int not_free_diag_count = 0;
-
     // discount the tiles in the overplapping diagonals that has something between them.
     auto h_s_d_index_copy = h_s_d_index; // copy to avoid modifying the original during iteration
 
@@ -219,7 +217,6 @@ std::unordered_set<Coord> AreaChecker::get_overlapping_jagged_tiles(
         auto& tile_1 = h_s_d_index_copy[i];
         auto& tile_2 = l_s_d_index[i + check_index];
         bool d_is_free = is_free_diagonal(s_map, width, tile_1, tile_2, {free_value, food_value});
-        not_free_diag_count += (d_is_free ? 0 : 1);
         if (d_is_free){
             h_s_d_index.pop_front();
             overlapping_tiles.insert(tile_1);
