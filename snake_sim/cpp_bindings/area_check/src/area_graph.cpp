@@ -107,6 +107,7 @@ AreaCheckResult AreaGraph::search(
         DEBUG_ONLY(std::cout << (forward ? "--> Forward" : "<-- Backward") << std::endl;);
         DEBUG_ONLY(std::cout << "nr_visits: " << step_data->nr_visits << std::endl;);
         DEBUG_ONLY(std::cout << "Current node: " << current_node->id << std::endl;);
+        DEBUG_ONLY(std::cout << "Entry coord: (" << step_data->get_entry_coord().x << ", " << step_data->get_entry_coord().y << ")" << std::endl;);
         DEBUG_ONLY(std::cout << "start coord: (" << current_node->start_coord.x << ", " << current_node->start_coord.y << ")" << std::endl;);
         DEBUG_ONLY(std::cout << "node tile count: " << current_node->tile_count << std::endl;);
         DEBUG_ONLY(std::cout << "node food count: " << current_node->food_count << std::endl;);
@@ -216,12 +217,9 @@ AreaCheckResult AreaGraph::search(
         {
             forward = false;
             search_stack.pop_back();
+            if (search_stack.empty()){break;}
             total_food_count_stack.pop_back();
             total_tile_count_stack.pop_back();
-            if (search_stack.empty())
-            {
-                break;
-            }
             step_data->exit_unwind();
         }
         prev_node = current_node;
@@ -445,12 +443,10 @@ std::pair<std::pair<int, bool>, Coord> SearchNode::get_max_body_index_pair()
     auto it = std::find_if(
         node->body_tiles.begin(), 
         node->body_tiles.end(), 
-        [&](const std::pair<std::pair<int, bool>, Coord> &pair){ return (
-            ((entry_coord == pair.second) && visited_before() ? 
-            get_coord_used_count(pair.second) < 2 : 
-            get_coord_used_count(pair.second) < 1) &&
-            !(node->id == 0 && pair.second == node->start_coord) 
-        ); }
+        [&](const std::pair<std::pair<int, bool>, Coord> &pair){ 
+            const bool is_root_start = (node->id == 0 && pair.second == node->start_coord);
+            return get_coord_used_count(pair.second) == 0 && !is_root_start;
+        }
     );
     if (it == node->body_tiles.end()){
         return std::make_pair(std::make_pair(-1, false), Coord());

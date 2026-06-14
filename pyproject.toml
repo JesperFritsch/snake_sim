@@ -8,7 +8,7 @@ version = "0.1.1"
 description = "Just a hobby project"
 readme = "README.md"
 authors = [{name = "Jesper Fritsch"}]
-license = {text = "MIT"}
+license = "MIT"
 classifiers = [
     "Programming Language :: Python :: 3",
 ]

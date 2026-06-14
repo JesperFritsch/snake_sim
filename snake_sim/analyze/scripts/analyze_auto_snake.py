@@ -273,10 +273,10 @@ def run_tests(
     ):
     # test_recurse_area_check(snake, s_map, Coord(0,-1))
     # test_recurse_area_check(snake, s_map, Coord(-1,0))
-    test_make_choice(snake, s_map, step_state)
-    test_area_check(snake, s_map)
+    # test_make_choice(snake, s_map, step_state)
+    # test_area_check(snake, s_map)
     # test_area_check_performace(snake, s_map, 1000, Coord(0,-1))
-    # test_area_check_direction(snake, s_map, Coord(0, -1))
+    test_area_check_direction(snake, s_map, Coord(0, 1))
     # test_area_check_direction(snake, s_map, Coord(-1, 0))
     # test_explore(snake, s_map)
     # test_get_dir_to_tile(snake, s_map, snake.env_step_data.food_value, Coord(58, 61))

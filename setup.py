@@ -120,6 +120,5 @@ ext_modules = [
 
 setup(
     ext_modules=ext_modules,
-    setup_requires=['pybind11>=2.5.0'],
     cmdclass={'build_py': build_proto},
 )
