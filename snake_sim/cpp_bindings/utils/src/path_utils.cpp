@@ -13,7 +13,7 @@ Coord get_dir_to_tile(
     int height,
     Coord from_coord,
     int tile_value,
-    std::vector<int> visitable_values,
+    const std::vector<int> &visitable_values,
     bool clockwise
 ){
     std::vector<bool> visited(width * height, false);
@@ -63,7 +63,7 @@ int distance_to_tile_with_value(
     int height,
     Coord from_coord,
     int tile_value,
-    std::vector<int> visitable_values
+    const std::vector<int> &visitable_values
 ){
     std::vector<bool> visited(width * height, false);
     std::deque<std::pair<Coord, int>> coords_to_visit; // Pair of Coord and distance
@@ -107,7 +107,7 @@ int distance_to_coord(
     int height,
     Coord from_coord,
     Coord to_coord,
-    std::vector<int> visitable_values
+    const std::vector<int> &visitable_values
 ){
     std::vector<bool> visited(width * height, false);
     std::deque<std::pair<Coord, int>> coords_to_visit; // Pair of Coord and distance
@@ -146,7 +146,7 @@ std::vector<Coord> get_visitable_tiles(
     int width,
     int height,
     Coord center_coord,
-    std::vector<int> visitable_values
+    const std::vector<int> &visitable_values
 ){
     std::array<Coord, 4> directions = {Coord(1,0), Coord(0,1), Coord(-1,0), Coord(0,-1)};
     std::vector<Coord> result;
@@ -162,7 +162,7 @@ std::vector<Coord> get_visitable_tiles(
     return result;
 }
 
-bool is_free_diagonal(const uint8_t* __restrict s_map, int width, Coord from_coord, Coord to_coord, std::vector<int> visitable_values)
+bool is_free_diagonal(const uint8_t* __restrict s_map, int width, Coord from_coord, Coord to_coord, const std::vector<int> &visitable_values)
 //assumes from_coord and to_coord are diagonal
 {
     if (to_coord.y < from_coord.y) {

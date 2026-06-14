@@ -1,7 +1,7 @@
 #include "area_graph.hpp"
 #include "area_debug.hpp"
 
-AreaCheckResult AreaGraph::search_best2(
+AreaCheckResult AreaGraph::search(
     int snake_length, 
     uint8_t *s_map, 
     uint8_t food_value, 
@@ -63,16 +63,6 @@ AreaCheckResult AreaGraph::search_best2(
         int total_steps;
         int calc_tiles;
         int calc_food;
-        // if (step_data->node->has_tail && !food_check && !(step_data->node->tile_count == 1 && step_data->node->id == 0))
-        // {
-        //     best_result.has_tail = true;
-        //     best_result.margin = INT_MAX;
-        //     best_result.is_clear = true;
-        //     best_result.tile_count = curr_tile_counts.total_tiles;
-        //     best_result.food_count = curr_tile_counts.total_food;
-        //     best_result.total_steps = curr_tile_counts.total_tiles;
-        //     break;
-        // }
         auto max_body_index_pair = step_data->get_max_body_index_pair();
         if (max_body_index_pair.first.first != -1)
         {

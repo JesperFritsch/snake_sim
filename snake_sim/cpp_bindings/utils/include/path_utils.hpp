@@ -22,7 +22,7 @@ Coord get_dir_to_tile(
     int height,
     Coord from_coord,
     int tile_value,
-    std::vector<int> visitable_values,
+    const std::vector<int> &visitable_values,
     bool clockwise = true
 );
 
@@ -50,7 +50,7 @@ int distance_to_tile_with_value(
     int height,
     Coord from_coord,
     int tile_value,
-    std::vector<int> visitable_values
+    const std::vector<int> &visitable_values
 );
 
 
@@ -75,7 +75,7 @@ int distance_to_coord(
     int height,
     Coord from_coord,
     Coord to_coord,
-    std::vector<int> visitable_values
+    const std::vector<int> &visitable_values
 );
 
 
@@ -100,7 +100,7 @@ std::vector<Coord> get_visitable_tiles(
     int width,
     int height,
     Coord center_coord,
-    std::vector<int> visitable_values
+    const std::vector<int> &visitable_values
 );
 
 
@@ -137,5 +137,5 @@ bool is_free_diagonal(
     int width,
     Coord from_coord,
     Coord to_coord,
-    std::vector<int> visitable_values
+    const std::vector<int> &visitable_values
 );
