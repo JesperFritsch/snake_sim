@@ -163,7 +163,7 @@ public:
 
     void print_nodes_debug() const;
 
-    AreaCheckResult search_best2(
+    AreaCheckResult search(
         int snake_length, 
         uint8_t *s_map, 
         uint8_t food_value, 

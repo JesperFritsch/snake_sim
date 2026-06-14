@@ -814,7 +814,7 @@ AreaCheckResult AreaChecker::area_check(
 
     DEBUG_PRINT(graph.print_nodes_debug());
 
-    return graph.search_best2(body_coords.size(), s_map, food_value, width, target_margin, food_check, exhaustive);
+    return graph.search(body_coords.size(), s_map, food_value, width, target_margin, food_check, exhaustive);
 }
 
 // best first search area check
