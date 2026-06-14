@@ -86,8 +86,13 @@ else:
 ext_modules = [
     Extension(
         'snake_sim.cpp_bindings.area_check',
-        # Use glob to automatically include all .cpp files in the src directory
-        sorted(glob.glob('snake_sim/cpp_bindings/**/src/*.cpp')),
+        # area_check needs its own sources plus the utils *implementation* files,
+        # but not pybind_utils.cpp (that defines the separate `utils` module and
+        # would bake a stray PyInit_utils into this extension).
+        sorted(
+            f for f in glob.glob('snake_sim/cpp_bindings/**/src/*.cpp')
+            if os.path.basename(f) != 'pybind_utils.cpp'
+        ),
         include_dirs=[
             'snake_sim/cpp_bindings/area_check/include',
             'snake_sim/cpp_bindings/utils/include',

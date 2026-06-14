@@ -622,7 +622,7 @@ ExploreResults AreaChecker::explore_area(
                 entrance_code = is_gate_way(s_map, curr_coord, n_coord);
                 if (entrance_code == 0)
                 {
-                    checked[n_y * width + n_x] = area_id; // this used to be above this if statement, dont know if this will cause a bug, but i think it should be fine.
+                    checked[n_y * width + n_x] = area_id;
                     current_coords.push_back(n_coord);
                 }
                 else
@@ -662,7 +662,7 @@ ExploreResults AreaChecker::explore_area(
                 jagged_edge_tiles.push_back(curr_coord);
             }
         }
-        if (count % 10 && early_exit)
+        if (count % 10 == 0 && early_exit)
         {
             int calc_target_margin = std::max(std::max(target_margin, food_count + total_food_count), 1);
             int total_steps = tile_count - (food_count + total_food_count) - std::abs(coord_parity_diff);
@@ -780,7 +780,7 @@ AreaCheckResult AreaChecker::area_check(
                 (result.body_tiles.size() == 1 ? result.body_tiles[0].first.first == 0 : result.body_tiles.size() == 0) &&
                 (result.connected_areas.size() + result.to_explore.size() <= 2)
             )
-            { // a node cant really have 2 or 3 tiles, next step after 1 is 4, but anyways...
+            {
                 current_node->is_one_dim = true;
             }
         }

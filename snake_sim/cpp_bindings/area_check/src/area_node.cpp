@@ -17,8 +17,9 @@ void AreaNode::remove_connection(unsigned int edge)
     { return pair.second == edge; });
     if (it != edge_nodes.end())
     {
+        auto edge_node_id = it->first->id;
         edge_nodes.erase(it);
-        neighbour_connections.erase(it->first->id);
+        neighbour_connections.erase(edge_node_id);
     }
 }
 
