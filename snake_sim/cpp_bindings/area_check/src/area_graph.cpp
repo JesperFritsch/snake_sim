@@ -439,7 +439,6 @@ std::pair<std::pair<int, bool>, Coord> SearchNode::get_max_body_index_pair()
     if (node->tile_count == 1){
         return node->body_tiles[0];
     }
-    Coord entry_coord = get_entry_coord();
     auto it = std::find_if(
         node->body_tiles.begin(), 
         node->body_tiles.end(), 
