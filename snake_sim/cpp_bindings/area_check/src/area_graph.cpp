@@ -21,7 +21,7 @@ AreaCheckResult AreaGraph::search(
     std::unordered_map<AreaNode *, SearchNode> search_nodes_data;
     for (auto &node : nodes)
     {
-        search_nodes_data[node.second.get()] = SearchNode(node.second.get());
+        search_nodes_data[node.second] = SearchNode(node.second);
     }
     // pair(cantor_pairing of from_node - to_node, needed_steps), are the elements to be cached
     std::vector<SearchNode *> search_stack;
@@ -229,24 +229,23 @@ AreaCheckResult AreaGraph::search(
 
 
 void AreaGraph::print_nodes_debug() const {
-    for (const auto& node_pair : nodes) {
-        const AreaNode* node = node_pair.second.get();
+    for (const auto& node : node_storage) {
         std::cout 
-            << "Node ID: " << node->id  << std::endl
-            << "Tile Count: " << node->tile_count  << std::endl
-            << "Food Count: " << node->food_count  << std::endl
-            << "Even or Odd balance: " << node->coord_parity_diff << std::endl
-            << "Has Tail: " << node->has_tail  << std::endl
-            << "Is One Dim: " << node->is_one_dim  << std::endl
-            << "Start Coord: (" << node->start_coord.x << ", " << node->start_coord.y << ")" << std::endl
+            << "Node ID: " << node.id  << std::endl
+            << "Tile Count: " << node.tile_count  << std::endl
+            << "Food Count: " << node.food_count  << std::endl
+            << "Even or Odd balance: " << node.coord_parity_diff << std::endl
+            << "Has Tail: " << node.has_tail  << std::endl
+            << "Is One Dim: " << node.is_one_dim  << std::endl
+            << "Start Coord: (" << node.start_coord.x << ", " << node.start_coord.y << ")" << std::endl
             << "Body Tiles: " << std::endl
-            << "Jagged edge discount: " << node->jagged_edge_discount << std::endl;
-        for (const auto& body_tile : node->body_tiles) {
+            << "Jagged edge discount: " << node.jagged_edge_discount << std::endl;
+        for (const auto& body_tile : node.body_tiles) {
             std::cout << "(" << body_tile.first.first <<  ", " << body_tile.first.second << ")" << ", (" << body_tile.second.x << ", " << body_tile.second.y << ")), ";
         }
         std::cout << std::endl
             << "Connections: " << std::endl;
-        for (const auto& conn_pair : node->neighbour_connections) {
+        for (const auto& conn_pair : node.neighbour_connections) {
             int connected_area_id = conn_pair.first;
             const ConnectedAreaInfo& info = conn_pair.second;
             std::cout << "    Connected to area: " << connected_area_id
@@ -261,12 +260,15 @@ void AreaGraph::print_nodes_debug() const {
 
 void AreaGraph::remove_node(int id)
 {
-    auto node = nodes[id].get();
+    auto node = get_node(id);
+    if (node == nullptr){
+        return;
+    }
     for (auto &edge_node : node->edge_nodes)
     {
         edge_node.first->remove_connection(node);
     }
-    nodes.erase(id);
+    nodes.erase(node->id);
 }
 
 void AreaGraph::add_id_for_node(int original_id, int linked_id)
@@ -282,9 +284,9 @@ void AreaGraph::add_id_for_node(int original_id, int linked_id)
 
 AreaNode* AreaGraph::add_node_with_id(Coord start_coord, int id)
 {
-    auto new_node = std::make_shared<AreaNode>(start_coord, id);
-    auto new_node_ptr = new_node.get();
-    nodes[id] = new_node;
+    AreaNode& new_node = node_storage.emplace_back(start_coord, id);
+    AreaNode* new_node_ptr = &new_node;
+    nodes[id] = new_node_ptr;
     if (id == 0)
     {
         root = new_node_ptr;
