@@ -667,13 +667,6 @@ ExploreResults AreaChecker::explore_area(
             int margin = total_steps - needed_steps;
             if (early_exit && margin > calc_target_margin * 2 && max_index_coord != start_coord)
             {
-                // std::cout << "Early exit" << std::endl;
-                // std::cout << "Margin: " << margin << std::endl;
-                // std::cout << "Target margin: " << calc_target_margin << std::endl;
-                // std::cout << "Tile count: " << tile_count << std::endl;
-                // std::cout << "Food count: " << food_count << std::endl;
-                // std::cout << "prev_food count: " << total_food_count << std::endl;
-
                 did_early_exit = true;
                 break;
             }
