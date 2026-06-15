@@ -116,11 +116,16 @@ class RenderLoop:
     def _input_loop(self):
         self._prompt_session = PromptSession()
         with patch_stdout():
-            while bool(command := self._prompt_session.prompt("> ")) and self._running_condition():
-                try:
-                    self._handle_command(command)
-                except EOFError:
-                    break
+            try:
+                while bool(command := self._prompt_session.prompt("> ")) and self._running_condition():
+                    try:
+                        self._handle_command(command)
+                    except EOFError:
+                        break
+            except KeyboardInterrupt:
+                log.info("KeyboardInterrupt received in input loop; stopping render loop")
+            finally:
+                self._stop_event.set()
 
     def _render_step(self, step: int):
         with self._render_lock:
@@ -141,6 +146,12 @@ class RenderLoop:
         elif cmd == "get":
             if parts[1] == "step":
                 print(f"current step: {self._renderer.get_current_step_idx()}")
+        elif cmd == "fps":
+            if len(parts) > 1:
+                self._base_fps = int(parts[1])
+                print(f"base FPS set to {self._base_fps}")
+            else:
+                print(f"current base FPS: {self._base_fps}")
         else:
             print(f"invalid command {command}")
 
