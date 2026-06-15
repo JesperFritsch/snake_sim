@@ -645,7 +645,7 @@ ExploreResults AreaChecker::explore_area(
                         }
                     }
                     bool bad_exit = is_bad_gateway(s_map, curr_coord, n_coord);
-                    body_tiles.emplace_back(std::make_pair(std::make_pair(body_index, bad_exit), curr_coord));
+                    body_tiles.emplace_back(std::make_pair(body_index, bad_exit), curr_coord);
                 }
             }
             if (n_coord_val > free_value){
