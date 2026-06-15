@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include <deque>
 #include <algorithm>
 #include <stdexcept>
 #include <iostream>
@@ -134,7 +135,8 @@ public:
     int map_width = 0;
     int map_height = 0;
     AreaNode *root = nullptr;
-    std::unordered_map<int, std::shared_ptr<AreaNode>> nodes;
+    std::deque<AreaNode> node_storage;
+    std::unordered_map<int, AreaNode*> nodes;
 
     AreaGraph(){ nodes.reserve(200); }
 
@@ -146,11 +148,12 @@ public:
 
     AreaNode *get_node(int id)
     {
-        if (nodes.find(id) == nodes.end())
+        auto it = nodes.find(id);
+        if (it == nodes.end())
         {
             return nullptr;
         }
-        return nodes[id].get();
+        return it->second;
     }
 
     AreaNode *add_node(Coord start_coord)
