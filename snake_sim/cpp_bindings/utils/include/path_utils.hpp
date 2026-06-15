@@ -124,7 +124,7 @@ inline py::tuple py_get_visitable_tiles(
 
 
 inline bool same_diagonal(Coord c1, Coord c2, bool dec){
-    // dec = true when y decreases when x increases
+    // dec = true if y decreases when x increases
     // . . X
     // . X .
     // X . .
