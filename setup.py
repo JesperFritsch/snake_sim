@@ -1,5 +1,6 @@
 from setuptools import setup, Extension
 from setuptools.command.build_py import build_py
+from setuptools.command.build_ext import build_ext
 import os
 import sys
 import tomllib
@@ -18,6 +19,13 @@ class get_pybind_include(object):
     def __str__(self):
         import pybind11
         return pybind11.get_include(self.user)
+
+class build_ext_parallel(build_ext):
+    def finalize_options(self):
+        super().finalize_options()
+        # Use all available cores unless the user already specified -j/--parallel.
+        if not self.parallel:
+            self.parallel = os.cpu_count() or 1
 
 class build_proto(build_py):
     user_options = build_py.user_options + [
@@ -120,5 +128,5 @@ ext_modules = [
 
 setup(
     ext_modules=ext_modules,
-    cmdclass={'build_py': build_proto},
+    cmdclass={'build_py': build_proto, 'build_ext': build_ext_parallel},
 )
