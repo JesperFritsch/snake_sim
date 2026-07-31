@@ -314,8 +314,11 @@ def export_run_to_video(
     tile_px_w = max(1, max_width / grid_w)
     tile_px_h = max(1, max_height / grid_h)
     tile_px = min(tile_px_w, tile_px_h)
-    out_w = grid_w * tile_px
-    out_h = grid_h * tile_px
+    out_w = int(round(grid_w * tile_px))
+    out_h = int(round(grid_h * tile_px))
+    # H.264 needs even dimensions
+    out_w -= out_w % 2
+    out_h -= out_h % 2
 
     if print_info:
         print(
