@@ -1,4 +1,5 @@
 import argparse
+import errno
 import os
 import subprocess
 import time
@@ -375,6 +376,10 @@ def export_run_to_video(
     eat_queue: queue.Queue = queue.Queue(maxsize=200)
     SENTINEL = None
 
+    # Set by any thread that detects ffmpeg has died, so the others stop
+    # instead of blocking forever on a pipe/queue.
+    abort_event = threading.Event()
+
     def convert_map_to_frame(m: np.ndarray) -> np.ndarray:
         rgb = _map_to_rgb(m, lut)
         if scale_in_ffmpeg:
@@ -388,6 +393,8 @@ def export_run_to_video(
         steps_with_audio = set()
         try:
             while True:
+                if abort_event.is_set():
+                    break
                 if end_step is not None and sim_step >= end_step:
                     break
                 try:
@@ -396,16 +403,31 @@ def export_run_to_video(
                     sim_step = map_builder.get_current_step_idx()
 
                     frame = convert_map_to_frame(m)
-                    frame_queue.put(frame)
+                    # Bounded put with timeout so a stalled consumer (dead
+                    # ffmpeg) can't wedge the producer permanently.
+                    while not abort_event.is_set():
+                        try:
+                            frame_queue.put(frame, timeout=0.5)
+                            break
+                        except queue.Full:
+                            continue
+                    else:
+                        break
 
                     # Detect food eating: only when there is one snake in the sim.
-
                     if eat_sound is not None:
                         only_one_snake = len(state_builder.get_start_data().env_meta_data.snake_values) == 1
                         current_state = state_builder.get_state(sim_step)
                         snake_ate = any(current_state.snake_ate.values())
                         add_sound = only_one_snake and snake_ate and sim_step not in steps_with_audio
-                        eat_queue.put(add_sound)
+                        while not abort_event.is_set():
+                            try:
+                                eat_queue.put(add_sound, timeout=0.5)
+                                break
+                            except queue.Full:
+                                continue
+                        else:
+                            break
                         steps_with_audio.add(sim_step)
 
                     current_map_idx_floating += (1 / frames_per_step) * maps_per_step
@@ -424,17 +446,57 @@ def export_run_to_video(
 
     def frame_consumer():
         nonlocal frames_written
-        while True:
-            frame = frame_queue.get()
-            if frame is SENTINEL:
-                break
-            ff.stdin.write(frame.tobytes(order="C"))
-            frames_written += 1
-            if progress_every and frames_written % progress_every == 0:
-                elapsed = time.time() - start_time
-                rate = frames_written / elapsed if elapsed > 0 else 0.0
-                print(f"frames={frames_written} elapsed={elapsed:.1f}s rate={rate:.1f} fps")
-        ff.stdin.close()
+        try:
+            while True:
+                frame = frame_queue.get()
+                if frame is SENTINEL:
+                    break
+                # If ffmpeg has already exited, stop instead of writing into a
+                # dead pipe (which raises BrokenPipeError or blocks).
+                if ff.poll() is not None:
+                    abort_event.set()
+                    break
+                try:
+                    ff.stdin.write(frame.tobytes(order="C"))
+                except BrokenPipeError:
+                    abort_event.set()
+                    break
+                frames_written += 1
+                if progress_every and frames_written % progress_every == 0:
+                    elapsed = time.time() - start_time
+                    rate = frames_written / elapsed if elapsed > 0 else 0.0
+                    print(f"frames={frames_written} elapsed={elapsed:.1f}s rate={rate:.1f} fps")
+        finally:
+            try:
+                ff.stdin.close()
+            except (BrokenPipeError, OSError):
+                pass
+
+    def _open_fifo_write(path: str):
+        """Open a FIFO for writing without blocking forever.
+
+        A blocking open() on a FIFO waits until a reader connects. If ffmpeg
+        never opens the read end (bad args, early exit, or — as seen with
+        ffmpeg 7.x — deferred second-input handling), that wait is unbounded.
+        Open non-blocking and poll, bailing out if ffmpeg has died.
+        Returns an open binary file object, or None if ffmpeg is gone.
+        """
+        while not abort_event.is_set():
+            try:
+                fd = os.open(path, os.O_WRONLY | os.O_NONBLOCK)
+            except OSError as e:
+                if e.errno == errno.ENXIO:
+                    # No reader connected yet.
+                    if ff.poll() is not None:
+                        abort_event.set()
+                        return None
+                    time.sleep(0.05)
+                    continue
+                raise
+            # Reader connected. Switch back to blocking for normal writes.
+            os.set_blocking(fd, True)
+            return os.fdopen(fd, "wb")
+        return None
 
     def audio_producer():
         """Generate PCM audio stream, mixing eat sound at food eating frames."""
@@ -447,11 +509,18 @@ def export_run_to_video(
         buffer = np.zeros((buffer_size, AUDIO_CHANNELS), dtype=np.float32)
         write_pos = 0  # position in buffer where next frame starts
 
-        with open(audio_pipe_path, "wb") as pipe:
+        pipe = _open_fifo_write(audio_pipe_path)
+        if pipe is None:
+            # ffmpeg never opened the read end; nothing to do.
+            return
+
+        try:
             frame_idx = 0
             accumulated = 0.0  # fractional sample accumulator
 
             while True:
+                if abort_event.is_set():
+                    break
                 ate = eat_queue.get()
                 if ate is SENTINEL:
                     break
@@ -488,15 +557,25 @@ def export_run_to_video(
 
                 # Clamp to [-1, 1] to prevent clipping
                 np.clip(chunk, -1.0, 1.0, out=chunk)
-                pipe.write(chunk.astype(np.float32).tobytes())
+                try:
+                    pipe.write(chunk.astype(np.float32).tobytes())
+                except BrokenPipeError:
+                    abort_event.set()
+                    break
 
                 write_pos = end % buffer_size
                 frame_idx += 1
+        finally:
+            try:
+                pipe.close()
+            except (BrokenPipeError, OSError):
+                pass
 
     threads_list = [
         threading.Thread(target=frame_producer, daemon=True),
         threading.Thread(target=frame_consumer, daemon=True),
     ]
+    audio_thread = None
     if eat_sound is not None:
         # Audio producer must start before ffmpeg tries to open the pipe
         audio_thread = threading.Thread(target=audio_producer, daemon=True)
@@ -507,7 +586,13 @@ def export_run_to_video(
     for t in threads_list:
         t.join()
 
-    if eat_sound is not None:
+    if audio_thread is not None:
+        # Unblock a still-waiting audio thread if the video side aborted.
+        if abort_event.is_set():
+            try:
+                eat_queue.put_nowait(SENTINEL)
+            except queue.Full:
+                pass
         audio_thread.join()
         try:
             os.remove(audio_pipe_path)
@@ -518,6 +603,8 @@ def export_run_to_video(
     elapsed = time.time() - start_time
     if ret != 0:
         raise RuntimeError(f"ffmpeg exited with code {ret}")
+    if abort_event.is_set():
+        raise RuntimeError("export aborted: ffmpeg closed its pipe before all frames were written")
 
     print(f"Wrote {frames_written} frames to {out_path} ({elapsed:.2f}s)")
 
