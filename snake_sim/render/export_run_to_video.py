@@ -1,7 +1,7 @@
 import argparse
-import errno
 import os
 import subprocess
+import tempfile
 import time
 import queue
 import threading
@@ -158,7 +158,7 @@ def _pick_default_preset(codec: str, preset: str | None) -> str | None:
     return None
 
 
-def _start_ffmpeg(
+def _start_ffmpeg_video_only(
     out_path: Path,
     in_width: int,
     in_height: int,
@@ -173,8 +173,12 @@ def _start_ffmpeg(
     filter_threads: int | None = None,
     scale_backend: str = "cpu",
     output_pix_fmt: str = "yuv444p",
-    audio_pipe_path: str | None = None,
 ) -> subprocess.Popen:
+    """Start ffmpeg reading raw video from stdin, writing an mp4. No audio input.
+
+    Audio is muxed in a separate pass from a completed file, so there is no
+    second live input and therefore no cross-input pipe deadlock.
+    """
     vf = None
     if out_width is not None and out_height is not None:
         if scale_backend == "cuda":
@@ -212,27 +216,13 @@ def _start_ffmpeg(
         "-i", "-",
     ]
 
-    # Audio input from named pipe (if provided)
-    if audio_pipe_path is not None:
-        cmd += [
-            "-f", "f32le",
-            "-ar", str(AUDIO_SAMPLE_RATE),
-            "-ac", str(AUDIO_CHANNELS),
-            "-i", audio_pipe_path,
-        ]
-
     if vf is not None:
         cmd += ["-vf", vf]
 
     if vf is not None and scale_backend == "cuda":
         cmd += ["-pix_fmt", "cuda"]
 
-    cmd += ["-c:v", codec]
-
-    if audio_pipe_path is not None:
-        cmd += ["-c:a", "aac", "-ar", str(AUDIO_SAMPLE_RATE), "-b:a", "128k"]
-    else:
-        cmd += ["-an"]
+    cmd += ["-c:v", codec, "-an"]
 
     if preset is not None:
         cmd += ["-preset", str(preset)]
@@ -255,6 +245,35 @@ def _start_ffmpeg(
 
     cmd += [str(out_path)]
     return subprocess.Popen(cmd, stdin=subprocess.PIPE)
+
+
+def _mux_audio(
+    video_path: Path,
+    audio_raw_path: Path,
+    out_path: Path,
+    ffmpeg_loglevel: str = "warning",
+) -> None:
+    """Mux a completed video file with a completed raw-PCM audio file.
+
+    Both inputs are complete files, so ffmpeg can buffer/seek freely and
+    there is no live-pipe deadlock. Video is stream-copied (no re-encode);
+    only audio is encoded to AAC.
+    """
+    cmd = [
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", ffmpeg_loglevel,
+        "-i", str(video_path),
+        "-f", "f32le", "-ar", str(AUDIO_SAMPLE_RATE), "-ac", str(AUDIO_CHANNELS),
+        "-i", str(audio_raw_path),
+        "-c:v", "copy",
+        "-c:a", "aac", "-ar", str(AUDIO_SAMPLE_RATE), "-b:a", "128k",
+        "-shortest",
+        str(out_path),
+    ]
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"audio mux failed (ffmpeg exit {proc.returncode}):\n{proc.stdout}"
+        )
 
 
 def export_run_to_video(
@@ -314,11 +333,16 @@ def export_run_to_video(
     tile_px_w = max(1, max_width / grid_w)
     tile_px_h = max(1, max_height / grid_h)
     tile_px = min(tile_px_w, tile_px_h)
+
+    # Output dimensions must be integers, and even for H.264 (libx264/nvenc
+    # with yuv formats reject odd dimensions; ffmpeg 7.x stalls on a
+    # non-integer scale= target). Round then force even.
     out_w = int(round(grid_w * tile_px))
     out_h = int(round(grid_h * tile_px))
-    # H.264 needs even dimensions
     out_w -= out_w % 2
     out_h -= out_h % 2
+    out_w = max(2, out_w)
+    out_h = max(2, out_h)
 
     if print_info:
         print(
@@ -343,30 +367,31 @@ def export_run_to_video(
         if print_info:
             print(f"Loaded eat sound: {eat_sound_path} ({len(eat_sound)} samples at {AUDIO_SAMPLE_RATE}Hz)")
 
-    # Set up named pipe for audio if we have a sound
-    audio_pipe_path = None
+    # Temp files: audio goes to a real file (not a FIFO), and if we have audio
+    # the video is first written to a temp mp4 then muxed. Both ffmpeg inputs
+    # in the mux step are complete files => no live-pipe deadlock.
+    tmp_dir = tempfile.mkdtemp(prefix="snake_export_")
+    audio_raw_path = Path(tmp_dir) / "audio.f32le"
     if eat_sound is not None:
-        audio_pipe_path = f"/tmp/audio_pipe_{os.getpid()}"
-        if os.path.exists(audio_pipe_path):
-            os.remove(audio_pipe_path)
-        os.mkfifo(audio_pipe_path)
+        video_tmp_path = Path(tmp_dir) / "video.mp4"
+        ffmpeg_video_out = video_tmp_path
+    else:
+        ffmpeg_video_out = out_path
 
     if scale_in_ffmpeg:
         in_w, in_h = grid_w, grid_h
-        ff = _start_ffmpeg(
-            out_path=out_path, in_width=in_w, in_height=in_h, fps=fps,
+        ff = _start_ffmpeg_video_only(
+            out_path=ffmpeg_video_out, in_width=in_w, in_height=in_h, fps=fps,
             codec=codec, crf=crf, preset=preset, out_width=out_w, out_height=out_h,
             ffmpeg_loglevel=ffmpeg_loglevel, threads=threads, filter_threads=filter_threads,
             scale_backend=scale_backend, output_pix_fmt=output_pix_fmt,
-            audio_pipe_path=audio_pipe_path,
         )
     else:
-        ff = _start_ffmpeg(
-            out_path=out_path, in_width=out_w, in_height=out_h, fps=fps,
+        ff = _start_ffmpeg_video_only(
+            out_path=ffmpeg_video_out, in_width=out_w, in_height=out_h, fps=fps,
             codec=codec, crf=crf, preset=preset, out_width=None, out_height=None,
             ffmpeg_loglevel=ffmpeg_loglevel, threads=threads, filter_threads=filter_threads,
             scale_backend="cpu", output_pix_fmt=output_pix_fmt,
-            audio_pipe_path=audio_pipe_path,
         )
 
     assert ff.stdin is not None
@@ -375,13 +400,17 @@ def export_run_to_video(
     start_time = time.time()
 
     frame_queue: queue.Queue = queue.Queue(maxsize=100)
-    # eat_queue carries True (ate food this frame) or False, or SENTINEL
-    eat_queue: queue.Queue = queue.Queue(maxsize=200)
     SENTINEL = None
 
-    # Set by any thread that detects ffmpeg has died, so the others stop
-    # instead of blocking forever on a pipe/queue.
+    # Shared abort flag so a dead ffmpeg unwinds all threads instead of
+    # blocking forever on a full queue or a broken pipe.
     abort_event = threading.Event()
+
+    # Audio accumulator. We write one frame's worth of PCM per emitted video
+    # frame, so audio and video stay frame-aligned by construction.
+    samples_per_frame = AUDIO_SAMPLE_RATE / fps
+    sound_len = len(eat_sound) if eat_sound is not None else 0
+    audio_buffer_size = sound_len + int(samples_per_frame) * 4 if eat_sound is not None else 0
 
     def convert_map_to_frame(m: np.ndarray) -> np.ndarray:
         rgb = _map_to_rgb(m, lut)
@@ -390,6 +419,7 @@ def export_run_to_video(
         else:
             return _scale_nearest(rgb, tile_px)
 
+    # -------- Producer: walk the run once, emit frames + per-frame eat flags --------
     def frame_producer():
         sim_step = start_step
         current_map_idx_floating = float(map_builder.get_current_map_idx())
@@ -406,32 +436,24 @@ def export_run_to_video(
                     sim_step = map_builder.get_current_step_idx()
 
                     frame = convert_map_to_frame(m)
-                    # Bounded put with timeout so a stalled consumer (dead
-                    # ffmpeg) can't wedge the producer permanently.
+
+                    ate = False
+                    if eat_sound is not None:
+                        only_one_snake = len(state_builder.get_start_data().env_meta_data.snake_values) == 1
+                        current_state = state_builder.get_state(sim_step)
+                        snake_ate = any(current_state.snake_ate.values())
+                        ate = only_one_snake and snake_ate and sim_step not in steps_with_audio
+                        steps_with_audio.add(sim_step)
+
+                    # Bounded put so a stalled consumer can't wedge us forever.
                     while not abort_event.is_set():
                         try:
-                            frame_queue.put(frame, timeout=0.5)
+                            frame_queue.put((frame, ate), timeout=0.5)
                             break
                         except queue.Full:
                             continue
                     else:
                         break
-
-                    # Detect food eating: only when there is one snake in the sim.
-                    if eat_sound is not None:
-                        only_one_snake = len(state_builder.get_start_data().env_meta_data.snake_values) == 1
-                        current_state = state_builder.get_state(sim_step)
-                        snake_ate = any(current_state.snake_ate.values())
-                        add_sound = only_one_snake and snake_ate and sim_step not in steps_with_audio
-                        while not abort_event.is_set():
-                            try:
-                                eat_queue.put(add_sound, timeout=0.5)
-                                break
-                            except queue.Full:
-                                continue
-                        else:
-                            break
-                        steps_with_audio.add(sim_step)
 
                     current_map_idx_floating += (1 / frames_per_step) * maps_per_step
                 except NoMoreSteps:
@@ -439,23 +461,28 @@ def export_run_to_video(
                     continue
                 except StopIteration:
                     break
-                except queue.Full:
-                    time.sleep(0.001)
-                    continue
         finally:
             frame_queue.put(SENTINEL)
-            if eat_sound is not None:
-                eat_queue.put(SENTINEL)
 
+    # -------- Consumer: write video to ffmpeg stdin + audio to temp file --------
     def frame_consumer():
         nonlocal frames_written
+
+        audio_file = None
+        buffer = None
+        write_pos = 0
+        accumulated = 0.0
+        if eat_sound is not None:
+            audio_file = open(audio_raw_path, "wb")
+            buffer = np.zeros((audio_buffer_size, AUDIO_CHANNELS), dtype=np.float32)
+
         try:
             while True:
-                frame = frame_queue.get()
-                if frame is SENTINEL:
+                item = frame_queue.get()
+                if item is SENTINEL:
                     break
-                # If ffmpeg has already exited, stop instead of writing into a
-                # dead pipe (which raises BrokenPipeError or blocks).
+                frame, ate = item
+
                 if ff.poll() is not None:
                     abort_event.set()
                     break
@@ -464,6 +491,39 @@ def export_run_to_video(
                 except BrokenPipeError:
                     abort_event.set()
                     break
+
+                # Emit exactly one frame's worth of audio, keeping A/V aligned.
+                if eat_sound is not None:
+                    if ate:
+                        end = write_pos + sound_len
+                        if end <= audio_buffer_size:
+                            buffer[write_pos:end] += eat_sound
+                        else:
+                            space = audio_buffer_size - write_pos
+                            buffer[write_pos:] += eat_sound[:space]
+                            remainder = end - audio_buffer_size
+                            buffer[:remainder] += eat_sound[space:]
+
+                    accumulated += samples_per_frame
+                    n_samples = int(accumulated)
+                    accumulated -= n_samples
+
+                    end = write_pos + n_samples
+                    if end <= audio_buffer_size:
+                        chunk = buffer[write_pos:end].copy()
+                        buffer[write_pos:end] = 0.0
+                    else:
+                        part1 = buffer[write_pos:].copy()
+                        buffer[write_pos:] = 0.0
+                        remainder = end - audio_buffer_size
+                        part2 = buffer[:remainder].copy()
+                        buffer[:remainder] = 0.0
+                        chunk = np.concatenate([part1, part2])
+
+                    np.clip(chunk, -1.0, 1.0, out=chunk)
+                    audio_file.write(chunk.astype(np.float32).tobytes())
+                    write_pos = end % audio_buffer_size
+
                 frames_written += 1
                 if progress_every and frames_written % progress_every == 0:
                     elapsed = time.time() - start_time
@@ -474,141 +534,34 @@ def export_run_to_video(
                 ff.stdin.close()
             except (BrokenPipeError, OSError):
                 pass
+            if audio_file is not None:
+                audio_file.close()
 
-    def _open_fifo_write(path: str):
-        """Open a FIFO for writing without blocking forever.
-
-        A blocking open() on a FIFO waits until a reader connects. If ffmpeg
-        never opens the read end (bad args, early exit, or — as seen with
-        ffmpeg 7.x — deferred second-input handling), that wait is unbounded.
-        Open non-blocking and poll, bailing out if ffmpeg has died.
-        Returns an open binary file object, or None if ffmpeg is gone.
-        """
-        while not abort_event.is_set():
-            try:
-                fd = os.open(path, os.O_WRONLY | os.O_NONBLOCK)
-            except OSError as e:
-                if e.errno == errno.ENXIO:
-                    # No reader connected yet.
-                    if ff.poll() is not None:
-                        abort_event.set()
-                        return None
-                    time.sleep(0.05)
-                    continue
-                raise
-            # Reader connected. Switch back to blocking for normal writes.
-            os.set_blocking(fd, True)
-            return os.fdopen(fd, "wb")
-        return None
-
-    def audio_producer():
-        """Generate PCM audio stream, mixing eat sound at food eating frames."""
-        samples_per_frame = AUDIO_SAMPLE_RATE / fps  # float, we'll round per frame
-        sound_len = len(eat_sound)
-
-        # Rolling buffer: holds pending audio to be mixed in future frames
-        # Large enough to hold the full sound effect
-        buffer_size = sound_len + int(samples_per_frame) * 4
-        buffer = np.zeros((buffer_size, AUDIO_CHANNELS), dtype=np.float32)
-        write_pos = 0  # position in buffer where next frame starts
-
-        pipe = _open_fifo_write(audio_pipe_path)
-        if pipe is None:
-            # ffmpeg never opened the read end; nothing to do.
-            return
-
-        try:
-            frame_idx = 0
-            accumulated = 0.0  # fractional sample accumulator
-
-            while True:
-                if abort_event.is_set():
-                    break
-                ate = eat_queue.get()
-                if ate is SENTINEL:
-                    break
-
-                if ate:
-                    end = write_pos + sound_len
-                    if end <= buffer_size:
-                        buffer[write_pos:end] += eat_sound
-                    else:
-                        # wrap around instead of clamping
-                        space = buffer_size - write_pos
-                        buffer[write_pos:] += eat_sound[:space]
-                        remainder = end - buffer_size
-                        buffer[:remainder] += eat_sound[space:]
-
-                # How many samples for this frame
-                accumulated += samples_per_frame
-                n_samples = int(accumulated)
-                accumulated -= n_samples
-
-                # Write samples from buffer
-                end = write_pos + n_samples
-                if end <= buffer_size:
-                    chunk = buffer[write_pos:end].copy()
-                    buffer[write_pos:end] = 0.0  # clear after reading
-                else:
-                    # wrap around
-                    part1 = buffer[write_pos:].copy()
-                    buffer[write_pos:] = 0.0
-                    remainder = end - buffer_size
-                    part2 = buffer[:remainder].copy()
-                    buffer[:remainder] = 0.0
-                    chunk = np.concatenate([part1, part2])
-
-                # Clamp to [-1, 1] to prevent clipping
-                np.clip(chunk, -1.0, 1.0, out=chunk)
-                try:
-                    pipe.write(chunk.astype(np.float32).tobytes())
-                except BrokenPipeError:
-                    abort_event.set()
-                    break
-
-                write_pos = end % buffer_size
-                frame_idx += 1
-        finally:
-            try:
-                pipe.close()
-            except (BrokenPipeError, OSError):
-                pass
-
-    threads_list = [
-        threading.Thread(target=frame_producer, daemon=True),
-        threading.Thread(target=frame_consumer, daemon=True),
-    ]
-    audio_thread = None
-    if eat_sound is not None:
-        # Audio producer must start before ffmpeg tries to open the pipe
-        audio_thread = threading.Thread(target=audio_producer, daemon=True)
-        audio_thread.start()
-
-    for t in threads_list:
-        t.start()
-    for t in threads_list:
-        t.join()
-
-    if audio_thread is not None:
-        # Unblock a still-waiting audio thread if the video side aborted.
-        if abort_event.is_set():
-            try:
-                eat_queue.put_nowait(SENTINEL)
-            except queue.Full:
-                pass
-        audio_thread.join()
-        try:
-            os.remove(audio_pipe_path)
-        except OSError:
-            pass
+    producer = threading.Thread(target=frame_producer, daemon=True)
+    consumer = threading.Thread(target=frame_consumer, daemon=True)
+    producer.start()
+    consumer.start()
+    producer.join()
+    consumer.join()
 
     ret = ff.wait()
-    elapsed = time.time() - start_time
     if ret != 0:
-        raise RuntimeError(f"ffmpeg exited with code {ret}")
+        _cleanup_tmp(tmp_dir)
+        raise RuntimeError(f"ffmpeg (video) exited with code {ret}")
     if abort_event.is_set():
+        _cleanup_tmp(tmp_dir)
         raise RuntimeError("export aborted: ffmpeg closed its pipe before all frames were written")
 
+    # Mux audio in a second pass from the completed files (deadlock-free).
+    if eat_sound is not None:
+        try:
+            _mux_audio(ffmpeg_video_out, audio_raw_path, out_path, ffmpeg_loglevel=ffmpeg_loglevel)
+        finally:
+            _cleanup_tmp(tmp_dir)
+    else:
+        _cleanup_tmp(tmp_dir)
+
+    elapsed = time.time() - start_time
     print(f"Wrote {frames_written} frames to {out_path} ({elapsed:.2f}s)")
 
     if create_info_json:
@@ -630,6 +583,18 @@ def export_run_to_video(
         with open(info_path, "w") as f:
             json.dump(info, f, indent=4)
         print(f"Wrote export info to {info_path}")
+
+
+def _cleanup_tmp(tmp_dir: str) -> None:
+    try:
+        for name in os.listdir(tmp_dir):
+            try:
+                os.remove(os.path.join(tmp_dir, name))
+            except OSError:
+                pass
+        os.rmdir(tmp_dir)
+    except OSError:
+        pass
 
 
 def main(argv: list[str] | None = None) -> int:
