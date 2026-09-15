@@ -196,7 +196,7 @@ class SnakeLoopControl:
     @_loop_check
     def _initialize_player_snakes(self):
         snake_factory = SnakeFactory()
-        for i, snake_config in enumerate(self._config.player_snake_congfigs):
+        for i, snake_config in enumerate(self._config.player_snake_configs):
             snake = snake_factory.create_snake(snake_config=snake_config)
             tag = f"Manual_{i}"
             self._snake_handler.add_snake(snake, tag)
@@ -290,7 +290,7 @@ def setup_loop(config) -> SnakeLoopControl:
             **sim_config.__dict__,
             player_count=config.num_players,
             steps_per_sec=config.game_sps,
-            player_snake_congfigs=config.player_snake_configs
+            player_snake_configs=config.player_snake_configs
         )
     loop_control = SnakeLoopControl(sim_config)
     loop_control.init_loop()
