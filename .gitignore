@@ -19,3 +19,24 @@ dist/
 */rl/**/archive/
 */rl/**/*.csv
 **/trainings_runs/
+# Models / training output
+*.pt
+*.tmp
+/models/
+
+# Run data
+*.data
+
+# Logs (rotated)
+*.log.*
+
+# Compiled objects
+*.obj
+*.o
+
+# Scratch test files (root only)
+/test_runfile.txt
+/test_file.txt
+/test_area.txt
+/test_areacheck.txt
+/some_test.txt
