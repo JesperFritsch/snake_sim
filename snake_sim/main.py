@@ -17,13 +17,14 @@ from snake_sim.environment.interfaces.loop_observable_interface import ILoopObse
 from snake_sim.environment.types import SnakeConfig, StrategyConfig
 from snake_sim.loop_observables.ipc_repeater_observable import IPCRepeaterObservable
 from snake_sim.loop_observables.file_reader_observable import FileRepeaterObservable
-from snake_sim.loop_observers.map_builder_observer import MapBuilderObserver
 from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
 from snake_sim.loop_observers.file_persist_observer import FilePersistObserver
 from snake_sim.loop_observers.waitable_observer import WaitableObserver
 from snake_sim.loop_observers.socket_observer import SocketObserver
 from snake_sim.render.render_loop import RenderLoop, RenderConfig
 from snake_sim.render.renderer_factory import renderer_factory
+from snake_sim.render.producers.grid_frame_producer import GridFrameProducer
+from snake_sim.render.types import GlowConfig
 from snake_sim.snakes.input.input_utils import setup_player_input
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
@@ -89,15 +90,23 @@ def main():
             Thread(target=_cancel_waitable, daemon=True).start()
 
         if not config.no_render:
-            map_builder = MapBuilderObserver(config.expansion)
             state_builder = StateBuilderObserver()
-            loop_repeater.add_observer(map_builder)
             loop_repeater.add_observer(state_builder)
             render_config = RenderConfig(
                 fps=config.fps,
                 sound=False
             )
-            renderer = renderer_factory(config.renderer, map_builder)
+            frame_producer = GridFrameProducer(
+                state_builder,
+                expansion=config.expansion,
+                glow=GlowConfig(
+                    length=config.glow_length,
+                    speed=config.glow_speed,
+                    brightness=config.glow_brightness,
+                    falloff=config.glow_falloff,
+                ),
+            )
+            renderer = renderer_factory(config.renderer, frame_producer)
             render_loop = RenderLoop(
                 renderer=renderer,
                 config=render_config,

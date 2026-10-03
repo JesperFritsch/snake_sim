@@ -64,6 +64,16 @@ class StateBuilderObserver(ConsumerObserver):
         self._goto_state(state_idx)
         return self.get_current_state()
 
+    def peek_state(self, state_idx: int) -> CompleteStepState:
+        """ Like get_state, but returns the live state instead of a copy.
+
+        Cheaper than get_state (which rebuilds every body deque), so it suits
+        consumers that read one state per rendered frame. The caller must treat
+        the result as read-only and must not hold on to it across calls.
+        """
+        self._goto_state(state_idx)
+        return self._current_state
+
     def get_max_state_idx(self) -> int:
         return len(self._steps) - 1
 
@@ -119,16 +129,35 @@ class StateBuilderObserver(ConsumerObserver):
         self._current_state.state_idx -= 1
         curr_step_data = self._steps[self._current_step_idx]
         self._current_state.snake_alive.update(curr_step_data.alive_states)
-        self._current_state.food.difference_update(curr_step_data.new_food)
-        self._current_state.food.update(curr_step_data.removed_food)
+        # Inverse of the forward "food |= new_food; food -= removed_food". Food that
+        # the same step both spawned and removed was never in the previous state, so
+        # it must not be restored - hence removing new_food from both sides.
+        new_food = set(curr_step_data.new_food)
+        self._current_state.food.difference_update(new_food)
+        self._current_state.food.update(set(curr_step_data.removed_food) - new_food)
         self._current_state.food = set(map(lambda f: Coord(*f), self._current_state.food))
         for s_id, tail_dir in curr_step_data.tail_directions.items():
             body = self._current_state.snake_bodies[s_id]
             popped_tile = body.popleft()
-            self._current_state.snake_ate[s_id] = body[0] in curr_step_data.removed_food
             if tail_dir != (0, 0):
-                old_tail = body[-1] - tail_dir if len(body) > 1 else popped_tile - tail_dir
+                # body[-1] is already the tail of the state we came from, so it is
+                # usable as soon as the body is non-empty. Only a snake that was a
+                # single tile has to fall back to the tile we just popped.
+                old_tail = body[-1] - tail_dir if len(body) > 0 else popped_tile - tail_dir
                 body.append(old_tail)
+        # snake_ate describes the step that produced the state we are landing on,
+        # which is the step before the one being undone - and it has to be read
+        # off the rewound bodies, so it cannot go in the loop above. Mirrors the
+        # forward pass, which keys it on that step's decisions.
+        if self._current_step_idx > 0:
+            prev_step_data = self._steps[self._current_step_idx - 1]
+            for s_id in prev_step_data.decisions:
+                body = self._current_state.snake_bodies[s_id]
+                self._current_state.snake_ate[s_id] = bool(body) and body[0] in prev_step_data.removed_food
+        else:
+            # The initial state is not the product of any step.
+            for s_id in self._current_state.snake_ate:
+                self._current_state.snake_ate[s_id] = False
 
     def __iter__(self):
         state_counter = 0

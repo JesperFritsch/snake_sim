@@ -1,43 +1,35 @@
-
-
 import time
 import numpy as np
 import logging
 import pygame
-import os
 
 from pathlib import Path
-from threading import Thread, Event, Lock
+from threading import Thread, Event
 
-from snake_sim.render.interfaces.renderer_interface import IRenderer
-from snake_sim.loop_observers.map_builder_observer import MapBuilderObserver, NoMoreSteps, CurrentIsFirst
-from snake_sim.render.utils import create_color_map
+from snake_sim.render.base_frame_renderer import BaseFrameRenderer
+from snake_sim.render.interfaces.frame_producer_interface import IFrameProducer
 
 log = logging.getLogger(Path(__file__).stem)
 
-class PygameRenderer(IRenderer):
-    """ A simple terminal renderer that prints the state to the console. """
-    def __init__(self, map_builder: MapBuilderObserver, max_screen_size: int = 1000):
-        super().__init__()
-        self._map_builder = map_builder
+
+class PygameRenderer(BaseFrameRenderer):
+    """ Blits finished frame buffers into a pygame window, scaled to fit it. """
+    def __init__(self, frame_producer: IFrameProducer, max_screen_size: int = 1000):
+        super().__init__(frame_producer)
         self._max_screen_size = max_screen_size
         self._screen_h = 100
         self._screen_w = 100
-        self._wait_thread = Thread(target=self._finish_init, daemon=True)
-        self._wait_thread.start()
-        self._env_meta_data = None
-        self._color_map = None
-        self._free_value = None
-        self._food_value = None
-        self._blocked_value = None
         self._init_finished = False
         self._loop_started = False
         self._flip_event: Event = Event()
         self._close_event: Event = Event()
         self._pygame_thread = Thread(target=self._pygame_loop)
+        # Started last; _finish_init touches the attributes set above.
+        self._wait_thread = Thread(target=self._finish_init, daemon=True)
+        self._wait_thread.start()
 
-    def _find_correct_screen_size(self, map_width: int, map_height: int):
-        aspect_ratio = map_width / map_height
+    def _find_correct_screen_size(self, frame_width: int, frame_height: int):
+        aspect_ratio = frame_width / frame_height
         if aspect_ratio >= 1:
             self._screen_w = self._max_screen_size
             self._screen_h = int(self._max_screen_size / aspect_ratio)
@@ -46,73 +38,19 @@ class PygameRenderer(IRenderer):
             self._screen_w = int(self._max_screen_size * aspect_ratio)
 
     def _finish_init(self):
-        while self._map_builder._start_data is None:
-            time.sleep(0.005)
-        start_data = self._map_builder._start_data
-        self._env_meta_data = start_data.env_meta_data
-        self._find_correct_screen_size(start_data.env_meta_data.width, start_data.env_meta_data.height)
+        self._producer.wait_until_ready()
+        self._find_correct_screen_size(*self._producer.size)
         self._pygame_thread.start()
-        self._color_map = create_color_map(self._env_meta_data.snake_values)
-        self._free_value = self._env_meta_data.free_value
-        self._food_value = self._env_meta_data.food_value
-        self._blocked_value = self._env_meta_data.blocked_value
         self._init_finished = True
 
     def is_init_finished(self):
         return self._init_finished and self._loop_started
 
-    def _render_frame(self, frame: np.ndarray):
+    def _render_at(self, frame_idx: int):
         if not self.is_init_finished():
             log.debug("Skipping render frame; init not finished")
             return
-        unique_ids, dense_labels = np.unique(frame, return_inverse=True)
-        lut = np.array([self._color_map[i] for i in unique_ids], dtype=np.uint8)
-        color_frame = lut[dense_labels].reshape(*frame.shape, 3)
-        self.draw_frame(color_frame)
-
-    def render_step(self, step_idx: int):
-        try:
-            frame = self._map_builder.get_map_for_step(step_idx)
-            self._render_frame(frame)
-        except (StopIteration, NoMoreSteps, CurrentIsFirst):
-            pass
-
-    def render_frame(self, frame_idx: int):
-        try:
-            frame = self._map_builder.get_map(frame_idx)
-            self._render_frame(frame)
-        except (StopIteration, NoMoreSteps, CurrentIsFirst):
-            pass
-
-    def render_first_frame(self):
-        try:
-            frame = self._map_builder.get_map(0)
-            self._render_frame(frame)
-        except (StopIteration, NoMoreSteps, CurrentIsFirst):
-            pass
-
-    def render_middle_frame(self):
-        try:
-            max_idx = self._map_builder.get_max_map_idx()
-            mid_idx = max_idx // 2
-            frame = self._map_builder.get_map(mid_idx)
-            self._render_frame(frame)
-        except (StopIteration, NoMoreSteps, CurrentIsFirst):
-            pass
-
-    def render_last_frame(self):
-        try:
-            max_idx = self._map_builder.get_max_map_idx()
-            frame = self._map_builder.get_map(max_idx)
-            self._render_frame(frame)
-        except (StopIteration, NoMoreSteps, CurrentIsFirst):
-            pass
-
-    def get_current_map_idx(self):
-        return self._map_builder.get_current_map_idx()
-
-    def get_current_step_idx(self):
-        return self._map_builder.get_current_step_idx()
+        self.draw_frame(self._producer.get_frame(frame_idx).pixels)
 
     def is_running(self) -> bool:
         return not self._close_event.is_set()

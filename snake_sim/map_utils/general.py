@@ -2,9 +2,10 @@ import sys
 import numpy as np
 import json
 from typing import Dict, Tuple
+from itertools import permutations
 from importlib import resources
 from PIL import Image
-from snake_sim.environment.types import DotDict
+from snake_sim.environment.types import Coord, DotDict
 
 with resources.open_text('snake_sim.config', 'default_config.json') as config_file:
     default_config = DotDict(json.load(config_file))
@@ -151,3 +152,37 @@ def _validate_map_values(map_array: np.ndarray, color_mapping: Dict[Tuple[int, i
             f"Map contains invalid values {invalid_values} not in color_mapping. "
             f"Found at positions: {positions[:5]}{'...' if len(positions) > 5 else ''}"
         )
+
+def expand_map(
+        s_map: np.ndarray,
+        expansion: int,
+        free_value: int,
+        blocked_value: int,
+    ) -> np.ndarray:
+    """ Scale a value map up by `expansion`, keeping blocked areas connected.
+
+    Cell (x, y) lands on pixel (x * expansion, y * expansion). Pixels between two
+    adjacent blocked cells are filled in as well, so walls stay solid instead of
+    turning into dotted lines.
+    """
+    height, width = s_map.shape
+    neighbors = [Coord(*c) for c in permutations([-1, 0, 1], 2) if abs(sum(c)) == 1]
+    expanded_map = np.full(
+        ((height * expansion) - (expansion - 1), (width * expansion) - (expansion - 1)),
+        free_value,
+        dtype=s_map.dtype
+    )
+    for y in range(height):
+        for x in range(width):
+            coord = Coord(x, y)
+            if s_map[y, x] == blocked_value:
+                ex_coord = coord * expansion
+                expanded_map[ex_coord.y, ex_coord.x] = blocked_value
+                if expansion > 1:
+                    # if the expand factor is greater than 1, we need to color the neighbors of the blocked cell in the map
+                    for n in neighbors:
+                        n_coord = coord + n
+                        if 0 <= n_coord.x < width and 0 <= n_coord.y < height and s_map[n_coord.y, n_coord.x] == blocked_value:
+                            ex_n_coord = ex_coord + n
+                            expanded_map[ex_n_coord.y, ex_n_coord.x] = blocked_value
+    return expanded_map

@@ -34,6 +34,10 @@ class ConsumerObserver(ILoopObserver):
     def get_step_data(self, idx: int):
         return self._steps[idx]
 
+    def get_step_count(self) -> int:
+        """ Number of steps received so far. """
+        return len(self._steps)
+
     def get_stop_data(self):
         return self._stop_data
 

@@ -2,6 +2,7 @@
 import json
 import colorsys
 import random
+import numpy as np
 from typing import Dict, Tuple
 from snake_sim.environment.types import DotDict
 
@@ -49,6 +50,20 @@ def create_color_map(snake_values: dict, rand_colors: bool = False) -> Dict[int,
         color_map[snake_value_dict["head_value"]] = color.copy_with(s=0.7).to_rgb()
         color_map[snake_value_dict["body_value"]] = color.copy_with(s=1, v=0.6).to_rgb()
     return color_map
+
+
+def build_color_lut(color_map: Dict[int, Tuple[int, int, int]], max_value: int | None = None) -> np.ndarray:
+    """ Build a dense value -> RGB lookup table, indexable with a raw value map. """
+    if max_value is None:
+        max_value = int(max(color_map.keys(), default=0))
+    if max_value < 0:
+        raise ValueError("max_value must be >= 0")
+    lut = np.zeros((max_value + 1, 3), dtype=np.uint8)
+    for k, rgb in color_map.items():
+        ik = int(k)
+        if 0 <= ik <= max_value:
+            lut[ik] = np.array(rgb, dtype=np.uint8)
+    return lut
 
 
 def print_colors(colors: list[tuple[int, int, int]]):

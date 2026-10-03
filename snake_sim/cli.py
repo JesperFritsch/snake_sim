@@ -55,6 +55,10 @@ def add_playback_arguments(parser):
     parser.add_argument('--sound', action='store_true', help='Play sound')
     parser.add_argument('--renderer', type=str, help='Renderer to use', choices=['window', 'terminal'], default='window')
     parser.add_argument('--expansion', type=int, help='Expansion factor for rendering', default=2)
+    parser.add_argument('--glow-length', type=int, help='Length in cells of the glow that runs down a snake when it eats, 0 to disable', default=4)
+    parser.add_argument('--glow-speed', type=float, help='Cells the glow travels down the body per head step', default=2.0)
+    parser.add_argument('--glow-brightness', type=float, help='How far the glow front is blended towards white past the head colour (0-1)', default=0.35)
+    parser.add_argument('--glow-falloff', type=float, help='Glow taper exponent from the front back towards the head, 1 is linear', default=1.5)
     parser.add_argument('--no-render', action='store_true', help='Do not render the simulation', default=False)
 
 def handle_args(args, config: DotDict):

@@ -16,6 +16,7 @@ from snake_sim.environment.types import (
 )
 
 from snake_sim.loop_observers.consumer_observer import ConsumerObserver
+from snake_sim.map_utils.general import expand_map
 
 
 class MapBuilderObserver(ConsumerObserver):
@@ -75,29 +76,12 @@ class MapBuilderObserver(ConsumerObserver):
         return Coord(*coord) * Coord(self._expansion, self._expansion)
 
     def _expand_map(self, map: np.ndarray):
-        height, width = map.shape
-        free_value = self._start_data.env_meta_data.free_value
-        blocked_value = self._start_data.env_meta_data.blocked_value
-        neighbors = [Coord(*c) for c in permutations([-1, 0, 1], 2) if abs(sum(c)) == 1]
-        expanded_map = np.full(
-            ((map.shape[0]*self._expansion)-(self._expansion-1), (map.shape[1]*self._expansion)-(self._expansion-1)),
-            free_value,
-            dtype=map.dtype
+        return expand_map(
+            map,
+            self._expansion,
+            self._start_data.env_meta_data.free_value,
+            self._start_data.env_meta_data.blocked_value,
         )
-        for y in range(height):
-            for x in range(width):
-                coord = Coord(x, y)
-                if map[y, x] == blocked_value:
-                    ex_coord = self._ex_coord(coord)
-                    expanded_map[ex_coord.y, ex_coord.x] = blocked_value
-                    if self._expansion > 1:
-                        # if the expand factor is greater than 1, we need to color the neighbors of the blocked cell in the map
-                        for n in neighbors:
-                            n_coord = coord + n
-                            if 0 <= n_coord.x < width and 0 <= n_coord.y < height and map[n_coord.y, n_coord.x] == blocked_value:
-                                ex_n_coord = ex_coord + n
-                                expanded_map[ex_n_coord.y, ex_n_coord.x] = blocked_value
-        return expanded_map
 
     def get_current_map(self) -> np.ndarray:
         return self._current_map.copy()

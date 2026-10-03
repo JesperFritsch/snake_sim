@@ -13,11 +13,11 @@ from shutil import which
 import numpy as np
 
 from snake_sim.loop_observables.file_reader_observable import FileRepeaterObservable
-from snake_sim.loop_observers.map_builder_observer import MapBuilderObserver
 from snake_sim.loop_observers.waitable_observer import WaitableObserver
 from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
 from snake_sim.environment.types import NoMoreSteps
-from snake_sim.render.utils import create_color_map
+from snake_sim.render.producers.grid_frame_producer import GridFrameProducer
+from snake_sim.render.types import GlowConfig
 
 
 AUDIO_SAMPLE_RATE = 44100
@@ -64,26 +64,14 @@ def _load_wav(path: Path) -> np.ndarray:
     return samples.astype(np.float32)
 
 
-def _build_color_lut(color_map: dict[int, tuple[int, int, int]], max_value: int) -> np.ndarray:
-    if max_value < 0:
-        raise ValueError("max_value must be >= 0")
-    lut = np.zeros((max_value + 1, 3), dtype=np.uint8)
-    for k, rgb in color_map.items():
-        ik = int(k)
-        if 0 <= ik <= max_value:
-            lut[ik] = np.array(rgb, dtype=np.uint8)
-    return lut
+def _nearest_scale_indices(in_size: int, out_size: int) -> np.ndarray:
+    if in_size <= 0 or out_size <= 0:
+        raise ValueError("sizes must be > 0")
+    return (np.arange(out_size, dtype=np.intp) * in_size) // out_size
 
 
-def _map_to_rgb(map_array: np.ndarray, lut: np.ndarray) -> np.ndarray:
-    idx = map_array.astype(np.intp, copy=False)
-    return lut[idx]
-
-
-def _scale_nearest(rgb: np.ndarray, tile_px: int) -> np.ndarray:
-    if tile_px <= 0:
-        raise ValueError("tile_px must be > 0")
-    return np.repeat(np.repeat(rgb, tile_px, axis=0), tile_px, axis=1)
+def _scale_nearest(rgb: np.ndarray, ys: np.ndarray, xs: np.ndarray) -> np.ndarray:
+    return rgb[ys[:, None], xs[None, :]]
 
 
 def _ffmpeg_available_encoders() -> set[str]:
@@ -301,31 +289,41 @@ def export_run_to_video(
     random_colors: bool = False,
     create_info_json: bool = False,
     eat_sound_path: Path | None = None,
+    glow_length: int = 4,
+    glow_speed: float = 2.0,
+    glow_brightness: float = 0.35,
+    glow_falloff: float = 1.5,
 ):
     mode = "ffmpeg-scale" if scale_in_ffmpeg else "python-scale"
     preset_str = preset if preset is not None else "(none)"
 
     observable = FileRepeaterObservable(filepath=str(run_path))
-    map_builder = MapBuilderObserver(expansion=expansion)
     state_builder = StateBuilderObserver()
     waitable = WaitableObserver()
 
-    observable.add_observer(map_builder)
     observable.add_observer(state_builder)
     observable.add_observer(waitable)
 
     observable.start()
     waitable.wait_until_started()
 
-    env_meta = map_builder.get_start_data().env_meta_data
-    color_map = create_color_map(env_meta.snake_values, rand_colors=random_colors)
-    food_value = env_meta.food_value
+    frame_producer = GridFrameProducer(
+        state_builder,
+        expansion=expansion,
+        random_colors=random_colors,
+        glow=GlowConfig(
+            length=glow_length,
+            speed=glow_speed,
+            brightness=glow_brightness,
+            falloff=glow_falloff,
+        ),
+    )
+    frame_producer.wait_until_ready()
 
-    while map_builder.get_max_step_idx() < start_step:
+    while frame_producer.get_max_step_idx() < start_step:
         time.sleep(0.01)
-    first_map = map_builder.get_map_for_step(start_step)
-    print(map_builder.get_current_step_idx())
-    grid_h, grid_w = first_map.shape
+    frame_producer.get_frame_for_step(start_step)
+    grid_w, grid_h = frame_producer.size
 
     if max_size is not None:
         max_width = max_size
@@ -350,13 +348,13 @@ def export_run_to_video(
             f"scale_backend={scale_backend} fps={fps} grid={grid_w}x{grid_h} tile_px={tile_px} out={out_w}x{out_h}"
         )
 
-    max_value = int(max(color_map.keys(), default=0))
-    lut = _build_color_lut(color_map, max_value=max_value)
+    scale_ys = _nearest_scale_indices(grid_h, out_h) if not scale_in_ffmpeg else None
+    scale_xs = _nearest_scale_indices(grid_w, out_w) if not scale_in_ffmpeg else None
 
     if steps_per_second is None:
         steps_per_second = fps
     frames_per_step = fps / steps_per_second
-    maps_per_step = expansion
+    producer_frames_per_step = frame_producer.frames_per_step
     start_step = max(0, int(start_step))
     end_step = int(end_step) if end_step is not None else None
 
@@ -412,18 +410,18 @@ def export_run_to_video(
     sound_len = len(eat_sound) if eat_sound is not None else 0
     audio_buffer_size = sound_len + int(samples_per_frame) * 4 if eat_sound is not None else 0
 
-    def convert_map_to_frame(m: np.ndarray) -> np.ndarray:
-        rgb = _map_to_rgb(m, lut)
+    # Only one snake gets a sound; several snakes eating would just be noise.
+    sound_enabled = eat_sound is not None and len(frame_producer.palette.snakes) == 1
+
+    def prepare_pixels(pixels: np.ndarray) -> np.ndarray:
         if scale_in_ffmpeg:
-            return rgb
-        else:
-            return _scale_nearest(rgb, tile_px)
+            return pixels
+        return np.ascontiguousarray(_scale_nearest(pixels, scale_ys, scale_xs))
 
     # -------- Producer: walk the run once, emit frames + per-frame eat flags --------
-    def frame_producer():
+    def produce_frames():
         sim_step = start_step
-        current_map_idx_floating = float(map_builder.get_current_map_idx())
-        steps_with_audio = set()
+        current_frame_idx_floating = float(frame_producer.get_current_frame_idx())
         try:
             while True:
                 if abort_event.is_set():
@@ -431,19 +429,14 @@ def export_run_to_video(
                 if end_step is not None and sim_step >= end_step:
                     break
                 try:
-                    map_idx = int(current_map_idx_floating)
-                    m = map_builder.get_map(map_idx)
-                    sim_step = map_builder.get_current_step_idx()
+                    producer_frame_idx = int(current_frame_idx_floating)
+                    produced = frame_producer.get_frame(producer_frame_idx)
+                    frame = prepare_pixels(produced.pixels)
+                    sim_step = produced.info.step_idx
 
-                    frame = convert_map_to_frame(m)
-
-                    ate = False
-                    if eat_sound is not None:
-                        only_one_snake = len(state_builder.get_start_data().env_meta_data.snake_values) == 1
-                        current_state = state_builder.get_state(sim_step)
-                        snake_ate = any(current_state.snake_ate.values())
-                        ate = only_one_snake and snake_ate and sim_step not in steps_with_audio
-                        steps_with_audio.add(sim_step)
+                    # Events belong to the one frame a step lands on, so the sound
+                    # fires once per eat without the producer having to track it.
+                    ate = sound_enabled and bool(produced.info.events.ate)
 
                     # Bounded put so a stalled consumer can't wedge us forever.
                     while not abort_event.is_set():
@@ -455,7 +448,7 @@ def export_run_to_video(
                     else:
                         break
 
-                    current_map_idx_floating += (1 / frames_per_step) * maps_per_step
+                    current_frame_idx_floating += (1 / frames_per_step) * producer_frames_per_step
                 except NoMoreSteps:
                     time.sleep(0.001)
                     continue
@@ -465,7 +458,7 @@ def export_run_to_video(
             frame_queue.put(SENTINEL)
 
     # -------- Consumer: write video to ffmpeg stdin + audio to temp file --------
-    def frame_consumer():
+    def consume_frames():
         nonlocal frames_written
 
         audio_file = None
@@ -537,12 +530,12 @@ def export_run_to_video(
             if audio_file is not None:
                 audio_file.close()
 
-    producer = threading.Thread(target=frame_producer, daemon=True)
-    consumer = threading.Thread(target=frame_consumer, daemon=True)
-    producer.start()
-    consumer.start()
-    producer.join()
-    consumer.join()
+    producer_thread = threading.Thread(target=produce_frames, daemon=True)
+    consumer_thread = threading.Thread(target=consume_frames, daemon=True)
+    producer_thread.start()
+    consumer_thread.start()
+    producer_thread.join()
+    consumer_thread.join()
 
     ret = ff.wait()
     if ret != 0:
@@ -575,7 +568,7 @@ def export_run_to_video(
             "tile_px": tile_px,
             "out_size": (out_w, out_h),
             "total_frames": frames_written,
-            "color_map": {k: color_map[k] for k in sorted(color_map.keys())},
+            "color_map": {k: v for k, v in sorted(frame_producer.cell_scheme.color_map.items())},
             "steps_per_second": steps_per_second,
         }
         info_path = out_path.with_suffix(".json")
@@ -643,6 +636,16 @@ def main(argv: list[str] | None = None) -> int:
         "--eat-sound", type=Path, default=DEFAULT_EAT_SOUND_PATH,
         help="Path to a WAV file to play when the snake eats food",
     )
+    ap.add_argument(
+        "--glow-length", type=int, default=4,
+        help="Length in cells of the glow that runs down a snake when it eats, 0 to disable",
+    )
+    ap.add_argument("--glow-speed", type=float, default=2.0,
+                    help="Cells the glow travels down the body per head step")
+    ap.add_argument("--glow-brightness", type=float, default=0.35,
+                    help="How far the glow front is blended towards white past the head colour (0-1)")
+    ap.add_argument("--glow-falloff", type=float, default=1.5,
+                    help="Glow taper exponent from the front back towards the head, 1 is linear")
 
     args = ap.parse_args(argv)
     export_run_to_video(
@@ -670,6 +673,10 @@ def main(argv: list[str] | None = None) -> int:
         random_colors=args.random_colors,
         create_info_json=args.create_info_json,
         eat_sound_path=args.eat_sound,
+        glow_length=args.glow_length,
+        glow_speed=args.glow_speed,
+        glow_brightness=args.glow_brightness,
+        glow_falloff=args.glow_falloff,
     )
     return 0
 

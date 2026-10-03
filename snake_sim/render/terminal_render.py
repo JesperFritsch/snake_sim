@@ -1,17 +1,12 @@
-
-
 import sys
-import time
 import numpy as np
 import logging
 
 from pathlib import Path
-from threading import Thread
 
-from snake_sim.render.interfaces.renderer_interface import IRenderer
-from snake_sim.loop_observers.map_builder_observer import MapBuilderObserver, NoMoreSteps, CurrentIsFirst
+from snake_sim.render.base_frame_renderer import BaseFrameRenderer
+from snake_sim.render.interfaces.frame_producer_interface import ICellGridProducer
 from snake_sim.map_utils.general import print_map
-from snake_sim.render.utils import create_color_map
 
 try:
     from colorama import init as colorama_init
@@ -23,90 +18,32 @@ log = logging.getLogger(Path(__file__).stem)
 
 CSI = "\x1b["  # Control Sequence Introducer
 
-class TerminalRenderer(IRenderer):
-    """ A simple terminal renderer that prints the state to the console. """
-    def __init__(self, map_builder: MapBuilderObserver):
-        super().__init__()
-        self._map_builder = map_builder
-        self._wait_thread = Thread(target=self._finish_init, daemon=True)
-        self._wait_thread.start()
+class TerminalRenderer(BaseFrameRenderer):
+    """ Prints the cell grid to the console as characters.
+
+    Draws characters rather than pixels, so it reads the producer's cell values
+    instead of its pixel buffers - a colour alone cannot say whether a cell is
+    empty or a wall, and it stops being able to once effects tint it.
+    """
+    def __init__(self, frame_producer: ICellGridProducer):
+        super().__init__(frame_producer)
         self._written_lines = 0
-        self._env_meta_data = None
-        self._color_map = None
-        self._free_value = None
-        self._food_value = None
-        self._blocked_value = None
-        self._init_finished = False
 
     def is_init_finished(self):
-        return self._init_finished
+        return self._producer.is_ready()
 
-    def _finish_init(self):
-            while self._map_builder._start_data is None:
-                time.sleep(0.005)
-            self._env_meta_data = self._map_builder._start_data.env_meta_data
-            self._color_map = create_color_map(self._env_meta_data.snake_values)
-            self._free_value = self._env_meta_data.free_value
-            self._food_value = self._env_meta_data.food_value
-            self._blocked_value = self._env_meta_data.blocked_value
-            self._init_finished = True
-
-    def _render_frame(self, frame: np.ndarray):
-        if not self.is_init_finished():
-            log.debug("Skipping render frame; init not finished")
-            return
-
+    def _render_at(self, frame_idx: int):
+        grid = self._producer.get_cell_grid(frame_idx)
+        scheme = self._producer.cell_scheme
         if self._written_lines > 0:
             self._move_cursor_up(self._written_lines)
         self._written_lines = print_map(
-            s_map=frame,
-            free_value=self._free_value,
-            food_value=self._food_value,
-            blocked_value=self._blocked_value,
-            color_map=self._color_map
+            s_map=grid,
+            free_value=scheme.free,
+            food_value=scheme.food,
+            blocked_value=scheme.blocked,
+            color_map=scheme.color_map
         )
-
-    def render_step(self, step_idx: int):
-        try:
-            frame = self._map_builder.get_map_for_step(step_idx)
-            self._render_frame(frame)
-        except (StopIteration, NoMoreSteps, CurrentIsFirst):
-            pass
-
-    def render_frame(self, frame_idx: int):
-        try:
-            frame = self._map_builder.get_map(frame_idx)
-            self._render_frame(frame)
-        except (StopIteration, NoMoreSteps, CurrentIsFirst):
-            pass
-
-    def render_first_frame(self):
-        try:
-            frame = self._map_builder.get_map(0)
-            self._render_frame(frame)
-        except (StopIteration, NoMoreSteps, CurrentIsFirst):
-            pass
-
-    def render_middle_frame(self):
-        try:
-            map_idx = self._map_builder.get_max_map_idx() // 2
-            frame = self._map_builder.get_map(map_idx)
-            self._render_frame(frame)
-        except (StopIteration, NoMoreSteps, CurrentIsFirst):
-            pass
-
-    def render_last_frame(self):
-        try:
-            frame = self._map_builder.get_map(self._map_builder.get_max_map_idx())
-            self._render_frame(frame)
-        except (StopIteration, NoMoreSteps, CurrentIsFirst):
-            pass
-
-    def get_current_map_idx(self):
-        return self._map_builder.get_current_map_idx()
-
-    def get_current_step_idx(self):
-        return self._map_builder.get_current_step_idx()
 
     def is_running(self):
         # There is nothing to "run" but the render loop will exit if this is false
