@@ -61,6 +61,8 @@ class GridFrameProducer(ICellGridProducer):
         # has got. A memo of a pure function of the received steps, so it gives
         # the same answer however the caller arrived at a frame.
         self._eat_steps: Dict[int, list] = {}
+        self._ate_on_step: Dict[int, Tuple[int, ...]] = {}
+        self._last_produced_frame_idx: Optional[int] = None
         self._scan_heads: Dict[int, Coord] = {}
         self._steps_scanned = 0
         self._glow_rgb: Dict[int, np.ndarray] = {}
@@ -126,6 +128,7 @@ class GridFrameProducer(ICellGridProducer):
                 head_f = head.astype(np.float32)
                 self._glow_rgb[s_id] = head_f + self._glow.brightness * (255.0 - head_f)
         self._eat_steps = {s_id: [] for s_id in env.snake_values}
+        self._ate_on_step = {}
         self._scan_heads = dict(env.start_positions)
 
         height, width = self._base_rgb.shape[:2]
@@ -193,7 +196,7 @@ class GridFrameProducer(ICellGridProducer):
             frame_idx=frame_idx,
             step_idx=step_idx,
             step_progress=sub_step / self._expansion,
-            events=self._events(state, step_idx, sub_step),
+            events=self._events_since_last_frame(frame_idx),
             palette=self._palette,
         )
         return Frame(pixels=pixels, info=info)
@@ -229,18 +232,50 @@ class GridFrameProducer(ICellGridProducer):
         self._current_frame_idx = frame_idx
         return state, step_data, step_idx, sub_step
 
-    def _events(self, state: CompleteStepState, step_idx: int, sub_step: int) -> FrameEvents:
-        """ The events that land on this frame, i.e. the outcome of the step it completes. """
-        if sub_step or step_idx <= 0:
+    def _events_on(self, frame_idx: int) -> FrameEvents:
+        """ The outcome of the step this one frame completes. """
+        step_idx, sub_step = divmod(frame_idx, self._expansion)
+        if sub_step or step_idx <= 0 or step_idx > self._state_builder.get_step_count():
             return NO_EVENTS
+        self._scan_eats_through(step_idx)
         completed = self._state_builder.get_step_data(step_idx - 1)
-        # snake_ate lingers for snakes that stopped moving, so only snakes that
-        # actually acted on the completed step can have eaten on it.
-        ate = tuple(s_id for s_id in completed.decisions if state.snake_ate.get(s_id))
+        ate = self._ate_on_step.get(step_idx - 1, ())
         died = tuple(s_id for s_id, alive in completed.alive_states.items() if not alive)
         if not ate and not died:
             return NO_EVENTS
         return FrameEvents(ate=ate, died=died)
+
+    def _events_since_last_frame(self, frame_idx: int) -> FrameEvents:
+        """ Everything that happened between the last frame produced and this one.
+
+        A consumer generally does not ask for every frame - a video at 30 fps
+        showing 10 simulation steps per second steps over most of them - so
+        reporting only what landed on this exact frame would silently lose the
+        steps in between. Reporting the span instead means a consumer gets each
+        event once by just reading the frames it actually asked for.
+        """
+        previous = self._last_produced_frame_idx
+        self._last_produced_frame_idx = frame_idx
+        if previous is None or frame_idx < previous:
+            # First frame, or the caller jumped backwards: there is no span to
+            # speak of, so report what belongs to this frame alone.
+            return self._events_on(frame_idx)
+        if frame_idx == previous:
+            # Asking for the same frame again covers no new ground. A consumer
+            # running slower than one step per frame lands here, and must not be
+            # told about the same eat on every repeat.
+            return NO_EVENTS
+
+        expansion = self._expansion
+        ate: list = []
+        died: list = []
+        for idx in range(((previous // expansion) + 1) * expansion, frame_idx + 1, expansion):
+            events = self._events_on(idx)
+            ate.extend(s_id for s_id in events.ate if s_id not in ate)
+            died.extend(s_id for s_id in events.died if s_id not in died)
+        if not ate and not died:
+            return NO_EVENTS
+        return FrameEvents(ate=tuple(ate), died=tuple(died))
 
     def _snake_paths(
         self,
@@ -310,11 +345,15 @@ class GridFrameProducer(ICellGridProducer):
         while self._steps_scanned < limit:
             step_data = self._state_builder.get_step_data(self._steps_scanned)
             removed = step_data.removed_food
+            ate = []
             for s_id, decision in step_data.decisions.items():
                 head = self._scan_heads[s_id] + decision
                 self._scan_heads[s_id] = head
                 if removed and head in removed:
                     self._eat_steps[s_id].append(self._steps_scanned)
+                    ate.append(s_id)
+            if ate:
+                self._ate_on_step[self._steps_scanned] = tuple(ate)
             self._steps_scanned += 1
 
     def _glow_intensity(self, s_id: int, path_len: int, step_idx: int, sub_step: int):

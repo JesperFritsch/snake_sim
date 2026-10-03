@@ -6,6 +6,7 @@ import time
 import queue
 import threading
 import wave
+from functools import lru_cache
 from importlib import resources
 from pathlib import Path
 from shutil import which
@@ -118,20 +119,69 @@ def _has_drm_render_node() -> bool:
     return any(Path("/dev/dri").glob("renderD*") if Path("/dev/dri").exists() else [])
 
 
-def _pick_default_codec(requested: str) -> str:
+def _default_scale_backend(codec: str) -> str:
+    """CUDA scaling only exists for the NVIDIA encoder; everything else scales on CPU."""
+    return "cuda" if codec == "h264_nvenc" else "cpu"
+
+
+@lru_cache(maxsize=None)
+def _encoder_works(codec: str, scale_backend: str, output_pix_fmt: str) -> bool:
+    """Actually run a tiny encode to see whether this codec works on this machine.
+
+    ffmpeg listing an encoder is not enough: h264_nvenc is listed on machines with
+    no NVIDIA driver, and h264_qsv on machines with no MFX runtime. Both only fail
+    once ffmpeg tries to open them. The probe goes through the same command builder
+    as the real export, so whatever passes here will run for real too.
+    """
+    preset = _pick_default_preset(codec, None)
+    tmp_dir = tempfile.mkdtemp(prefix="snake_probe_")
+    out_path = Path(tmp_dir) / "probe.mp4"
+    try:
+        proc = _start_ffmpeg_video_only(
+            out_path=out_path, in_width=16, in_height=16, fps=30,
+            codec=codec, crf=23, preset=preset, out_width=32, out_height=32,
+            # quiet: a failing probe is an expected outcome, not something to report
+            ffmpeg_loglevel="quiet", scale_backend=scale_backend,
+            output_pix_fmt=output_pix_fmt,
+        )
+    except (ValueError, OSError):
+        _cleanup_tmp(tmp_dir)
+        return False
+    frame = np.zeros((16, 16, 3), dtype=np.uint8).tobytes(order="C")
+    try:
+        for _ in range(4):
+            proc.stdin.write(frame)
+        proc.stdin.close()
+    except (BrokenPipeError, OSError):
+        pass
+    try:
+        returncode = proc.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        returncode = 1
+    _cleanup_tmp(tmp_dir)
+    return returncode == 0
+
+
+def _pick_default_codec(requested: str, output_pix_fmt: str = "yuv444p") -> str:
+    """Resolve 'auto' to a codec that actually encodes here, preferring the GPU."""
     requested = (requested or "").strip()
     if requested and requested != "auto":
         return requested
     enc = _ffmpeg_available_encoders()
     vendors = _read_gpu_vendors()
-    if "nvidia" in vendors and "h264_nvenc" in enc:
-        return "h264_nvenc"
-    if "intel" in vendors and "h264_qsv" in enc:
-        return "h264_qsv"
-    if _has_drm_render_node() and "h264_vaapi" in enc:
-        return "h264_vaapi"
+    preferred = []
+    if "nvidia" in vendors:
+        preferred.append("h264_nvenc")
+    if "intel" in vendors:
+        preferred.append("h264_qsv")
+    if _has_drm_render_node():
+        preferred.append("h264_vaapi")
     for candidate in ("h264_nvenc", "h264_qsv", "h264_vaapi"):
-        if candidate in enc:
+        if candidate not in preferred:
+            preferred.append(candidate)
+    for candidate in preferred:
+        if candidate in enc and _encoder_works(candidate, _default_scale_backend(candidate), output_pix_fmt):
             return candidate
     return "libx264"
 
@@ -280,7 +330,7 @@ def export_run_to_video(
     print_info: bool = True,
     threads: int | None = None,
     filter_threads: int | None = None,
-    scale_backend: str = "cpu",
+    scale_backend: str = "auto",
     progress_every: int = 500,
     output_pix_fmt: str = "yuv444p",
     steps_per_second: float | None = None,
@@ -294,8 +344,23 @@ def export_run_to_video(
     glow_brightness: float = 0.35,
     glow_falloff: float = 1.5,
 ):
+    # Resolve "auto" before anything else, so the info line, the info json and the
+    # encoder all agree on what was actually used.
+    requested_codec = codec
+    codec = _pick_default_codec(codec, output_pix_fmt=output_pix_fmt)
+    if (scale_backend or "auto").strip() in ("", "auto"):
+        scale_backend = _default_scale_backend(codec)
+    elif scale_backend == "cuda" and codec != "h264_nvenc":
+        raise ValueError(
+            f"scale_backend='cuda' needs codec='h264_nvenc', got '{codec}'. "
+            f"Use --scale-backend cpu, or --scale-backend auto to let it choose."
+        )
+    preset = _pick_default_preset(codec, preset)
+
     mode = "ffmpeg-scale" if scale_in_ffmpeg else "python-scale"
     preset_str = preset if preset is not None else "(none)"
+    if print_info and (requested_codec or "").strip() in ("", "auto"):
+        print(f"export_run_to_video: codec auto-detected as {codec} (scale_backend={scale_backend})")
 
     observable = FileRepeaterObservable(filepath=str(run_path))
     state_builder = StateBuilderObserver()
@@ -434,8 +499,7 @@ def export_run_to_video(
                     frame = prepare_pixels(produced.pixels)
                     sim_step = produced.info.step_idx
 
-                    # Events belong to the one frame a step lands on, so the sound
-                    # fires once per eat without the producer having to track it.
+                    # One sound per written frame, however many steps it covers.
                     ate = sound_enabled and bool(produced.info.events.ate)
 
                     # Bounded put so a stalled consumer can't wedge us forever.
@@ -605,8 +669,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--max-size", type=int, default=None)
     ap.add_argument("--expansion", type=int, default=2)
     ap.add_argument(
-        "--codec", type=str, default="h264_nvenc",
+        "--codec", type=str, default="auto",
         choices=["auto", "libx264", "h264_nvenc", "h264_vaapi", "h264_qsv"],
+        help="Video encoder. 'auto' picks the fastest one that actually works on this machine.",
     )
     ap.add_argument("--preset", type=str, default=None)
     ap.add_argument("--crf", type=int, default=18)
@@ -625,8 +690,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--threads", type=int, default=None)
     ap.add_argument("--filter-threads", type=int, default=None)
     ap.add_argument(
-        "--scale-backend", type=str, default="cuda",
-        choices=["cpu", "cuda"],
+        "--scale-backend", type=str, default="auto",
+        choices=["auto", "cpu", "cuda"],
+        help="Where ffmpeg scales frames. 'auto' uses cuda with h264_nvenc and cpu otherwise.",
     )
     ap.add_argument("--progress-every", type=int, default=0)
     ap.add_argument("--no-print-info", action="store_true", default=False)

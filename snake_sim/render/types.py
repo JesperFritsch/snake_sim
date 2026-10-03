@@ -26,11 +26,16 @@ class Palette:
 class FrameEvents:
     """ What happened on a frame, by snake id.
 
-    Events belong to the frame they land on rather than to a stream, so they are
-    a pure function of the frame index: seeking, replaying or scrubbing backwards
-    reports exactly the same events for the same frame and never double-fires.
-    A step's events land on the frame where that step completes, which for a
-    producer that interpolates is the frame where the head actually arrives.
+    These cover the span since the frame the producer last made, not just the one
+    frame, because a consumer generally asks for a fraction of the frames a
+    producer could make. Reading the frames it does ask for therefore gets every
+    event exactly once, with no bookkeeping of its own.
+
+    Two consequences worth knowing: a frame's events depend on which frame was
+    produced before it, so the same index can report different events on a second
+    pass, and several steps' events can arrive together when the consumer skips
+    steps. A consumer that acts on them once per frame - playing a sound, say -
+    gets one action per frame however many steps it covers.
     """
     ate: Tuple[int, ...] = ()
     died: Tuple[int, ...] = ()

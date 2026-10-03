@@ -16,8 +16,9 @@ class IFrameProducer(ABC):
 
     What a consumer legitimately does need comes back alongside the pixels as
     `Frame.info`: where the frame sits in the run, the palette, and the events
-    that landed on it. That is what lets a consumer play a sound or caption a
-    frame without reaching back into the simulation itself.
+    since the previously produced frame. That is what lets a consumer play a
+    sound or caption a frame without reaching back into the simulation itself,
+    and without having to know which frames it skipped over.
 
     Frames are addressed by frame index, which is the producer's own timeline:
     `frames_per_step` frames map onto one simulation step, so frame index
