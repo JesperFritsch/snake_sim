@@ -1,45 +1,34 @@
-import time
 import logging
 import numpy as np
 
 from bisect import bisect_left
-
 from pathlib import Path
 from typing import Any, Deque, Dict, Optional, Tuple
 
 from snake_sim.environment.types import (
     Coord,
     CompleteStepState,
-    CurrentIsFirst,
+    EnvMetaData,
     LoopStepData,
-    NoMoreSteps,
 )
 from snake_sim.loop_observers.state_builder_observer import StateBuilderObserver
 from snake_sim.map_utils.general import expand_map
 from snake_sim.render.interfaces.frame_producer_interface import ICellGridProducer
-from snake_sim.render.types import (
-    NO_EVENTS,
-    CellScheme,
-    Frame,
-    FrameEvents,
-    FrameInfo,
-    GlowConfig,
-    Palette,
-    SnakeColors,
-)
-from snake_sim.render.utils import build_color_lut, create_color_map
+from snake_sim.render.producers.base_frame_producer import BaseFrameProducer
+from snake_sim.render.types import CellScheme, GlowConfig
 
 log = logging.getLogger(Path(__file__).stem)
 
 
-class GridFrameProducer(ICellGridProducer):
-    """ Produces the plain one-pixel-per-cell grid rendering.
+class GridFrameProducer(BaseFrameProducer, ICellGridProducer):
+    """ Draws the plain one-pixel-per-cell grid rendering.
 
     Builds every frame from scratch out of the simulation state, so a frame is a
     pure function of (step, sub-step) and seeking anywhere is just as correct as
     playing forward. `expansion` scales the grid up and spends the extra pixels
     on interpolating snake movement: with expansion 4 a snake advances one pixel
-    per frame over four frames instead of jumping a whole cell at once.
+    per frame over four frames instead of jumping a whole cell at once, which is
+    also why it doubles as the producer's frames per step.
 
     Pixels and raw cell values come out of the same compose pass, so the two can
     never disagree about where a snake is.
@@ -52,24 +41,9 @@ class GridFrameProducer(ICellGridProducer):
         random_colors: bool = False,
         glow: GlowConfig | None = None,
     ):
-        super().__init__()
-        self._state_builder = state_builder
-        self._expansion = max(1, int(expansion))
-        self._random_colors = random_colors
+        super().__init__(state_builder, frames_per_step=expansion, random_colors=random_colors)
+        self._expansion = self._frames_per_step
         self._glow = glow if (glow is not None and glow.enabled) else None
-        # Append-only index of the steps each snake ate on, plus how far the scan
-        # has got. A memo of a pure function of the received steps, so it gives
-        # the same answer however the caller arrived at a frame.
-        self._eat_steps: Dict[int, list] = {}
-        self._ate_on_step: Dict[int, Tuple[int, ...]] = {}
-        self._last_produced_frame_idx: Optional[int] = None
-        self._scan_heads: Dict[int, Coord] = {}
-        self._steps_scanned = 0
-        self._glow_rgb: Dict[int, np.ndarray] = {}
-        self._current_frame_idx = 0
-        self._ready = False
-        self._size: Tuple[int, int] = (0, 0)
-        self._palette: Optional[Palette] = None
         self._cell_scheme: Optional[CellScheme] = None
         self._base_rgb: Optional[np.ndarray] = None
         self._base_values: Optional[np.ndarray] = None
@@ -77,19 +51,12 @@ class GridFrameProducer(ICellGridProducer):
         self._food_value: int = 0
         self._snake_rgb: Dict[int, Tuple[np.ndarray, np.ndarray]] = {}
         self._snake_values: Dict[int, Tuple[int, int]] = {}
+        self._glow_rgb: Dict[int, np.ndarray] = {}
 
     # ------------------------------------------------------------------ setup
 
-    def _try_init(self) -> bool:
-        if self._ready:
-            return True
-        start_data = self._state_builder.get_start_data()
-        if start_data is None:
-            return False
-        env = start_data.env_meta_data
-        color_map = create_color_map(env.snake_values, rand_colors=self._random_colors)
-        lut = build_color_lut(color_map)
-
+    def _build(self, env: EnvMetaData) -> None:
+        lut = self._lut
         self._base_values = expand_map(env.base_map, self._expansion, env.free_value, env.blocked_value)
         self._base_rgb = np.ascontiguousarray(lut[self._base_values.astype(np.intp, copy=False)])
 
@@ -102,104 +69,40 @@ class GridFrameProducer(ICellGridProducer):
         self._snake_rgb = {
             s_id: (lut[head], lut[body]) for s_id, (head, body) in self._snake_values.items()
         }
-
-        self._palette = Palette(
-            free=tuple(int(c) for c in lut[env.free_value]),
-            food=tuple(int(c) for c in lut[env.food_value]),
-            blocked=tuple(int(c) for c in lut[env.blocked_value]),
-            snakes={
-                s_id: SnakeColors(
-                    head=tuple(int(c) for c in lut[head]),
-                    body=tuple(int(c) for c in lut[body]),
-                )
-                for s_id, (head, body) in self._snake_values.items()
-            },
-        )
         self._cell_scheme = CellScheme(
             free=env.free_value,
             food=env.food_value,
             blocked=env.blocked_value,
-            color_map=color_map,
+            color_map=self._color_map,
         )
-
         if self._glow is not None:
             # The front of the pulse sits just past the head colour, towards white.
             for s_id, (head, _) in self._snake_rgb.items():
                 head_f = head.astype(np.float32)
                 self._glow_rgb[s_id] = head_f + self._glow.brightness * (255.0 - head_f)
-        self._eat_steps = {s_id: [] for s_id in env.snake_values}
-        self._ate_on_step = {}
-        self._scan_heads = dict(env.start_positions)
 
         height, width = self._base_rgb.shape[:2]
         self._size = (width, height)
-        self._ready = True
-        log.debug("GridFrameProducer ready; size=%sx%s expansion=%s", width, height, self._expansion)
-        return True
-
-    def is_ready(self) -> bool:
-        return self._try_init()
-
-    def wait_until_ready(self, timeout: float | None = None) -> bool:
-        deadline = None if timeout is None else time.monotonic() + timeout
-        while not self._try_init():
-            if deadline is not None and time.monotonic() >= deadline:
-                return False
-            time.sleep(0.005)
-        return True
-
-    # --------------------------------------------------------------- timeline
-
-    @property
-    def size(self) -> Tuple[int, int]:
-        self._try_init()
-        return self._size
-
-    @property
-    def frames_per_step(self) -> int:
-        return self._expansion
-
-    @property
-    def palette(self) -> Palette:
-        self._try_init()
-        return self._palette
 
     @property
     def cell_scheme(self) -> CellScheme:
         self._try_init()
         return self._cell_scheme
 
-    def get_max_step_idx(self) -> int:
-        return self._state_builder.get_step_count()
-
-    def get_max_frame_idx(self) -> int:
-        return self.get_max_step_idx() * self._expansion
-
-    def get_current_frame_idx(self) -> int:
-        return self._current_frame_idx
-
-    def get_current_step_idx(self) -> int:
-        return self._current_frame_idx // self._expansion
-
     # ----------------------------------------------------------------- frames
 
-    def get_frame_for_step(self, step_idx: int) -> Frame:
-        return self.get_frame(step_idx * self._expansion)
-
-    def get_frame(self, frame_idx: int) -> Frame:
-        state, step_data, step_idx, sub_step = self._resolve(frame_idx)
+    def _draw(
+        self,
+        state: CompleteStepState,
+        step_data: Optional[LoopStepData],
+        step_idx: int,
+        sub_step: int,
+    ) -> np.ndarray:
         paths = self._snake_paths(state, step_data, sub_step)
         pixels = self._compose(self._base_rgb, self._food_rgb, self._snake_rgb, state, paths)
         if self._glow is not None:
             self._apply_glow(pixels, paths, step_idx, sub_step)
-        info = FrameInfo(
-            frame_idx=frame_idx,
-            step_idx=step_idx,
-            step_progress=sub_step / self._expansion,
-            events=self._events_since_last_frame(frame_idx),
-            palette=self._palette,
-        )
-        return Frame(pixels=pixels, info=info)
+        return pixels
 
     def get_cell_grid(self, frame_idx: int) -> np.ndarray:
         # No glow here: a cell value says what a cell *is*, and the glow is a
@@ -209,73 +112,6 @@ class GridFrameProducer(ICellGridProducer):
         return self._compose(self._base_values, self._food_value, self._snake_values, state, paths)
 
     # ------------------------------------------------------------------ guts
-
-    def _resolve(self, frame_idx: int):
-        """ Locate a frame in the run and gather what is needed to draw it. """
-        if frame_idx < 0:
-            raise CurrentIsFirst("Asked for a frame before the start of the run")
-        if not self._try_init():
-            raise NoMoreSteps("Start data has not been received yet")
-
-        step_idx, sub_step = divmod(frame_idx, self._expansion)
-        state = self._state_builder.peek_state(step_idx)
-
-        step_data = None
-        if sub_step:
-            # Interpolating within a step needs the decisions that step made.
-            if step_idx >= self._state_builder.get_step_count():
-                if self._state_builder.get_stop_data() is not None:
-                    raise StopIteration("No more frames available")
-                raise NoMoreSteps("Need to receive more steps to produce this frame")
-            step_data = self._state_builder.get_step_data(step_idx)
-
-        self._current_frame_idx = frame_idx
-        return state, step_data, step_idx, sub_step
-
-    def _events_on(self, frame_idx: int) -> FrameEvents:
-        """ The outcome of the step this one frame completes. """
-        step_idx, sub_step = divmod(frame_idx, self._expansion)
-        if sub_step or step_idx <= 0 or step_idx > self._state_builder.get_step_count():
-            return NO_EVENTS
-        self._scan_eats_through(step_idx)
-        completed = self._state_builder.get_step_data(step_idx - 1)
-        ate = self._ate_on_step.get(step_idx - 1, ())
-        died = tuple(s_id for s_id, alive in completed.alive_states.items() if not alive)
-        if not ate and not died:
-            return NO_EVENTS
-        return FrameEvents(ate=ate, died=died)
-
-    def _events_since_last_frame(self, frame_idx: int) -> FrameEvents:
-        """ Everything that happened between the last frame produced and this one.
-
-        A consumer generally does not ask for every frame - a video at 30 fps
-        showing 10 simulation steps per second steps over most of them - so
-        reporting only what landed on this exact frame would silently lose the
-        steps in between. Reporting the span instead means a consumer gets each
-        event once by just reading the frames it actually asked for.
-        """
-        previous = self._last_produced_frame_idx
-        self._last_produced_frame_idx = frame_idx
-        if previous is None or frame_idx < previous:
-            # First frame, or the caller jumped backwards: there is no span to
-            # speak of, so report what belongs to this frame alone.
-            return self._events_on(frame_idx)
-        if frame_idx == previous:
-            # Asking for the same frame again covers no new ground. A consumer
-            # running slower than one step per frame lands here, and must not be
-            # told about the same eat on every repeat.
-            return NO_EVENTS
-
-        expansion = self._expansion
-        ate: list = []
-        died: list = []
-        for idx in range(((previous // expansion) + 1) * expansion, frame_idx + 1, expansion):
-            events = self._events_on(idx)
-            ate.extend(s_id for s_id in events.ate if s_id not in ate)
-            died.extend(s_id for s_id in events.died if s_id not in died)
-        if not ate and not died:
-            return NO_EVENTS
-        return FrameEvents(ate=tuple(ate), died=tuple(died))
 
     def _snake_paths(
         self,
@@ -335,27 +171,6 @@ class GridFrameProducer(ICellGridProducer):
 
     # ------------------------------------------------------------------- glow
 
-    def _scan_eats_through(self, step_idx: int):
-        """ Extend the eat index so every step before `step_idx` has been seen.
-
-        Walks the decisions forward from the start positions, which is enough to
-        know where each head landed without building any state.
-        """
-        limit = min(step_idx, self._state_builder.get_step_count())
-        while self._steps_scanned < limit:
-            step_data = self._state_builder.get_step_data(self._steps_scanned)
-            removed = step_data.removed_food
-            ate = []
-            for s_id, decision in step_data.decisions.items():
-                head = self._scan_heads[s_id] + decision
-                self._scan_heads[s_id] = head
-                if removed and head in removed:
-                    self._eat_steps[s_id].append(self._steps_scanned)
-                    ate.append(s_id)
-            if ate:
-                self._ate_on_step[self._steps_scanned] = tuple(ate)
-            self._steps_scanned += 1
-
     def _glow_intensity(self, s_id: int, path_len: int, step_idx: int, sub_step: int):
         """ Light on each pixel of a snake's path, 0 where the glow does not reach. """
         glow = self._glow
@@ -395,7 +210,7 @@ class GridFrameProducer(ICellGridProducer):
         return light
 
     def _apply_glow(self, pixels: np.ndarray, paths: Dict[int, np.ndarray], step_idx: int, sub_step: int):
-        self._scan_eats_through(step_idx)
+        self._scan_steps_through(step_idx)
         shape = pixels.shape[:2]
         for s_id, points in paths.items():
             light = self._glow_intensity(s_id, len(points), step_idx, sub_step)
