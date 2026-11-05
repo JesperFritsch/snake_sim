@@ -71,6 +71,7 @@ class RunAnalysis:
     final_step_idx: int
     tail_visible_phases: dict[int, list[TailVisiblePhase]] # snake_id -> list of phases where it can see its tail or not
     entered_separate_area: dict[int, list[int]] # snake_id -> list of step idx where it entered a separate area (cannot reach its body anymore)
+    eat_steps: dict[int, list[int]] # snake_is -> list of step idx where the snake ate
     start_lengths: dict[int, int] = field(default_factory=dict) # snake_id -> body length at step 0
     final_lengths: dict[int, int] = field(default_factory=dict) # snake_id -> body length at the last state seen
     traps_mapping: dict[int, set[TrapInfo]] = field(default_factory=dict) # step_idx -> set of TrapInfo for traps detected in that step
@@ -87,6 +88,7 @@ class RunAnalysis:
                 for s_id, phases in self.tail_visible_phases.items()
             },
             "entered_separate_area": self.entered_separate_area,
+            "eat_steps": self.eat_steps,
             "start_lengths": self.start_lengths,
             "final_lengths": self.final_lengths,
             "traps_mapping": {
@@ -335,6 +337,7 @@ def analyze(run_file: Path, trap_threshold: int = None) -> RunAnalysis:
     fatal_steps = {}
     tail_visible_phases: dict[int, list[TailVisiblePhase]] = {s_id: [] for s_id in snake_ids}
     entered_separate_area_dict: dict[int, list[int]] = {s_id: [] for s_id in snake_ids}
+    eat_steps_dict: dict[int, list[int]] = {s_id: [] for s_id  in snake_ids}
     traps_mapping: dict[int, set[TrapInfo]] = defaultdict(set) # step_idx -> set of TrapInfo for traps detected in that step
     prev_state = state_builder.get_state(0)
     prev_map = map_builder.get_map(0)
@@ -354,7 +357,8 @@ def analyze(run_file: Path, trap_threshold: int = None) -> RunAnalysis:
             current_state = state_builder.get_next_state()
             current_step_idx = state_builder.get_current_step_idx()
             current_map = map_builder.get_map_for_step(current_step_idx)
-
+            for s_id, did_eat in current_state.snake_ate.items():
+                if did_eat: eat_steps_dict[s_id].append(current_state.state_idx)
             traps_found = find_traps(prev_state, current_state, prev_map, current_map, snake_ids, area_checkers, trap_threshold=trap_threshold) if len(snake_ids) > 1 else {}
             if traps_found:
                 traps_mapping[current_step_idx].update(traps_found)
@@ -398,6 +402,7 @@ def analyze(run_file: Path, trap_threshold: int = None) -> RunAnalysis:
         tail_visible_phases=tail_visible_phases,
         final_step_idx=current_step_idx,
         entered_separate_area=entered_separate_area_dict,
+        eat_steps=eat_steps_dict,
         start_lengths=start_lengths,
         final_lengths=final_lengths,
         traps_mapping=traps_mapping

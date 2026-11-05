@@ -115,10 +115,13 @@ class StateBuilderObserver(ConsumerObserver):
         self._current_state.food = set(map(lambda f: Coord(*f), self._current_state.food))
         for s_id, dir in step_data.decisions.items():
             body = self._current_state.snake_bodies[s_id]
-            new_head = body[0] + dir
-            body.appendleft(new_head)
+            if dir != (0, 0):
+                new_head = body[0] + dir
+                body.appendleft(new_head)
+                self._current_state.snake_ate[s_id] = new_head in step_data.removed_food
+            else:
+                self._current_state.snake_ate[s_id] = False
             tail_dir = step_data.tail_directions[s_id]
-            self._current_state.snake_ate[s_id] = new_head in step_data.removed_food
             if tail_dir != (0, 0):
                 body.pop()
 
@@ -137,6 +140,9 @@ class StateBuilderObserver(ConsumerObserver):
         self._current_state.food.update(set(curr_step_data.removed_food) - new_food)
         self._current_state.food = set(map(lambda f: Coord(*f), self._current_state.food))
         for s_id, tail_dir in curr_step_data.tail_directions.items():
+            if curr_step_data.decisions.get(s_id) == (0, 0):
+                # Death step: the forward pass left this body untouched.
+                continue
             body = self._current_state.snake_bodies[s_id]
             popped_tile = body.popleft()
             if tail_dir != (0, 0):

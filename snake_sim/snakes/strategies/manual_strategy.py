@@ -22,8 +22,8 @@ class ManualStrategy(ISnakeStrategy):
     def get_wanted_tile(self) -> Coord:
         angle = self._input_provider.get_angle()
         if angle is None:
-            if self._last_direction:
-                return self._snake.get_head_coord() + self._last_direction  
+            # if self._last_direction:
+            #     return self._snake.get_head_coord() + self._last_direction  
             return
 
         if self._last_angle is not None:
